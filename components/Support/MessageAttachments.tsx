@@ -1,9 +1,11 @@
 import { memo, useCallback, useState } from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { FileText, ImageOff } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
+import { captureAccountScope } from '@/lib/accountScope';
 import { attachmentUrl, isLinkFresh, refreshMessage } from '@/lib/support/sync';
 import { cn } from '@/lib/utils';
 
@@ -24,14 +26,27 @@ const imageSize = (file: SupportAttachment) => {
 };
 
 /** Opens a file in the browser or the system viewer, with a fresh link when the held one is about to expire. */
-const openFile = async (message: SupportMessage, file: SupportAttachment) => {
-  // The web opens the tab within the tap, or the browser blocks it as a popup.
-  if (Platform.OS === 'web' && isLinkFresh(file.url) && file.url) {
-    window.open(file.url, '_blank', 'noopener,noreferrer');
-    return;
+const openFile = async (message: SupportMessage, file: SupportAttachment): Promise<void> => {
+  const scope = captureAccountScope();
+  try {
+    // The web opens the tab within the tap, or the browser blocks it as a popup.
+    if (Platform.OS === 'web' && isLinkFresh(file.url) && file.url) {
+      window.open(file.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const url = await attachmentUrl(message, file.key);
+    if (!scope.isCurrent()) return;
+    if (!url) throw new Error('No link for this file');
+    await Linking.openURL(url);
+  } catch {
+    if (!scope.isCurrent()) return;
+    // Both the image and the PDF rows land here: a failed refresh or an app that can't open it.
+    Toast.show({
+      type: 'error',
+      text1: "Couldn't open this file",
+      text2: 'Check your connection and tap it again.',
+    });
   }
-  const url = await attachmentUrl(message, file.key);
-  if (url) await Linking.openURL(url);
 };
 
 /** Customer messages sit on a light bubble, so their file rows use dark text. */

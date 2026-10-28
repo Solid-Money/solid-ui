@@ -837,8 +837,8 @@ function DepositToVaultForm() {
                       {maxAPY ? (
                         `${maxAPY.toFixed(2)}%`
                       ) : isEurVault && !isAPYsLoading ? (
-                        // soEURC does not earn yet: "—", not a skeleton that never resolves.
-                        '—'
+                        // EUR Yield's rate is 0% for now: shown, not a skeleton that never resolves.
+                        '0.00%'
                       ) : (
                         <Skeleton className="h-7 w-20 bg-white/20" />
                       )}

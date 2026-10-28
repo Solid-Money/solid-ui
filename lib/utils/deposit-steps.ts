@@ -107,7 +107,7 @@ function isDirectDeposit(activity: ActivityEvent): boolean {
 }
 
 /** Vault share tokens — a deposit denominated in one of these mints savings. */
-const VAULT_SHARE_SYMBOLS = ['sousd', 'sofuse', 'soeth', 'soeurc'];
+const VAULT_SHARE_SYMBOLS = ['sousd', 'sofuse', 'soeth', 'soeurc', 'soeur'];
 
 /**
  * True when a deposit ends up in the user's savings.

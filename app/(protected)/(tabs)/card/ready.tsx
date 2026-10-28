@@ -1,71 +1,58 @@
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Redirect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { CardConsentList, useCardConsents } from '@/components/Card/CardConsents';
 import { CardStatusPage } from '@/components/Card/CardStatusPage';
+import { WirexCardApproval } from '@/components/Card/WirexOnboarding/WirexCardApproval';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
-import { Underline } from '@/components/ui/underline';
 import { activationDailyLimit, formatUsd, usdToOnChain } from '@/constants/cardSpendModule';
 import { path } from '@/constants/path';
+import {
+  BASE_SPEND_DEPLOYMENT,
+  isSpendDeploymentConfigured,
+} from '@/constants/spendModuleDeployments';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
+import { useCardSpendDeployments, useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { WALLET_ELIGIBILITY_KEY } from '@/hooks/useWalletEligibility';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
-import { openHelpLink } from '@/lib/help/links';
 import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
+import { isWirexOnboarding } from '@/lib/utils/wirexOnboarding';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
-
-type ConsentKey =
-  | 'agreedToEsign'
-  | 'agreedToAccountOpeningPrivacy'
-  | 'isTermsOfServiceAccepted'
-  | 'agreedToCertify'
-  | 'agreedToNoSolicitation';
-
-type ConsentState = Record<ConsentKey, boolean>;
-
-const initialConsents: ConsentState = {
-  agreedToEsign: false,
-  agreedToAccountOpeningPrivacy: false,
-  isTermsOfServiceAccepted: false,
-  agreedToCertify: false,
-  agreedToNoSolicitation: false,
-};
-
-const ESIGN_CONSENT_URL =
-  'https://support.solid.xyz/en/articles/14167249-e-sign-electronic-communications-notice';
-const ACCOUNT_OPENING_PRIVACY_URL =
-  'https://support.solid.xyz/en/articles/14285527-account-opening-privacy-notice-fuse-network-lt-solid-xyz';
-const US_CARD_TERMS_URL =
-  'https://support.solid.xyz/en/articles/14285503-fuse-network-ltd-card-terms-for-u-s-consumer-program';
-const INTL_CARD_TERMS_URL =
-  'https://support.solid.xyz/en/articles/14167076-card-terms-for-international-consumer-program';
-const ISSUER_PRIVACY_URL = 'https://www.third-national.com/privacypolicy';
-
-const underlineProps = {
-  textClassName: 'text-sm font-bold text-white' as const,
-  borderColor: 'rgba(255, 255, 255, 1)' as const,
-};
 
 /**
  * What the activation button is doing, so the label can name the step in front of the
  * user. A single boolean could not: one of the steps raises a signature prompt, and
  * "Activating..." over a passkey sheet says nothing about what is being signed.
  */
-type ActivationPhase = 'idle' | 'enabling-spend' | 'creating';
+type ActivationPhase = 'idle' | 'enabling-spend' | 'enabling-eurc' | 'creating';
 
+/**
+ * The card ready screen, by applicant: a first-time Wirex applicant gets the onboarding's Approved
+ * screen (card currency, the activation checklist, one passkey prompt); everyone else — Rain, and a
+ * Wirex cardholder ordering a replacement for a closed card — keeps this one.
+ */
 export default function CardReady() {
+  const { data: cardStatusResponse, isLoading } = useCardStatus();
+
+  if (isLoading) return <PageLayout isLoading>{null}</PageLayout>;
+  if (isWirexOnboarding(cardStatusResponse)) return <WirexCardApproval />;
+  return <IssuanceCardReady />;
+}
+
+function IssuanceCardReady() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: cardStatusResponse, refetch: refetchCardStatus } = useCardStatus();
   const [activationPhase, setActivationPhase] = useState<ActivationPhase>('idle');
-  const [consents, setConsents] = useState<ConsentState>(initialConsents);
   const activating = activationPhase !== 'idle';
 
   // Read the module state up front, before there is a card to resolve an issuer from —
@@ -78,38 +65,17 @@ export default function CardReady() {
     refetch: refetchSpendRegistration,
   } = useCardSpendRegistration({ enabled: true });
 
+  // The Base instance, which lets the card pay with EURC. Registered at activation beside Fuse, so
+  // a new cardholder's card can pay euro shops from EURC without a second setup later.
+  const euroSpend = useEuroSpendEnablement();
+  const { refetch: refetchSpendDeployments } = useCardSpendDeployments();
+
   const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
   const setShouldShowWelcomePopup = useCardWelcomePopupStore(
     state => state.setShouldShowWelcomePopup,
   );
   const isUS = countryCode?.toUpperCase() === 'US';
-  const cardTermsUrl = isUS ? US_CARD_TERMS_URL : INTL_CARD_TERMS_URL;
-
-  const requiredKeys = useMemo<ConsentKey[]>(
-    () =>
-      isUS
-        ? [
-            'agreedToEsign',
-            'agreedToAccountOpeningPrivacy',
-            'isTermsOfServiceAccepted',
-            'agreedToCertify',
-            'agreedToNoSolicitation',
-          ]
-        : [
-            'agreedToEsign',
-            'isTermsOfServiceAccepted',
-            'agreedToCertify',
-            'agreedToNoSolicitation',
-          ],
-    [isUS],
-  );
-
-  const allAccepted = useMemo(
-    () => requiredKeys.every(key => consents[key]),
-    [requiredKeys, consents],
-  );
-
-  const toggle = (key: ConsentKey) => setConsents(prev => ({ ...prev, [key]: !prev[key] }));
+  const { consents, toggle, allAccepted, submission: consentSubmission } = useCardConsents(isUS);
 
   /**
    * The daily cap this activation would register with, for the copy under the button.
@@ -136,6 +102,15 @@ export default function CardReady() {
 
   /** A Wirex card declines every payment until the Safe is registered, so activation waits. */
   const needsSpendSetup = isWirexApplicant && !isSpendRegistered;
+
+  /**
+   * Whether activation also registers the Base instance. Skipped when this build has no Base
+   * addresses, or the backend has switched Base off (`available: false`) — there is nothing to
+   * register against, and the backend would refuse to record it.
+   */
+  const offersEurcSetup =
+    isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT) && euroSpend.deployment?.available !== false;
+  const needsEurcSetup = isWirexApplicant && offersEurcSetup && !euroSpend.isEnabled;
 
   /**
    * The org has no daily limit this Safe could be registered with, so there is nothing to
@@ -231,6 +206,55 @@ export default function CardReady() {
     }
   };
 
+  /**
+   * Enable the spend module on the Safe on Base and register it at the module's default limits, so
+   * the card can pay with EURC. A second passkey prompt after the Fuse one, because it is another
+   * chain.
+   *
+   * A gate, like the Fuse grant: false means nothing was created, and pressing Activate card again
+   * resumes here — the Fuse half is already done and is not asked for twice.
+   */
+  const grantEurcSpending = async (): Promise<boolean> => {
+    try {
+      setActivationPhase('enabling-eurc');
+
+      if (!(await euroSpend.enableAsync('card_activation'))) {
+        Toast.show({
+          type: 'info',
+          text1: 'Card not activated',
+          text2:
+            'Your card also pays with your EURC, so it is only created once you approve that signature. Nothing was created — tap Activate card to try again.',
+          props: { badgeText: '' },
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error enabling EURC spending during activation:', error);
+
+      // The backend's record gets the last word, as the chain does for the Fuse grant: a confirm
+      // that landed while its response was lost is a finished grant. A user operation whose
+      // receipt timed out needs no new signature either — the next press reads the chain, finds
+      // both halves done and only confirms.
+      try {
+        const { data } = await refetchSpendDeployments();
+        const base = data?.deployments.find(
+          deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId,
+        );
+        if (base?.enabled) return true;
+      } catch {
+        // The read failed too; fall through and report the original failure.
+      }
+
+      void showErrorToast(error, {
+        action: 'card_activate',
+        body: 'No card was created. Try again in a moment.',
+      });
+      return false;
+    }
+  };
+
   const handleActivateCard = async () => {
     if (!allAccepted) return;
 
@@ -252,18 +276,19 @@ export default function CardReady() {
         setActivationPhase('creating');
       }
 
-      await withRefreshToken(() =>
-        submitCardConsents({
-          ...consents,
-          // Non-US users never see this consent; send false so the field is always present.
-          agreedToAccountOpeningPrivacy: isUS ? consents.agreedToAccountOpeningPrivacy : false,
-        }),
-      );
+      // Then Base, the same way: no card until the Safe there can pay with EURC too.
+      if (provider === CardProvider.WIREX && offersEurcSetup && !euroSpend.isEnabled) {
+        if (!(await grantEurcSpending())) return;
+        setActivationPhase('creating');
+      }
+
+      await withRefreshToken(() => submitCardConsents(consentSubmission));
 
       const card = await withRefreshToken(() => createCard());
       if (!card) throw new Error('Failed to create card');
 
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [WALLET_ELIGIBILITY_KEY] });
 
       // Show the welcome popup whenever the card lands, including when it opens a
       // moment later on the issuance flow.
@@ -307,58 +332,7 @@ export default function CardReady() {
   return (
     <CardStatusPage title="Your card is ready!">
       <View className="mt-4 w-full gap-3">
-        <ConsentRow checked={consents.agreedToEsign} onToggle={() => toggle('agreedToEsign')}>
-          I accept the{' '}
-          <Underline inline {...underlineProps} onPress={() => openHelpLink(ESIGN_CONSENT_URL)}>
-            E-Sign Consent
-          </Underline>
-          .
-        </ConsentRow>
-
-        {isUS && (
-          <ConsentRow
-            checked={consents.agreedToAccountOpeningPrivacy}
-            onToggle={() => toggle('agreedToAccountOpeningPrivacy')}
-          >
-            I accept the{' '}
-            <Underline
-              inline
-              {...underlineProps}
-              onPress={() => openHelpLink(ACCOUNT_OPENING_PRIVACY_URL)}
-            >
-              Account Opening Privacy Notice
-            </Underline>
-            .
-          </ConsentRow>
-        )}
-
-        <ConsentRow
-          checked={consents.isTermsOfServiceAccepted}
-          onToggle={() => toggle('isTermsOfServiceAccepted')}
-        >
-          I accept the{' '}
-          <Underline inline {...underlineProps} onPress={() => openHelpLink(cardTermsUrl)}>
-            Solid Card Terms
-          </Underline>{' '}
-          and the{' '}
-          <Underline inline {...underlineProps} onPress={() => Linking.openURL(ISSUER_PRIVACY_URL)}>
-            Issuer Privacy Policy
-          </Underline>
-          .
-        </ConsentRow>
-
-        <ConsentRow checked={consents.agreedToCertify} onToggle={() => toggle('agreedToCertify')}>
-          I certify that the information I have provided is accurate and that I will abide by all
-          the rules and requirements related to my Solid Spend Card.
-        </ConsentRow>
-
-        <ConsentRow
-          checked={consents.agreedToNoSolicitation}
-          onToggle={() => toggle('agreedToNoSolicitation')}
-        >
-          I acknowledge that applying for the Solid Spend Card does not constitute unauthorized
-          solicitation.
-        </ConsentRow>
+        <CardConsentList consents={consents} onToggle={toggle} isUS={isUS} />
       </View>
 
       <Button
@@ -370,9 +344,11 @@ export default function CardReady() {
         <Text className="text-base font-bold text-primary-foreground">
           {activationPhase === 'enabling-spend'
             ? 'Enabling card spending...'
-            : activating
-              ? 'Activating...'
-              : 'Activate card'}
+            : activationPhase === 'enabling-eurc'
+              ? 'Enabling EURC payments...'
+              : activating
+                ? 'Activating...'
+                : 'Activate card'}
         </Text>
       </Button>
 
@@ -386,9 +362,21 @@ export default function CardReady() {
             ? `Approve the signature to let your card spend from your savings, up to ${formatUsd(
                 usdToOnChain(initialDailyLimit),
               )} a day.`
-            : `Your card spends straight from your savings, so activating asks for one signature: it lets the card spend up to ${formatUsd(
-                usdToOnChain(initialDailyLimit),
-              )} a day. You can change that limit or turn spending off any time from your card.`}
+            : activationPhase === 'enabling-eurc'
+              ? 'Approve the second signature to let your card pay with your EURC.'
+              : needsEurcSetup
+                ? `Your card spends straight from your savings, so activating asks for two signatures: one lets the card spend up to ${formatUsd(
+                    usdToOnChain(initialDailyLimit),
+                  )} a day, the other lets it pay with your EURC. You can change that limit or turn spending off any time from your card.`
+                : `Your card spends straight from your savings, so activating asks for one signature: it lets the card spend up to ${formatUsd(
+                    usdToOnChain(initialDailyLimit),
+                  )} a day. You can change that limit or turn spending off any time from your card.`}
+        </Text>
+      ) : !needsSpendSetup && needsEurcSetup ? (
+        <Text className="mt-3 text-center text-xs leading-snug text-[#ACACAC]">
+          {activationPhase === 'enabling-eurc'
+            ? 'Approve the signature to let your card pay with your EURC.'
+            : 'Activating asks for one signature: it lets your card pay with your EURC.'}
         </Text>
       ) : null}
 
@@ -401,24 +389,5 @@ export default function CardReady() {
         </Text>
       ) : null}
     </CardStatusPage>
-  );
-}
-
-function ConsentRow({
-  checked,
-  onToggle,
-  children,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <View className="w-full flex-row items-start">
-      <Checkbox checked={checked} onCheckedChange={onToggle} className="mr-3 mt-0.5" />
-      <Pressable onPress={onToggle} className="flex-1">
-        <Text className="text-left text-sm leading-5 text-[#ACACAC]">{children}</Text>
-      </Pressable>
-    </View>
   );
 }

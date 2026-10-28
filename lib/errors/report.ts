@@ -49,16 +49,17 @@ const assignedEventIds = new WeakMap<object, string>();
  * The event ID a failure will be reported under, fixed the first time anyone
  * asks. Lets code that records a failure before the UI shows it (an activity
  * marked failed, say) store the same Ref the user is about to see: the failing
- * call's request ID when there is one, else an ID minted now and reused.
+ * call's request ID when already known, else an ID minted now and reused even
+ * if asynchronous response parsing later discovers a request ID.
  */
 export const eventIdForError = (error: unknown, requestId?: string): string => {
-  if (isHex32(requestId)) return requestId;
-  if (error === null || typeof error !== 'object') return newEventId();
-  let eventId = assignedEventIds.get(error);
-  if (!eventId) {
-    eventId = newEventId();
-    assignedEventIds.set(error, eventId);
+  if (error === null || typeof error !== 'object') {
+    return isHex32(requestId) ? requestId : newEventId();
   }
+  const assigned = assignedEventIds.get(error);
+  if (assigned) return assigned;
+  const eventId = isHex32(requestId) ? requestId : newEventId();
+  assignedEventIds.set(error, eventId);
   return eventId;
 };
 

@@ -16,12 +16,16 @@ const usdShort = (value: number) => {
 };
 
 /**
- * "+$0.35 today" — the yield estimate under the Home balance. Null below half a
- * cent, where it would round to "+$0.00" and say nothing.
+ * "+$0.35 today" — the yield estimate under the Home balance, in the balance's
+ * currency (`symbol`, "$" by default). Null below half a cent, where it would
+ * round to "+$0.00" and say nothing.
  */
-export const dailyYieldPillLabel = (dailyYield: number | undefined): string | null => {
+export const dailyYieldPillLabel = (
+  dailyYield: number | undefined,
+  symbol = '$',
+): string | null => {
   if (dailyYield === undefined || !Number.isFinite(dailyYield) || dailyYield < 0.005) return null;
-  return `+${usd(dailyYield)} today`;
+  return `+${symbol}${usd(dailyYield).slice(1)} today`;
 };
 
 /**

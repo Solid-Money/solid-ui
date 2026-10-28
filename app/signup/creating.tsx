@@ -17,6 +17,7 @@ import { useShallow } from 'zustand/react/shallow';
 import InfoError from '@/assets/images/info-error';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
@@ -136,12 +137,14 @@ const FAILURE_TITLES: Record<CreationFailure['recovery'], string> = {
   retry: "We couldn't finish creating your account",
   verify_email: 'Verify your email again',
   log_in: 'You already have an account',
+  change_email: 'Use a different email',
 };
 
 const FAILURE_ACTIONS: Record<CreationFailure['recovery'], string> = {
   retry: 'Try again',
   verify_email: 'Verify email',
   log_in: 'Log in',
+  change_email: 'Change email',
 };
 
 export default function SignupCreating() {
@@ -307,6 +310,7 @@ export default function SignupCreating() {
         walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
+        createdAt: user.createdAt,
         signWith: user.walletAddress,
         suborgId: user.subOrganizationId,
         selected: true,
@@ -378,18 +382,20 @@ export default function SignupCreating() {
       // viem's text for a failure there includes the request URL — which for the
       // bundler carries its API key — so the raw message is never shown.
       const errorMessage =
-        recovery === 'verify_email'
-          ? 'Your email verification has expired. Verify your email again to finish creating your account.'
-          : recovery === 'log_in'
-            ? 'An account with this email already exists. Log in to continue.'
-            : isRateLimitedError(err)
-              ? 'Too many attempts. Wait a minute, then try again.'
-              : userFacingErrorMessage(
-                  err,
-                  accountCreated
-                    ? "We couldn't finish setting up your wallet. Please try again."
-                    : 'Failed to create account. Please try again.',
-                );
+        recovery === 'change_email'
+          ? EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE
+          : recovery === 'verify_email'
+            ? 'Your email verification has expired. Verify your email again to finish creating your account.'
+            : recovery === 'log_in'
+              ? 'An account with this email already exists. Log in to continue.'
+              : isRateLimitedError(err)
+                ? 'Too many attempts. Wait a minute, then try again.'
+                : userFacingErrorMessage(
+                    err,
+                    accountCreated
+                      ? "We couldn't finish setting up your wallet. Please try again."
+                      : 'Failed to create account. Please try again.',
+                  );
 
       setError(errorMessage);
 
@@ -471,6 +477,11 @@ export default function SignupCreating() {
         return;
       case 'log_in':
         router.replace(path.ONBOARDING);
+        return;
+      case 'change_email':
+        // The address can't be used, so start over from the email step.
+        setStep('email');
+        router.replace(path.SIGNUP_EMAIL);
         return;
       default:
         createAccount();

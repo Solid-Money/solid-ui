@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import { CircleCheck, CircleX, ExternalLink } from 'lucide-react-native';
 
@@ -58,8 +58,13 @@ const description = (swap: TrackedLifiSwap) => {
   return `Usually ${formatEta(swap.etaSeconds).replace('~', '')}. You can close this; we'll keep tracking it and update your activity.`;
 };
 
-/** Progress of the cross-chain swap the user just sent, as the watcher learns it. */
-const LifiSwapStatusView = ({ onDone }: { onDone: () => void }) => {
+/**
+ * Progress of the cross-chain swap the user just sent, as the watcher learns it.
+ *
+ * `action` replaces the closing button for a flow that has a next step once
+ * the swap lands — the tier upgrade, which starts the membership from here.
+ */
+const LifiSwapStatusView = ({ onDone, action }: { onDone?: () => void; action?: ReactNode }) => {
   const swap = useLifiSwapStore(state =>
     state.activeClientTxId ? state.swaps[state.activeClientTxId] : undefined,
   );
@@ -106,17 +111,19 @@ const LifiSwapStatusView = ({ onDone }: { onDone: () => void }) => {
         <ExternalLink size={14} color="rgb(161, 161, 161)" />
       </Pressable>
 
-      <Button
-        variant="brand"
-        className="h-12 w-full rounded-2xl"
-        disabled={isLeaving}
-        onPress={() => {
-          setLeaving(true);
-          onDone();
-        }}
-      >
-        <Text className="w-full text-center text-base font-bold">View recent activity</Text>
-      </Button>
+      {action ?? (
+        <Button
+          variant="brand"
+          className="h-12 w-full rounded-2xl"
+          disabled={isLeaving}
+          onPress={() => {
+            setLeaving(true);
+            onDone?.();
+          }}
+        >
+          <Text className="w-full text-center text-base font-bold">View recent activity</Text>
+        </Button>
+      )}
 
       <NeedHelp />
     </View>

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
-import { path } from '@/constants/path';
+import { path, wirexCountrySelectionPath } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
@@ -18,7 +18,12 @@ import { isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
-import { hasMetSavingsDeposit, requiresCardDeposit, withRefreshToken } from '@/lib/utils';
+import {
+  canReplaceClosedCard,
+  hasMetSavingsDeposit,
+  requiresCardDeposit,
+  withRefreshToken,
+} from '@/lib/utils';
 import { blocksCardActivation } from '@/lib/utils/cardActivationRetry';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -205,10 +210,14 @@ export function useCardSteps(
     [runSubmitPendingApplication],
   );
 
+  // A closed card its holder can replace: the activate step stays open and
+  // orders the new card, rather than reading as already done.
+  const replacingClosedCard = canReplaceClosedCard(cardStatusResponse);
+
   // Sync card activation state with server
   useEffect(() => {
-    syncCardActivationState(cardStatusResponse?.status);
-  }, [cardStatusResponse?.status, syncCardActivationState]);
+    syncCardActivationState(cardStatusResponse?.status, replacingClosedCard);
+  }, [cardStatusResponse?.status, replacingClosedCard, syncCardActivationState]);
 
   // Handle the KYC flow initiation
   const handleProceedToKyc = useCallback(async () => {
@@ -318,7 +327,12 @@ export function useCardSteps(
         kycProvider,
         countryCode,
       });
-      router.push(path.CARD_COUNTRY_SELECTION as any);
+      // A Wirex applicant confirms their country as step 1 of their own onboarding.
+      router.push(
+        (kycProvider === KycProvider.SUMSUB
+          ? wirexCountrySelectionPath()
+          : path.CARD_COUNTRY_SELECTION) as any,
+      );
       return;
     }
 
@@ -425,6 +439,7 @@ export function useCardSteps(
           rainForwardPendingDeposit: cardStatusResponse?.rainForwardPendingDeposit,
           submitPendingApplication,
           isSubmittingPendingApplication,
+          replacingClosedCard,
         },
       ),
     [
@@ -449,6 +464,7 @@ export function useCardSteps(
       openSavingsDepositModal,
       submitPendingApplication,
       isSubmittingPendingApplication,
+      replacingClosedCard,
     ],
   );
 
@@ -466,5 +482,9 @@ export function useCardSteps(
     // Exposed so the failure banner can offer the same action the activate
     // step does, rather than owning a second, divergent route to issuance.
     pushCardReady,
+    // The KYC step's own action, for the Wirex onboarding screens: "Start verification" and
+    // "Continue verification" run exactly what the step button does — the provider routing,
+    // the under-review guard and the declared-country gate.
+    startKyc: handleProceedToKyc,
   };
 }

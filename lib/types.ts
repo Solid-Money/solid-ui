@@ -128,6 +128,12 @@ export interface DepositAssetsResponse {
   /** The dollar figure every asset's `minimum` is derived from. */
   minimumUsd: number;
   assets: DepositAsset[];
+  /**
+   * What the deposit screen offers that lands in the Safe as sent (PAXG, WBTC,
+   * OP, ...), apart from `assets` because the pipeline credits none of them.
+   * Absent from a backend older than these tokens.
+   */
+  walletAssets?: DepositAsset[];
   /** False when a minimum is a conservative fallback, not a live conversion. */
   pricesResolved: boolean;
 }
@@ -257,6 +263,8 @@ export interface User {
   signWith: string;
   suborgId: string;
   userId: string;
+  /** Account signup date from the existing authentication response. */
+  createdAt?: string;
   referralCode?: string;
   isDeposited?: boolean;
   tokens?: AuthTokens;
@@ -477,6 +485,52 @@ interface Balance {
 interface Balances {
   available: Balance;
   hold: Balance;
+  /**
+   * `available` in the card's own currency, at Wirex's latest quote for it — what
+   * the till will accept. Wirex cards only, and only when the card is billed in
+   * something other than dollars and the quote is under a day old.
+   */
+  available_in_card_currency?: CardCurrencyAmount;
+  /**
+   * `available` in euros at the price the card spends EURC at, with that rate. Wirex cards only;
+   * what a euro main currency shows. Absent when the backend could not read the EURC price.
+   */
+  available_in_eur?: CardEurAmount;
+}
+
+/**
+ * The currency a Wirex cardholder picked as their main one: the currency their balances show in
+ * and that a purchase in a third currency is paid from first. Euro and dollar shops ignore it.
+ */
+export type MainCurrency = 'USD' | 'EUR';
+
+/** A Wirex card's spendable figure in euros, at the EURC price. */
+export interface CardEurAmount {
+  /** Decimal string, rounded down to the cent: "211.45". */
+  amount: string;
+  currency: 'eur';
+  /** USD per euro — the price the card spends EURC at, no card spread. */
+  usd_per_eur: number;
+}
+
+/** A Wirex card's spendable figure in the currency it is billed in. */
+export interface CardCurrencyAmount {
+  /** Decimal string, rounded down to the cent: "983.47". */
+  amount: string;
+  /** ISO 4217, upper case: "EUR". */
+  currency: string;
+  /** USD per one unit of `currency` — Wirex's quote, its spread included. */
+  rate: number;
+  /** When that quote was taken, ISO 8601. */
+  rate_at: string;
+}
+
+/** `GET /wirex/spendable`: the card-details `balances` figures, cheap enough to poll. */
+export interface CardSpendableResponse {
+  available: { amount: string; currency: 'usd' };
+  available_in_card_currency?: CardCurrencyAmount;
+  available_in_eur?: CardEurAmount;
+  main_currency?: MainCurrency;
 }
 
 interface CryptoAccount {
@@ -574,6 +628,8 @@ export interface CardDetailsResponseDto extends CardResponse {
    * the user's KYC residence.
    */
   issuing_country?: string;
+  /** Wirex cards only: the cardholder's main currency. Absent reads as dollars. */
+  main_currency?: MainCurrency;
 }
 
 /**
@@ -625,10 +681,28 @@ export interface CardStatusResponse {
   activationFailure?: CardActivationFailure;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
+  /**
+   * The card is permanently closed and the cardholder can order a new one
+   * themselves (`POST /cards`). Set only for a closed Wirex card — a closed
+   * Rain card is replaced by support. See `canReplaceClosedCard`.
+   */
+  canRequestNewCard?: boolean;
   /** Internal KYC status (covers Didit rejection before Rain is reached) */
   kycStatus?: KycStatus;
   /** Warning entries from Didit verification (e.g. DOCUMENT_EXPIRED) and Rain forward failures. */
   kycWarnings?: KycWarning[];
+  /**
+   * Wirex/Sumsub only: `RETRY` when Sumsub asked for a resubmission, `FINAL` for a terminal
+   * decline. `kycStatus: incomplete` alone cannot say which screen to show — a failed hand-off to
+   * Wirex writes the same status, and that is not a document the applicant can fix.
+   */
+  kycRejectType?: 'RETRY' | 'FINAL' | string;
+  /**
+   * Wirex/Sumsub only: Sumsub's review status (`init`, `pending`, `completed`, …). Present once
+   * the applicant has opened the identity check, so it tells "opened it and left" from "never
+   * started" on any device.
+   */
+  kycReviewStatus?: string;
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /**
@@ -676,6 +750,12 @@ export interface CardStatusResponse {
     kycStatus?: KycStatus | string;
     /** Didit approved, but the hand-off to Rain is held on the savings deposit. */
     forwardPendingDeposit?: boolean;
+    /**
+     * Didit approved, but Rain can never accept the answers (a US SSN that is
+     * not 9 digits), so the applicant has to verify again — the server allows a
+     * new Didit session for exactly this.
+     */
+    resubmitVerification?: boolean;
   };
   /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
@@ -1032,6 +1112,13 @@ export interface StatementDownload {
   content: string | Uint8Array;
   /** The plain type, without parameters: `application/pdf` or `text/csv`. */
   mimeType: string;
+}
+
+/** Whether the new deposit tokens may be offered to this user. See useDepositTokensAccess. */
+export interface DepositTokensAccessResponse {
+  enabled: boolean;
+  /** `cohort` — tagged on the internal team. `open` — rolled out to everyone. `not-in-cohort` — hidden. */
+  reason: 'cohort' | 'open' | 'not-in-cohort';
 }
 
 export interface CardSpendModeAccessResponse {
@@ -2069,7 +2156,27 @@ export interface RewardsUserData {
    * hides every pending label.
    */
   cashbackPendingThisMonth?: number;
+  /**
+   * The monthly cap of the tier the user holds now — what the tier advertises.
+   * For "how much can this month pay", read `monthlyCashbackCap` instead.
+   */
   maxCashbackMonthly: number;
+  /**
+   * The ceiling this month's purchases are actually paid up to, in USD.
+   *
+   * Usually equal to `maxCashbackMonthly`. Larger when purchases were made
+   * under a bigger cap: a Prime trial that ended mid-month keeps Prime's cap on
+   * what was bought during it. Absent on older backends — see
+   * `monthlyCashbackCap`, which falls back to the tier's cap.
+   */
+  cashbackCapThisMonth?: number;
+  /**
+   * What a purchase made now can still earn this month, in USD. Zero once
+   * earlier purchases have used up the current tier's cap, even when
+   * `cashbackCapThisMonth` is larger. Absent on older backends — see
+   * `monthlyCashbackHeadroom`.
+   */
+  cashbackHeadroomThisMonth?: number;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;
   /** The user's old Solid Points total prior to conversion. */
@@ -2560,6 +2667,8 @@ export interface RecordSwapFeeParams {
   baseTokenAmount?: string;
   feeAmountUsd: number;
   percentage?: number;
+  /** Chain the swap ran on. Always Fuse — anything else goes through LI.FI. */
+  chainId?: number;
 }
 
 export interface RecordStocksFeeParams {
@@ -2754,6 +2863,15 @@ export interface CardSpendDetails {
   settled_at?: string;
   decline_reason?: string;
   /**
+   * What Wirex billed the card, as the decimal string it sent: "18.75". Not the
+   * receipt total when the merchant charged in something else — a BRL shop is
+   * billed to a euro card in euros — which is why the declined receipt compares
+   * this, not `amount`, with what the card can spend.
+   */
+  card_amount?: string;
+  /** ISO 4217 of {@link card_amount}. */
+  card_currency?: string;
+  /**
    * The refund leg, when this transaction has one.
    *
    * Separate from the fields above because those describe the *purchase* — what
@@ -2802,6 +2920,11 @@ export interface CardTransaction {
   posted_at: string;
   authorized_at: string;
   crypto_transaction_details?: CryptoTransactionDetails;
+  /**
+   * The other side of a refund. On a `refund` row, the purchase it gave money
+   * back for; on a purchase, the refund row that gave money back for it. See
+   * `getRefundedPurchaseId` and `getPurchaseRefundId`.
+   */
   related_transaction_ids: string[];
   billing_amount?: string;
   merchant_category_code?: string;
@@ -2826,8 +2949,12 @@ export interface CardTransaction {
   /**
    * How much of this transaction has been refunded, when the issuer models a
    * refund as a credit on the original transaction rather than a separate one
-   * (Wirex does). `amount` is already net of it — this exists to explain why the
-   * figure is lower than what the merchant charged.
+   * (Wirex does).
+   *
+   * When the purchase is linked to a refund row (`related_transaction_ids`),
+   * `amount` is the full charge and the refund row shows the money coming back.
+   * Without a link `amount` is net of the refund, which is how the backend sent
+   * it before it split refunds out.
    */
   refunded_amount?: string;
   /** Fees applied to this transaction. Absent when none were evaluated. */
@@ -3077,21 +3204,6 @@ export interface APYsByAsset {
 export interface HistoricalAPYPoint {
   time: string;
   value: number;
-}
-
-export interface Coin {
-  id: string;
-  name: string;
-  api_symbol: string;
-  symbol: string;
-}
-
-export interface SearchCoin {
-  coins: Coin[];
-}
-
-export interface CoinHistoricalChart {
-  prices: [number, number][];
 }
 
 export interface ChartPayload {
@@ -3658,6 +3770,12 @@ export interface ReferralRewardListItem {
    */
   awaitingActivity?: boolean;
   /**
+   * The friend was paid their reward but the referrer's share was withheld —
+   * by a referrer block or a support decision. The row reads as not eligible,
+   * at $0. Set on the referrer's own row only.
+   */
+  referrerRewardWithheld?: boolean;
+  /**
    * The bar this row is measured against. For a friend who has qualified it is
    * the bar they cleared, which can be lower than today's — the target moved
    * from $75 to $150 while rewards were still in their payout delay, and
@@ -4202,6 +4320,25 @@ export interface TierSubscription {
   /** When a past-due membership finally loses its tier. */
   graceEndsAt: string | null;
   subscribedAt: string;
+  /**
+   * How the first payment was funded, when it was bridged in from another
+   * chain. Null when it was paid from USDC already on Fuse. Optional until
+   * every backend sends it.
+   */
+  funding?: TierSubscriptionFunding | null;
+}
+
+/** A first payment bridged in from another chain. */
+export interface TierSubscriptionFunding {
+  transactionHash: string;
+  fromChainId: number;
+  fromTokenSymbol: string | null;
+  /** What the user sent, in USD. */
+  sentUsd: string;
+  /** USDC that reached the Safe on Fuse. */
+  receivedUsd: string;
+  /** The bridge and swap cost the first charge absorbed. */
+  coverUsd: string;
 }
 
 /** Addresses the app builds the upgrade transactions against. */
@@ -4257,5 +4394,11 @@ export interface TierMembershipState {
    */
   legacyFuseOnly: boolean;
   memberSince: string | null;
+  /**
+   * The most of the annual fee, as a percentage, that bridge and swap costs
+   * may take when the first payment is bridged in from another chain. 0 or
+   * absent means a bridged payment has to arrive in full.
+   */
+  bridgeFeeCoverPct?: number;
   contracts: TierMembershipContracts;
 }

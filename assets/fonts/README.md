@@ -12,7 +12,8 @@ accordance with the original font's reserved-name requirement. The font
 table checksums and `head.checkSumAdjustment` have been recalculated.
 
 The app loads this variant as `SolidLink_700Bold` for the two cashback
-disclaimer links. Other text keeps the original fonts.
+disclaimer links and the "How to earn points?" link in the Rewards help
+carousel. Other text keeps the original fonts.
 
 Copyright and license metadata remain in the font. The original SIL Open
 Font License is also included in `SolidLink-OFL.txt`.

@@ -12,6 +12,7 @@ import {
   MAX_QUEUED,
   RETRY_DELAY_MS,
 } from '@/lib/telemetry/errorIngestQueue';
+import { useUserStore } from '@/store/useUserStore';
 
 import type { ClientErrorEvent } from '@/lib/telemetry/types';
 
@@ -22,6 +23,12 @@ jest.mock('@/lib/api', () => ({
 jest.mock('@/lib/config', () => ({
   EXPO_PUBLIC_FLASH_API_BASE_URL: 'https://api.test',
   EXPO_PUBLIC_ERRORS_INGEST_ENABLED: true,
+  USER: { storageKey: 'telemetry-test-user' },
+}));
+jest.mock('@/lib/mmvkStorage', () => () => ({
+  getItem: () => null,
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
 }));
 
 let counter = 0;
@@ -47,6 +54,7 @@ describe('errorIngestQueue', () => {
   let fetchMock: jest.Mock;
 
   beforeEach(() => {
+    useUserStore.setState({ users: [{ userId: 'account-a', selected: true } as never] });
     jest.useFakeTimers();
     __resetErrorIngestQueue();
     fetchMock = jest.fn(() => Promise.resolve(respond(202)));
@@ -81,6 +89,37 @@ describe('errorIngestQueue', () => {
     });
     expect(sentBatches(fetchMock)[0]).toHaveLength(2);
     expect(__getQueuedErrorEvents()).toHaveLength(0);
+  });
+
+  it('drops the departed account’s queued events without suppressing the new account’s errors', async () => {
+    const failure = { message: 'same failure', code: 'SAME' };
+    enqueueErrorEvent(event(failure));
+    useUserStore.setState({ users: [{ userId: 'account-b', selected: true } as never] });
+    const current = event(failure);
+    expect(enqueueErrorEvent(current)).toBe(true);
+    await jest.advanceTimersByTimeAsync(FLUSH_INTERVAL_MS);
+    expect(sentBatches(fetchMock)).toEqual([[current]]);
+  });
+
+  it('does not retry an old account’s failed batch after an account switch', async () => {
+    fetchMock.mockResolvedValue(respond(503));
+    enqueueErrorEvent(event());
+    await jest.advanceTimersByTimeAsync(FLUSH_INTERVAL_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    useUserStore.setState({ users: [{ userId: 'account-b', selected: true } as never] });
+    await jest.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not perform an anonymous fallback after sign-out during a request', async () => {
+    let finish!: (response: Response) => void;
+    fetchMock.mockReturnValueOnce(new Promise<Response>(resolve => (finish = resolve)));
+    enqueueErrorEvent(event());
+    await jest.advanceTimersByTimeAsync(FLUSH_INTERVAL_MS);
+    useUserStore.setState({ users: [] });
+    finish(respond(401));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('sends straight away once 20 events are waiting', async () => {

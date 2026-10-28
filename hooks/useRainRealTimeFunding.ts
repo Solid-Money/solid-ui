@@ -6,7 +6,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { confirmRainRtf, getRainRtfStatus } from '@/lib/api';
-import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
+import { getUserErrorMessage, sanitizeTechnicalMessage, UserCopyError } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, RainRtfChain, RainRtfStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -202,10 +202,10 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
   const approveMutation = useMutation({
     mutationFn: async (termsVersion: string) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
-        throw new Error('Your wallet is still setting up. Please try again shortly.');
+        throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
       if (!status || pendingChains.length === 0) {
-        throw new Error('Real-Time Funding is not available for this card right now.');
+        throw new UserCopyError('Real-Time Funding is not available for this card right now.');
       }
 
       const authorized: number[] = [];
@@ -228,7 +228,7 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
           // this is a normal state to reach — and it has to fail loudly
           // rather than fall back to another chain, which would approve the
           // wrong token on the wrong network and look like success.
-          throw new Error(
+          throw new UserCopyError(
             `${target.name} isn’t supported by this version of the app. Please update and try again.`,
           );
         }
@@ -315,7 +315,11 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
       // Sanitized for analytics; the screen gets user copy, never the raw message.
       const message =
         sanitizeTechnicalMessage(mutationError) || 'Failed to approve Real-Time Funding';
-      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
+      setError(
+        mutationError instanceof UserCopyError
+          ? mutationError.message
+          : getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined,
+      );
       // Whatever landed before the failure is real and recorded, so the
       // status is refetched either way — otherwise the retry would rebuild a
       // batch for approvals that already succeeded.

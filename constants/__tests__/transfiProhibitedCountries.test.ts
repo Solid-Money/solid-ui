@@ -27,6 +27,13 @@ describe('TRANSFI_PROHIBITED_COUNTRIES', () => {
     expect(loadCompliance('').TRANSFI_PROHIBITED_COUNTRIES).toEqual([]);
   });
 
+  it("adds the dashboard's list on top of the build's, never in place of it", () => {
+    const { isTransfiProhibitedCountry } = loadCompliance('UA');
+    expect(isTransfiProhibitedCountry('tr', ['TR', 'ID'])).toBe(true);
+    expect(isTransfiProhibitedCountry('ua', [])).toBe(true);
+    expect(isTransfiProhibitedCountry('DE', ['TR'])).toBe(false);
+  });
+
   it('never treats an unknown country as prohibited', () => {
     expect(loadCompliance(undefined).isTransfiProhibitedCountry(undefined)).toBe(false);
   });

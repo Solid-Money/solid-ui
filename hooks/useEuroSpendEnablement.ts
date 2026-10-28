@@ -18,6 +18,8 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, CardSpendDeployment } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
 
+import type { PasskeyBatchParticipant } from '@/lib/passkeySignatureBatch';
+
 export const CARD_SPEND_DEPLOYMENTS_QUERY_KEY = 'cardSpendDeployments';
 
 /** How long the deployment list is trusted before it is asked again. */
@@ -98,8 +100,27 @@ interface EuroSpendEnablement {
   isEnabling: boolean;
   error: string | undefined;
   clearError: () => void;
-  enable: () => void;
+  /**
+   * Starts the flow. `source` names the surface the tap came from — the card screen, the Home
+   * banner, a declined receipt, the deposit screen — so the enable funnel can say which one works.
+   */
+  enable: (source?: EuroSpendEnableSource) => void;
+  /**
+   * The same flow, awaited, for a caller that has to act on the outcome — the Main currency page
+   * saves euro only once EURC is on, and card activation will not issue a card without it.
+   *
+   * Resolves true once EURC is on and recorded, false when the passkey prompt was dismissed.
+   * Rejects on any other failure, with {@link error} set to the user-facing copy.
+   */
+  enableAsync: (
+    source: EuroSpendEnableSource,
+    /** Card activation signs this with the card approval in one passkey prompt. */
+    options?: { signer?: PasskeyBatchParticipant },
+  ) => Promise<boolean>;
 }
+
+/** Where EURC was turned on for the card. Rides on the started event as `source`. */
+export type EuroSpendEnableSource = 'main_currency' | 'card_activation';
 
 /**
  * The user's spend-module deployments as the backend records them.
@@ -170,26 +191,41 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
 
-  const { data, isLoading } = useCardSpendDeployments();
+  const { data, isLoading, refetch } = useCardSpendDeployments();
 
   const deployment = data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
 
   const enableMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      signer,
+    }: {
+      /** A place in a signature batch, so this approval shares a passkey prompt. */
+      signer?: PasskeyBatchParticipant;
+    } = {}) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
       if (!isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT)) {
-        throw new Error('Euro spending is not available in this version of the app.');
+        throw new Error('Paying with EURC is not available in this version of the app.');
       }
 
-      // The backend's address wins over the build's. The app can be weeks behind a redeploy, and
+      // Nothing is signed until the backend has described the deployment: read it now if the
+      // screen's copy has not landed. Missing, switched off (`CASH_BASE_ENABLED=false`) or with no
+      // module address, there is nothing the confirm would record — signing anyway leaves a Safe
+      // consenting to a module no purchase will ever be routed to.
+      const confirmed =
+        deployment ??
+        (await refetch()).data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
+      if (!confirmed || confirmed.available === false || !confirmed.moduleAddress) {
+        throw new Error('Paying with EURC is not available right now. Please try again later.');
+      }
+
+      // Only the backend's address, never the build's. The app can be weeks behind a redeploy, and
       // enabling a module the backend does not operate produces a Safe that consents to a contract
       // nothing will ever debit — a silent failure the user has no way to see.
-      const moduleAddress = (deployment?.moduleAddress ??
-        BASE_SPEND_DEPLOYMENT.moduleAddress) as Address;
-      const safeAddress = (deployment?.safeAddress ?? user.safeAddress) as Address;
+      const moduleAddress = confirmed.moduleAddress as Address;
+      const safeAddress = (confirmed.safeAddress ?? user.safeAddress) as Address;
 
       // Read the chain immediately before building the batch, so a partially completed enablement
       // — one call landed, the other reverted or was abandoned — resumes rather than reverting on
@@ -261,12 +297,13 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
           BASE_SPEND_DEPLOYMENT.chain,
           user.suborgId,
           user.signWith,
+          { signer },
         );
 
         const result = await executeTransactions(
           smartAccountClient,
           transactions,
-          'Failed to enable euro spending',
+          'Failed to turn on EURC for your card',
           BASE_SPEND_DEPLOYMENT.chain,
         );
 
@@ -305,19 +342,42 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
     },
     onError: (mutationError: Error) => {
       // Sanitized for analytics; the screen gets user copy, never the raw message.
-      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to enable euro spending';
+      const message =
+        sanitizeTechnicalMessage(mutationError) || 'Failed to turn on EURC for your card';
       setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
       track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_FAILED, { error: message });
     },
+    // Whatever happened, this signer is done: one with nothing left to sign (both halves already
+    // on-chain), or that failed before signing, must not keep a shared batch waiting on it.
+    onSettled: (_result, _error, variables) => variables?.signer?.release(),
   });
 
-  const enable = useCallback(() => {
-    setError(undefined);
-    track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_STARTED, {
-      chain_id: BASE_SPEND_DEPLOYMENT.chainId,
-    });
-    enableMutation.mutate();
-  }, [enableMutation]);
+  const { mutate, mutateAsync } = enableMutation;
+
+  const enable = useCallback(
+    (source: EuroSpendEnableSource = 'main_currency') => {
+      setError(undefined);
+      track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_STARTED, {
+        chain_id: BASE_SPEND_DEPLOYMENT.chainId,
+        source,
+      });
+      mutate({});
+    },
+    [mutate],
+  );
+
+  const enableAsync = useCallback(
+    async (source: EuroSpendEnableSource, options?: { signer?: PasskeyBatchParticipant }) => {
+      setError(undefined);
+      track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_STARTED, {
+        chain_id: BASE_SPEND_DEPLOYMENT.chainId,
+        source,
+        batched_signature: Boolean(options?.signer),
+      });
+      return (await mutateAsync({ signer: options?.signer })) !== null;
+    },
+    [mutateAsync],
+  );
 
   return {
     shouldOffer: Boolean(
@@ -334,6 +394,7 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
     error,
     clearError: useCallback(() => setError(undefined), []),
     enable,
+    enableAsync,
   };
 };
 

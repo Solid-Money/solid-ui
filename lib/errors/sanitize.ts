@@ -6,12 +6,22 @@ const LONG_HEX = /0x[0-9a-fA-F]{65,}/g;
 
 const URL_PATTERN = /\bhttps?:\/\/[^\s"'<>]+/gi;
 
-/** `apikey=…`, `token: …`, `"secret":"…"` and friends, in query strings, headers or JSON. */
+/**
+ * `apikey=…`, `token: …`, `"secret":"…"` and friends, in query strings, headers
+ * or JSON. An `Authorization` value loses its scheme's credential too, not just
+ * the scheme: `Authorization: Basic dXNl…` → `Authorization: [redacted]`.
+ */
 const SECRET_PAIR =
-  /\b(api[_-]?key|apikey|key|token|access[_-]?token|secret|password|authorization)\b(["']?\s*[:=]\s*["']?)(?:Bearer\s+)?[^\s"'&,;}]+/gi;
+  /\b(api[_-]?key|apikey|key|token|access[_-]?token|secret|password|authorization)\b(["']?\s*[:=]\s*["']?)(?:(?:Bearer|Basic)\s+)?[^\s"'&,;}]+/gi;
 
-/** Provider key formats that turn up bare in SDK errors. */
-const BARE_SECRETS = [/\bpim_[A-Za-z0-9]{8,}/g, /\bsk_(?:live|test)_[A-Za-z0-9]{8,}/g];
+/** Provider key formats and credentials that turn up bare in SDK errors. */
+const BARE_SECRETS = [
+  /\bpim_[A-Za-z0-9]{8,}/g,
+  /\bsk_(?:live|test)_[A-Za-z0-9]{8,}/g,
+  // A credential, not prose: it has a digit or symbol, or is too long to be a
+  // word ("Bearer authentication" stays). The scheme is case-insensitive.
+  /\bbearer\s+(?:(?=[A-Za-z0-9._~+/=-]*[0-9._~+/=-])[A-Za-z0-9._~+/=-]{8,}|[A-Za-z0-9._~+/=-]{20,})/gi,
+];
 
 /**
  * viem and ethers append the whole request after the human part of the
@@ -25,6 +35,14 @@ const TRAILING_DETAIL_MARKERS = [
   'Docs: ',
   'Version: viem@',
 ];
+
+/**
+ * viem's `Details:` line is the server's own reason, e.g. `sponsorshipPolicy
+ * perOpMaximumUsd reached`. It sits after the request dump cut off above, and
+ * is often the one line that says what went wrong: without it every paymaster
+ * refusal read as "Invalid parameters were provided to the RPC method".
+ */
+const DETAILS_LINE = /^Details:[ \t]*(\S.*)$/m;
 
 const toText = (raw: unknown): string => {
   if (raw === undefined || raw === null) return '';
@@ -54,10 +72,18 @@ export const sanitizeTechnicalMessage = (
   maxLength = TECHNICAL_MESSAGE_MAX,
 ): string => {
   let message = toText(raw);
+  const details = message.match(DETAILS_LINE)?.[1]?.trim();
 
+  // A dump that starts the message goes too; the Details line, if any, is
+  // all that is left of it.
   for (const marker of TRAILING_DETAIL_MARKERS) {
     const index = message.indexOf(marker);
-    if (index > 0) message = message.slice(0, index);
+    if (index >= 0) message = message.slice(0, index);
+  }
+
+  // Redacted below along with everything else.
+  if (details && !message.includes(details)) {
+    message = `${message.trimEnd()}\nDetails: ${details}`;
   }
 
   message = message

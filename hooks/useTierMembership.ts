@@ -16,11 +16,19 @@ import {
   resumeTierSubscription,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
+import { getUserErrorMessage, sanitizeTechnicalMessage, UserCopyError } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import {
+  holdPendingTierLock,
+  isReceiptTimeout,
+  reconcilePendingTierLocks,
+  releasePendingTierLock,
+} from '@/lib/pendingTierLocks';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import { RewardsTier, TierMembershipState } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
+import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePendingTierLockStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -81,7 +89,9 @@ export const useTierMembership = () => {
 
   return useQuery<TierMembershipState>({
     queryKey: [TIER_MEMBERSHIP_QUERY_KEY, selectedUserId],
-    queryFn: fetchTierMembership,
+    // Wrapped like the other session calls: an expired token is refreshed rather
+    // than leaving the portfolio waiting on React Query's retries.
+    queryFn: () => withRefreshToken(fetchTierMembership),
     enabled: Boolean(selectedUserId),
     staleTime: 30_000,
   });
@@ -220,7 +230,7 @@ export const useTierUpgradeChainState = (contracts?: {
 };
 
 /** Everything a membership change invalidates, in one place so no path forgets one. */
-const useInvalidateAfterUpgrade = () => {
+export const useInvalidateAfterUpgrade = () => {
   const queryClient = useQueryClient();
 
   return useCallback(
@@ -268,6 +278,15 @@ const useInvalidateAfterUpgrade = () => {
  * lock behind it is a permission the user did not mean to leave lying around.
  * For FUSE and WFUSE it is the zap, which deposits and locks in one call so the
  * user no longer has to fund Savings, wait for the shares, and come back.
+ *
+ * Resolves to null when the passkey prompt is dismissed, and otherwise to a
+ * `status`: `locked` once the lock has landed and the backend knows;
+ * `pending` when it was sent but not seen through — the receipt wait gave up,
+ * usually because the app was backgrounded, or the confirm failed — which the
+ * screen must not present as a failure, because pressing Lock again is the
+ * one wrong move; and `already-locked` when an earlier lock that had been left
+ * pending turned out to have landed, so nothing new was signed. Pending locks
+ * are finished by `usePendingTierLockReconciler`.
  */
 export const useLockFuseForTier = () => {
   const { user, safeAA } = useUser();
@@ -300,7 +319,23 @@ export const useLockFuseForTier = () => {
       wrappedNativeAddress?: string | null;
     }) => {
       if (!user?.suborgId || !user?.signWith) {
-        throw new Error('Your wallet is still setting up. Please try again shortly.');
+        throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
+      }
+      const userId = user.userId;
+
+      // A lock sent earlier that was never confirmed may have landed, or may
+      // still land. Settled before anything new is signed: this screen was
+      // priced before that lock counted, so a second one now would commit the
+      // same FUSE twice — which is what pressing Lock again after a "failed"
+      // timeout used to risk.
+      const earlier = await reconcilePendingTierLocks(userId);
+      if (earlier.some(({ outcome }) => outcome === 'confirmed')) {
+        return { status: 'already-locked' as const };
+      }
+      if (pendingTierLocksFor(userId).length > 0) {
+        throw new UserCopyError(
+          'Your last lock is still confirming. Your membership updates as soon as it lands — there is no need to lock again.',
+        );
       }
 
       const transactions = buildLockTransactions({
@@ -315,29 +350,97 @@ export const useLockFuseForTier = () => {
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Failed to lock your FUSE',
-        fuse,
-      );
+      // Remembered the moment the bundler accepts it, before any waiting: from
+      // here the lock can land whatever happens to the app, and this record is
+      // how it is still confirmed if the wait below does not see it through.
+      let userOpHash: `0x${string}` | undefined;
+      const rememberLock = (hash: `0x${string}`) => {
+        userOpHash = hash;
+        holdPendingTierLock(hash);
+        usePendingTierLockStore.getState().remember({
+          userOpHash: hash,
+          userId,
+          submittedAt: Date.now(),
+          tier,
+          fuseAmount,
+          asset,
+        });
+      };
 
-      if (result === USER_CANCELLED_TRANSACTION) {
-        track(TRACKING_EVENTS.TIER_LOCK_CANCELLED, { tier, fuse_amount: fuseAmount, asset });
-        return null;
+      try {
+        let result: Awaited<ReturnType<typeof executeTransactions>>;
+        try {
+          result = await executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Failed to lock your FUSE',
+            fuse,
+            rememberLock,
+          );
+        } catch (lockError) {
+          // Sent, and only the wait gave up — usually because the app was in
+          // the background. Not a failure: the lock has most likely landed
+          // already, and `usePendingTierLockReconciler` confirms it once it has.
+          if (userOpHash && isReceiptTimeout(lockError)) {
+            track(TRACKING_EVENTS.TIER_LOCK_PENDING, {
+              tier,
+              fuse_amount: fuseAmount,
+              asset,
+              user_op_hash: userOpHash,
+            });
+            return { status: 'pending' as const };
+          }
+          // Anything else after sending — a revert, a lost connection — is
+          // shown as it always was. The record stays for the reconciler, which
+          // drops it if the lock reverted and confirms it if it landed after all.
+          throw lockError;
+        }
+
+        if (result === USER_CANCELLED_TRANSACTION) {
+          track(TRACKING_EVENTS.TIER_LOCK_CANCELLED, { tier, fuse_amount: fuseAmount, asset });
+          return null;
+        }
+
+        // Told to the backend afterwards, not before: the lock is already on
+        // chain and the tier is already the user's. This is what drops the
+        // cached position so it shows immediately, and registers them for the
+        // automatic return when the term is up.
+        let state: TierMembershipState;
+        try {
+          state = await confirmTierLock({ transactionHash: result.transactionHash });
+        } catch {
+          // The lock landed; only telling the backend failed. Still not a
+          // failed upgrade — the record is kept and the reconciler confirms it.
+          track(TRACKING_EVENTS.TIER_LOCK_PENDING, {
+            tier,
+            fuse_amount: fuseAmount,
+            asset,
+            user_op_hash: result.userOpHash,
+            transaction_hash: result.transactionHash,
+          });
+          return { status: 'pending' as const };
+        }
+        usePendingTierLockStore.getState().forget(result.userOpHash);
+
+        return {
+          status: 'locked' as const,
+          state,
+          transactionHash: result.transactionHash,
+          fuseAmount,
+          tier,
+          asset,
+        };
+      } finally {
+        // Whatever happened, this flow is done waiting: anything still pending
+        // is the reconciler's from here.
+        if (userOpHash) releasePendingTierLock(userOpHash);
       }
-
-      // Told to the backend afterwards, not before: the lock is already on
-      // chain and the tier is already the user's. This is what drops the cached
-      // position so it shows immediately, and registers them for the automatic
-      // return when the term is up.
-      const state = await confirmTierLock({ transactionHash: result.transactionHash });
-
-      return { state, transactionHash: result.transactionHash, fuseAmount, tier, asset };
     },
     onSuccess: result => {
-      if (!result) return;
+      if (!result || result.status === 'pending') return;
+      // An earlier lock that only just got confirmed is a purchase landing too.
       invalidate({ purchased: true });
+      if (result.status !== 'locked') return;
       track(TRACKING_EVENTS.TIER_LOCK_COMPLETED, {
         tier: result.tier,
         fuse_amount: result.fuseAmount,
@@ -346,7 +449,11 @@ export const useLockFuseForTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      setError(getUserErrorMessage(mutationError, { action: 'subscription' }) || null);
+      setError(
+        mutationError instanceof UserCopyError
+          ? mutationError.message
+          : getUserErrorMessage(mutationError, { action: 'subscription' }) || null,
+      );
       track(TRACKING_EVENTS.TIER_LOCK_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'Failed to lock your FUSE',
       });
@@ -384,21 +491,29 @@ export const useSubscribeToTier = () => {
       priceUsd,
       moduleAddress,
       moduleEnabled,
+      funding,
     }: {
       tier: RewardsTier;
       priceUsd: number;
       moduleAddress: string;
       /** Whether the Safe has already enabled the module. */
       moduleEnabled: boolean;
+      /**
+       * The LI.FI swap that brought the USDC in, when the payment was bridged
+       * from another chain. The backend reads it back and lets the first
+       * charge absorb the bridge's cost. The caller marks it spent once this
+       * resolves — see `markUpgradeFundingSpent`.
+       */
+      funding?: { transactionHash: string; fromChainId: number };
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
-        throw new Error('Your wallet is still setting up. Please try again shortly.');
+        throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
 
       // Rounded to whole cents before scaling, so a price stored as a decimal
       // cannot become a mandate a fraction under what will be charged.
       const mandate = BigInt(Math.round(priceUsd * 100)) * 10n ** BigInt(BILLING_DECIMALS - 2);
-      if (mandate <= 0n) throw new Error('This tier is not available with an annual fee.');
+      if (mandate <= 0n) throw new UserCopyError('This tier is not available with an annual fee.');
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
@@ -443,6 +558,7 @@ export const useSubscribeToTier = () => {
       const state = await confirmTierSubscription({
         tier,
         transactionHash: result.transactionHash,
+        ...(funding ? { funding } : {}),
       });
 
       return { state, transactionHash: result.transactionHash, tier, priceUsd };
@@ -457,7 +573,11 @@ export const useSubscribeToTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      setError(getUserErrorMessage(mutationError, { action: 'subscription' }) || null);
+      setError(
+        mutationError instanceof UserCopyError
+          ? mutationError.message
+          : getUserErrorMessage(mutationError, { action: 'subscription' }) || null,
+      );
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'Failed to start your membership',
       });

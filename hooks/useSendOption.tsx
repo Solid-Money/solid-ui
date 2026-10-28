@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
 import { CashoutAmount } from '@/components/Send/Cashout/CashoutAmount';
+import { CashoutBridgeStatus } from '@/components/Send/Cashout/CashoutBridgeStatus';
 import { CashoutCurrencySelector } from '@/components/Send/Cashout/CashoutCurrencySelector';
 import { CashoutDetailsForm } from '@/components/Send/Cashout/CashoutDetailsForm';
 import { CashoutKycStep } from '@/components/Send/Cashout/CashoutKycStep';
@@ -15,7 +16,9 @@ import CrossChainForm from '@/components/Send/CrossChain/CrossChainForm';
 import CrossChainNetworks from '@/components/Send/CrossChain/CrossChainNetworks';
 import CrossChainReview from '@/components/Send/CrossChain/CrossChainReview';
 import CrossChainStatus from '@/components/Send/CrossChain/CrossChainStatus';
+import { SendBankTransfer } from '@/components/Send/SendBankTransfer';
 import SendForm from '@/components/Send/SendForm';
+import SendOptions from '@/components/Send/SendOptions';
 import SendQRScanner from '@/components/Send/SendQRScanner';
 import SendReview from '@/components/Send/SendReview';
 import SendSearch from '@/components/Send/SendSearch';
@@ -25,6 +28,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 import { useTransfiCashoutPaymentMethods } from '@/hooks/useTransfiCashout';
 import { getBuyCryptoTitle } from '@/lib/buyCryptoFlow';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -43,9 +47,11 @@ export interface SendOptionProps {
 const useSendOption = ({
   buttonText = 'Send',
   trigger,
-  modal = SEND_MODAL.OPEN_SEND_SEARCH,
+  modal = SEND_MODAL.OPEN_SEND_OPTIONS,
 }: SendOptionProps = {}) => {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [isBankTransferFormOpen, setIsBankTransferFormOpen] = useState(false);
+  const { isScreenMedium } = useDimension();
 
   // Use useShallow for object selection to prevent unnecessary re-renders
   const {
@@ -71,6 +77,9 @@ const useSendOption = ({
   const { triggerElement } = useResponsiveModal();
 
   const isSearch = currentModal.name === SEND_MODAL.OPEN_SEND_SEARCH.name;
+  const isOptions = currentModal.name === SEND_MODAL.OPEN_SEND_OPTIONS.name;
+  const isBankTransfer = currentModal.name === SEND_MODAL.OPEN_BANK_TRANSFER.name;
+  const entryModal = useSendStore(state => state.entryModal);
   const isForm = currentModal.name === SEND_MODAL.OPEN_FORM.name;
   const isTokenSelector = currentModal.name === SEND_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isReview = currentModal.name === SEND_MODAL.OPEN_REVIEW.name;
@@ -89,10 +98,12 @@ const useSendOption = ({
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const isCashoutKyc = currentModal.name === SEND_MODAL.OPEN_CASHOUT_KYC.name;
   const isCashoutCurrency = currentModal.name === SEND_MODAL.OPEN_CASHOUT_CURRENCY.name;
+  const isMobileCashoutCurrency = isCashoutCurrency && !isScreenMedium;
   const isCashoutMethod = currentModal.name === SEND_MODAL.OPEN_CASHOUT_METHOD.name;
   const isCashoutDetails = currentModal.name === SEND_MODAL.OPEN_CASHOUT_DETAILS.name;
   const isCashoutAmount = currentModal.name === SEND_MODAL.OPEN_CASHOUT_AMOUNT.name;
   const isCashoutReview = currentModal.name === SEND_MODAL.OPEN_CASHOUT_REVIEW.name;
+  const isCashoutBridge = currentModal.name === SEND_MODAL.OPEN_CASHOUT_BRIDGE.name;
   const isCashoutStatus = currentModal.name === SEND_MODAL.OPEN_CASHOUT_STATUS.name;
   const isCashout =
     isCashoutKyc ||
@@ -101,6 +112,7 @@ const useSendOption = ({
     isCashoutDetails ||
     isCashoutAmount ||
     isCashoutReview ||
+    isCashoutBridge ||
     isCashoutStatus;
 
   const resetCashout = useCashoutStore(state => state.reset);
@@ -174,12 +186,16 @@ const useSendOption = ({
   );
 
   const getContent = () => {
+    if (isOptions) return <SendOptions />;
+    if (isBankTransfer)
+      return <SendBankTransfer onTransferOpenChange={setIsBankTransferFormOpen} />;
     if (isCashoutKyc) return <CashoutKycStep />;
     if (isCashoutCurrency) return <CashoutCurrencySelector />;
     if (isCashoutMethod) return <CashoutMethodSelector />;
     if (isCashoutDetails) return <CashoutDetailsForm />;
     if (isCashoutAmount) return <CashoutAmount />;
     if (isCashoutReview) return <CashoutReview />;
+    if (isCashoutBridge) return <CashoutBridgeStatus />;
     if (isCashoutStatus) return <CashoutStatus />;
     if (isCrossChainNetwork) return <CrossChainNetworks />;
     if (isCrossChainForm) return <CrossChainForm />;
@@ -225,12 +241,15 @@ const useSendOption = ({
   };
 
   const getContentKey = () => {
+    if (isOptions) return 'send-options';
+    if (isBankTransfer) return 'send-bank-transfer';
     if (isCashoutKyc) return `cashout-kyc-${cashoutKycModal?.name ?? 'pending'}`;
     if (isCashoutCurrency) return 'cashout-currency';
     if (isCashoutMethod) return 'cashout-method';
     if (isCashoutDetails) return 'cashout-details';
     if (isCashoutAmount) return 'cashout-amount';
     if (isCashoutReview) return 'cashout-review';
+    if (isCashoutBridge) return 'cashout-bridge';
     if (isCashoutStatus) return 'cashout-status';
     if (isCrossChainNetwork) return 'cross-chain-network';
     if (isCrossChainForm) return 'cross-chain-form';
@@ -246,6 +265,7 @@ const useSendOption = ({
   };
 
   const getTitle = () => {
+    if (isBankTransfer) return 'Bank transfer';
     if (isCashoutKyc) {
       return cashoutKycModal ? (getBuyCryptoTitle(cashoutKycModal) ?? 'Cash out') : 'Verifying';
     }
@@ -253,7 +273,7 @@ const useSendOption = ({
     if (isCashoutDetails) return cashoutMethodName ?? 'Account details';
     if (isCashoutAmount) return 'Amount';
     if (isCashoutReview) return 'Review';
-    if (isCashoutStatus) return undefined;
+    if (isCashoutBridge || isCashoutStatus) return undefined;
     if (isCrossChainNetwork) return 'Receive on';
     if (isCrossChainForm) return 'Send';
     if (isCrossChainReview) return 'Review';
@@ -270,12 +290,17 @@ const useSendOption = ({
   const getContentClassName = () => {
     // Fullscreen camera view: remove padding, margins, and size constraints
     if (isQRScanner) return '!p-0 !mt-0 !min-h-screen !max-w-none !rounded-none';
+    if (isBankTransfer && isBankTransferFormOpen) return 'p-0';
+    if (isOptions) return 'rounded-t-[30px] md:rounded-twice';
     return '';
   };
 
   const getContainerClassName = () => {
     if (isQRScanner) return 'flex-1'; // Fill available space for camera view
-    if (isSearch) return 'min-h-[40rem]';
+    if (isMobileCashoutCurrency) return 'flex-1';
+    if (isBankTransfer) return 'flex-1 md:min-h-[36rem]';
+    if (isOptions) return 'gap-4 md:min-h-[36rem]';
+    if (isSearch) return 'gap-4 min-h-[40rem]';
     if (isReview) return 'min-h-[30rem]';
     if (isCashout) return 'min-h-[30rem]';
     if (isCrossChainForm) return 'min-h-[36rem]';
@@ -284,8 +309,8 @@ const useSendOption = ({
   };
 
   const getDisableScroll = () => {
-    // Camera view needs to escape ScrollView constraints
-    return isQRScanner;
+    // These screens manage their own scrolling or need the available viewport.
+    return isQRScanner || isBankTransfer || isMobileCashoutCurrency;
   };
 
   const handleOpenChange = useCallback(
@@ -298,6 +323,7 @@ const useSendOption = ({
         if (
           currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name ||
           currentModalName === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name ||
+          currentModalName === SEND_MODAL.OPEN_CASHOUT_BRIDGE.name ||
           currentModalName === SEND_MODAL.OPEN_CASHOUT_STATUS.name
         ) {
           resetDrawer();
@@ -320,9 +346,22 @@ const useSendOption = ({
     setShowDiscardDialog(false);
   }, []);
 
+  const clearRecipientSearch = () => {
+    const state = useSendStore.getState();
+    state.setAddress('');
+    state.setName('');
+    state.setSearchQuery('');
+  };
+
   const handleBackPress = () => {
+    const recipientModal = useSendStore.getState().recipientModal;
+    if (isBankTransfer || isSearch) {
+      clearRecipientSearch();
+      setModal(SEND_MODAL.OPEN_SEND_OPTIONS);
+      return;
+    }
     if (isCashoutKyc || isCashoutCurrency) {
-      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      setModal(recipientModal);
       return;
     }
     if (isCashoutMethod) return setModal(SEND_MODAL.OPEN_CASHOUT_CURRENCY);
@@ -337,7 +376,7 @@ const useSendOption = ({
         useSendStore.getState().setIsCrossChain(false);
         setModal(SEND_MODAL.OPEN_TOKEN_SELECTOR);
       } else {
-        setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+        setModal(recipientModal);
       }
     } else if (isCrossChainForm) {
       setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
@@ -350,11 +389,13 @@ const useSendOption = ({
     } else if (isTokenSelector) {
       setModal(SEND_MODAL.OPEN_FORM);
     } else if (isForm) {
-      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      if (recipientModal.name === SEND_MODAL.OPEN_SEND_OPTIONS.name) clearRecipientSearch();
+      setModal(recipientModal);
     } else if (isAddressBook) {
-      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      if (recipientModal.name !== SEND_MODAL.OPEN_SEND_SEARCH.name) clearRecipientSearch();
+      setModal(recipientModal);
     } else if (isQRScanner) {
-      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      setModal(recipientModal);
     } else {
       setModal(SEND_MODAL.CLOSE);
     }
@@ -364,6 +405,8 @@ const useSendOption = ({
 
   // QR scanner has its own header with close button, so don't show modal back button
   const showBackButton =
+    isBankTransfer ||
+    (isSearch && entryModal.name === SEND_MODAL.OPEN_SEND_OPTIONS.name) ||
     isForm ||
     isTokenSelector ||
     isReview ||
@@ -371,11 +414,14 @@ const useSendOption = ({
     isCrossChainNetwork ||
     isCrossChainForm ||
     isCrossChainReview ||
-    (isCashout && !isCashoutStatus);
+    (isCashout && !isCashoutBridge && !isCashoutStatus);
   // The cross-chain screens use the compact 40px header controls.
-  const compactHeader = isCrossChainStep || isCrossChainTokenSelector;
+  const compactHeader = isBankTransfer || isCrossChainStep || isCrossChainTokenSelector;
 
   return {
+    customHeaderLayout: isBankTransfer,
+    fillViewportHeight: isOptions || isBankTransfer || isMobileCashoutCurrency,
+    hideHeader: isBankTransfer && isBankTransferFormOpen,
     shouldOpen,
     showBackButton,
     compactHeader,

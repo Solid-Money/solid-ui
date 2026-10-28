@@ -55,11 +55,16 @@ describe('resolveCardPendingDestination', () => {
   });
 
   describe('moves the user on once it is not', () => {
-    it('sends an approved Wirex user to activate, where step two opens itself', () => {
-      // Wirex has no second adjudication, so there is no rainApplicationStatus.
+    it('sends an approved Wirex user straight to the Approved screen', () => {
+      // Wirex has no second adjudication, so its approval is the last decision before the
+      // card: the onboarding opens the Approved screen directly rather than via activate.
       expect(resolve({ kycStatus: KycStatus.APPROVED, provider: CardProvider.WIREX })).toBe(
-        path.CARD_ACTIVATE,
+        path.CARD_READY,
       );
+    });
+
+    it('keeps an approved user with no named issuer on activate', () => {
+      expect(resolve({ kycStatus: KycStatus.APPROVED })).toBe(path.CARD_ACTIVATE);
     });
 
     it('sends an approved Rain user to ready only once Rain approved too', () => {

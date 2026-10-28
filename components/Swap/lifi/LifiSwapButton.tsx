@@ -14,7 +14,11 @@ import { useLifiSwapCallback } from '@/hooks/swap/useLifiSwapCallback';
 import { useLifiSwapInfo } from '@/hooks/swap/useLifiSwapInfo';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { LifiSwapApiError } from '@/lib/api/lifi-swap';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors/classify';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
+import { swapErrorButtonLabel, swapErrorCodeOf, swapErrorCopy } from '@/lib/swapErrors';
 import { lifiPriceImpact } from '@/lib/utils/swap/lifi';
 import { warningSeverity } from '@/lib/utils/swap/prices';
 import { useSwapState } from '@/store/swapStore';
@@ -36,8 +40,17 @@ const LifiSwapButton: React.FC = () => {
       setTransaction: state.actions.setTransaction,
     })),
   );
-  const { fromAsset, toAsset, quote, isQuoting, quoteError, inputError, refreshQuote } =
-    useLifiSwapInfo();
+  const {
+    fromAsset,
+    toAsset,
+    quote,
+    isQuoting,
+    quoteError,
+    quoteErrorCode,
+    inputError,
+    inputErrorCode,
+    refreshQuote,
+  } = useLifiSwapInfo();
   const { swap, isSending } = useLifiSwapCallback();
 
   useEffect(() => {
@@ -79,7 +92,7 @@ const LifiSwapButton: React.FC = () => {
           category: 'swap',
           level: 'info',
         });
-        setSubmissionError('The price changed. Check the new amount and swap again.');
+        setSubmissionError(swapErrorCopy('PRICE_CHANGED'));
         return;
       }
 
@@ -121,13 +134,21 @@ const LifiSwapButton: React.FC = () => {
       setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
     } catch (error: any) {
       console.error('LI.FI swap failed:', error);
-      track(TRACKING_EVENTS.SWAP_FAILED, { ...trackingProps, error: String(error) });
+      // The raw message carries the bundler URL and its API key.
+      track(TRACKING_EVENTS.SWAP_FAILED, {
+        ...trackingProps,
+        error: sanitizeTechnicalMessage(error),
+        error_code: error instanceof LifiSwapApiError ? swapErrorCodeOf(error) : 'SWAP_FAILED',
+      });
       if (
         selectedRewardsUserId() === user?.userId &&
         operationSession.current === useRewardsUpgradeStore.getState().session
       ) {
+        // viem's shortMessage ("Invalid parameters were provided to the RPC
+        // method") is SDK text; the screen gets user copy.
         setSubmissionError(
-          error?.shortMessage || error?.message || 'Unable to complete the swap. Please try again.',
+          getUserErrorMessage(error, { action: 'swap' }) ||
+            'Unable to complete the swap. Please try again.',
         );
       }
     } finally {
@@ -161,6 +182,18 @@ const LifiSwapButton: React.FC = () => {
           <Text className="text-base font-bold">Enter an amount</Text>
         ) : isQuoting ? (
           <Text className="text-base font-bold">Finding Routes...</Text>
+        ) : isDisabled ? (
+          // A disabled button says why, never "Swap" with a passkey icon it can't use.
+          <Text className="text-base font-bold">
+            {inputError && !inputErrorCode
+              ? inputError
+              : swapErrorButtonLabel(
+                  inputErrorCode ??
+                    quoteErrorCode ??
+                    (priceImpactTooHigh ? 'PRICE_IMPACT_TOO_HIGH' : 'QUOTE_UNAVAILABLE'),
+                  { from: fromAsset?.symbol },
+                )}
+          </Text>
         ) : severity > 2 && !priceImpactTooHigh ? (
           <Text className="text-base font-bold">Swap Anyway</Text>
         ) : (

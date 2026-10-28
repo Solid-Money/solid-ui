@@ -30,7 +30,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
 };
 
 /**
- * Solid AI is working on a reply: its avatar ripples, and the pill says what
+ * Solid AI is working on a reply: its gradient keeps moving, and the pill says what
  * it is doing ("Checking your deposits…") when the server tells us, else that
  * it is typing.
  */
@@ -51,7 +51,7 @@ export const TypingIndicator = memo(function TypingIndicator({
     // Layout on a plain View: on web, classes on an Animated.View with `entering` are dropped.
     <View className="mb-3 self-start" accessibilityLiveRegion="polite">
       <Animated.View entering={FadeInDown.duration(250)} style={TYPING_ROW}>
-        <SolidAiAvatar size={28} ripple="fast" />
+        <SolidAiAvatar size={28} glow={false} />
         <View className="rounded-full bg-card px-3.5 py-2.5">
           <Animated.View key={label} entering={FadeIn.duration(220)}>
             <Text className="text-sm font-medium text-white/70" accessibilityLabel={label}>

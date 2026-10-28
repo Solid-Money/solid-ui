@@ -1,4 +1,5 @@
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { SSN_INVALID_RISK } from '@/hooks/useCardSteps/kycDisplayHelpers';
 import { buildCardSteps } from '@/hooks/useCardSteps/stepHelpers';
 import {
   BridgeCustomerEndorsement,
@@ -246,6 +247,56 @@ describe('buildCardSteps - deposit-and-hold step', () => {
   });
 });
 
+/**
+ * Didit approved a US applicant whose SSN was not 9 digits (a city name, in the
+ * reported case), so the application could not be sent to the issuer. The step
+ * used to say "Additional verification required" over the bare reason, and
+ * nothing on screen said a new verification is where the SSN goes.
+ */
+describe('buildCardSteps - an approval refused on the SSN', () => {
+  const ssnRefused = (options?: Options) =>
+    build({
+      options: {
+        depositRequired: true,
+        savingsDepositMet: true,
+        // Not a Rain status: Rain never saw the application.
+        rainApplicationStatus: 'didit_forward_failed' as RainApplicationStatus,
+        kycStatus: KycStatus.INCOMPLETE,
+        kycWarnings: [
+          {
+            risk: SSN_INVALID_RISK,
+            short_description: 'The Social Security Number you entered is not valid.',
+          },
+        ],
+        ...options,
+      },
+    });
+
+  it('explains what happened and what to do on the KYC step', () => {
+    const kyc = ssnRefused().find(s => s.key === 'kyc');
+
+    expect(kyc?.completed).toBe(false);
+    expect(kyc?.description).toContain('ID check passed');
+    expect(kyc?.description).toContain('9-digit SSN');
+  });
+
+  it('offers to re-enter the SSN through the Rain KYC action', () => {
+    const handleRainKYCPress = jest.fn();
+
+    const kyc = ssnRefused({ handleRainKYCPress }).find(s => s.key === 'kyc');
+
+    expect(kyc?.buttonText).toBe('Re-enter SSN');
+    expect(kyc?.onPress).toBe(handleRainKYCPress);
+  });
+
+  it('keeps the generic copy for other incomplete verifications', () => {
+    const kyc = ssnRefused({ kycWarnings: [] }).find(s => s.key === 'kyc');
+
+    expect(kyc?.buttonText).toBe('Continue verification');
+    expect(kyc?.description).not.toContain('SSN');
+  });
+});
+
 describe('buildCardSteps - a blocked activation', () => {
   it('does not repeat the failure reason in the step description', () => {
     // CardStatusBanner renders the reason directly above this list, and
@@ -309,5 +360,37 @@ describe('buildCardSteps - a retired Bridge endorsement', () => {
     const kyc = kycStepFor(undefined);
 
     expect(kyc?.completed).toBe(true);
+  });
+});
+
+/**
+ * A cardholder whose card was closed orders the next one from the same step a
+ * first-timer activates from — but they are told what happened, and the button
+ * says what it does.
+ */
+describe('buildCardSteps - replacing a closed card', () => {
+  it('re-words the activate step and keeps it actionable', () => {
+    const steps = build({
+      options: {
+        cardIssuer: CardProvider.WIREX,
+        rainApplicationStatus: undefined,
+        kycStatus: KycStatus.APPROVED,
+        replacingClosedCard: true,
+      },
+    });
+    const activate = steps.find(step => step.key === 'activate')!;
+
+    expect(activate.title).toBe('Get a new card');
+    expect(activate.description).toMatch(/previous card was closed/);
+    expect(activate.buttonText).toBe('Get new card');
+    expect(activate.completed).toBe(false);
+    expect(activate.onPress).toBeDefined();
+  });
+
+  it('leaves the first-card wording alone otherwise', () => {
+    const activate = build().find(step => step.key === 'activate')!;
+
+    expect(activate.title).toBe('Activate your card');
+    expect(activate.buttonText).toBe('Activate card');
   });
 });

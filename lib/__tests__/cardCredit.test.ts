@@ -33,6 +33,10 @@ describe('dailyYieldPillLabel', () => {
     expect(dailyYieldPillLabel(1.3)).toBe('+$1.30 today');
   });
 
+  it('follows the balance into euros', () => {
+    expect(dailyYieldPillLabel(0.32, '€')).toBe('+€0.32 today');
+  });
+
   it('hides when it would round to nothing', () => {
     expect(dailyYieldPillLabel(0)).toBeNull();
     expect(dailyYieldPillLabel(0.004)).toBeNull();

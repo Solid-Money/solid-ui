@@ -75,7 +75,7 @@ export interface UserError {
 }
 
 /** User copy that some error classes already carry (vetted, written for users). */
-const USER_COPY_ERROR_NAMES = new Set(['TransfiError', 'OrchestraError']);
+const USER_COPY_ERROR_NAMES = new Set(['TransfiError', 'OrchestraError', 'UserCopyError']);
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
@@ -171,7 +171,7 @@ export const normalizeError = (error: unknown): NormalizedError => {
     asString(asRecord(responseData?.error)?.code);
   const serverMessage = response
     ? readBodyMessage(responseData)
-    : status !== undefined
+    : status !== undefined || (name && USER_COPY_ERROR_NAMES.has(name))
       ? asString(record.message)
       : undefined;
 
@@ -224,6 +224,20 @@ const INSUFFICIENT_FUNDS =
   /insufficient (?:funds|balance)|exceeds balance|transfer amount exceeds|not enough (?:balance|funds)/i;
 const BLOCKCHAIN =
   /paymaster|pm_(?:get|sponsor)|bundler|user ?operation|\bAA[1-5]\d\b|eth_\w+|execution reverted|reverted|simulat|\brpc\b|\bgas\b|nonce|contract ?function|replacement transaction|intrinsic/i;
+/**
+ * Our Pimlico sponsorship policy refusing an operation on one of its limits:
+ * `Details: sponsorshipPolicy perOpMaximumUsd reached`. viem files it as an
+ * `InvalidParamsRpcError`, so the short message ("Invalid parameters were
+ * provided to the RPC method") says nothing about it. Unlike an empty balance it
+ * does not clear up on a retry: the operation's worst-case gas cost is over the
+ * cap. By policy the user pays such a fee themselves, which
+ * `executeTransactions` offers; this copy is for paths that can't.
+ *
+ * `sponsorshipPolicy\b` can't match the `sponsorshipPolicyId` every sponsored
+ * request body carries.
+ */
+const SPONSORSHIP_LIMIT =
+  /sponsorship ?policy\b[^\n]*\breached\b|\b(?:perOp|perUser|global)Maximum(?:Usd|Ops)\b/i;
 
 interface Classification {
   kind: ErrorKind;
@@ -235,6 +249,8 @@ interface Classification {
 export const classifyError = (n: NormalizedError): Classification => {
   const haystack = `${n.name ?? ''} ${n.message} ${n.code ?? ''}`;
   const record = asRecord(n.original);
+
+  if (n.name === 'UserCopyError') return { kind: 'rejected', code: 'USER_COPY' };
 
   if (
     (n.name && CANCELLED_NAMES.has(n.name)) ||
@@ -273,6 +289,9 @@ export const classifyError = (n: NormalizedError): Classification => {
   }
   if (BLOCKCHAIN.test(haystack)) {
     const aa = haystack.match(/\bAA[1-5]\d\b/)?.[0];
+    if (SPONSORSHIP_LIMIT.test(haystack)) {
+      return { kind: 'blockchain', code: 'SPONSORSHIP_LIMIT', nothingSent: true };
+    }
     if (/paymaster|pm_(?:get|sponsor)/i.test(haystack)) {
       return { kind: 'blockchain', code: 'PAYMASTER_REJECTED', nothingSent: true };
     }
@@ -291,6 +310,14 @@ export const classifyError = (n: NormalizedError): Classification => {
   }
   return { kind: 'unknown', code: n.code && /^[A-Z0-9_]{3,40}$/.test(n.code) ? n.code : 'UNKNOWN' };
 };
+
+/**
+ * Whether gas sponsorship was refused on a policy limit, anywhere in the cause
+ * chain. The paymaster answers while the operation is still being prepared,
+ * before the passkey prompt, so nothing was signed or sent when this is true.
+ */
+export const isSponsorshipLimitError = (error: unknown): boolean =>
+  SPONSORSHIP_LIMIT.test(causeChain(error).join('\n'));
 
 /**
  * Words that mark a backend message as written for engineers, not users: the
@@ -349,6 +376,11 @@ const bodyFor = (
         ? sentence(n.serverMessage)
         : 'Check the details and try again.';
     case 'blockchain':
+      if (code === 'SPONSORSHIP_LIMIT') {
+        return details?.amount && details.token
+          ? `Nothing was sent. Your ${details.amount} ${details.token} hasn’t moved. Its network fee is above what we cover.`
+          : 'Nothing was sent. The network fee for this is above what we cover.';
+      }
       if (nothingSent) {
         return details?.amount && details.token
           ? `Nothing was sent. Your ${details.amount} ${details.token} hasn’t moved. Try again in a moment.`

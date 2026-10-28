@@ -90,7 +90,11 @@ const useCrossChainSend = () => {
     reject: (error: Error) => void;
   } | null>(null);
 
-  const send = async (params: SendParams): Promise<CrossChainSendResult> => {
+  /** `showStatus: false` leaves the drawer where it is, for a caller with its own status screen. */
+  const send = async (
+    params: SendParams,
+    { showStatus = true }: { showStatus?: boolean } = {},
+  ): Promise<CrossChainSendResult> => {
     const { setCrossChainSend, setModal } = useSendStore.getState();
     const analyticsContext = {
       token: params.token,
@@ -214,7 +218,7 @@ const useCrossChainSend = () => {
       });
 
       setSendStatus(Status.SUCCESS);
-      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_STATUS);
+      if (showStatus) setModal(SEND_MODAL.OPEN_CROSS_CHAIN_STATUS);
       return { status: 'sent', send: sent, transactionHash: transaction.transactionHash };
     } catch (err) {
       console.error(err);

@@ -84,7 +84,11 @@ const CardBottomSheet = ({
         height: SHEET_HANDLE_HEIGHT,
       }}
     >
+      {/* The handle is laid out above the body here, so it has already spent
+          part of the distance Figma measures from the sheet's top edge. */}
       {scrollable ? (
+        // Gorhom sizes to a scroll view's content too, capped at the screen, so the sheet
+        // behaves exactly as below until the body outgrows it and then scrolls.
         <BottomSheetScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: designBottom + insets.bottom }}
@@ -93,8 +97,6 @@ const CardBottomSheet = ({
         </BottomSheetScrollView>
       ) : (
         <BottomSheetView style={{ paddingBottom: designBottom + insets.bottom }}>
-          {/* The handle is laid out above the body here, so it has already spent
-              part of the distance Figma measures from the sheet's top edge. */}
           {children({ session, topPadding: Math.max(designTop - SHEET_HANDLE_SPACE, 0) })}
         </BottomSheetView>
       )}

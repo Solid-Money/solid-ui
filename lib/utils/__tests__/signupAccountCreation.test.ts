@@ -21,6 +21,16 @@ describe('getAccountCreationRecovery', () => {
     expect(getAccountCreationRecovery(apiError(409, 'Email already registered'))).toBe('log_in');
   });
 
+  it('sends a blocked email domain back to the email step', () => {
+    const blocked = Object.assign(new Error("This email provider isn't supported."), {
+      status: 400,
+      data: { statusCode: 400, code: 'EMAIL_DOMAIN_NOT_ALLOWED', message: 'blocked' },
+    });
+
+    expect(getAccountCreationRecovery(blocked)).toBe('change_email');
+    expect(getAccountCreationSeverity(blocked, 'change_email')).toBe('info');
+  });
+
   it('asks for a new passkey only when the server never received one', () => {
     expect(getAccountCreationRecovery(apiError(400, 'Passkey data is required'))).toBe(
       'new_passkey',

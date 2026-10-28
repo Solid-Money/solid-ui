@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
-import { fuse } from 'viem/chains';
+import { base, fuse } from 'viem/chains';
 
 import BorrowPositionSheetContent, {
   BORROW_POSITION_SHEET_BOTTOM,
@@ -8,10 +8,10 @@ import BorrowPositionSheetContent, {
   type BorrowPositionRepay,
 } from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheetContent';
 import CardBottomSheet from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet';
-import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import useCreditModeFigures from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import { formatUsd } from '@/constants/cardSpendModule';
 import { explorerUrls } from '@/constants/explorers';
-import { type CardRepayRequest, useCardRepay } from '@/hooks/useCardRepay';
+import { type CardRepayChainId, type CardRepayRequest, useCardRepay } from '@/hooks/useCardRepay';
 import { eclipseAddress } from '@/lib/utils';
 import { formatRepayTokenAmount } from '@/lib/utils/cardRepay';
 
@@ -21,22 +21,16 @@ interface BorrowPositionSheetProps {
 }
 
 /**
- * The borrow position, opened by tapping the card on the card screen, and the repay step
- * behind its Repay button.
+ * One instance's repay step: its reads, and the signature behind a confirmed amount.
  *
- * Owns the repayment: the content is presentation, and this is where a chosen amount becomes
- * a signature. The sheet stays open on failure with the reason, because a silently closed
- * sheet reads as success, and on success slides back to the position so the new figures are
- * what the cardholder sees next.
+ * The sheet stays open on failure with the reason, because a silently closed sheet reads as
+ * success, and on success slides back to the position so the new figures are what the
+ * cardholder sees next.
  */
-const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps) => {
-  const figures = useSpendModeFigures();
-  // Read only while the sheet is open. The card screen mounts this for everyone it shows the
-  // position card to, and two multicalls on every visit buy nothing until Repay is in reach.
+const useInstanceRepay = (chainId: CardRepayChainId, enabled: boolean): BorrowPositionRepay => {
   const { state, isLoading, isError, refetch, repay, isRepaying, error, clearError } = useCardRepay(
-    { enabled: isOpen },
+    { enabled, chainId },
   );
-  const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   const confirmRepay = useCallback(
     async (request: CardRepayRequest) => {
@@ -49,7 +43,10 @@ const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps)
       const returned = result.returnedCollateral
         .map(item => `${formatRepayTokenAmount(item.amount, item.decimals)} ${item.displaySymbol}`)
         .join(' and ');
-      const explorer = explorerUrls[fuse.id]?.blockscout;
+      // `explorerUrls` has no Base entry; viem's is Basescan, as card transactions link to.
+      const explorer =
+        explorerUrls[chainId]?.blockscout ??
+        (chainId === base.id ? base.blockExplorers.default.url : undefined);
 
       Toast.show({
         type: 'success',
@@ -64,10 +61,10 @@ const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps)
       });
       return true;
     },
-    [repay],
+    [chainId, repay],
   );
 
-  const repayProps = useMemo<BorrowPositionRepay>(
+  return useMemo<BorrowPositionRepay>(
     () => ({
       state,
       isLoading,
@@ -80,6 +77,31 @@ const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps)
     }),
     [state, isLoading, isError, refetch, confirmRepay, isRepaying, error, clearError],
   );
+};
+
+/**
+ * The borrow position, opened by tapping the card on the card screen, and the repay step
+ * behind each loan's Repay button.
+ *
+ * Owns the repayments: the content is presentation, and this is where a chosen amount becomes
+ * a signature — on Fuse for the Fuse loan, on Base for the Base one.
+ */
+const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps) => {
+  // The per-instance read runs only while the sheet is open, as before.
+  const figures = useCreditModeFigures({ enabled: isOpen });
+  const owesOnBase = figures.positions.some(position => position.chainId === base.id);
+
+  // Read only while the sheet is open. The card screen mounts this for everyone it shows the
+  // position card to, and two multicalls on every visit buy nothing until Repay is in reach —
+  // and Base's only once there is a Base loan to repay.
+  const fuseRepay = useInstanceRepay(fuse.id, isOpen);
+  const baseRepay = useInstanceRepay(base.id, isOpen && owesOnBase);
+  const repays = useMemo(
+    () => ({ [fuse.id]: fuseRepay, [base.id]: baseRepay }),
+    [fuseRepay, baseRepay],
+  );
+
+  const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   return (
     <CardBottomSheet
@@ -88,12 +110,13 @@ const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps)
       contentKey="borrow-position"
       designTop={BORROW_POSITION_SHEET_TOP}
       designBottom={BORROW_POSITION_SHEET_BOTTOM}
+      scrollable
     >
       {({ session, topPadding, presentation }) => (
         <BorrowPositionSheetContent
           figures={figures}
           onDismiss={dismiss}
-          repay={repayProps}
+          repays={repays}
           session={session}
           topPadding={topPadding}
           presentation={presentation}

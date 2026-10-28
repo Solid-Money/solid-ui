@@ -1,5 +1,6 @@
 import { AppState, Platform } from 'react-native';
 
+import { captureAccountScope } from '@/lib/accountScope';
 import { getJWTToken, getPlatformHeaders } from '@/lib/api';
 import { EXPO_PUBLIC_ERRORS_INGEST_ENABLED, EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -46,7 +47,9 @@ export const isErrorIngestEnabled = (): boolean =>
   !!EXPO_PUBLIC_FLASH_API_BASE_URL &&
   (Platform.OS !== 'web' || typeof window !== 'undefined');
 
-let queue: ClientErrorEvent[] = [];
+type AccountScope = ReturnType<typeof captureAccountScope>;
+type QueuedEvent = { event: ClientErrorEvent; scope: AccountScope };
+let queue: QueuedEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 let lifecycleListening = false;
@@ -76,8 +79,9 @@ type SendResult = 'sent' | 'retry' | 'drop';
 
 const post = async (
   body: string,
-  { anonymous, keepalive }: { anonymous: boolean; keepalive: boolean },
+  { anonymous, keepalive, scope }: { anonymous: boolean; keepalive: boolean; scope: AccountScope },
 ): Promise<Response> => {
+  scope.assertCurrent();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...getPlatformHeaders(),
@@ -105,13 +109,16 @@ const post = async (
  * anonymous events, and a refresh from here could loop with the very failure
  * being reported.
  */
-const send = async (events: ClientErrorEvent[], keepalive: boolean): Promise<SendResult> => {
+const send = async (batch: QueuedEvent[], keepalive: boolean): Promise<SendResult> => {
+  const scope = batch[0].scope;
+  if (!scope.isCurrent()) return 'drop';
   try {
-    const body = JSON.stringify({ events });
+    const body = JSON.stringify({ events: batch.map(entry => entry.event) });
     const useKeepalive = keepalive && body.length <= KEEPALIVE_MAX_BYTES;
-    let response = await post(body, { anonymous: false, keepalive: useKeepalive });
+    let response = await post(body, { anonymous: false, keepalive: useKeepalive, scope });
+    if (!scope.isCurrent()) return 'drop';
     if (response.status === 401) {
-      response = await post(body, { anonymous: true, keepalive: useKeepalive });
+      response = await post(body, { anonymous: true, keepalive: useKeepalive, scope });
     }
     if (response.ok) return 'sent';
     // Throttled or the server is struggling: worth one more try. Anything else
@@ -119,7 +126,7 @@ const send = async (events: ClientErrorEvent[], keepalive: boolean): Promise<Sen
     return response.status === 429 || response.status >= 500 ? 'retry' : 'drop';
   } catch {
     // Offline, timed out or cut off.
-    return 'retry';
+    return scope.isCurrent() ? 'retry' : 'drop';
   }
 };
 
@@ -138,7 +145,8 @@ export const flushErrorEvents = async ({ keepalive = false } = {}): Promise<void
   flushing = true;
   try {
     while (queue.length > 0) {
-      const batch = queue.splice(0, MAX_BATCH);
+      const batch = queue.splice(0, MAX_BATCH).filter(entry => entry.scope.isCurrent());
+      if (batch.length === 0) continue;
       if ((await send(batch, keepalive)) === 'retry') {
         await wait(RETRY_DELAY_MS);
         await send(batch, keepalive);
@@ -173,15 +181,17 @@ const listenForLifecycle = () => {
  * duplicate of one accepted within the last {@link DEDUPE_WINDOW_MS}.
  */
 export const enqueueErrorEvent = (event: ClientErrorEvent): boolean => {
+  const scope = captureAccountScope();
   const now = Date.now();
-  const key = dedupeKey(event);
+  const key = `${scope.generation}\u0000${dedupeKey(event)}`;
   const seenAt = recentlySeen.get(key);
   if (seenAt !== undefined && now - seenAt < DEDUPE_WINDOW_MS) return false;
 
   if (recentlySeen.size >= MAX_QUEUED) pruneRecentlySeen(now);
   recentlySeen.set(key, now);
 
-  queue.push(event);
+  queue = queue.filter(entry => entry.scope.isCurrent());
+  queue.push({ event, scope });
   if (queue.length > MAX_QUEUED) queue.splice(0, queue.length - MAX_QUEUED);
 
   listenForLifecycle();
@@ -200,4 +210,5 @@ export const __resetErrorIngestQueue = () => {
 };
 
 /** Test seam: what is waiting to be sent. */
-export const __getQueuedErrorEvents = (): readonly ClientErrorEvent[] => queue;
+export const __getQueuedErrorEvents = (): readonly ClientErrorEvent[] =>
+  queue.map(entry => entry.event);

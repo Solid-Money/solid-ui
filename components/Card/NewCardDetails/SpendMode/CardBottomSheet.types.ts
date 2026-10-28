@@ -40,9 +40,9 @@ export interface CardBottomSheetProps {
   /** Space Figma leaves below the body's last element, before any safe-area inset. */
   designBottom: number;
   /**
-   * Let the body scroll once it is taller than the screen. Native sheets size to
-   * their content, so a body that can outgrow the screen (a long list) needs
-   * this or its end is cut off. Web sheets already scroll.
+   * Native only: let the body scroll once it is taller than the screen. The sheet still sizes
+   * to its content below that. For a body that can outgrow a small phone — the borrow position
+   * with a loan on each instance; web already scrolls.
    */
   scrollable?: boolean;
   children: (body: CardSheetBody) => ReactNode;

@@ -6,12 +6,13 @@ import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { usedCardCredit } from '@/lib/cardCredit';
-import { CardProvider, CardTransaction, Cashback } from '@/lib/types';
+import { CardProvider, CardTransaction, CardTransactionCategory, Cashback } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
 import {
   formatCardTransactionAmount,
   getCardMerchantName,
+  getCardRefundLabel,
   getCashbackAmount,
   isOutgoingCardTransaction,
 } from '@/lib/utils/cardHelpers';
@@ -53,7 +54,15 @@ const CardActivityRow = ({
 }: CardActivityRowProps) => {
   const { isScreenMedium } = useDimension();
   const merchantName = getCardMerchantName(transaction);
-  const statusLabel = STATUS_LABELS[transaction.status?.toLowerCase() ?? ''];
+  // A status still in flight outranks the refund label, and a refund is settled
+  // by the time there is one. Without the label a fully refunded purchase read as
+  // one more purchase, and its refund was nowhere in the feed.
+  const refundLabel = getCardRefundLabel(transaction);
+  const statusLabel =
+    STATUS_LABELS[transaction.status?.toLowerCase() ?? ''] ??
+    (refundLabel ? { label: refundLabel, tone: 'neutral' as const } : undefined);
+  // Money coming back reads green, as an incoming wallet row does.
+  const isRefund = transaction.category === CardTransactionCategory.REFUND;
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
   // A purchase takes money, so it reads with a minus — the stored sign is the
@@ -123,7 +132,7 @@ const CardActivityRow = ({
       )}
 
       <View className="min-w-0 flex-[1] items-end gap-0.5">
-        <Text className="text-base font-medium web:text-lg">
+        <Text className={cn('text-base font-medium web:text-lg', isRefund && 'text-brand')}>
           {formatCardTransactionAmount(
             transaction.amount,
             isOutgoing,

@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { Currency } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
+import { fuse } from 'viem/chains';
 
 import { useRecordSwapFee } from '@/hooks/useProductFees';
 import { useUSDCPrice } from '@/hooks/useUSDCValue';
@@ -95,6 +96,9 @@ export function useSwapFeeCollection(
           baseTokenAmount: fee.swapAmount.toString(),
           feeAmountUsd,
           percentage: fee.rate,
+          // The in-app swap only runs on Fuse; the server reads the receipt
+          // back from there and refuses a fee it cannot find.
+          chainId: fuse.id,
         },
         {
           onError: error => {

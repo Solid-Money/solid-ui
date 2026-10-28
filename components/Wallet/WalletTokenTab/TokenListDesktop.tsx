@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { zeroAddress } from 'viem';
 
+import CoinGeckoAttribution from '@/components/CoinGeckoAttribution';
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { TokenBalance, TokenType } from '@/lib/types';
@@ -72,6 +73,7 @@ const TokenListDesktop = ({ tokens }: TokenListProps) => {
         showsVerticalScrollIndicator={false}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        ListFooterComponent={tokens.length > 0 ? CoinGeckoAttribution : null}
       />
     </View>
   );

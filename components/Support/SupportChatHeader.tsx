@@ -44,7 +44,7 @@ function SupportChatHeader() {
     <View className="flex-row items-center gap-3 px-4 pb-3 pt-2">
       <BackButton variant="header" fallbackHref="/" />
       <View style={{ width: 44, height: 40 }}>
-        <SolidAiAvatar size={36} />
+        <SolidAiAvatar size={36} glow={false} />
         {teammate && (
           <View
             className="absolute rounded-full bg-[#111111]"

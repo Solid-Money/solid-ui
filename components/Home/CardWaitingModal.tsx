@@ -22,7 +22,12 @@ import { HomeSetupStep } from '@/hooks/useHomeSetupSteps';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { resolveCardCountry } from '@/lib/cardCountryGate';
-import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
+import {
+  canReplaceClosedCard,
+  hasCard,
+  hasCardStatusWithRainApplication,
+  hasPendingCard,
+} from '@/lib/utils';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
 interface CardWaitingModalProps {
@@ -197,6 +202,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
   const skipCountryGate =
     hasCard(cardStatus) ||
     hasPendingCard(cardStatus) ||
+    canReplaceClosedCard(cardStatus) ||
     hasCardStatusWithRainApplication(cardStatus) ||
     isKycAwaitingDecision(cardStatus);
   const benefits = Platform.OS === 'web' ? WEB_BENEFITS : BENEFITS;

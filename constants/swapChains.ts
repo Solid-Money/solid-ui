@@ -1,7 +1,15 @@
 import { Address, zeroAddress } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
+import { isDevFeatureEnabled } from '@/lib/config';
 import { SwapAsset } from '@/lib/types/lifi-swap';
+
+/**
+ * The redesigned swap: one form for every network, asset-first pickers, a
+ * review screen and a done screen. On qa/preview builds while it's checked;
+ * production keeps the current form until then.
+ */
+export const NEW_SWAP_FLOW = isDevFeatureEnabled;
 
 /**
  * Chains the swap form offers, in picker order: the ones the wallet reads

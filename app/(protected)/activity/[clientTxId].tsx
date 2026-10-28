@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds } from 'date-fns';
+import { format, isValid, minutesToSeconds } from 'date-fns';
 import {
   ArrowUpRight,
   ChevronRight,
@@ -23,6 +23,7 @@ import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/Activ
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import CardCreditDetailsCard from '@/components/Activity/CardCreditDetailsCard';
 import CashbackDetailsCard from '@/components/Activity/CashbackDetailsCard';
+import NotEnoughToPayCard from '@/components/Activity/NotEnoughToPayCard';
 import AiApiChargeDetail from '@/components/AiApi/AiApiChargeDetail';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
@@ -45,11 +46,13 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
+import { useContactNames } from '@/hooks/useContactNames';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { cashbackBaseUsd, usedCardCredit } from '@/lib/cardCredit';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { formatDecimalAmount } from '@/lib/support/formatAmount';
 import {
   CardProvider,
   CardTransaction,
@@ -60,7 +63,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { cardDeclineReason } from '@/lib/utils/cardDeclineReason';
+import { cardDeclineReason, isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
 import {
   cardRefundExplorerUrl,
   cardSweepExplorerUrl,
@@ -69,10 +72,14 @@ import {
   formatCardTransactionAmount,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
+  getCardRefundLabel,
   getCashbackAmount,
+  getPurchaseRefundId,
+  getRefundedPurchaseId,
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+import { getCashbackPurchaseId } from '@/lib/utils/cashbackActivity';
 import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
   getDepositProgressRows,
@@ -88,6 +95,11 @@ import {
   getTransactionUsdAmount,
   SPENDING_CATEGORIES,
 } from '@/lib/utils/spendingInsights';
+import {
+  getTransferCategory,
+  getTransferSummary,
+  getTransferTitle,
+} from '@/lib/utils/transferPresentation';
 import { openSupportDrawer, SupportDrawerRequest } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
@@ -318,7 +330,22 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const sweepUrl = cardSweepExplorerUrl(spend);
   // Money coming back, and what was taken out of it on the way. See `CardRefundDetails`.
   const refund = spend?.refund;
-  const refundUrl = cardRefundExplorerUrl(refund);
+  // A refund Wirex reported on the purchase itself is listed as two rows, the
+  // purchase and the refund, and each links to the other. See `getRefundedPurchaseId`.
+  const isRefund = transaction.category === CardTransactionCategory.REFUND;
+  const refundedPurchaseId = getRefundedPurchaseId(transaction);
+  const refundRowId = getPurchaseRefundId(transaction);
+  const refundLabel = getCardRefundLabel(transaction);
+  const { transaction: refundedPurchase } = useCardTransactionFromList(refundedPurchaseId);
+  const refundedPurchaseDate = useMemo(() => {
+    const dateStr = refundedPurchase?.authorized_at || refundedPurchase?.posted_at;
+    const date = dateStr ? new Date(dateStr) : undefined;
+    return date && isValid(date) ? date : undefined;
+  }, [refundedPurchase?.authorized_at, refundedPurchase?.posted_at]);
+  // Once the refund has a row of its own, its payout figures are shown there and
+  // not repeated on the purchase. Support still gets them from either screen.
+  const refundLeg = refundRowId ? undefined : refund;
+  const refundUrl = cardRefundExplorerUrl(refundLeg);
   // Card credit this purchase used, when it used any (Wirex only).
   const cardCredit = usedCardCredit(transaction.card_credit) ? transaction.card_credit : undefined;
   const isApproved = transaction.status === 'approved';
@@ -335,6 +362,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // decline code where it says more than the issuer's reason, which collapses
   // several distinct causes onto "insufficient funds".
   const declineReason = useMemo(() => cardDeclineReason(transaction), [transaction]);
+  // A Wirex payment the balance did not cover, which the cardholder can fix from
+  // here. Our own code when the ledger answered; Wirex's reason otherwise, which is
+  // the same "insufficient" for a limit decline — the card's live comparison then
+  // says the balance already covers it rather than offering money they have.
+  const isNotEnoughToPay = useMemo(
+    () => isDeclined && cardProvider === CardProvider.WIREX && isInsufficientDecline(transaction),
+    [isDeclined, cardProvider, transaction],
+  );
 
   // Support needs the ledger side to trace a purchase whose sweep is stuck or
   // failed; none of it is worth a row on screen, but all of it belongs in the
@@ -397,6 +432,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const handleRefundPress = useCallback(() => {
     if (refundUrl) Linking.openURL(refundUrl);
   }, [refundUrl]);
+
+  // To the other half of a refund: the purchase from its refund, and back.
+  const openLinkedTransaction = useCallback(
+    (id: string | undefined) => {
+      if (id) router.push(`/activity/card-${id}`);
+    },
+    [router],
+  );
 
   const handleLocationPress = useCallback(() => {
     if (!merchantPlace) return;
@@ -461,6 +504,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     // above the chip means.
     if (isDeclined) return { label: 'Declined', tone: 'danger' };
     if (isReversed) return { label: 'Reversed', tone: 'danger' };
+    // Terminal too. A refund has landed by the time it has a row, and a purchase
+    // that was refunded has nothing left in flight that matters more: without
+    // this a refund read as one more purchase, and a refunded one as unrefunded.
+    if (refundLabel) return { label: refundLabel, tone: 'neutral' };
 
     // `approved` is authorized but not yet posted. Cashback is settled once it
     // has actually paid; a transaction that earned none has nothing to wait for.
@@ -470,14 +517,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid || cashbackInfo.isIneligible;
 
     return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
-  }, [cashbackInfo, isApproved, isDeclined, isReversed]);
+  }, [cashbackInfo, isApproved, isDeclined, isReversed, refundLabel]);
 
   const merchantRows = useMemo(
     () =>
       [
         {
           key: 'from',
-          label: <Label>Sent from</Label>,
+          label: <Label>{isRefund ? 'Refunded to' : 'Sent from'}</Label>,
           value: (
             <View className="flex-row items-center gap-2">
               <CreditCard size={20} color="#FFFFFF" />
@@ -537,6 +584,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         },
       ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[],
     [
+      isRefund,
       last4,
       localDetails,
       merchantPlace,
@@ -562,13 +610,61 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           // on the card is already the 16px that step was reaching for.
           value: <Value className="max-w-[60%] text-right">{declineReason}</Value>,
         },
+      // The purchase this refund gave money back for, one tap away. Its amount
+      // and date when the list already has it, which it usually does: the two
+      // rows come from the same issuer record and arrive on the same page.
+      isRefund &&
+        refundedPurchaseId && {
+          key: 'refund-for',
+          label: <Label>Refund for</Label>,
+          value: (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Open the purchase this refund was for"
+              onPress={() => openLinkedTransaction(refundedPurchaseId)}
+              className="flex-row items-center gap-1 active:opacity-70 web:hover:opacity-80"
+            >
+              <Value>
+                {refundedPurchase
+                  ? [
+                      formatCardTransactionAmount(
+                        refundedPurchase.amount,
+                        isOutgoingCardTransaction(refundedPurchase),
+                        cardProvider,
+                        refundedPurchase.currency,
+                      ),
+                      // The amount alone when the date is missing or malformed:
+                      // `format` throws on an invalid date.
+                      refundedPurchaseDate && format(refundedPurchaseDate, 'MMM d'),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'Original purchase'}
+              </Value>
+              <ChevronRight size={16} color="rgba(255, 255, 255, 0.5)" />
+            </Pressable>
+          ),
+        },
       // A refund the issuer folded into this transaction rather than sending as
-      // its own (Wirex). The amount above is already net of it, so without this
-      // row the figure silently disagrees with the receipt in the user's hand.
+      // its own (Wirex). Once the refund has a row of its own this opens it;
+      // before, the amount above was net of it, and this row is what explained
+      // why the figure disagreed with the receipt in the user's hand.
       transaction.refunded_amount && {
         key: 'refunded',
         label: <Label>Refunded</Label>,
-        value: (
+        value: refundRowId ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Open the refund"
+            onPress={() => openLinkedTransaction(refundRowId)}
+            className="flex-row items-center gap-1 active:opacity-70 web:hover:opacity-80"
+          >
+            <Value className="text-brand">
+              {formatCardAmount(transaction.refunded_amount, cardProvider, transaction.currency)}
+            </Value>
+            <ChevronRight size={16} color="rgba(255, 255, 255, 0.5)" />
+          </Pressable>
+        ) : (
           <Value className="text-brand">
             {formatCardAmount(transaction.refunded_amount, cardProvider, transaction.currency)}
           </Value>
@@ -580,7 +676,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       // full needs no arithmetic — the amount above already is the amount — and
       // printing "Cashback returned: $0.00" on it would invent a concern the
       // cardholder did not have.
-      refund?.cashback_deducted_usd
+      refundLeg?.cashback_deducted_usd
         ? {
             key: 'refund-cashback',
             // Not green. Every other cashback figure on this screen is money
@@ -595,25 +691,25 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             ),
             value: (
               <Value>
-                -{formatCardAmount(String(refund.cashback_deducted_usd), cardProvider, 'USD')}
+                -{formatCardAmount(String(refundLeg.cashback_deducted_usd), cardProvider, 'USD')}
               </Value>
             ),
             caption: (
               <Text className="mt-2 text-[13px] leading-4 text-white/50">
-                {refund.note ?? 'The cashback this purchase earned was returned with the refund'}
+                {refundLeg.note ?? 'The cashback this purchase earned was returned with the refund'}
               </Text>
             ),
           }
         : null,
-      refund?.cashback_deducted_usd
+      refundLeg?.cashback_deducted_usd
         ? {
             key: 'refund-paid',
             label: (
-              <Label>{refund.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
+              <Label>{refundLeg.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
             ),
             value: (
               <Value className="text-brand">
-                {formatCardAmount(String(refund.paid_usd), cardProvider, 'USD')}
+                {formatCardAmount(String(refundLeg.paid_usd), cardProvider, 'USD')}
               </Value>
             ),
           }
@@ -645,7 +741,13 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     transaction.currency,
     declineReason,
     transaction.refunded_amount,
-    refund,
+    refundLeg,
+    isRefund,
+    refundedPurchaseId,
+    refundedPurchase,
+    refundedPurchaseDate,
+    refundRowId,
+    openLinkedTransaction,
   ]);
 
   const onChainRows = useMemo(
@@ -693,7 +795,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           },
         // Refunds return money to the wallet and have a separate transaction.
         refundUrl &&
-          refund?.tx_hash && {
+          refundLeg?.tx_hash && {
             key: 'refund-tx',
             label: <Label>Refund transaction</Label>,
             value: (
@@ -705,7 +807,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
               >
                 <View className="flex-row items-center gap-1">
                   <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
-                    {eclipseAddress(refund.tx_hash)}
+                    {eclipseAddress(refundLeg.tx_hash)}
                   </Underline>
                   <ArrowUpRight color="white" size={16} />
                 </View>
@@ -720,7 +822,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       sweepUrl,
       sweepHash,
       handleSweepPress,
-      refund,
+      refundLeg,
       refundUrl,
       handleRefundPress,
     ],
@@ -742,7 +844,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           <CardActivityIcon transaction={transaction} size={75} />
 
           <View className="items-center gap-1">
-            <Text className="text-2xl font-bold text-white">
+            <Text className={cn('text-2xl font-bold', isRefund ? 'text-brand' : 'text-white')}>
               {formatCardTransactionAmount(
                 transaction.amount,
                 isOutgoing,
@@ -777,6 +879,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </View>
         </View>
 
+        {/* Above the details (Figma 28823:9338): on a payment declined for want of
+            funds, the gap and the fix are what the cardholder came here for. */}
+        {isNotEnoughToPay && <NotEnoughToPayCard transaction={transaction} />}
         <DetailCard rows={merchantRows} />
         {cardCredit && <CardCreditDetailsCard credit={cardCredit} />}
         {/* No cashback card for an excluded purchase: it earns nothing, and the
@@ -934,7 +1039,8 @@ export default function ActivityDetail() {
       isFuseVaultDepositSymbol(metaOutput));
   // soEURC deposits are a single teller call on Base, like soFUSE's on Fuse.
   const isSoEurcOnBase =
-    Number(chainId) === base.id && (symbolLower === 'eurc' || symbolLower === 'soeurc');
+    Number(chainId) === base.id &&
+    (symbolLower === 'eurc' || symbolLower === 'soeurc' || symbolLower === 'soeur');
 
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),
@@ -968,6 +1074,30 @@ export default function ActivityDetail() {
 
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
   const activityBadge = getActivityBadge(finalActivity?.type);
+
+  // A send or receive says who was on the other side and what it was for, not just "Send USDC.e"
+  // — see `lib/utils/transferPresentation`. Contacts only matter for those two types.
+  const isTransfer =
+    finalActivity?.type === TransactionType.SEND || finalActivity?.type === TransactionType.RECEIVE;
+  const contacts = useContactNames({ enabled: isTransfer });
+  const displayTitle = finalActivity ? getTransferTitle(finalActivity, contacts) : '';
+  const transferSummary = finalActivity ? getTransferSummary(finalActivity, contacts) : undefined;
+
+  // A cashback payout has no screen of its own: it is shown in the cashback section of the
+  // purchase that earned it (see `lib/utils/cashbackActivity`). The lists never show one, so a
+  // link straight to it — an old notification, a support message — opens that purchase instead.
+  const router = useRouter();
+  const { data: cashbacks } = useCashbacks({
+    enabled: finalActivity?.type === TransactionType.RECEIVE,
+  });
+  const cashbackPurchaseId =
+    finalActivity?.type === TransactionType.RECEIVE
+      ? getCashbackPurchaseId(finalActivity, cashbacks)
+      : undefined;
+
+  useEffect(() => {
+    if (cashbackPurchaseId) router.replace(`/activity/card-${cashbackPurchaseId}`);
+  }, [cashbackPurchaseId, router]);
 
   // Report unknown transaction types
   useEffect(() => {
@@ -1004,13 +1134,18 @@ export default function ActivityDetail() {
     (symbolLower === 'sousd' ||
       symbolLower === 'sofuse' ||
       symbolLower === 'soeth' ||
-      symbolLower === 'soeurc');
+      symbolLower === 'soeurc' ||
+      symbolLower === 'soeur');
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
   const hideSavingsAmount =
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
-  // Only where the request's own queue lets the user cancel it (not soFUSE).
+  // A Base request reads as PROCESSING while it waits in the queue (see
+  // useBaseWithdrawRequests), and can be cancelled until it is solved. Only where
+  // the request's own queue lets the user cancel it (not soFUSE).
   const isCancelWithdraw =
-    finalActivity?.requestId && isPending && !!getCancelWithdrawTarget(finalActivity.symbol);
+    finalActivity?.requestId &&
+    (isPending || (isProcessing && finalActivity.chainId === base.id)) &&
+    !!getCancelWithdrawTarget(finalActivity.symbol, finalActivity.chainId);
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
   const isCrossChainSend = finalActivity?.type === TransactionType.CROSS_CHAIN_SEND;
@@ -1040,7 +1175,11 @@ export default function ActivityDetail() {
       return 'Complete';
     }
     if (!finalActivity) return 'Unknown';
-    return getTransactionCategory(finalActivity.type, finalActivity.title) ?? 'Unknown';
+    return (
+      getTransferCategory(finalActivity) ??
+      getTransactionCategory(finalActivity.type, finalActivity.title) ??
+      'Unknown'
+    );
   }, [finalActivity, isDeposit]);
 
   const tokenIcon = useMemo(
@@ -1050,8 +1189,18 @@ export default function ActivityDetail() {
 
   const handleCancelWithdraw = useCallback(async () => {
     if (!isCancelWithdraw || !finalActivity?.requestId) return;
-    await cancelOnchainWithdraw(finalActivity.requestId, finalActivity.symbol);
-  }, [isCancelWithdraw, finalActivity?.requestId, finalActivity?.symbol, cancelOnchainWithdraw]);
+    await cancelOnchainWithdraw(
+      finalActivity.requestId,
+      finalActivity.symbol,
+      finalActivity.chainId,
+    );
+  }, [
+    isCancelWithdraw,
+    finalActivity?.requestId,
+    finalActivity?.symbol,
+    finalActivity?.chainId,
+    cancelOnchainWithdraw,
+  ]);
 
   const handleExplorerPress = useCallback(() => {
     if (finalActivity?.url) Linking.openURL(finalActivity.url);
@@ -1368,12 +1517,14 @@ export default function ActivityDetail() {
 
   const transactionContext = useMemo<SupportDrawerRequest | undefined>(() => {
     if (!finalActivity) return undefined;
-    const amount = `${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}`;
+    // From the decimal string, not a float, so the card shows the exact digits.
+    const amount = `${statusSign}${formatDecimalAmount(finalActivity.amount)} ${formatSymbol(finalActivity.symbol)}`;
+    // The title the user is looking at, so the question names the row they tapped.
     return {
-      chatMessage: `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
-      context: { kind: 'activity', id: clientTxId, label: `${finalActivity.title} · ${amount}` },
+      chatMessage: `Question about transaction:\n\nTitle: ${displayTitle}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
+      context: { kind: 'activity', id: clientTxId, label: `${displayTitle} · ${amount}` },
     };
-  }, [finalActivity, statusSign, clientTxId]);
+  }, [finalActivity, statusSign, clientTxId, displayTitle]);
 
   const missingTransactionContext = useMemo<SupportDrawerRequest | undefined>(
     () =>
@@ -1406,6 +1557,15 @@ export default function ActivityDetail() {
   if (isCardTransaction && cardTransactionDetail) {
     return (
       <CardTransactionDetail transaction={cardTransactionDetail} cardProvider={cardProvider} />
+    );
+  }
+
+  // A cashback payout on its way to the purchase it was earned on — see `cashbackPurchaseId`.
+  if (cashbackPurchaseId) {
+    return (
+      <PageLayout desktopOnly isLoading>
+        <View />
+      </PageLayout>
     );
   }
 
@@ -1526,7 +1686,7 @@ export default function ActivityDetail() {
   return (
     <PageLayout desktopOnly isLoading={isAnyLoading}>
       <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
-        <Back title={finalActivity.title} className="text-xl md:text-3xl" />
+        <Back title={displayTitle} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
           {tokenIcon &&
@@ -1559,6 +1719,12 @@ export default function ActivityDetail() {
               {format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}
             </Text>
           </View>
+
+          {/* What this transfer was, in a sentence: "UBER refunded a card payment. It was paid
+              back into your wallet in USDC.e." */}
+          {transferSummary && (
+            <Text className="text-center text-base text-white/70">{transferSummary}</Text>
+          )}
         </View>
 
         <View className="rounded-twice bg-card">

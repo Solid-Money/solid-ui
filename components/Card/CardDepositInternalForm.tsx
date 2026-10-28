@@ -56,7 +56,7 @@ import { getAsset } from '@/lib/assets';
 import {
   ADDRESSES,
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+  EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT,
   isProduction,
 } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
@@ -615,11 +615,19 @@ export default function CardDepositInternalForm() {
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        // Funding from the Solid wallet goes through the backend, which refuses
+        // less than the card minimum.
+        .refine(
+          val =>
+            !isWalletSourceGaslessGated ||
+            Number(val) >= Number(EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT),
+          { error: `Minimum deposit is ${EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT} ${tokenSymbol}` },
+        )
         .refine(val => Number(val) <= balanceAmount, {
           error: `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
         }),
     });
-  }, [balanceAmount, tokenSymbol]);
+  }, [balanceAmount, tokenSymbol, isWalletSourceGaslessGated]);
 
   const formattedBalance = balanceAmount.toString();
 
@@ -660,7 +668,7 @@ export default function CardDepositInternalForm() {
   } = useDepositFromSolidUsdc(
     (selectedWalletUsdcAddress ?? '') as Address,
     'USDC',
-    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT,
     DepositCategory.CARD,
   );
 
@@ -1033,7 +1041,7 @@ export default function CardDepositInternalForm() {
         <View className="mt-2 flex-row items-start gap-2">
           <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
           <Text className="max-w-xs text-sm" style={{ color: '#A1A1A1' }}>
-            Gasless deposit
+            {`Gasless deposit · Minimum ${EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT} USDC`}
           </Text>
         </View>
       )}

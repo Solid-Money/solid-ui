@@ -13,6 +13,8 @@ import { cardCreditPillLabel, dailyYieldPillLabel, showsCardCreditPill } from '@
 interface HomeBalancePillsProps {
   /** The day's estimated yield on what the user holds (`usePortfolio().dailyYield`). */
   dailyYield: number | undefined;
+  /** The balance's currency symbol, which `dailyYield` is already in. */
+  yieldSymbol?: string;
   /**
    * Card credit can only be spent with a Wirex card, so it is only fetched for
    * Wirex cardholders — for everyone else there is nothing the pill could open.
@@ -29,11 +31,15 @@ interface HomeBalancePillsProps {
  * money the user cannot send, swap or withdraw. A failed card credit read just
  * leaves the pill out.
  */
-const HomeBalancePills = ({ dailyYield, canHaveCardCredit }: HomeBalancePillsProps) => {
+const HomeBalancePills = ({
+  dailyYield,
+  yieldSymbol,
+  canHaveCardCredit,
+}: HomeBalancePillsProps) => {
   const { data: credit } = useCardCredit({ enabled: canHaveCardCredit });
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const todayLabel = dailyYieldPillLabel(dailyYield);
+  const todayLabel = dailyYieldPillLabel(dailyYield, yieldSymbol);
   const showCredit = canHaveCardCredit && showsCardCreditPill(credit);
 
   const openCardCredit = useCallback(() => {

@@ -4,7 +4,9 @@ import { Redirect } from 'expo-router';
 import PageLayout from '@/components/PageLayout';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { CardProvider } from '@/lib/types';
 import {
+  canReplaceClosedCard,
   getActiveCardRoute,
   hasCard,
   hasCardStatusWithRainApplication,
@@ -36,8 +38,9 @@ export default function Card() {
 
   // A card is ordered but the issuer hasn't opened it yet. The issuance flow
   // renders the "on its way" state and polls until it does; country selection
-  // would restart onboarding this user already completed.
-  if (hasPendingCard(cardStatus)) {
+  // would restart onboarding this user already completed. A closed card its
+  // holder can replace goes the same way: the issuance flow orders the new one.
+  if (hasPendingCard(cardStatus) || canReplaceClosedCard(cardStatus)) {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
 
@@ -52,6 +55,14 @@ export default function Card() {
   // A Rain application is already in flight (KYC submitted, card pending) —
   // resume the issuance flow rather than restarting onboarding.
   if (hasCardStatusWithRainApplication(cardStatus)) {
+    return <Redirect href={path.CARD_ACTIVATE} />;
+  }
+
+  // A Wirex applicant — approved, asked for another document, or declined — has
+  // a screen of their own in the onboarding, and the issuance flow is where it
+  // lives. Country selection would ask them to start a verification they have
+  // already been through.
+  if (cardStatus?.provider === CardProvider.WIREX) {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
 

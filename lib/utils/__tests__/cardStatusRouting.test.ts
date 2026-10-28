@@ -1,6 +1,11 @@
 /// <reference types="jest" />
 import { CardProvider, CardStatus, type CardStatusResponse } from '@/lib/types';
-import { hasCard, hasPendingCard, resolveCardIssuer } from '@/lib/utils/cardStatusRouting';
+import {
+  canReplaceClosedCard,
+  hasCard,
+  hasPendingCard,
+  resolveCardIssuer,
+} from '@/lib/utils/cardStatusRouting';
 
 const cardStatus = (overrides: Partial<CardStatusResponse> = {}): CardStatusResponse =>
   ({ ...overrides }) as CardStatusResponse;
@@ -63,6 +68,57 @@ describe('card status routing predicates', () => {
       expect(hasCard(cardStatus({ status: CardStatus.ACTIVE, provider: CardProvider.WIREX }))).toBe(
         true,
       );
+    });
+  });
+
+  /**
+   * A cardholder whose Wirex card was closed after its details leaked was read
+   * as "has a card" by the issuance flow, sent to a card that no longer worked
+   * and back to the wallet — with no way to order the replacement.
+   */
+  describe('canReplaceClosedCard', () => {
+    it('is true for a closed card the backend will replace', () => {
+      expect(
+        canReplaceClosedCard(
+          cardStatus({
+            status: CardStatus.INACTIVE,
+            provider: CardProvider.WIREX,
+            canRequestNewCard: true,
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('is false for a closed card support has to replace', () => {
+      // A canceled Rain card: the backend does not offer self-serve reissue.
+      expect(
+        canReplaceClosedCard(
+          cardStatus({ status: CardStatus.INACTIVE, provider: CardProvider.RAIN }),
+        ),
+      ).toBe(false);
+    });
+
+    it.each([CardStatus.ACTIVE, CardStatus.FROZEN, CardStatus.PENDING])(
+      'is false for a %s card, whatever the flag says',
+      status => {
+        expect(canReplaceClosedCard(cardStatus({ status, canRequestNewCard: true }))).toBe(false);
+      },
+    );
+
+    it('is never also a usable or pending card', () => {
+      const closed = cardStatus({
+        status: CardStatus.INACTIVE,
+        provider: CardProvider.WIREX,
+        canRequestNewCard: true,
+      });
+
+      expect(hasCard(closed)).toBe(false);
+      expect(hasPendingCard(closed)).toBe(false);
+    });
+
+    it('is false with no card at all', () => {
+      expect(canReplaceClosedCard(null)).toBe(false);
+      expect(canReplaceClosedCard(undefined)).toBe(false);
     });
   });
 
