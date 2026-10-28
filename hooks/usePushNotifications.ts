@@ -103,6 +103,9 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
   '/rewards': path.REWARDS,
   '/rewards/benefits': path.REWARDS_BENEFITS,
   '/rewards/ai-api': path.AI_API,
+  // Referral v4. Both screens hand over to today's referral popup while v4 is off.
+  '/rewards/refer': path.REFER,
+  '/rewards/refer/invites': path.REFER_INVITES,
   '/savings/fuse': path.SAVINGS_FUSE,
   '/support': path.SUPPORT,
 };

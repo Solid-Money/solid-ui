@@ -10,6 +10,7 @@ import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendMod
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import EuroLaunchPopup from '@/components/Home/NewHome/EuroLaunchPopup';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
+import HomeBalancePills from '@/components/Home/NewHome/HomeBalancePills';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
@@ -323,6 +324,17 @@ export default function HomeScreenNew() {
           <View className="gap-5">
             <HeroExit spec={HERO_EXIT.balance}>
               <WalletBalanceHeadline balance={displayTotal} symbol={displaySymbol} />
+              {/* Beside the balance, never in it: card credit can only be spent
+                  with the card, so it stays out of `totalBalance`. */}
+              <HomeBalancePills
+                dailyYield={
+                  portfolio.dailyYield === undefined
+                    ? undefined
+                    : toDisplayAmount(portfolio.dailyYield)
+                }
+                yieldSymbol={displaySymbol}
+                canHaveCardCredit={showWirexTiles}
+              />
               {portfolio.isError && (
                 <TouchableOpacity
                   accessibilityRole="button"

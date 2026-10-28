@@ -81,6 +81,7 @@ const HIDDEN_TAB_ROUTES = new Set(['settings', 'sumsub-kyc']);
  * - `main-currency`: the card's main currency picker; the bar covers its Switch button.
  * - `ai-api`, `ai-api-key`, `ai-api-setup`: the AI API screens end in their own
  *   full-width buttons, which the bar would sit on.
+ * - `refer/*`: the referral v4 screens pin their share bar to the bottom edge.
  */
 const HIDDEN_NESTED_ROUTES = new Set([
   'benefits',
@@ -89,6 +90,9 @@ const HIDDEN_NESTED_ROUTES = new Set([
   'ai-api',
   'ai-api-key',
   'ai-api-setup',
+  'refer/index',
+  'refer/invites',
+  'refer/[friendId]',
 ]);
 
 type TabLayout = { x: number; y: number; width: number; height: number };

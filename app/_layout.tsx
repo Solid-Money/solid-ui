@@ -51,6 +51,7 @@ import { path } from '@/constants/path';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useDimension } from '@/hooks/useDimension';
+import { useInstallReferrerCapture } from '@/hooks/useInstallReferrerCapture';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
 import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
@@ -281,6 +282,8 @@ function RootLayout() {
 
   // Initialize attribution tracking automatically (handles web and mobile)
   useAttributionInitialization();
+  // Android: an invite link's code, carried through the Play Store install.
+  useInstallReferrerCapture();
 
   // Push notification lifecycle: token refresh + notification tap handling
   usePushNotifications();
@@ -515,6 +518,14 @@ function RootLayout() {
                         />
                         <Stack.Screen
                           name="recovery"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        {/* The public invite page an invite link opens. */}
+                        <Stack.Screen
+                          name="invite/[code]"
                           options={{
                             headerShown: false,
                             animation: 'none',

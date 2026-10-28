@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
+import { referralCodeFromParams } from '@/lib/referral/inviteCode';
+
 import type { AttributionData } from '@/store/useAttributionStore';
 
 /**
@@ -41,15 +43,12 @@ export const parseAttributionFromURL = (url: string): Partial<AttributionData> =
     if (msclkid) attribution.msclkid = msclkid.trim();
     if (ttclid) attribution.ttclid = ttclid.trim();
 
-    // Referral codes (support multiple parameter names for compatibility)
-    const refCode =
-      params.get('ref') ||
-      params.get('refCode') ||
-      params.get('referralCode') ||
-      params.get('referral');
+    // Referral codes (support multiple parameter names for compatibility). Only
+    // values that are codes: `/rewards?referral=open` is an instruction, not one.
+    const refCode = referralCodeFromParams(params);
 
     if (refCode) {
-      attribution.referral_code = refCode.trim();
+      attribution.referral_code = refCode;
       attribution.referral_source = 'url';
     }
 

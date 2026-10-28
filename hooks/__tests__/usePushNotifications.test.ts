@@ -55,6 +55,8 @@ describe('routeForLink', () => {
     ['/rewards', path.REWARDS],
     ['/rewards/benefits', path.REWARDS_BENEFITS],
     ['/rewards/ai-api', path.AI_API],
+    ['/rewards/refer', path.REFER],
+    ['/rewards/refer/invites', path.REFER_INVITES],
     ['/savings/fuse', path.SAVINGS_FUSE],
     ['/support', path.SUPPORT],
   ])('maps %s to its screen', (p, expected) => {

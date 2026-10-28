@@ -618,6 +618,23 @@ export const TRACKING_EVENTS = {
   AI_API_KEY_RENAMED: 'ai_api_key_renamed',
   AI_API_KEY_DELETED: 'ai_api_key_deleted',
   AI_API_ADD_FUNDS_PRESSED: 'ai_api_add_funds_pressed',
+
+  // Referral program v4: invite bonuses paid as card credit, plus a share of what
+  // friends spend. The referrer's side first, then card credit itself, then the
+  // invited friend's side — the invite page and the code reaching signup, by
+  // whichever route it came (`source`: link / install_referrer / clipboard / manual).
+  REFERRAL_SCREEN_VIEWED: 'referral_screen_viewed',
+  REFERRAL_LINK_COPIED: 'referral_link_copied',
+  REFERRAL_LINK_SHARED: 'referral_link_shared',
+  REFERRAL_QR_SHOWN: 'referral_qr_shown',
+  REFERRAL_REWARD_SHEET_OPENED: 'referral_reward_sheet_opened',
+  REFERRAL_INVITES_VIEWED: 'referral_invites_viewed',
+  REFERRAL_FRIEND_VIEWED: 'referral_friend_viewed',
+  CARD_CREDIT_PILL_TAPPED: 'card_credit_pill_tapped',
+  CARD_CREDIT_SHEET_VIEWED: 'card_credit_sheet_viewed',
+  INVITE_SCREEN_VIEWED: 'invite_screen_viewed',
+  INVITE_CODE_APPLIED: 'invite_code_applied',
+  INVITE_CODE_INVALID: 'invite_code_invalid',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
