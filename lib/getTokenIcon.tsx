@@ -80,7 +80,7 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         source: { uri: G_DOLLAR_LOGO_URI },
       };
     default: {
-      // The rest of what the deposit screen takes (PAXG, WBTC, SOL, ...), with
+      // The rest of what the deposit screen takes (cbBTC, cbZEC, SOL, ...), with
       // the marks it draws them with, so a deposit looks the same once it lands.
       const depositToken = WALLET_DEPOSIT_TOKENS.find(
         token => token.symbol.toUpperCase() === tokenSymbol?.toUpperCase(),

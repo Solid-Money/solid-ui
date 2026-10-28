@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { formatUnits, parseUnits } from 'viem';
-import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
 import {
@@ -11,7 +11,6 @@ import {
   WalletDepositTokenGroup,
 } from '@/constants/walletDepositTokens';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { CardProvider, DepositAsset } from '@/lib/types';
 
 export type WalletDepositNetwork = {
@@ -27,7 +26,7 @@ export type WalletDepositToken = {
   icon: ImageSourcePropType;
 };
 
-/** Who the screen is for, which decides EURC and where stablecoins go. */
+/** Who the screen is for, which decides where stablecoins go. */
 type WalletDepositProvider = CardProvider | null | undefined;
 
 /**
@@ -64,7 +63,6 @@ const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, string> = {
   [polygon.id]: '1',
   [base.id]: '1',
   [arbitrum.id]: '1',
-  [optimism.id]: '1',
   [bsc.id]: '1',
   [fuse.id]: '1',
 };
@@ -72,8 +70,8 @@ const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, string> = {
 /**
  * Overrides for the assets that are not worth ~$1 a unit, so every floor lands in
  * roughly the same place in dollars — about $10, rounded up. Keyed by symbol
- * alone: ETH and WETH are the same asset on Ethereum and Base, and the pipeline
- * floors them at one dollar figure on every chain.
+ * alone: WETH is the same asset on Ethereum and Base, and the pipeline floors it
+ * at one dollar figure on every chain.
  *
  * Only shown until the backend's priced minimum arrives (see
  * `resolveWalletDepositMinimum`), so these round up: overstating a floor turns
@@ -84,19 +82,10 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
   WETH: '0.005',
   FUSE: '500',
   WFUSE: '500',
-  PAXG: '0.003',
-  SLVx: '0.2',
-  WBTC: '0.00015',
   cbBTC: '0.00015',
-  ZEC: '0.01',
-  UNI: '1.5',
-  NEAR: '2',
-  ENA: '50',
+  cbZEC: '0.01',
   AAVE: '0.07',
   SOL: '0.1',
-  WLD: '20',
-  ARB: '60',
-  OP: '80',
 };
 
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
@@ -122,28 +111,14 @@ const isPositiveAmount = (value: string): boolean => {
 /** The stablecoins the deposit pipeline has a route for. */
 const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
 
-/** EURC, which only a Wirex cardholder is offered. */
-const EURC_SYMBOL = 'EURC';
-
 /**
- * The chain the screen opens on, and that every currency it carries opens on
- * unless it has a home of its own (see `homeChainId`).
+ * The chain the screen opens on, and that every currency it carries opens on.
  *
  * Base because it carries nearly every currency on offer, and sending there
  * costs a fraction of Ethereum's gas. FUSE and WFUSE exist on Fuse alone, so
  * they open there.
  */
 const DEFAULT_WALLET_DEPOSIT_CHAIN_ID = base.id;
-
-/**
- * Whether the screen offers EURC at all: to Wirex cardholders only.
- *
- * The pipeline delivers it as EURC to their Safe on Base, the balance the Base
- * spend-module instance sells for euro purchases. For anyone else it would be
- * a balance nothing spends, so they are not offered it.
- */
-export const offersWalletDepositEurc = (provider: WalletDepositProvider): boolean =>
-  provider === CardProvider.WIREX;
 
 /**
  * Whether the deposit address is one the pipeline mints, rather than the Safe.
@@ -168,9 +143,7 @@ export const usesDirectDepositAddress = (
 
 /**
  * Whether the pipeline can mint an address on a chain: the bridge sources, the
- * chains it watches. Optimism is a deposit chain for the Safe only, so a Wirex
- * cardholder's stablecoins — which always go through the pipeline — are not
- * offered there.
+ * chains it watches and delivers to the card's Safe from.
  */
 const isDirectDepositChain = (chainId: number): boolean =>
   !!BRIDGE_TOKENS[chainId] && !BRIDGE_TOKENS[chainId].isComingSoon;
@@ -187,13 +160,6 @@ const WRAPPED_EQUIVALENT: Record<string, string> = {
 const findToken = (symbol?: string): WalletDepositTokenConfig | undefined =>
   WALLET_DEPOSIT_TOKENS.find(token => token.symbol === symbol);
 
-/** Whether a currency is on offer to this person at all, on any chain. */
-const isOffered = (token: WalletDepositTokenConfig, provider: WalletDepositProvider): boolean => {
-  if (token.devOnly && !isDevFeatureEnabled) return false;
-  if (token.symbol === EURC_SYMBOL) return offersWalletDepositEurc(provider);
-  return true;
-};
-
 const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isComingSoon;
 
 /** Whether everyone is offered the currency on this chain, not only those with access. */
@@ -205,7 +171,6 @@ const getTokenChainIds = (
   token: WalletDepositTokenConfig,
   { provider, hasNewTokens = false }: WalletDepositViewer,
 ): number[] => {
-  if (!isOffered(token, provider)) return [];
   const minted = usesDirectDepositAddress(token.symbol, provider);
 
   return WALLET_DEPOSIT_CHAIN_IDS.filter(
@@ -271,7 +236,7 @@ export const getWalletDepositNetworks = (viewer?: WalletDepositViewer): WalletDe
  *
  * A currency carries over between chains when the new one accepts it, so picking
  * a chain does not silently reset a deliberate choice. When it does not — ETH
- * is not offered on Polygon, FUSE only exists on Fuse — it falls back to what
+ * is offered on Ethereum alone, FUSE on Fuse — it falls back to what
  * the chain does carry, rather than leaving the screen quoting a minimum for a
  * pairing that does not exist.
  */
@@ -305,8 +270,8 @@ export const getWalletDepositMinimum = (chainId: number, symbol: string): string
  *
  * Native assets are matched through their wrapped equivalents: the pipeline
  * credits WETH and WFUSE contracts, while the screen offers ETH and FUSE, and
- * the floor is the same either way. Where a chain has no wrapped contract to
- * publish — ETH on BNB Chain is itself a token — its own symbol is used.
+ * the floor is the same either way. Where the pipeline publishes no wrapped
+ * contract, the currency's own symbol is used.
  */
 export const resolveWalletDepositMinimum = (
   chainId: number,
@@ -326,7 +291,7 @@ export const resolveWalletDepositMinimum = (
 
 /**
  * A minimum as the screen prints it: two significant figures for an asset worth
- * thousands a unit (0.00012 WBTC), never fewer than four decimals, and rounded
+ * thousands a unit (0.00012 cbBTC), never fewer than four decimals, and rounded
  * up, so the floor quoted is never below the one it stands for. In bigint
  * units, so nothing is lost on the way.
  */
@@ -369,8 +334,8 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
 /**
  * Every currency the deposit address can take, each once, for "Select token" —
  * the first step, taken before any chain is chosen. In the order the design
- * lists them: the stablecoins, gold and silver, then ETH and the rest, with the
- * wrapped natives last.
+ * lists them: the stablecoins, then ETH and the rest, with the wrapped natives
+ * last.
  */
 export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): WalletDepositToken[] =>
   WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, viewer).length > 0).map(
@@ -378,9 +343,8 @@ export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): Wal
   );
 
 /**
- * Whether a currency answers a search: by ticker or by name, so "btc" finds WBTC
- * and cbBTC and "gold" finds PAXG, plus the aliases a person might type instead
- * ("bitcoin", "paxos").
+ * Whether a currency answers a search: by ticker or by name, so "btc" finds cbBTC,
+ * plus the aliases a person might type instead ("bitcoin", "zcash").
  */
 export const matchesWalletDepositSearch = (token: WalletDepositToken, query: string): boolean => {
   const needle = query.trim().toLowerCase();
@@ -420,8 +384,7 @@ export const getWalletDepositNetworksForToken = (
  * The chain the address opens on once `symbol` is picked.
  *
  * The current chain when it carries the currency, so changing only the currency
- * from the address screen keeps the chain. Otherwise the currency's own home
- * (ARB on Arbitrum, OP on Optimism), then the default chain (see
+ * from the address screen keeps the chain. Otherwise the default chain (see
  * `getDefaultWalletDepositSelection`) if it carries it, else the first that does.
  */
 export const resolveWalletDepositChain = (
@@ -431,9 +394,6 @@ export const resolveWalletDepositChain = (
 ): number => {
   const carrying = getWalletDepositNetworksForToken(symbol, viewer).map(network => network.chainId);
   if (currentChainId !== undefined && carrying.includes(currentChainId)) return currentChainId;
-
-  const homeChainId = findToken(symbol)?.homeChainId;
-  if (homeChainId !== undefined && carrying.includes(homeChainId)) return homeChainId;
 
   const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
   return carrying.includes(defaultChainId) ? defaultChainId : (carrying[0] ?? defaultChainId);

@@ -129,8 +129,8 @@ export interface DepositAssetsResponse {
   minimumUsd: number;
   assets: DepositAsset[];
   /**
-   * What the deposit screen offers that lands in the Safe as sent (PAXG, WBTC,
-   * OP, ...), apart from `assets` because the pipeline credits none of them.
+   * What the deposit screen offers that lands in the Safe as sent (cbBTC, cbZEC,
+   * SOL, ...), apart from `assets` because the pipeline credits none of them.
    * Absent from a backend older than these tokens.
    */
   walletAssets?: DepositAsset[];

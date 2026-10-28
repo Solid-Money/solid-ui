@@ -64,13 +64,13 @@ describe('isUnlistedTokenReceive', () => {
     expect(isUnlistedTokenReceive(receive({ chainId: undefined }), listed)).toBe(false);
   });
 
-  // The deposit screen tells people to send WBTC on Arbitrum; the swap list need
+  // The deposit screen tells people to send cbZEC on Base; the swap list need
   // not name it for the receive to show.
   it('keeps a token the deposit screen offers, listed for swapping or not', () => {
-    const wbtcArbitrum = '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f';
+    const cbzecBase = '0xB2000000000000000000008501b13360000cb2EC';
     expect(
       isUnlistedTokenReceive(
-        receive({ chainId: 42161, symbol: 'WBTC', metadata: { tokenAddress: wbtcArbitrum } }),
+        receive({ chainId: 8453, symbol: 'cbZEC', metadata: { tokenAddress: cbzecBase } }),
         listed,
       ),
     ).toBe(false);

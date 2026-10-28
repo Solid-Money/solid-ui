@@ -11,24 +11,20 @@ import {
   getWalletDepositTokens,
   groupWalletDepositTokens,
   matchesWalletDepositSearch,
-  offersWalletDepositEurc,
   resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
   usesDirectDepositAddress,
+  WalletDepositViewer,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
+import { VAULTS } from '@/constants/vaults';
 import { isWalletDepositContract, WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 import { CardProvider, DepositAsset } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
 // which chains and currencies are offered and what each pairing's floor is.
 jest.mock('@/lib/assets', () => ({ getAsset: (path: string) => path }));
-// qa/preview builds, where SLVx is offered; production is in its own file.
-jest.mock('@/lib/config', () => ({
-  ...jest.requireActual('@/lib/config'),
-  isDevFeatureEnabled: true,
-}));
 
 const symbolsOf = (tokens: { symbol: string }[]) => tokens.map(token => token.symbol);
 /** Someone offered the new deposit tokens, as everyone is on qa/preview builds. */
@@ -42,7 +38,6 @@ describe('getWalletDepositMinimum', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'USDC')).toBe('10');
     expect(getWalletDepositMinimum(base.id, 'USDC')).toBe('1');
     expect(getWalletDepositMinimum(arbitrum.id, 'USDT')).toBe('1');
-    expect(getWalletDepositMinimum(optimism.id, 'USDC')).toBe('1');
   });
 
   // A floor is a number of tokens, so an asset that is not worth ~$1 a unit needs
@@ -50,13 +45,14 @@ describe('getWalletDepositMinimum', () => {
   it('overrides the chain floor for currencies that are not worth ~$1 a unit', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe('0.005');
     expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe('0.005');
+    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe('0.005');
     expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe('500');
-    expect(getWalletDepositMinimum(mainnet.id, 'WBTC')).toBe('0.00015');
-    expect(getWalletDepositMinimum(optimism.id, 'OP')).toBe('80');
+    expect(getWalletDepositMinimum(base.id, 'cbBTC')).toBe('0.00015');
+    expect(getWalletDepositMinimum(base.id, 'cbZEC')).toBe('0.01');
   });
 
   // Each currency the screen offers has a floor of its own, so none quotes the
-  // chain's — "Send at least 10 WBTC" on Ethereum.
+  // chain's — "Send at least 1 cbBTC" on Base.
   it('has a floor for every currency that is not a dollar or euro stablecoin', () => {
     const stablecoins = new Set(['USDC', 'USDT', 'EURC']);
     WALLET_DEPOSIT_TOKENS.filter(token => !stablecoins.has(token.symbol)).forEach(token => {
@@ -64,13 +60,6 @@ describe('getWalletDepositMinimum', () => {
         getWalletDepositMinimum(mainnet.id, 'USDC'),
       );
     });
-  });
-
-  // The same asset on a cheaper chain: the override is by symbol, so Base does
-  // not quote 1 ETH from its chain floor.
-  it('floors ETH and WETH on Base the same as on Ethereum', () => {
-    expect(getWalletDepositMinimum(base.id, 'ETH')).toBe('0.005');
-    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe('0.005');
   });
 
   it('falls back to a floor rather than none for an unlisted chain', () => {
@@ -85,7 +74,7 @@ describe('formatWalletDepositMinimum', () => {
     expect(formatWalletDepositMinimum('48.33')).toBe('48.33');
   });
 
-  // Four decimals would print 0.0001194 WBTC as 0.0001 — under the floor.
+  // Four decimals would print 0.0001194 cbBTC as 0.0001 — under the floor.
   it('keeps two significant figures for an asset worth thousands a unit', () => {
     expect(formatWalletDepositMinimum('0.0001194')).toBe('0.00012');
     expect(formatWalletDepositMinimum('0.00015')).toBe('0.00015');
@@ -116,43 +105,46 @@ describe('formatWalletDepositMinimum', () => {
 
 describe('getWalletDepositTokens', () => {
   it('lists the currencies the chain actually carries', () => {
-    expect(symbolsOf(getWalletDepositTokens(polygon.id, ALL))).toEqual([
+    expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual([
       'USDC',
       'USDT',
-      'WBTC',
-      'UNI',
+      'EURC',
+      'cbBTC',
+      'cbZEC',
       'AAVE',
       'SOL',
       'WETH',
     ]);
+    expect(symbolsOf(getWalletDepositTokens(mainnet.id, ALL))).toEqual([
+      'USDC',
+      'USDT',
+      'ETH',
+      'WETH',
+    ]);
+    expect(symbolsOf(getWalletDepositTokens(polygon.id, ALL))).toEqual(['USDC', 'USDT']);
     expect(symbolsOf(getWalletDepositTokens(fuse.id, ALL))).toEqual([
       'USDC',
       'USDT',
       'FUSE',
       'WFUSE',
     ]);
-    expect(symbolsOf(getWalletDepositTokens(optimism.id, ALL))).toEqual([
-      'USDC',
-      'USDT',
-      'ETH',
-      'WBTC',
-      'UNI',
-      'ENA',
-      'AAVE',
-      'WLD',
-      'OP',
-      'WETH',
-    ]);
   });
 
-  // Base's USDT, ETH and the rest are offered here only: `BRIDGE_TOKENS[base.id]`
+  // They are collateral for spending on Base, which a balance on another chain
+  // cannot be.
+  it('takes the collateral tokens on Base alone', () => {
+    ['cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol => {
+      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, WIREX))).toEqual([base.id]);
+    });
+  });
+
+  // Base's USDT, WETH and the rest are offered here only: `BRIDGE_TOKENS[base.id]`
   // stays USDC alone, so card funding, savings and bridging are unchanged.
   it('offers currencies beyond what BRIDGE_TOKENS lists for the chain', () => {
     expect(Object.keys(BRIDGE_TOKENS[base.id].tokens ?? {})).toEqual(['USDC']);
     expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual(
-      expect.arrayContaining(['USDC', 'USDT', 'ETH', 'WETH', 'WBTC', 'cbBTC', 'SOL']),
+      expect.arrayContaining(['USDC', 'USDT', 'WETH', 'cbBTC', 'SOL']),
     );
-    expect(BRIDGE_TOKENS[optimism.id]).toBeUndefined();
   });
 
   it('returns nothing for a chain that is not supported', () => {
@@ -163,8 +155,8 @@ describe('getWalletDepositTokens', () => {
 describe('getWalletDepositTokenIcon', () => {
   it("draws each currency with its own mark, whatever the chain's entry carries", () => {
     expect(getWalletDepositTokenIcon('USDC')).toBe('images/usdc-4x.png');
-    expect(getWalletDepositTokenIcon('PAXG')).toBe('images/paxg.png');
-    expect(getWalletDepositTokenIcon('OP')).toBe('images/op.png');
+    expect(getWalletDepositTokenIcon('cbZEC')).toBe('images/zec.png');
+    expect(getWalletDepositTokenIcon('SOL')).toBe('images/sol.png');
   });
 
   it('falls back to the USDC mark for a currency it does not know', () => {
@@ -173,23 +165,99 @@ describe('getWalletDepositTokenIcon', () => {
 });
 
 describe('getWalletDepositNetworks', () => {
-  it('offers only chains with a currency to deposit, in display order', () => {
+  it('names every chain the screen can offer, in display order', () => {
     expect(chainIdsOf(getWalletDepositNetworks())).toEqual([
       mainnet.id,
       polygon.id,
       base.id,
       arbitrum.id,
-      optimism.id,
       bsc.id,
       fuse.id,
     ]);
   });
+});
 
-  // Optimism is not a bridge source, so its name and icon come from elsewhere.
-  it('names a chain that is not in BRIDGE_TOKENS', () => {
-    const optimismNetwork = getWalletDepositNetworks().find(n => n.chainId === optimism.id);
-    expect(optimismNetwork?.name).toBe('Optimism');
-    expect(optimismNetwork?.icon).toBeTruthy();
+/** What each chain's cash module spends from the Safe: its allowlist. */
+const CARD_SPENDABLE: Record<number, string[]> = {
+  [base.id]: ['USDC', 'USDT', 'WETH', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'],
+  [fuse.id]: ['USDC', 'USDT'],
+};
+
+/** Whether a vault's wallet deposit takes the token on the chain, as the Savings form reads it. */
+const vaultTakesFromWallet = (chainId: number, symbol: string): boolean =>
+  VAULTS.some(
+    vault =>
+      !vault.isComingSoon &&
+      !!vault.depositConfig?.methods.includes('wallet') &&
+      vault.depositConfig.supportedChains.includes(chainId) &&
+      vault.depositConfig.supportedTokens.includes(symbol) &&
+      (!!BRIDGE_TOKENS[chainId]?.tokens?.[symbol] || (symbol === 'EURC' && !!EURC_TOKENS[chainId])),
+  );
+
+/**
+ * Only what is of use once it lands. Nothing moves what lands on the Safe, so it
+ * is offered a token only where the card can spend it or a vault can take it
+ * from the wallet; the minted address is delivered to the card's Safe, so a
+ * Wirex cardholder's stablecoins may come from any chain the pipeline routes
+ * from.
+ */
+describe('what lands of use', () => {
+  it('offers the Safe only what the card can spend or a vault can take there', () => {
+    const viewers: WalletDepositViewer[] = [ALL, WIREX, RAIN, {}];
+    viewers.forEach(viewer => {
+      getWalletDepositNetworks(viewer).forEach(({ chainId }) => {
+        getWalletDepositTokens(chainId, viewer)
+          .filter(({ symbol }) => !usesDirectDepositAddress(symbol, viewer.provider))
+          .forEach(({ symbol }) => {
+            const ofUse =
+              !!CARD_SPENDABLE[chainId]?.includes(symbol) || vaultTakesFromWallet(chainId, symbol);
+            expect(`${symbol} on ${chainId}: ${ofUse}`).toBe(`${symbol} on ${chainId}: true`);
+          });
+      });
+    });
+  });
+
+  it("takes a Wirex cardholder's stablecoins on every chain the pipeline routes from", () => {
+    const pipelineChains = [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id];
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', WIREX))).toEqual(pipelineChains);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDT', WIREX))).toEqual(pipelineChains);
+  });
+
+  // soUSD takes them from the wallet on every bridge chain.
+  it('takes USDC and USDT into the Safe on every chain soUSD takes them from', () => {
+    [ALL, RAIN, {}].forEach(viewer => {
+      expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', viewer))).toEqual([
+        mainnet.id,
+        polygon.id,
+        base.id,
+        arbitrum.id,
+        bsc.id,
+        fuse.id,
+      ]);
+    });
+  });
+
+  // soETH takes ETH on Ethereum alone, and the Base cash module takes WETH, not ETH.
+  it('takes ETH on Ethereum alone, and WETH on Ethereum and Base', () => {
+    [ALL, WIREX, RAIN, {}].forEach(viewer => {
+      expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', viewer))).toEqual([mainnet.id]);
+      expect(chainIdsOf(getWalletDepositNetworksForToken('WETH', viewer))).toEqual([
+        mainnet.id,
+        base.id,
+      ]);
+    });
+  });
+
+  it('takes FUSE and WFUSE on Fuse, for soFUSE', () => {
+    expect(chainIdsOf(getWalletDepositNetworksForToken('FUSE', ALL))).toEqual([fuse.id]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('WFUSE', ALL))).toEqual([fuse.id]);
+  });
+
+  it('offers nothing on Optimism, to anyone', () => {
+    [ALL, WIREX, RAIN, {}].forEach(viewer => {
+      expect(chainIdsOf(getWalletDepositNetworks(viewer))).not.toContain(optimism.id);
+      expect(getWalletDepositTokens(optimism.id, viewer)).toEqual([]);
+    });
   });
 });
 
@@ -217,7 +285,7 @@ describe('usesDirectDepositAddress', () => {
   // These have no route through the pipeline — they land in the Safe and stay as
   // the token that was sent, so there the Safe is the right answer.
   it('keeps the Safe for the currencies with no route, even for Wirex', () => {
-    ['ETH', 'WETH', 'FUSE', 'WFUSE', 'PAXG', 'WBTC', 'SOL', 'OP'].forEach(symbol => {
+    ['ETH', 'WETH', 'FUSE', 'WFUSE', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol => {
       expect(usesDirectDepositAddress(symbol, CardProvider.WIREX)).toBe(false);
     });
   });
@@ -257,19 +325,11 @@ describe('resolveWalletDepositMinimum', () => {
     expect(resolveWalletDepositMinimum(fuse.id, 'FUSE', assets)).toBe('500');
   });
 
-  // BNB Chain has no WETH to publish: its ETH is itself a token.
-  it('takes the currency’s own entry where there is no wrapped one', () => {
-    const assets = [
-      asset({ chainId: bsc.id, chainName: 'BNB Chain', symbol: 'ETH', minimum: '0.0041' }),
-    ];
-    expect(resolveWalletDepositMinimum(bsc.id, 'ETH', assets)).toBe('0.0041');
-  });
-
   it('quotes the published floor of a currency that lands in the Safe', () => {
     const assets = [
-      asset({ chainId: arbitrum.id, chainName: 'Arbitrum', symbol: 'WBTC', minimum: '0.0001194' }),
+      asset({ chainId: base.id, chainName: 'Base', symbol: 'cbBTC', minimum: '0.0001194' }),
     ];
-    expect(resolveWalletDepositMinimum(arbitrum.id, 'WBTC', assets)).toBe('0.0001194');
+    expect(resolveWalletDepositMinimum(base.id, 'cbBTC', assets)).toBe('0.0001194');
   });
 
   it('does not take a published minimum from the wrong chain', () => {
@@ -288,16 +348,19 @@ describe('resolveWalletDepositSymbol', () => {
   it('carries a currency over to a chain that accepts it', () => {
     expect(resolveWalletDepositSymbol(base.id, 'USDC', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(base.id, 'USDT', ALL)).toBe('USDT');
-    expect(resolveWalletDepositSymbol(base.id, 'ETH', ALL)).toBe('ETH');
-    expect(resolveWalletDepositSymbol(arbitrum.id, 'WBTC', ALL)).toBe('WBTC');
+    expect(resolveWalletDepositSymbol(base.id, 'WETH', ALL)).toBe('WETH');
+    expect(resolveWalletDepositSymbol(base.id, 'cbBTC', ALL)).toBe('cbBTC');
+    expect(resolveWalletDepositSymbol(fuse.id, 'USDT', ALL)).toBe('USDT');
+    expect(resolveWalletDepositSymbol(mainnet.id, 'ETH', ALL)).toBe('ETH');
   });
 
   // Otherwise the screen would quote a minimum for a pairing that does not exist.
   it('falls back when the chain does not carry it', () => {
-    expect(resolveWalletDepositSymbol(polygon.id, 'ETH', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(base.id, 'ETH', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(base.id, 'FUSE', ALL)).toBe('USDC');
-    expect(resolveWalletDepositSymbol(fuse.id, 'ETH', ALL)).toBe('USDC');
-    expect(resolveWalletDepositSymbol(arbitrum.id, 'OP', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(fuse.id, 'WETH', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(fuse.id, 'cbBTC', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(arbitrum.id, 'cbBTC', WIREX)).toBe('USDC');
   });
 
   it("picks the chain's first currency when none was chosen yet", () => {
@@ -311,10 +374,9 @@ describe('resolveWalletDepositSymbol', () => {
 
 describe('getDefaultWalletDepositSelection', () => {
   /**
-   * Base: it carries nearly every currency on offer, at a fraction of
-   * Ethereum's gas. The address shown is the user's Safe on whichever chain is
-   * picked — it is not a bridge — so a deposit made on the default lands on the
-   * default.
+   * Base: it carries every currency on offer, at a fraction of Ethereum's gas.
+   * The address shown is the user's Safe on whichever chain is picked — it is
+   * not a bridge — so a deposit made on the default lands on the default.
    */
   it('opens on USDC over Base', () => {
     expect(getDefaultWalletDepositSelection()).toEqual({ chainId: base.id, symbol: 'USDC' });
@@ -332,27 +394,19 @@ describe('getAllWalletDepositTokens', () => {
     expect(new Set(symbols).size).toBe(symbols.length);
   });
 
-  // The design's order: stablecoins, gold and silver, then ETH first among the
-  // crypto, Mark's list after it, and the wrapped natives last.
+  // The design's order: stablecoins, then ETH first among the crypto, Mark's
+  // list after it, and the wrapped natives last.
   it('lists them in the order "Select token" shows them', () => {
     expect(symbolsOf(getAllWalletDepositTokens(ALL))).toEqual([
       'USDC',
       'USDT',
-      'PAXG',
-      'SLVx',
+      'EURC',
       'ETH',
-      'WBTC',
       'FUSE',
       'cbBTC',
-      'ZEC',
-      'UNI',
-      'NEAR',
-      'ENA',
+      'cbZEC',
       'AAVE',
       'SOL',
-      'WLD',
-      'ARB',
-      'OP',
       'WETH',
       'WFUSE',
     ]);
@@ -364,10 +418,9 @@ describe('getAllWalletDepositTokens', () => {
     );
     expect(names).toMatchObject({
       USDC: 'USD Coin',
-      PAXG: 'Gold',
-      SLVx: 'Silver',
-      WBTC: 'Wrapped Bitcoin',
       cbBTC: 'Coinbase Wrapped BTC',
+      cbZEC: 'Coinbase Wrapped ZEC',
+      WETH: 'Wrapped Ether',
       WFUSE: 'Wrapped FUSE',
     });
   });
@@ -377,10 +430,9 @@ describe('groupWalletDepositTokens', () => {
   it('puts each currency under its heading, in the design’s order', () => {
     const groups = groupWalletDepositTokens(getAllWalletDepositTokens(WIREX));
 
-    expect(groups.map(group => group.label)).toEqual(['Stablecoins', 'Gold & silver', 'Crypto']);
+    expect(groups.map(group => group.label)).toEqual(['Stablecoins', 'Crypto']);
     expect(symbolsOf(groups[0].tokens)).toEqual(['USDC', 'USDT', 'EURC']);
-    expect(symbolsOf(groups[1].tokens)).toEqual(['PAXG', 'SLVx']);
-    expect(groups[2].tokens[0].symbol).toBe('ETH');
+    expect(groups[1].tokens[0].symbol).toBe('ETH');
   });
 
   it('leaves out a group with nothing in it', () => {
@@ -398,18 +450,18 @@ describe('matchesWalletDepositSearch', () => {
     );
 
   it('matches a ticker, whatever the case', () => {
-    expect(search('btc')).toEqual(['WBTC', 'cbBTC']);
+    expect(search('btc')).toEqual(['cbBTC']);
     expect(search('USDC')).toEqual(['USDC']);
   });
 
   it('matches a name', () => {
-    expect(search('bitcoin')).toEqual(['WBTC', 'cbBTC']);
-    expect(search('gold')).toEqual(['PAXG']);
+    expect(search('bitcoin')).toEqual(['cbBTC']);
+    expect(search('coinbase')).toEqual(['cbBTC', 'cbZEC']);
     expect(search('solana')).toEqual(['SOL']);
   });
 
   it('matches what a person might type instead', () => {
-    expect(search('paxos')).toEqual(['PAXG']);
+    expect(search('zcash')).toEqual(['cbZEC']);
     expect(search('ethereum')).toEqual(['ETH']);
   });
 
@@ -421,44 +473,9 @@ describe('matchesWalletDepositSearch', () => {
 
 describe('getWalletDepositNetworksForToken', () => {
   it('only offers the chains that carry the currency', () => {
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', ALL))).toEqual([
-      mainnet.id,
-      base.id,
-      arbitrum.id,
-      optimism.id,
-      bsc.id,
-    ]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('WETH', ALL))).toEqual([
-      mainnet.id,
-      polygon.id,
-      base.id,
-      arbitrum.id,
-      optimism.id,
-    ]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', ALL))).toEqual([mainnet.id]);
     expect(chainIdsOf(getWalletDepositNetworksForToken('FUSE', ALL))).toEqual([fuse.id]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('OP', ALL))).toEqual([optimism.id]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ZEC', ALL))).toEqual([bsc.id]);
-  });
-
-  it('offers every network a stablecoin is on', () => {
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', ALL))).toEqual([
-      mainnet.id,
-      polygon.id,
-      base.id,
-      arbitrum.id,
-      optimism.id,
-      bsc.id,
-      fuse.id,
-    ]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDT', ALL))).toContain(base.id);
-  });
-
-  // A Wirex cardholder's stablecoins go through the pipeline, which mints no
-  // address on Optimism — offering it there would show an address that fails.
-  it("keeps a Wirex cardholder's stablecoins to the chains the pipeline mints on", () => {
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', WIREX))).not.toContain(optimism.id);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', WIREX))).toContain(optimism.id);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', RAIN))).toContain(optimism.id);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('cbZEC', ALL))).toEqual([base.id]);
   });
 
   it('offers every chain when no currency is chosen', () => {
@@ -467,74 +484,52 @@ describe('getWalletDepositNetworksForToken', () => {
 });
 
 describe('resolveWalletDepositChain', () => {
-  it('opens every currency Base carries on Base, unless it has a home of its own', () => {
+  it('opens every currency Base carries on Base', () => {
     expect(resolveWalletDepositChain('USDC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('USDT', undefined, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('ETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('WETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('cbBTC', undefined, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('WBTC', undefined, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('UNI', undefined, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('ENA', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('cbZEC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('AAVE', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('SOL', undefined, ALL)).toBe(base.id);
   });
 
-  it("opens a currency on its home chain, the one it's sent on", () => {
-    expect(resolveWalletDepositChain('ARB', undefined, ALL)).toBe(arbitrum.id);
-    expect(resolveWalletDepositChain('OP', undefined, ALL)).toBe(optimism.id);
-    expect(resolveWalletDepositChain('WLD', undefined, ALL)).toBe(optimism.id);
-    expect(resolveWalletDepositChain('PAXG', undefined, ALL)).toBe(mainnet.id);
-    expect(resolveWalletDepositChain('ZEC', undefined, ALL)).toBe(bsc.id);
-    expect(resolveWalletDepositChain('NEAR', undefined, ALL)).toBe(bsc.id);
-  });
-
-  it('opens the Fuse currencies on Fuse, the only chain carrying them', () => {
+  it('opens the rest on the one chain carrying them', () => {
+    expect(resolveWalletDepositChain('ETH', undefined, ALL)).toBe(mainnet.id);
     expect(resolveWalletDepositChain('FUSE', undefined, ALL)).toBe(fuse.id);
     expect(resolveWalletDepositChain('WFUSE', undefined, ALL)).toBe(fuse.id);
   });
 
   // Changing only the currency from the address screen should not move the chain.
   it('keeps the current chain when it carries the currency', () => {
+    expect(resolveWalletDepositChain('USDT', fuse.id, ALL)).toBe(fuse.id);
     expect(resolveWalletDepositChain('USDC', polygon.id, ALL)).toBe(polygon.id);
-    expect(resolveWalletDepositChain('ETH', mainnet.id, ALL)).toBe(mainnet.id);
-    expect(resolveWalletDepositChain('WBTC', arbitrum.id, ALL)).toBe(arbitrum.id);
+    expect(resolveWalletDepositChain('WETH', mainnet.id, ALL)).toBe(mainnet.id);
   });
 
   it('moves to Base when the current chain does not carry the currency', () => {
-    expect(resolveWalletDepositChain('ETH', polygon.id, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('WETH', polygon.id, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('cbBTC', fuse.id, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('WETH', arbitrum.id, WIREX)).toBe(base.id);
     expect(resolveWalletDepositChain('USDC', 999_999, ALL)).toBe(base.id);
   });
 });
 
 /**
- * The tokens and chains added with Optimism are rolled out to the internal team
- * first (`useDepositTokensAccess`). Until someone is given them, the screen
- * offers exactly what it did before: nothing they have not been offered may
- * appear, and nothing they had may go.
+ * cbBTC, cbZEC, AAVE and SOL are rolled out to the internal team first
+ * (`useDepositTokensAccess`). Until someone is given them, the screen offers
+ * only what everyone is offered.
  */
 describe('without the new deposit tokens', () => {
-  it('offers only the currencies everyone had', () => {
-    expect(symbolsOf(getAllWalletDepositTokens())).toEqual([
-      'USDC',
-      'USDT',
-      'ETH',
-      'FUSE',
-      'WETH',
-      'WFUSE',
-    ]);
-    expect(symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX }))).toEqual([
-      'USDC',
-      'USDT',
-      'EURC',
-      'ETH',
-      'FUSE',
-      'WETH',
-      'WFUSE',
-    ]);
+  it('offers only the currencies everyone is offered', () => {
+    const released = ['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WETH', 'WFUSE'];
+    expect(symbolsOf(getAllWalletDepositTokens())).toEqual(released);
+    expect(symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX }))).toEqual(
+      released,
+    );
   });
 
-  it('offers each on the chains it was offered on, and none on Optimism', () => {
+  it('offers each on the chains it is of use on', () => {
     expect(chainIdsOf(getWalletDepositNetworksForToken('USDC'))).toEqual([
       mainnet.id,
       polygon.id,
@@ -543,22 +538,20 @@ describe('without the new deposit tokens', () => {
       bsc.id,
       fuse.id,
     ]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH'))).toEqual([mainnet.id, base.id]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH'))).toEqual([mainnet.id]);
     expect(chainIdsOf(getWalletDepositNetworksForToken('WETH'))).toEqual([mainnet.id, base.id]);
-    expect(chainIdsOf(getWalletDepositNetworks({}))).not.toContain(optimism.id);
-    expect(getWalletDepositTokens(optimism.id)).toEqual([]);
   });
 
-  it('lists per chain what the screen listed before', () => {
-    expect(symbolsOf(getWalletDepositTokens(base.id))).toEqual(['USDC', 'USDT', 'ETH', 'WETH']);
+  it('lists per chain what lands of use there', () => {
+    expect(symbolsOf(getWalletDepositTokens(base.id))).toEqual(['USDC', 'USDT', 'EURC', 'WETH']);
     expect(symbolsOf(getWalletDepositTokens(mainnet.id))).toEqual(['USDC', 'USDT', 'ETH', 'WETH']);
     expect(symbolsOf(getWalletDepositTokens(polygon.id))).toEqual(['USDC', 'USDT']);
     expect(symbolsOf(getWalletDepositTokens(fuse.id))).toEqual(['USDC', 'USDT', 'FUSE', 'WFUSE']);
   });
 
-  it('moves a currency off a chain it is not offered on yet', () => {
+  it('moves a currency off a chain it is not offered on', () => {
     expect(resolveWalletDepositSymbol(optimism.id, 'USDC')).toBeUndefined();
-    expect(resolveWalletDepositChain('ETH', arbitrum.id)).toBe(base.id);
+    expect(resolveWalletDepositChain('ETH', arbitrum.id)).toBe(mainnet.id);
   });
 
   it('still opens on USDC over Base', () => {
@@ -567,36 +560,41 @@ describe('without the new deposit tokens', () => {
 });
 
 /**
- * EURC is offered to Wirex cardholders only, on Base only, and through the
- * minted address - the pipeline delivers it to their Safe on Base.
+ * EURC is offered to everyone, on Base only. A Wirex cardholder's goes through
+ * the minted address, which the pipeline delivers to their Safe on Base, where
+ * the card spends it on euro purchases; anyone else's lands in the Safe on Base,
+ * where soEUR takes it.
  */
 describe('EURC', () => {
-  it('is offered to Wirex cardholders only', () => {
-    expect(offersWalletDepositEurc(CardProvider.WIREX)).toBe(true);
-    expect(offersWalletDepositEurc(CardProvider.RAIN)).toBe(false);
-    expect(offersWalletDepositEurc(null)).toBe(false);
-    expect(offersWalletDepositEurc(undefined)).toBe(false);
+  it('is offered to everyone', () => {
+    [ALL, WIREX, RAIN, {}].forEach(viewer => {
+      expect(symbolsOf(getAllWalletDepositTokens(viewer))).toContain('EURC');
+      expect(symbolsOf(getWalletDepositTokens(base.id, viewer))).toContain('EURC');
+    });
   });
 
-  it('is left out unless the cardholder is Wirex', () => {
-    expect(symbolsOf(getAllWalletDepositTokens(ALL))).not.toContain('EURC');
-    expect(symbolsOf(getAllWalletDepositTokens(RAIN))).not.toContain('EURC');
-    expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).not.toContain('EURC');
+  it('goes through the pipeline for a Wirex cardholder alone', () => {
+    expect(usesDirectDepositAddress('EURC', CardProvider.WIREX)).toBe(true);
+    expect(usesDirectDepositAddress('EURC', CardProvider.RAIN)).toBe(false);
+    expect(usesDirectDepositAddress('EURC', null)).toBe(false);
   });
 
   it('follows the other stablecoins in "Select token"', () => {
-    const symbols = symbolsOf(getAllWalletDepositTokens(WIREX));
-    expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'PAXG']);
+    [ALL, WIREX].forEach(viewer => {
+      const symbols = symbolsOf(getAllWalletDepositTokens(viewer));
+      expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'ETH']);
+    });
   });
 
   it('is offered on Base only', () => {
-    expect(symbolsOf(getWalletDepositTokens(base.id, WIREX))).toContain('EURC');
-    expect(symbolsOf(getWalletDepositTokens(mainnet.id, WIREX))).not.toContain('EURC');
-    expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).toEqual([base.id]);
+    [ALL, WIREX].forEach(viewer => {
+      expect(symbolsOf(getWalletDepositTokens(mainnet.id, viewer))).not.toContain('EURC');
+      expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', viewer))).toEqual([base.id]);
+    });
   });
 
   it('opens on Base, whatever chain was showing', () => {
-    expect(resolveWalletDepositChain('EURC', undefined, WIREX)).toBe(base.id);
+    expect(resolveWalletDepositChain('EURC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('EURC', fuse.id, WIREX)).toBe(base.id);
   });
 
@@ -607,16 +605,59 @@ describe('EURC', () => {
 
 describe('isWalletDepositContract', () => {
   it('names each contract the screen offers, whatever the address case', () => {
-    expect(isWalletDepositContract(arbitrum.id, '0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f')).toBe(
+    expect(isWalletDepositContract(base.id, '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf')).toBe(
       true,
     );
-    expect(isWalletDepositContract(optimism.id, '0x4200000000000000000000000000000000000042')).toBe(
+    expect(isWalletDepositContract(base.id, '0xb2000000000000000000008501b13360000cb2ec')).toBe(
       true,
     );
   });
 
   it('matches on chain as well as address', () => {
-    expect(isWalletDepositContract(fuse.id, '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f')).toBe(
+    expect(isWalletDepositContract(bsc.id, '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf')).toBe(
+      false,
+    );
+  });
+
+  it('still names a contract the screen once offered, so what was sent then shows', () => {
+    // WETH on Arbitrum, Binance-Peg ETH, USDC on Optimism.
+    expect(isWalletDepositContract(arbitrum.id, '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')).toBe(
+      true,
+    );
+    expect(isWalletDepositContract(bsc.id, '0x2170Ed0880ac9A755fd29B2688956BD959F933F8')).toBe(
+      true,
+    );
+    expect(isWalletDepositContract(optimism.id, '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85')).toBe(
+      true,
+    );
+    // WBTC on Base and Arbitrum, OP, and PAXG on Ethereum.
+    expect(isWalletDepositContract(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(
+      true,
+    );
+    expect(isWalletDepositContract(arbitrum.id, '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f')).toBe(
+      true,
+    );
+    expect(isWalletDepositContract(optimism.id, '0x4200000000000000000000000000000000000042')).toBe(
+      true,
+    );
+    expect(isWalletDepositContract(mainnet.id, '0x45804880De22913dAFE09f4980848ECE6EcbAf78')).toBe(
+      true,
+    );
+  });
+
+  it('offers none of the contracts it only still names', () => {
+    const offered = (chainId: number, address: string) =>
+      WALLET_DEPOSIT_TOKENS.some(
+        token => token.contracts[chainId]?.toLowerCase() === address.toLowerCase(),
+      );
+    expect(offered(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(false);
+    expect(offered(arbitrum.id, '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')).toBe(false);
+    expect(offered(optimism.id, '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85')).toBe(false);
+  });
+
+  it('names no contract the screen never offered', () => {
+    // DAI on Ethereum.
+    expect(isWalletDepositContract(mainnet.id, '0x6B175474E89094C44Da98b954EedeAC495271d0F')).toBe(
       false,
     );
   });
