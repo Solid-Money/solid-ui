@@ -16,6 +16,7 @@ import {
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY,
 } from '@/lib/config';
 import { getUserErrorMessage } from '@/lib/errors';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
 import { getCardDepositTokenAddress, getCardFundingAddress } from '@/lib/utils';
@@ -292,7 +293,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
           amount: amount,
           from_chain: fuse.id,
           to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: sanitizeTechnicalMessage(error) || 'Unknown error',
           user_cancelled: String(error).includes('cancelled'),
           step: 'execution',
           source: 'useBridgeToCard',

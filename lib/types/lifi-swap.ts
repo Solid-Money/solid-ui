@@ -17,6 +17,14 @@ export interface SwapAssetWithBalance extends SwapAsset {
   /** Base units, for anything that has to be exact (max, funding checks). */
   balanceRaw: bigint;
   balanceUsd: number;
+  /** The wallet's USD price for one unit; 0 when it has none. */
+  priceUsd: number;
+  /**
+   * On the swap list (or the chain's native coin). A token the wallet holds
+   * that the list doesn't name can't be quoted: "You pay" shows it greyed out,
+   * "You get" leaves it out.
+   */
+  swappable: boolean;
 }
 
 /** Most received after fees, or quickest to arrive. */
@@ -65,6 +73,14 @@ export interface LifiSwapQuote {
   fees: LifiSwapFee[];
   gasCosts: { token: LifiSwapToken; amount: string; amountUsd: string | null }[];
   steps: { type: string; tool: string; name: string; logoURI?: string }[];
+  /**
+   * Every fee on the route as one figure (ours, LI.FI's, the bridges' and
+   * DEXes'); gas is sponsored and not in it. Null amounts when LI.FI left a
+   * fee unpriced. Absent from a backend that predates it.
+   */
+  totalFee?: { amountUsd: string | null; percentage: number | null };
+  /** The pair's smallest `fromAmount`, base units; null when unpriced. */
+  minFromAmount?: string | null;
   solidFee: {
     percentage: number;
     tierName: string;
@@ -76,6 +92,26 @@ export interface LifiSwapQuote {
     value: string;
     chainId: number;
   };
+}
+
+/** A token the "You get" picker can offer for one "You pay" token. */
+export interface LifiSwapDestination {
+  chainId: number;
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoURI?: string;
+  /** The smallest amount of the "You pay" token for this pair, base units. */
+  minFromAmount: string | null;
+}
+
+export interface LifiSwapDestinations {
+  fromChainId: number;
+  fromToken: string;
+  /** False when the backend couldn't read the route map and offered the whole list. */
+  routesChecked: boolean;
+  destinations: LifiSwapDestination[];
 }
 
 export type LifiSwapStatusValue = 'NOT_FOUND' | 'INVALID' | 'PENDING' | 'DONE' | 'FAILED';

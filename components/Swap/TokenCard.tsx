@@ -25,6 +25,8 @@ interface TokenCardProps {
   showMaxButton?: boolean;
   showBalance?: boolean;
   showNativeToken?: boolean;
+  /** Which side of the swap this card is; "You get" only offers swappable tokens. */
+  side?: 'pay' | 'get';
   disabled?: boolean;
   title?: string;
   isLoading?: boolean;
@@ -42,6 +44,7 @@ const TokenCard: React.FC<TokenCardProps> = ({
   showMaxButton,
   showBalance = true,
   showNativeToken = true,
+  side = 'pay',
   disabled,
   title,
   isLoading = false,
@@ -173,6 +176,7 @@ const TokenCard: React.FC<TokenCardProps> = ({
           currentAsset={asset}
           otherAsset={otherAsset}
           showNativeToken={showNativeToken}
+          side={side}
         />
       </View>
     </View>

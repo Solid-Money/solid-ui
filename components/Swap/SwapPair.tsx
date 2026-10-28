@@ -201,6 +201,7 @@ const SwapPair: React.FC = () => {
         fiatValue={fiatValueOutputFormatted ?? undefined}
         showBalance={false}
         title="To"
+        side="get"
         isLoading={tradeState.state === 'LOADING'}
       />
     </View>
