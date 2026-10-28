@@ -12,6 +12,12 @@ jest.mock('@/hooks/useVaultExchangeRate', () => ({ useVaultExchangeRate: jest.fn
 jest.mock('@/hooks/useMainCurrency', () => ({ useMainCurrency: jest.fn() }));
 
 const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const BASE_USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
+const CBBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
+const SOL = '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82';
+const AAVE = '0x63706e401c06ac8513145b7687A14804d17f814b';
+const CBZEC = '0xB2000000000000000000008501b13360000cb2EC';
 
 const token = (overrides: Partial<TokenBalance>): TokenBalance => ({
   contractTickerSymbol: 'USDC',
@@ -136,6 +142,69 @@ describe('buildSpendableAssetRows', () => {
       rows: [],
       totalUsd: 0,
       dollarUsd: 0,
+    });
+  });
+
+  /**
+   * The Base instance's list holds dollars and crypto as well as euros. Every address used to
+   * be filed under EURC, which would have called USDC, USDT and the collateral "EURC for euro
+   * purchases".
+   */
+  describe('the Base spend tokens', () => {
+    it("names each by its own address, in the backend's draw order", () => {
+      const assets = baseSpendableAssets([
+        BASE_USDC,
+        BASE_USDT,
+        EURC,
+        ADDRESSES.base.soEurcVault,
+        CBBTC,
+        SOL,
+        AAVE,
+        CBZEC,
+      ]);
+
+      expect(assets.map(asset => [asset.symbol, asset.qualifier])).toEqual([
+        ['USDC', undefined],
+        ['USDT', undefined],
+        ['EURC', 'for euro purchases'],
+        ['soEUR', 'for euro purchases'],
+        ['cbBTC', undefined],
+        ['SOL', undefined],
+        ['AAVE', undefined],
+        ['cbZEC', undefined],
+      ]);
+      expect(assets.every(asset => asset.chainIds?.[0] === base.id)).toBe(true);
+    });
+
+    it('leaves out an address this build cannot name rather than calling it EURC', () => {
+      expect(baseSpendableAssets(['0x000000000000000000000000000000000000dEaD', EURC])).toEqual([
+        expect.objectContaining({ symbol: 'EURC' }),
+      ]);
+    });
+
+    it('lists Base USDC as a dollar row and Bitcoin by name, in dollars, with its amount', () => {
+      const { rows, dollarUsd } = buildSpendableAssetRows(
+        [
+          token({ contractAddress: BASE_USDC, balance: '25000000', chainId: base.id }),
+          token({
+            contractTickerSymbol: 'cbBTC',
+            contractAddress: CBBTC,
+            balance: '120000',
+            contractDecimals: 8,
+            quoteRate: 80_000,
+            chainId: base.id,
+          }),
+        ],
+        baseSpendableAssets([BASE_USDC, CBBTC]),
+        undefined,
+      );
+
+      expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
+        ['usdc', 'USDC', undefined, '$25.00', undefined],
+        ['cbbtc', 'cbBTC', 'Bitcoin', '$960.00', '0.0012 cbBTC'],
+      ]);
+      // Bitcoin counts in the balance, not as dollars.
+      expect(dollarUsd).toBeCloseTo(25, 4);
     });
   });
 });

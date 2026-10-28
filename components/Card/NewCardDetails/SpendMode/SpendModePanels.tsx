@@ -105,6 +105,15 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  * (Figma "so-token / soUSD / badge dot").
  */
 const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+  if (icon === 'cbbtc' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
+    return (
+      <Image
+        accessible={false}
+        source={COLLATERAL_TOKEN_LOGO[icon]}
+        style={styles.collateralLogo}
+      />
+    );
+  }
   if (icon === 'usdc' || icon === 'eurc') {
     return (
       <Image

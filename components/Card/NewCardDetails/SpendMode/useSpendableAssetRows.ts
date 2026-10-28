@@ -10,8 +10,17 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { TokenBalance } from '@/lib/types';
 import { matchesAsset } from '@/lib/utils/cardSpendable';
 
-/** Which logo a "Spendable assets" row draws. */
-export type SpendableAssetIcon = 'usdc' | 'usdt' | 'sousd' | 'eurc' | 'soeur';
+/** Which logo a "Spendable assets" row draws. The last four are the crypto Base can sell. */
+export type SpendableAssetIcon =
+  | 'usdc'
+  | 'usdt'
+  | 'sousd'
+  | 'eurc'
+  | 'soeur'
+  | 'cbbtc'
+  | 'sol'
+  | 'aave'
+  | 'zec';
 
 /** One "Spendable assets" row (Figma 29144:9473, 29144:9483, 29144:9495). */
 export interface SpendableAssetRow {
@@ -27,7 +36,10 @@ export interface SpendableAssetRow {
   detail?: string;
   /** Dollars this row adds to the balance, or 0 when it cannot be priced. */
   usd: number;
-  /** Whether it pays for a dollar purchase — true for the Fuse set, false for the euro assets. */
+  /**
+   * Whether it is a dollar asset — USDC, USDT and soUSD on either chain — rather than a euro one
+   * or crypto, which a dollar purchase reaches only once the dollars are spent.
+   */
   isDollar: boolean;
 }
 
@@ -63,7 +75,25 @@ const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {
   soUSD: 'sousd',
   EURC: 'eurc',
   soEUR: 'soeur',
+  cbBTC: 'cbbtc',
+  SOL: 'sol',
+  AAVE: 'aave',
+  cbZEC: 'zec',
 };
+
+/** The crypto Base can sell, by name under its ticker. */
+const CRYPTO_NAME: Record<string, string> = {
+  cbBTC: 'Bitcoin',
+  SOL: 'Solana',
+  AAVE: 'Aave',
+  cbZEC: 'Zcash',
+};
+
+/** "0.0012" for a fraction of a coin, "1,234.5" for many: four significant figures below one. */
+const coinAmount = (amount: number): string =>
+  amount < 1
+    ? amount.toLocaleString('en-US', { maximumSignificantDigits: 4 })
+    : amount.toLocaleString('en-US', { maximumFractionDigits: 4 });
 
 /**
  * The breakdown under "Your balance", in the order the card draws from: one row per spendable
@@ -132,6 +162,24 @@ export const buildSpendableAssetRows = (
             subtitle: 'Euro purchases',
             value: money(amount, 'EUR'),
             detail: usd > 0 ? `≈ ${money(usd, 'USD')}` : undefined,
+            usd,
+            isDollar: false,
+          },
+        ];
+      }
+      case 'cbbtc':
+      case 'sol':
+      case 'aave':
+      case 'zec': {
+        const usd = matching.reduce((sum, token) => sum + usdOf(token), 0);
+        return [
+          {
+            key,
+            icon,
+            name: asset.symbol!,
+            subtitle: CRYPTO_NAME[asset.symbol!],
+            value: money(usd, 'USD'),
+            detail: `${coinAmount(amount)} ${asset.symbol}`,
             usd,
             isDollar: false,
           },
