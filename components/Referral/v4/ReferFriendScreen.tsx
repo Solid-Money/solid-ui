@@ -50,12 +50,17 @@ const RewardRow = ({
   <View
     className="flex-row items-center gap-3 py-[14px]"
     accessible
-    accessibilityLabel={`${title}, ${line.subtitle}, ${formatUsdCents(amountUsd)}`}
+    accessibilityLabel={[title, line.subtitle, line.note, formatUsdCents(amountUsd)]
+      .filter(Boolean)
+      .join(', ')}
   >
     <RewardIcon kind={kind} size={36} />
     <View className="min-w-0 flex-1 gap-[3px]">
       <Text className="text-[15px] font-medium text-white">{title}</Text>
       <Text className="text-[13px] text-white/50">{line.subtitle}</Text>
+      {line.note ? (
+        <Text className="text-[12px] leading-[16px] text-white/40">{line.note}</Text>
+      ) : null}
       {line.progress !== null ? <ReferProgressBar ratio={line.progress} /> : null}
     </View>
     <Text
@@ -194,7 +199,7 @@ export default function ReferFriendScreen({ friendId }: { friendId: string | und
               <RewardRow
                 kind="spendShare"
                 title="Spend share"
-                line={spendShareLine(friend.spendShare, friend.stage)}
+                line={spendShareLine(friend.spendShare, friend.stage, terms)}
                 amountUsd={friend.spendShare.earnedUsd}
               />
               <ReferDivider />

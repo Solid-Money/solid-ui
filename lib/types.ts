@@ -3758,7 +3758,12 @@ export type ReferralV4RewardStatus =
   /** Country rule. */
   | 'excluded'
   /** Refunded, fraud or rejected. */
-  | 'cancelled';
+  | 'cancelled'
+  /**
+   * Credited, then the purchases that qualified it were refunded back under the
+   * target: the amount is owed back, out of later rewards (see `debt`).
+   */
+  | 'reversed';
 
 export type ReferralV4BoostStep = 'welcome' | 'big_spender' | 'upgrade';
 
@@ -3772,10 +3777,23 @@ export interface ReferralV4Boost {
   sides: 'both' | 'referrer' | 'friend';
 }
 
+/**
+ * The program's live settings, admin-managed. Every number the referral screens
+ * show comes from here. Fields marked "absent on older backends" arrived later
+ * and are read defensively.
+ */
 export interface ReferralV4Terms {
-  /** The kill switch: false means the app keeps today's referral program. */
+  /**
+   * Open to new signups. The app shows v4 only while this is on, and keeps
+   * today's referral program otherwise.
+   */
   enabled: boolean;
   launchAt: string | null;
+  /**
+   * The incident switch: nothing is credited or paid while it is on, but
+   * friends keep earning and nothing is lost. Absent on older backends.
+   */
+  paused?: boolean;
   welcome: {
     referrerUsd: number;
     friendUsd: number;
@@ -3796,13 +3814,39 @@ export interface ReferralV4Terms {
     ultraLockFuse: number;
     lockHoldDays: number;
   };
-  /** `payoutWeekday` is 0 = Sunday … 4 = Thursday, like `Date.getUTCDay`. */
-  spendShare: { rate: number; capPerFriendUsd: number; payoutWeekday: number };
+  spendShare: {
+    rate: number;
+    capPerFriendUsd: number;
+    /** The weekly payout run's weekday in UTC: 0 = Sunday … 6, like `Date.getUTCDay`. */
+    payoutWeekday: number;
+    /** The payout run's hour, UTC (0–23). Absent on older backends. */
+    payoutHourUtc?: number;
+    /** A week's transfer smaller than this waits for a later week. Absent on older backends. */
+    minWeeklyPayoutUsd?: number;
+  };
   holdDays: number;
-  bonusLimit: { enabled: boolean; base: number; perActiveFriend: number; activeSpendUsd: number };
+  bonusLimit: {
+    enabled: boolean;
+    base: number;
+    perActiveFriend: number;
+    activeSpendUsd: number;
+    /**
+     * The friend's "second month", in days after signup: spending
+     * `activeSpendUsd` in [`monthTwoFromDays`, `monthTwoToDays`) grows the
+     * limit. Absent on older backends.
+     */
+    monthTwoFromDays?: number;
+    monthTwoToDays?: number;
+  };
   excludedCountries: string[];
   /** The boost running right now, if any. */
   boost: ReferralV4Boost | null;
+  /**
+   * A credited welcome or big spender bonus whose qualifying purchases are
+   * refunded within `watchDays` of crediting is reversed. Absent on older
+   * backends, which never reverse one.
+   */
+  clawback?: { enabled: boolean; watchDays: number };
 }
 
 export interface ReferralV4StepView {
@@ -3815,25 +3859,33 @@ export interface ReferralV4StepView {
   /** Welcome only. */
   merchantCount?: number;
   merchantTarget?: number;
-  /** Window end: welcome is signup + 30 days, big spender signup + 90. */
+  /** Window end: signup + the step's `windowDays`. */
   deadlineAt?: string;
   earnedAt?: string;
-  /** `on_hold` → credited at the first Thursday run at or after this. */
+  /** `on_hold` → credited at the first payout run at or after this. */
   unlocksAt?: string;
   creditedAt?: string;
+  /** When a credited bonus was reversed (`status: 'reversed'`). */
+  reversedAt?: string;
+  /** The part of this bonus that went to repay a reversed one, rather than to the user. */
+  offsetUsd?: number;
 }
 
 export interface ReferralV4UpgradeView {
   status: ReferralV4RewardStatus;
-  /** 20 or 100: the total earned or earnable from this friend's upgrade. */
+  /** Prime's or Ultra's amount: the total earned or earnable from this friend's upgrade. */
   amountUsd: number;
   tier: 'prime' | 'ultra' | null;
   via: 'paid' | 'lock' | null;
-  /** Lock route: when the 90-day lock hold completes. */
+  /** Lock route: when the lock has been held for `upgrade.lockHoldDays`. */
   lockEligibleAt?: string;
   earnedAt?: string;
   unlocksAt?: string;
   creditedAt?: string;
+  /** When a credited bonus was reversed (`status: 'reversed'`). */
+  reversedAt?: string;
+  /** The part of this bonus that went to repay a reversed one, rather than to the user. */
+  offsetUsd?: number;
 }
 
 export type ReferralV4FriendStage =
@@ -3862,7 +3914,7 @@ export interface ReferralV4FriendRow {
   earnedUsd: number;
   /** Earned but not yet credited (on hold, over the limit, in review). */
   onHoldUsd: number;
-  /** 2000 on v4; the legacy reward amount on legacy rows. */
+  /** The per-friend cap on v4; the legacy reward amount on legacy rows. */
   capUsd: number;
   countryExcluded: boolean;
   spendShare: { earnedUsd: number; thisWeekUsd: number };
@@ -3893,9 +3945,9 @@ export interface ReferralV4Summary {
     thisMonthUsd: number;
     /** Earned, not yet credited. */
     onHoldUsd: number;
-    /** Accrued for the current week, paid next Thursday. */
+    /** Accrued for the current week, paid in the next payout run. */
     pendingSpendShareUsd: number;
-    /** The next Thursday payout run. */
+    /** The next weekly payout run. */
     nextPayoutAt: string;
   };
   rewards: {
@@ -3913,12 +3965,18 @@ export interface ReferralV4Summary {
   asFriend: {
     referrerUsername: string;
     program: ReferralV4Program;
-    /** `amountUsd` is the friend's side ($10). */
+    /** `amountUsd` is the friend's side (`terms.welcome.friendUsd`). */
     welcome: ReferralV4StepView;
-    /** `amountUsd` is the friend's side ($50). */
+    /** `amountUsd` is the friend's side (`terms.bigSpender.friendUsd`). */
     bigSpender: ReferralV4StepView;
   } | null;
   hasActiveCard: boolean;
+  /**
+   * What this user owes back for reversed bonuses, recovered from their later
+   * bonuses and spend share — never from card credit. Null when nothing is
+   * owed; absent on older backends.
+   */
+  debt?: { remainingUsd: number; reversedCount: number } | null;
 }
 
 /**

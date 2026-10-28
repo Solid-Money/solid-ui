@@ -170,6 +170,14 @@ export const ReferList = ({ children, className }: { children: ReactNode; classN
   </View>
 );
 
+/**
+ * A quiet line under a card — payouts paused, a reversed bonus being repaid —
+ * in the screens' note style: small, dimmed, no surface of its own.
+ */
+export const ReferNote = ({ children }: { children: string }) => (
+  <Text className="px-1 text-[13px] leading-[18px] text-white/50">{children}</Text>
+);
+
 /** The green amount chip under a sheet's title. */
 export const ReferAmountChip = ({ label }: { label: string }) => (
   <View className="rounded-full bg-[rgba(148,242,127,0.14)] px-[14px] py-[7px]">

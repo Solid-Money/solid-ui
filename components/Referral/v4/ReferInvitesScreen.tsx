@@ -49,9 +49,10 @@ const FriendRow = ({
         <Text className="text-[15px] font-medium text-white" numberOfLines={1}>
           {name}
         </Text>
+        {/* Two lines: a reversed bonus says why. */}
         <Text
           className={cn('text-[13px]', status.tone === 'accent' ? 'text-brand' : 'text-white/50')}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {status.text}
         </Text>
@@ -67,8 +68,8 @@ const FriendRow = ({
 
 /**
  * Every friend the user has invited and what each one has earned them (Figma
- * 29601:13329): the total, this month and the next Thursday payout, then one
- * row per friend with what they are doing right now.
+ * 29601:13329): the total, this month and the next payout, then one row per
+ * friend with what they are doing right now.
  */
 export default function ReferInvitesScreen() {
   const { user } = useUser();
@@ -143,8 +144,9 @@ export default function ReferInvitesScreen() {
             </View>
             <View className="flex-1 gap-0.5">
               <Text className="text-[13px] text-white/50">Next payout</Text>
+              {/* No date while payouts are switched off: there is no next one yet. */}
               <Text className="text-[16px] font-semibold text-white">
-                {formatPayoutDay(totals.nextPayoutAt) || '—'}
+                {terms.paused ? 'Paused' : formatPayoutDay(totals.nextPayoutAt) || '—'}
               </Text>
             </View>
           </View>

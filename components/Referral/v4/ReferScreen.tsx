@@ -12,10 +12,14 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import {
   asFriendProgressLine,
+  asFriendReversedLine,
+  debtLine,
   formatRate,
   formatUsdCents,
   formatUsdWhole,
   isReferralV4Live,
+  pausedNote,
+  REVERSED_REASON,
 } from '@/lib/referral/referralV4';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +30,7 @@ import {
   FriendAvatar,
   ReferHeader,
   ReferIcon,
+  ReferNote,
   ReferProgressBar,
   type ReferRewardKind,
   RewardIcon,
@@ -134,22 +139,33 @@ const InvitesRow = ({ summary }: { summary: ReferralV4Summary }) => {
   );
 };
 
-/** The user's own invite, while their welcome credit is still to earn. */
+/**
+ * The user's own invite: while their welcome credit is still to earn, or once
+ * one of their bonuses was reversed.
+ */
 const AsFriendCard = ({ summary }: { summary: ReferralV4Summary }) => {
   const line = asFriendProgressLine(summary.asFriend, summary.terms);
-  if (!summary.asFriend || !line) return null;
+  const reversed = line ? null : asFriendReversedLine(summary.asFriend);
+  if (!summary.asFriend || (!line && !reversed)) return null;
   const { welcome } = summary.asFriend;
   const target = welcome.targetUsd ?? summary.terms.welcome.spendTargetUsd;
 
   return (
     <View className="mx-4 mt-5 flex-row gap-3 overflow-hidden rounded-[20px] bg-card p-4">
-      <RewardIcon kind="welcome" size={36} />
+      <RewardIcon kind={reversed?.step ?? 'welcome'} size={36} />
       <View className="min-w-0 flex-1 gap-1">
         <Text className="text-[13px] text-white/50">
           {summary.asFriend.referrerUsername} invited you
         </Text>
-        <Text className="text-[15px] leading-[20px] text-white">{line}</Text>
-        {welcome.status === 'in_progress' && target > 0 ? (
+        {reversed ? (
+          <>
+            <Text className="text-[15px] leading-[20px] text-white/60">{reversed.text}</Text>
+            <Text className="text-[13px] leading-[18px] text-white/40">{REVERSED_REASON}</Text>
+          </>
+        ) : (
+          <Text className="text-[15px] leading-[20px] text-white">{line}</Text>
+        )}
+        {!reversed && welcome.status === 'in_progress' && target > 0 ? (
           <ReferProgressBar ratio={(welcome.progressUsd ?? 0) / target} className="mt-1" />
         ) : null}
       </View>
@@ -195,6 +211,8 @@ export default function ReferScreen() {
   const { terms, rewards } = summary;
   const code = summary.referralCode || user?.referralCode || '';
   const earned = (amount: number) => (hasInvites ? amount : null);
+  const paused = pausedNote(terms);
+  const debt = debtLine(summary.debt);
 
   return (
     <PageLayout desktopOnly scrollable={false}>
@@ -293,6 +311,8 @@ export default function ReferScreen() {
             </View>
 
             <TotalsCard summary={summary} />
+            {paused ? <ReferNote>{paused}</ReferNote> : null}
+            {debt ? <ReferNote>{debt}</ReferNote> : null}
             {hasInvites ? <InvitesRow summary={summary} /> : null}
           </View>
         </ScrollView>

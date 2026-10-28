@@ -19,6 +19,21 @@ import type {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * The only program numbers the app knows on its own: the launch terms (the
+ * backend's `REFERRAL_V4_DEFAULTS`), for wording copy before `terms` has loaded
+ * or when an older backend leaves a newer field out. Everything else the
+ * screens say comes from `terms`.
+ */
+export const REFERRAL_V4_TERMS_FALLBACK = {
+  spendShareRate: 0.01,
+  /** Thursday — 0 is Sunday, as in `ReferralV4Terms['spendShare']['payoutWeekday']`. */
+  payoutWeekday: 4,
+  payoutHourUtc: 10,
+  monthTwoFromDays: 30,
+  monthTwoToDays: 60,
+} as const;
+
 /** True when the referral v4 program is live for this user. */
 export const isReferralV4Live = (summary: ReferralV4Summary | null | undefined): boolean =>
   summary?.terms?.enabled === true;
@@ -39,6 +54,116 @@ export const formatUsdShort = (value: number): string => {
 
 /** "1%" from 0.01; "1.5%" from 0.015. */
 export const formatRate = (rate: number): string => `${Math.round((rate || 0) * 10000) / 100}%`;
+
+/** The spend share rate, "1%" — the launch rate until the terms have loaded. */
+const spendShareRate = (terms: ReferralV4Terms | null | undefined): string =>
+  formatRate(terms?.spendShare?.rate ?? REFERRAL_V4_TERMS_FALLBACK.spendShareRate);
+
+const WEEKDAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const;
+const MINUTES_PER_DAY = 24 * 60;
+const MINUTES_PER_WEEK = 7 * MINUTES_PER_DAY;
+
+const wholeInRange = (value: unknown, min: number, max: number): number | null =>
+  typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
+    ? value
+    : null;
+
+/**
+ * The weekday the payout run lands on where the user is: "Thursday".
+ *
+ * The terms give the run's weekday (0 = Sunday) and hour in UTC, and a run late
+ * on a UTC Thursday is already Friday further east — so the day is worked out in
+ * the device's time zone. `utcOffsetMinutes` is east-positive (UTC+2 is 120);
+ * it defaults to the device's and is only passed by tests.
+ */
+export const payoutWeekdayName = (
+  terms: ReferralV4Terms | null | undefined,
+  utcOffsetMinutes: number = -new Date().getTimezoneOffset(),
+): string => {
+  const weekday =
+    wholeInRange(terms?.spendShare?.payoutWeekday, 0, 6) ??
+    REFERRAL_V4_TERMS_FALLBACK.payoutWeekday;
+  const hour =
+    wholeInRange(terms?.spendShare?.payoutHourUtc, 0, 23) ??
+    REFERRAL_V4_TERMS_FALLBACK.payoutHourUtc;
+  const minutes = weekday * MINUTES_PER_DAY + hour * 60 + (utcOffsetMinutes || 0);
+  const local = ((minutes % MINUTES_PER_WEEK) + MINUTES_PER_WEEK) % MINUTES_PER_WEEK;
+  return WEEKDAYS[Math.floor(local / MINUTES_PER_DAY)];
+};
+
+/** "Thursdays" — "paid Thursdays". */
+export const payoutWeekdayPlural = (
+  terms: ReferralV4Terms | null | undefined,
+  utcOffsetMinutes?: number,
+): string => `${payoutWeekdayName(terms, utcOffsetMinutes)}s`;
+
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'] as const;
+const DAYS_PER_MONTH = 30;
+
+/**
+ * When a friend's spending grows the bonus limit, from the terms' window of
+ * days after signup: "in their second month" for days 30–60, the days
+ * themselves for a window that isn't a whole month.
+ */
+export const monthTwoPhrase = (bonusLimit: ReferralV4Terms['bonusLimit'] | undefined): string => {
+  let from = wholeInRange(bonusLimit?.monthTwoFromDays, 0, Number.MAX_SAFE_INTEGER);
+  let to = wholeInRange(bonusLimit?.monthTwoToDays, 0, Number.MAX_SAFE_INTEGER);
+  // The backend falls back to both defaults when the window is empty; so does this.
+  if (from === null || to === null || to <= from) {
+    from = REFERRAL_V4_TERMS_FALLBACK.monthTwoFromDays;
+    to = REFERRAL_V4_TERMS_FALLBACK.monthTwoToDays;
+  }
+  const ordinal =
+    to - from === DAYS_PER_MONTH && from % DAYS_PER_MONTH === 0
+      ? ORDINALS[from / DAYS_PER_MONTH]
+      : undefined;
+  return ordinal
+    ? `in their ${ordinal} month`
+    : `between day ${from} and day ${to} after they join`;
+};
+
+/** Refer & Earn's note while payouts are switched off. Null while they run. */
+export const pausedNote = (terms: ReferralV4Terms | null | undefined): string | null =>
+  terms?.paused === true ? 'Payouts are paused for now — everything you earn is kept.' : null;
+
+/** A reversed bonus, wherever one is shown: the label, and why. */
+export const REVERSED_LABEL = 'Reversed';
+export const REVERSED_REASON = 'The qualifying purchase was refunded.';
+/** Both on one line, for list rows. */
+export const REVERSED_ROW_TEXT = 'Reversed · the qualifying purchase was refunded';
+
+/**
+ * "$4 of this went to cover a reversed bonus" — under a bonus part of which
+ * repaid one that was reversed. Null when none of it did.
+ */
+export const offsetNote = (offsetUsd: number | null | undefined): string | null =>
+  typeof offsetUsd === 'number' && offsetUsd > 0
+    ? `${formatUsdShort(offsetUsd)} of this went to cover a reversed bonus`
+    : null;
+
+/**
+ * The one line Refer & Earn shows while the user owes back reversed bonuses.
+ * Only what is still owed is known, so the bonus itself goes unpriced; and no
+ * date — when an unrecovered debt is written off is never shown to users.
+ * Null when nothing is owed.
+ */
+export const debtLine = (debt: ReferralV4Summary['debt']): string | null => {
+  if (!debt || !(debt.remainingUsd > 0)) return null;
+  const count = Math.max(1, Math.round(debt.reversedCount || 0));
+  const reversed =
+    count === 1
+      ? 'A bonus was reversed because the qualifying purchase was refunded.'
+      : `${count} bonuses were reversed because the qualifying purchases were refunded.`;
+  return `${reversed} ${formatUsdShort(debt.remainingUsd)} will come out of your next rewards.`;
+};
 
 const toDate = (iso: string | null | undefined): Date | null => {
   if (!iso) return null;
@@ -204,9 +329,8 @@ export const friendStatusLine = (
   }
 
   if (row.stage === 'earning') {
-    const rate = terms ? formatRate(terms.spendShare.rate) : '1%';
     return {
-      text: `Earning ${rate} · +${formatUsdShort(row.spendShare.thisWeekUsd)} this week`,
+      text: `Earning ${spendShareRate(terms)} · +${formatUsdShort(row.spendShare.thisWeekUsd)} this week`,
       tone: 'accent',
     };
   }
@@ -218,21 +342,32 @@ export const friendStatusLine = (
   }
   const unlocking = unlockingLine(row);
   if (unlocking) return { text: unlocking, tone: 'muted' };
+  if ([row.welcome, row.bigSpender, row.upgrade].some(step => step.status === 'reversed')) {
+    return { text: REVERSED_ROW_TEXT, tone: 'muted' };
+  }
   if (row.stage === 'idle') return { text: 'No purchases this week', tone: 'muted' };
   return { text: 'Card active', tone: 'muted' };
 };
 
-export type RewardAmountTone = 'earned' | 'pending';
+export type RewardAmountTone = 'earned' | 'pending' | 'reversed';
 
 export interface RewardStepLine {
   subtitle: string;
+  /** A second, smaller line: why a bonus was reversed, or what part of it repaid one. */
+  note: string | null;
   /** 0–1 when the row shows a progress bar. */
   progress: number | null;
-  /** Earned amounts are green; anything not yet earned is dimmed. */
+  /** Earned amounts are green; anything not (or no longer) earned is dimmed. */
   amountTone: RewardAmountTone;
 }
 
 const isPaidOut = (status: ReferralV4RewardStatus) => status === 'credited' || status === 'paid';
+
+const stepLine = (
+  subtitle: string,
+  amountTone: RewardAmountTone,
+  extra: Partial<Pick<RewardStepLine, 'note' | 'progress'>> = {},
+): RewardStepLine => ({ subtitle, note: null, progress: null, amountTone, ...extra });
 
 /** The status lines every step shares, or null when the step needs its own. */
 const commonStepLine = (
@@ -242,34 +377,36 @@ const commonStepLine = (
   switch (status) {
     case 'credited':
     case 'paid':
-      return {
-        subtitle: `Earned ${formatShortDay(dates.earnedAt ?? dates.creditedAt)}`.trim(),
-        progress: null,
-        amountTone: 'earned',
-      };
+      return stepLine(
+        `Earned ${formatShortDay(dates.earnedAt ?? dates.creditedAt)}`.trim(),
+        'earned',
+      );
     case 'on_hold':
-      return {
-        subtitle: dates.unlocksAt ? `Unlocks ${formatShortDay(dates.unlocksAt)}` : 'Unlocking',
-        progress: null,
-        amountTone: 'pending',
-      };
+      return stepLine(
+        dates.unlocksAt ? `Unlocks ${formatShortDay(dates.unlocksAt)}` : 'Unlocking',
+        'pending',
+      );
     case 'limit_reached':
-      return {
-        subtitle: 'Earned · paid when your bonus limit grows',
-        progress: null,
-        amountTone: 'pending',
-      };
+      return stepLine('Earned · paid when your bonus limit grows', 'pending');
     case 'under_review':
-      return { subtitle: 'Earned · in review', progress: null, amountTone: 'pending' };
+      return stepLine('Earned · in review', 'pending');
     case 'expired':
-      return { subtitle: 'Expired', progress: null, amountTone: 'pending' };
+      return stepLine('Expired', 'pending');
     case 'excluded':
-      return { subtitle: 'Not available in their country', progress: null, amountTone: 'pending' };
+      return stepLine('Not available in their country', 'pending');
     case 'cancelled':
-      return { subtitle: 'Cancelled', progress: null, amountTone: 'pending' };
+      return stepLine('Cancelled', 'pending');
+    case 'reversed':
+      return stepLine(REVERSED_LABEL, 'reversed', { note: REVERSED_REASON });
     default:
       return null;
   }
+};
+
+/** Adds the "went to cover a reversed bonus" note to a step that has one to show. */
+const withOffsetNote = (current: RewardStepLine, step: { offsetUsd?: number }): RewardStepLine => {
+  const note = current.note ?? offsetNote(step.offsetUsd);
+  return note === current.note ? current : { ...current, note };
 };
 
 const ratio = (progress: number | undefined, target: number | undefined) =>
@@ -282,7 +419,7 @@ export const welcomeStepLine = (
   now: number = Date.now(),
 ): RewardStepLine => {
   const common = commonStepLine(step.status, step);
-  if (common) return common;
+  if (common) return withOffsetNote(common, step);
 
   const target = step.targetUsd ?? terms?.welcome.spendTargetUsd ?? 0;
   const merchantTarget = step.merchantTarget ?? terms?.welcome.merchantTarget ?? 0;
@@ -294,21 +431,18 @@ export const welcomeStepLine = (
       merchantTarget > 0 ? `${step.merchantCount ?? 0} of ${merchantTarget} shops` : null,
       days === null ? null : formatDaysLeft(days),
     ].filter(Boolean);
-    return {
-      subtitle: parts.join(' · '),
+    return stepLine(parts.join(' · '), 'pending', {
       progress: ratio(step.progressUsd, target),
-      amountTone: 'pending',
-    };
+    });
   }
 
   const windowDays = terms?.welcome.windowDays;
-  return {
-    subtitle: `Spend ${formatUsdWhole(target)}${
+  return stepLine(
+    `Spend ${formatUsdWhole(target)}${
       merchantTarget > 0 ? ` at ${merchantTarget} shops` : ''
     }${windowDays ? ` in ${windowDays} days` : ''}`,
-    progress: null,
-    amountTone: 'pending',
-  };
+    'pending',
+  );
 };
 
 /** Friend detail: the big spender bonus row. */
@@ -318,26 +452,25 @@ export const bigSpenderStepLine = (
   now: number = Date.now(),
 ): RewardStepLine => {
   const common = commonStepLine(step.status, step);
-  if (common) return common;
+  if (common) return withOffsetNote(common, step);
 
   const target = step.targetUsd ?? terms?.bigSpender.spendTargetUsd ?? 0;
   if (step.status === 'in_progress') {
     const days = daysUntil(step.deadlineAt, now);
-    return {
-      subtitle: `${formatUsdWhole(step.progressUsd ?? 0)} of ${formatUsdWhole(target)}${
+    return stepLine(
+      `${formatUsdWhole(step.progressUsd ?? 0)} of ${formatUsdWhole(target)}${
         days === null ? '' : ` · ${formatDaysLeft(days)}`
       }`,
-      progress: ratio(step.progressUsd, target),
-      amountTone: 'pending',
-    };
+      'pending',
+      { progress: ratio(step.progressUsd, target) },
+    );
   }
 
   const windowDays = terms?.bigSpender.windowDays;
-  return {
-    subtitle: `Spend ${formatUsdWhole(target)}${windowDays ? ` in ${windowDays} days` : ''}`,
-    progress: null,
-    amountTone: 'pending',
-  };
+  return stepLine(
+    `Spend ${formatUsdWhole(target)}${windowDays ? ` in ${windowDays} days` : ''}`,
+    'pending',
+  );
 };
 
 const TIER_NAMES = { prime: 'Prime', ultra: 'Ultra' } as const;
@@ -351,45 +484,40 @@ export const upgradeStepLine = (
 
   if (isPaidOut(step.status) && tier) {
     const day = formatShortDay(step.earnedAt ?? step.creditedAt);
-    return {
-      subtitle: `Got ${tier}${day ? ` on ${day}` : ''}`,
-      progress: null,
-      amountTone: 'earned',
-    };
+    return withOffsetNote(stepLine(`Got ${tier}${day ? ` on ${day}` : ''}`, 'earned'), step);
   }
 
   const common = commonStepLine(step.status, step);
-  if (common) return common;
+  if (common) return withOffsetNote(common, step);
 
   // The FUSE-lock route counts once the lock has held long enough.
   if (step.status === 'in_progress' && step.via === 'lock' && step.lockEligibleAt) {
     const days = daysUntil(step.lockEligibleAt, now);
-    return {
-      subtitle: `${tier ?? 'FUSE'} lock · counts ${
-        days ? `in ${days} ${plural(days, 'day', 'days')}` : 'soon'
-      }`,
-      progress: null,
-      amountTone: 'pending',
-    };
+    return stepLine(
+      `${tier ?? 'FUSE'} lock · counts ${days ? `in ${days} ${plural(days, 'day', 'days')}` : 'soon'}`,
+      'pending',
+    );
   }
 
-  return { subtitle: 'When they get Prime or Ultra', progress: null, amountTone: 'pending' };
+  return stepLine('When they get Prime or Ultra', 'pending');
 };
 
-/** Friend detail: the spend share row. */
+/** Friend detail: the spend share row, paid on the terms' payout day. */
 export const spendShareLine = (
   spendShare: { earnedUsd: number; thisWeekUsd: number },
   stage: ReferralV4FriendRow['stage'],
-): RewardStepLine => ({
-  subtitle:
+  terms?: ReferralV4Terms,
+): RewardStepLine => {
+  const paidOn = payoutWeekdayPlural(terms);
+  return stepLine(
     stage === 'capped'
       ? 'Reached the limit for this friend'
       : spendShare.thisWeekUsd > 0
-        ? `+${formatUsdShort(spendShare.thisWeekUsd)} this week · paid Thursdays`
-        : 'Paid Thursdays',
-  progress: null,
-  amountTone: spendShare.earnedUsd > 0 ? 'earned' : 'pending',
-});
+        ? `+${formatUsdShort(spendShare.thisWeekUsd)} this week · paid ${paidOn}`
+        : `Paid ${paidOn}`,
+    spendShare.earnedUsd > 0 ? 'earned' : 'pending',
+  );
+};
 
 /**
  * The friend's own welcome progress, on the Refer screen of someone who was
@@ -416,6 +544,28 @@ export const asFriendProgressLine = (
     `to get ${formatUsdWhole(step.amountUsd)} card credit`,
   ].filter(Boolean);
   return parts.join(' ');
+};
+
+/**
+ * The invited user's own bonus, on their Refer screen, once it was reversed:
+ * "$10 welcome bonus · Reversed". Null when neither of theirs was.
+ */
+export const asFriendReversedLine = (
+  asFriend: ReferralV4Summary['asFriend'],
+): { step: 'welcome' | 'bigSpender'; text: string } | null => {
+  if (!asFriend || asFriend.program !== 'v4') return null;
+  const reversed = (
+    [
+      { step: 'welcome', view: asFriend.welcome, name: 'welcome bonus' },
+      { step: 'bigSpender', view: asFriend.bigSpender, name: 'big spender bonus' },
+    ] as const
+  ).find(({ view }) => view?.status === 'reversed');
+  return reversed
+    ? {
+        step: reversed.step,
+        text: `${formatUsdWhole(reversed.view.amountUsd)} ${reversed.name} · ${REVERSED_LABEL}`,
+      }
+    : null;
 };
 
 /** Progress toward the per-friend cap, 0–1. */

@@ -8,6 +8,9 @@ import {
   formatUsdShort,
   formatUsdWhole,
   friendName,
+  payoutWeekdayName,
+  payoutWeekdayPlural,
+  REVERSED_ROW_TEXT,
 } from '@/lib/referral/referralV4';
 import { cn } from '@/lib/utils';
 
@@ -53,9 +56,9 @@ export const rewardCopy = (
         chip: `${formatRate(terms.spendShare.rate)} of spend`,
         description: `Get ${formatRate(
           terms.spendShare.rate,
-        )} of everything your friend spends with their card. Paid every Thursday, up to ${formatUsdWhole(
-          terms.spendShare.capPerFriendUsd,
-        )} per friend.`,
+        )} of everything your friend spends with their card. Paid every ${payoutWeekdayName(
+          terms,
+        )}, up to ${formatUsdWhole(terms.spendShare.capPerFriendUsd)} per friend.`,
       };
     case 'welcome': {
       const { referrerUsd, friendUsd, spendTargetUsd, merchantTarget, windowDays } = terms.welcome;
@@ -117,6 +120,7 @@ const eventSubtitle = (event: ReferralV4RewardEvent): string => {
     limit_reached: 'Waiting on your bonus limit',
     under_review: 'In review',
     cancelled: 'Cancelled',
+    reversed: REVERSED_ROW_TEXT,
   };
   return statusLabels[event.status] ?? formatShortDay(event.creditedAt ?? event.earnedAt);
 };
@@ -136,7 +140,8 @@ const FriendEarningRow = ({ row }: { row: FriendRowData }) => (
       <Text className="text-[14px] font-medium text-white" numberOfLines={1}>
         {friendName(row.username)}
       </Text>
-      <Text className="text-[12px] text-white/50" numberOfLines={1}>
+      {/* Two lines: a reversed bonus says why. */}
+      <Text className="text-[12px] text-white/50" numberOfLines={2}>
         {row.subtitle}
       </Text>
     </View>
@@ -159,7 +164,7 @@ const friendRows = (kind: ReferRewardKind, summary: ReferralV4Summary): FriendRo
         subtitle:
           friend.spendShare.thisWeekUsd > 0
             ? `+${formatUsdShort(friend.spendShare.thisWeekUsd)} this week`
-            : 'Paid Thursdays',
+            : `Paid ${payoutWeekdayPlural(summary.terms)}`,
         amount: `+${formatUsdShort(friend.spendShare.earnedUsd)}`,
         isEarned: true,
       }));

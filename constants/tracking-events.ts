@@ -577,7 +577,7 @@ export const TRACKING_EVENTS = {
   AI_API_KEY_DELETED: 'ai_api_key_deleted',
   AI_API_ADD_FUNDS_PRESSED: 'ai_api_add_funds_pressed',
 
-  // Referral program v4: invite bonuses paid as card credit, plus 1% of what
+  // Referral program v4: invite bonuses paid as card credit, plus a share of what
   // friends spend. The referrer's side first, then card credit itself, then the
   // invited friend's side — the invite page and the code reaching signup, by
   // whichever route it came (`source`: link / install_referrer / clipboard / manual).

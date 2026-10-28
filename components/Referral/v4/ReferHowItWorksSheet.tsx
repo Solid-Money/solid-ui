@@ -2,24 +2,33 @@ import { Pressable, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
-import { formatRate, formatUsdWhole } from '@/lib/referral/referralV4';
+import {
+  formatRate,
+  formatUsdShort,
+  formatUsdWhole,
+  monthTwoPhrase,
+  payoutWeekdayName,
+} from '@/lib/referral/referralV4';
 
 import ReferSheet from './ReferSheet';
 import { REFER_ACCENT, ReferDivider, ReferTermsLink } from './ReferV4Primitives';
 
 import type { ReferralV4Summary } from '@/lib/types';
 
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 /** The rules, each worded from the live terms so a changed setting changes the copy. */
 export const howItWorksRules = (summary: ReferralV4Summary): string[] => {
   const { terms, bonusLimit } = summary;
-  const payoutDay = WEEKDAYS[terms.spendShare.payoutWeekday] ?? 'Thursday';
+  const payoutDay = payoutWeekdayName(terms);
+  const minWeeklyPayoutUsd = terms.spendShare.minWeeklyPayoutUsd ?? 0;
   const rules = [
     `Every bonus unlocks ${terms.holdDays} days after it's earned, then arrives in the next ${payoutDay} payout.`,
     `Spend share is ${formatRate(
       terms.spendShare.rate,
-    )} of what your friend spends with their card each week, paid every ${payoutDay} in soFUSE.`,
+    )} of what your friend spends with their card each week, paid every ${payoutDay} in soFUSE.${
+      minWeeklyPayoutUsd > 0
+        ? ` If a week's share comes to less than ${formatUsdShort(minWeeklyPayoutUsd)}, it's paid with the next one.`
+        : ''
+    }`,
     `You can earn up to ${formatUsdWhole(
       terms.spendShare.capPerFriendUsd,
     )} from each friend. Bonuses and spend share both count toward it; boosts don't.`,
@@ -29,13 +38,20 @@ export const howItWorksRules = (summary: ReferralV4Summary): string[] => {
     rules.push(
       `Your first ${terms.bonusLimit.base} welcome bonuses are paid right away. Every friend who spends ${formatUsdWhole(
         terms.bonusLimit.activeSpendUsd,
-      )} or more in their second month unlocks ${terms.bonusLimit.perActiveFriend} more. Bonuses past the limit are kept and paid when it grows.${
+      )} or more ${monthTwoPhrase(terms.bonusLimit)} unlocks ${terms.bonusLimit.perActiveFriend} more. Bonuses past the limit are kept and paid when it grows.${
         bonusLimit
           ? ` You've used ${bonusLimit.used} of ${bonusLimit.limit}${
               bonusLimit.waiting > 0 ? `, ${bonusLimit.waiting} waiting` : ''
             }.`
           : ''
       }`,
+    );
+  }
+
+  // Older backends send no `clawback`: they never reverse a bonus, so no rule.
+  if (terms.clawback?.enabled && terms.clawback.watchDays > 0) {
+    rules.push(
+      `If refunds within ${terms.clawback.watchDays} days of a welcome or big spender bonus being credited take your friend's spend back under its target, the bonus is reversed. It comes out of your next bonuses or spend share — never your card credit.`,
     );
   }
 
