@@ -6,6 +6,8 @@ export const SOLID_TOKEN_SYMBOLS = [
   'fusdc',
   'soeth',
   'soeurc',
+  // The same share's on-chain symbol on the Base deployments from Oct 15 2026 on.
+  'soeur',
 ] as const;
 
 export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
@@ -33,9 +35,9 @@ export interface VaultMeta {
   /** Network the destination asset is delivered on, for the "To" row. */
   destinationNetwork: string;
   /**
-   * Whether reaching the destination requires bridging Fuse -> Ethereum first
-   * (a 2-step flow). soFUSE withdraws directly on Fuse and soEURC directly on
-   * Base, each in a single step.
+   * Whether reaching the destination requires bridging off Fuse first (a 2-step
+   * flow): to Base or Ethereum for soUSD, Ethereum for soETH. soFUSE withdraws
+   * directly on Fuse and soEURC directly on Base, each in a single step.
    */
   requiresBridge: boolean;
 }
@@ -77,12 +79,13 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
 
 /** Maps a token symbol to the vault it belongs to (null if not a vault token). */
 export function getVaultKey(symbol: string | undefined): VaultKey | null {
-  if (!symbol) return null;
+  // Persisted activity rows can be corrupt; never call toLowerCase on a non-string.
+  if (typeof symbol !== 'string' || !symbol) return null;
   const s = symbol.toLowerCase();
   if (s === 'sousd' || s === 'sousdc' || s === 'fusdc') return 'USD';
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
-  if (s === 'soeurc') return 'EUR';
+  if (s === 'soeurc' || s === 'soeur') return 'EUR';
   return null;
 }
 

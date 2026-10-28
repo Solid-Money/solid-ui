@@ -13,7 +13,6 @@ import { Minus } from '@/lib/icons/Minus';
 import { Plus } from '@/lib/icons/Plus';
 import { VaultBreakdown, VaultType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
-import { isEurVault } from '@/lib/vaultCurrency';
 
 const CHART_SIZE = 189;
 const CHART_STROKE_WIDTH = 9.5;
@@ -190,10 +189,8 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
   const { data: strategies = [], isLoading: isBreakdownLoading } = useVaultBreakdown(
     vault.name.toLowerCase(),
   );
-  const sevenDayApy = Math.max(apys?.sevenDay ?? 0, 0);
-  // soEURC does not earn yet: "—" rather than a measured-looking 0%.
-  const sevenDayApyLabel =
-    isEurVault(vaultType) && !(sevenDayApy > 0) ? '—' : formatNumber(sevenDayApy, 1) + '%';
+  // Two decimals like the rows: one decimal rounds EUR's 0.04% down to "0%".
+  const sevenDayApyLabel = formatPercent(apys?.sevenDay ?? 0);
   const selectedStrategy = strategies[selectedStrategyIndex] ?? strategies[0];
   const visibleStrategies = isExpanded ? strategies : strategies.slice(0, COLLAPSED_STRATEGY_COUNT);
   const hasHiddenStrategies = strategies.length > COLLAPSED_STRATEGY_COUNT;

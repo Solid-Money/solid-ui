@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="36.7059" height="36.7059" viewBox="0 0 36.7059 36.7059" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Token logo / USDT">
+<rect x="1.17647" y="1.17647" width="34.3529" height="34.3529" rx="17.1765" fill="#26A17B"/>
+<rect x="1.17647" y="1.17647" width="34.3529" height="34.3529" rx="17.1765" stroke="#333336" stroke-width="2.35294"/>
+<rect id="Rectangle" x="10.9929" y="10.3529" width="14.72" height="3.52" fill="white"/>
+<rect id="Rectangle_2" x="16.1129" y="10.3529" width="4.48" height="16" fill="white"/>
+<mask id="stroke0_0_56" fill="white">
+<path d="M28.2729 18.1929C28.2729 19.6952 23.8316 20.9129 18.3529 20.9129C12.8743 20.9129 8.43294 19.6952 8.43294 18.1929C8.43294 16.6907 12.8743 15.4729 18.3529 15.4729C23.8316 15.4729 28.2729 16.6907 28.2729 18.1929Z"/>
+</mask>
+<path id="Ellipse" d="M28.2729 18.1929C28.2729 19.6952 23.8316 20.9129 18.3529 20.9129C12.8743 20.9129 8.43294 19.6952 8.43294 18.1929C8.43294 16.6907 12.8743 15.4729 18.3529 15.4729C23.8316 15.4729 28.2729 16.6907 28.2729 18.1929Z" stroke-width="3.84" stroke="white" mask="url(#stroke0_0_56)"/>
+</g>
+</svg>

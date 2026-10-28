@@ -9,10 +9,13 @@ const { act, create } = require('react-test-renderer');
 
 const mockSetModal = jest.fn();
 const mockSetKycModal = jest.fn();
+let mockRecipientModal = SEND_MODAL.OPEN_SEND_OPTIONS;
 
 jest.mock('@/store/useSendStore', () => ({
-  useSendStore: (selector: (state: { setModal: jest.Mock }) => unknown) =>
-    selector({ setModal: mockSetModal }),
+  useSendStore: Object.assign(
+    (selector: (state: { setModal: jest.Mock }) => unknown) => selector({ setModal: mockSetModal }),
+    { getState: () => ({ recipientModal: mockRecipientModal }) },
+  ),
 }));
 jest.mock('@/store/useCashoutStore', () => ({
   useCashoutStore: (selector: (state: { setKycModal: jest.Mock }) => unknown) =>
@@ -42,7 +45,10 @@ describe('useCashoutKycNavigate', () => {
       create(<Harness />);
     });
   });
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRecipientModal = SEND_MODAL.OPEN_SEND_OPTIONS;
+  });
 
   it('starts the cash-out where a verified buyer would see the amount screen', () => {
     navigate(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
@@ -61,7 +67,13 @@ describe('useCashoutKycNavigate', () => {
     expect(mockSetModal).toHaveBeenCalledWith(SEND_MODAL.CLOSE);
   });
 
-  it('goes back to search where the buy flow would go back to its options', () => {
+  it('returns to the send chooser where the buy flow goes back to its options', () => {
+    navigate(DEPOSIT_MODAL.OPEN_OPTIONS);
+    expect(mockSetModal).toHaveBeenCalledWith(SEND_MODAL.OPEN_SEND_OPTIONS);
+  });
+
+  it('returns to the original Send screen when cash-out was opened there', () => {
+    mockRecipientModal = SEND_MODAL.OPEN_SEND_SEARCH;
     navigate(DEPOSIT_MODAL.OPEN_OPTIONS);
     expect(mockSetModal).toHaveBeenCalledWith(SEND_MODAL.OPEN_SEND_SEARCH);
   });

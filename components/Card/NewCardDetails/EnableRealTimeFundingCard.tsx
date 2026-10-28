@@ -60,7 +60,7 @@ interface EnableRealTimeFundingCardProps {
  * naming the same assets and chains, with the button disabled and reading
  * Approved.
  *
- * Laid out as `EnableEuroSpendCard` and `SpendingModeCard` are: a 23px card,
+ * Laid out as `SpendingModeCard` is: a 23px card,
  * 17px side inset, two lines of copy left and the action right — so it reads
  * as another row of the card pane rather than a promo banner.
  */
@@ -139,7 +139,7 @@ const EnableRealTimeFundingCard = ({
 };
 
 const styles = StyleSheet.create({
-  // Matches `EnableEuroSpendCard`: 17 either side, content centred on the
+  // Matches `SpendingModeCard`: 17 either side, content centred on the
   // height, tall enough for the second line of copy.
   row: {
     alignItems: 'center',

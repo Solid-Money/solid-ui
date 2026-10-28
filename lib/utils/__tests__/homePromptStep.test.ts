@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 import { DigitalWalletType } from '@/constants/digital-wallet';
-import { KycStatus, RainApplicationStatus } from '@/lib/types';
+import { CardProvider, CardStatus, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { HomePromptStepInput, resolveHomePromptStep } from '@/lib/utils/homePromptStep';
 
 const STARTED_AT = 1_700_000_000_000;
@@ -69,6 +69,32 @@ describe('resolveHomePromptStep — the pre-card rungs', () => {
     );
     expect(
       step({ ...noCard, cardStatus: { rainApplicationStatus: RainApplicationStatus.APPROVED } }),
+    ).toBe('activate-card');
+  });
+
+  it('tells a cardholder whose card was closed to get a new one', () => {
+    const closed = {
+      status: CardStatus.INACTIVE,
+      provider: CardProvider.WIREX,
+      canRequestNewCard: true,
+      kycStatus: KycStatus.APPROVED,
+    };
+
+    // Not "Your Solid card is ready! Activate" — they have had a card, and
+    // the one they had is gone.
+    expect(step({ ...noCard, cardStatus: closed })).toBe('replace-card');
+    // Funded or not: a closed card cannot be funded, so the next step is the card.
+    expect(step({ hasCard: false, depositCompleted: true, cardStatus: closed })).toBe(
+      'replace-card',
+    );
+  });
+
+  it('keeps offering activation for a closed card support has to replace', () => {
+    expect(
+      step({
+        ...noCard,
+        cardStatus: { status: CardStatus.INACTIVE, kycStatus: KycStatus.APPROVED },
+      }),
     ).toBe('activate-card');
   });
 
@@ -146,5 +172,40 @@ describe('resolveHomePromptStep — the post-card rungs', () => {
     );
     // And it is reached on desktop web too, where no wallet prompt exists.
     expect(step({ hasSpentOnCard: true, wallet: null })).toBe('cashback');
+  });
+});
+
+/**
+ * The two Wirex steps (Figma 28856:9546). A Wirex cardholder who has funded and used the card
+ * used to land on `cashback`, which Home hides behind the cashback tile — so they saw no banner at
+ * all, even with a payment declined that morning.
+ */
+describe('resolveHomePromptStep — the Wirex steps', () => {
+  const spent = { hasSpentOnCard: true } as const;
+
+  it('tells a cardholder about a decline the balance still does not cover', () => {
+    expect(step({ ...spent, hasUncoveredDecline: true })).toBe('card-declined');
+  });
+
+  it('asks to turn on euro spending for EURC the card cannot reach', () => {
+    expect(step({ ...spent, holdsUnusableEurc: true })).toBe('euro-spending');
+  });
+
+  it('puts the decline first: it is a payment they are trying to make now', () => {
+    expect(step({ ...spent, hasUncoveredDecline: true, holdsUnusableEurc: true })).toBe(
+      'card-declined',
+    );
+  });
+
+  it('outranks the wallet nudge as well as cashback', () => {
+    expect(step({ holdsUnusableEurc: true })).toBe('euro-spending');
+  });
+
+  it('leaves "Fund your wallet" first for a cardholder who never funded', () => {
+    expect(step({ depositCompleted: false, hasUncoveredDecline: true })).toBe('fund');
+  });
+
+  it('falls back to the usual ladder with neither', () => {
+    expect(step(spent)).toBe('cashback');
   });
 });

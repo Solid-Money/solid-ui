@@ -50,6 +50,9 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
   }
 
   const handlePress = () => {
+    useSendStore
+      .getState()
+      .setEntryModal(token ? SEND_MODAL.OPEN_SEND_SEARCH : SEND_MODAL.OPEN_SEND_OPTIONS);
     if (token) {
       setSelectedToken(token);
       setCurrentTokenAddress(token.contractAddress);
@@ -68,7 +71,7 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
         return;
       }
     }
-    setModal(modal || SEND_MODAL.OPEN_SEND_SEARCH);
+    setModal(modal || (token ? SEND_MODAL.OPEN_SEND_SEARCH : SEND_MODAL.OPEN_SEND_OPTIONS));
   };
 
   return <SlotTrigger onPress={handlePress}>{trigger}</SlotTrigger>;

@@ -6,6 +6,10 @@ import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
+import {
+  EMAIL_DOMAIN_NOT_ALLOWED_CODE,
+  EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
+} from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
@@ -188,7 +192,13 @@ export const useEmailManagement = (
         errorMessage.includes('please wait and try again') ||
         errorMessage.includes('Turnkey error 3');
 
-      if (isRateLimitError) {
+      if (error?.code === EMAIL_DOMAIN_NOT_ALLOWED_CODE) {
+        void showErrorToast(error, {
+          action: 'account',
+          title: 'Use a different email',
+          body: EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
+        });
+      } else if (isRateLimitError) {
         setRateLimitError(
           'Too many verification codes requested. Please wait a few minutes before trying again.',
         );

@@ -3,6 +3,7 @@ import { ActivityIndicator, ImageSourcePropType, Pressable, View } from 'react-n
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
 import { CARD_FUND_DESTINATION_TYPE } from '@/components/Card/CardFund/constants';
@@ -11,23 +12,27 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
+import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
 import { openHelpLink } from '@/lib/help/links';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { eclipseAddress } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
+  formatWalletDepositMinimum,
   getDefaultWalletDepositSelection,
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
-  offersWalletDepositEurc,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
+import { useWalletDepositViewer } from './useWalletDepositViewer';
 import WalletDepositSelectors, { WalletDepositNetworkList } from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
@@ -76,11 +81,26 @@ const WalletDepositAddress = () => {
   // Wirex cardholders and people with no card both land here, and only the
   // cardholders are charged — see `getDepositFeeRatePpm`.
   const { provider } = useCardProvider();
-  const tokenIcon = getWalletDepositTokenIcon(chainId, symbol);
+  const viewer = useWalletDepositViewer();
+  const tokenIcon = getWalletDepositTokenIcon(symbol);
   // The pipeline's own floor when it has answered, the committed estimate until
   // then — never a blank, which is the one thing this line must not show.
   const { data: depositAssets } = useDepositAssets();
-  const minimum = resolveWalletDepositMinimum(chainId, symbol, depositAssets?.assets);
+  const publishedAssets = useMemo(
+    () => depositAssets && [...depositAssets.assets, ...(depositAssets.walletAssets ?? [])],
+    [depositAssets],
+  );
+  const minimum = resolveWalletDepositMinimum(chainId, symbol, publishedAssets);
+  // EURC lands in the Safe on Base, where the card can only pay with it once it is turned on in
+  // Main currency — said here, before the deposit, rather than by the first declined payment.
+  const euroSpend = useEuroSpendEnablement();
+  const showsEuroSpendingNote = symbol === 'EURC' && euroSpend.shouldOffer;
+  const router = useRouter();
+  const setDepositModal = useDepositStore(state => state.setModal);
+  const openMainCurrency = useCallback(() => {
+    setDepositModal(DEPOSIT_MODAL.CLOSE);
+    router.push(path.CARD_MAIN_CURRENCY);
+  }, [router, setDepositModal]);
 
   // Only a minted address is watched, so only then is there anything to scan for.
   // The Safe is not registered with the pipeline; saying "scanning" over it would
@@ -109,13 +129,11 @@ const WalletDepositAddress = () => {
     (nextChainId: number) => {
       setWalletDeposit({
         chainId: nextChainId,
-        symbol:
-          resolveWalletDepositSymbol(nextChainId, symbol, offersWalletDepositEurc(provider)) ??
-          symbol,
+        symbol: resolveWalletDepositSymbol(nextChainId, symbol, viewer) ?? symbol,
       });
       setIsNetworkOpen(false);
     },
-    [provider, setWalletDeposit, symbol],
+    [setWalletDeposit, symbol, viewer],
   );
 
   return (
@@ -190,8 +208,8 @@ const WalletDepositAddress = () => {
         <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
           <Text className="text-base font-medium text-white">Send at least</Text>
           <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
-          {/* Up to 4 decimals, none forced: "10 USDC" and "0.005 ETH" both read right. */}
-          <Text className="text-base font-medium text-white">{`${formatNumber(minimum, 4, 0)} ${symbol} on the`}</Text>
+          {/* "10 USDC", "0.005 ETH" and "0.00012 WBTC" all read right, rounded up. */}
+          <Text className="text-base font-medium text-white">{`${formatWalletDepositMinimum(minimum)} ${symbol} on the`}</Text>
           {network?.icon ? (
             <Image source={network.icon} style={INLINE_ICON_STYLE} contentFit="cover" />
           ) : null}
@@ -200,6 +218,22 @@ const WalletDepositAddress = () => {
         <Text className="text-center text-sm text-white/50">
           Deposits below the minimum will not be credited or refunded
         </Text>
+        {showsEuroSpendingNote ? (
+          <View className="flex-row flex-wrap items-center justify-center gap-x-1">
+            <Text className="text-center text-sm text-white/70">
+              Set euro as your main currency to pay in euros.
+            </Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Main currency"
+              onPress={openMainCurrency}
+              hitSlop={8}
+              className="web:hover:opacity-70"
+            >
+              <Text className="text-sm font-semibold text-brand underline">Main currency</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <DepositFeeNotice
           product="wallet"
           provider={provider}

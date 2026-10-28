@@ -7,6 +7,7 @@ import {
   isLimitProblem,
   limitsFromError,
   maxCashoutWei,
+  readCashoutLimits,
   toLimitUnits,
   toTokenUnits,
   validateCashoutAmount,
@@ -153,6 +154,26 @@ describe('maxCashoutWei', () => {
 
   it('fills the balance when there are no limits', () => {
     expect(maxCashoutWei(usdc('150000'))).toBe(usdc('150000'));
+  });
+});
+
+describe('readCashoutLimits', () => {
+  it('passes usable limits through', () => {
+    expect(readCashoutLimits({ minLimit: 26.256445, maxLimit: 100019.160769 })).toEqual({
+      minLimit: 26.256445,
+      maxLimit: 100019.160769,
+    });
+  });
+
+  it.each([
+    ['no body', null],
+    ['a missing limit', { minLimit: 26.256445 }],
+    ['a null limit', { minLimit: null, maxLimit: 100 }],
+    ['a limit sent as a string', { minLimit: '26.25', maxLimit: 100 }],
+    ['an inverted pair', { minLimit: 100, maxLimit: 10 }],
+    ['a negative limit', { minLimit: -1, maxLimit: 10 }],
+  ])('rejects %s', (_label, body) => {
+    expect(readCashoutLimits(body)).toBeUndefined();
   });
 });
 

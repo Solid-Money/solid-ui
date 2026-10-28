@@ -1,0 +1,13 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="USDC mark &#226;&#128;&#148; vector" clip-path="url(#clip0_0_128)">
+<path id="Vector" d="M15 30C23.2843 30 30 23.2843 30 15C30 6.71573 23.2843 0 15 0C6.71573 0 0 6.71573 0 15C0 23.2843 6.71573 30 15 30Z" fill="#2775CA"/>
+<path id="Vector_2" d="M10.4997 7.20027C7.64965 8.85027 5.69965 11.7003 5.69965 15.0003C5.69965 18.3003 7.64965 21.1503 10.4997 22.8003M19.4997 7.20027C22.3497 8.85027 24.2997 11.7003 24.2997 15.0003C24.2997 18.3003 22.3497 21.1503 19.4997 22.8003" stroke="white" stroke-width="1.73077" stroke-linecap="round"/>
+<path id="Vector_3" d="M14.9989 6.89941V8.99941M14.9989 20.9994V23.0994M18.2989 11.2494C17.6989 10.3494 16.4989 9.74941 15.1489 9.74941C13.3489 9.74941 11.9989 10.6494 11.9989 11.9994C11.9989 15.4494 18.5989 13.6494 18.5989 17.6994C18.5989 19.1994 17.0989 20.2494 14.9989 20.2494C13.4989 20.2494 12.1489 19.6494 11.3989 18.5994" stroke="white" stroke-width="1.59231" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<circle cx="15" cy="15" r="14.25" stroke="#333336" stroke-width="1.5"/>
+<defs>
+<clipPath id="clip0_0_128">
+<rect width="30" height="30" fill="white"/>
+</clipPath>
+</defs>
+</svg>

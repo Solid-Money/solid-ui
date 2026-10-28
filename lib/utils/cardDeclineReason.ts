@@ -75,4 +75,22 @@ export const cardDeclineReason = (
   return theirs ? sentenceCase(theirs) : undefined;
 };
 
+/**
+ * Whether a charge was declined because the balance did not cover it — the decline the
+ * cardholder fixes by adding money, swapping or turning on euro spending.
+ *
+ * Our code decides when the ledger answered. Without it, the issuer's reason is all there is,
+ * and on Wirex that is "Insufficient funds" for a limit decline as well; callers compare the live
+ * balance with the payment before offering money, which is what tells the two apart.
+ */
+export const isInsufficientDecline = (
+  transaction: Pick<CardTransaction, 'declined_reason'> & {
+    spend_details?: Pick<CardSpendDetails, 'decline_reason'>;
+  },
+): boolean => {
+  const code = transaction.spend_details?.decline_reason?.trim().toUpperCase();
+  if (code) return code === 'INSUFFICIENT_FUNDS';
+  return /insufficient/i.test(transaction.declined_reason ?? '');
+};
+
 export default cardDeclineReason;

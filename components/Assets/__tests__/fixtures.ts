@@ -51,6 +51,7 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
   debt: 350,
   dailyYield: 0.35,
   monthlyYield: 10.6,
+  eurYield: undefined,
   totalAssets: 3218.4002,
   netBalance: 2868.4002,
   isLoading: false,

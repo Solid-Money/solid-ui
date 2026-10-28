@@ -1,89 +1,17 @@
-import { ReactNode } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
-import {
-  ArrowDownLeft,
-  Bell,
-  ChevronRight,
-  CreditCard,
-  Megaphone,
-  ShieldCheck,
-  Sparkle,
-  Wallet,
-} from 'lucide-react-native';
+import { Bell, ChevronRight } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
-import { ProfileRow, ProfileRowGroup, ProfileSectionLabel } from '@/components/Profile/ProfileRow';
-import ToggleSwitch from '@/components/Profile/ToggleSwitch';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
-import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
-import { NotificationPreferences } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const ICON_SIZE = 18;
-const ICON_COLOR = '#FFFFFF';
 const SETTINGS_APP = Platform.OS === 'android' ? 'Android Settings' : 'iOS Settings';
-
-type PreferenceRow = {
-  key: keyof NotificationPreferences;
-  icon: ReactNode;
-  title: string;
-  subtitle: string;
-};
-
-const SECTIONS: { title: string; rows: (PreferenceRow | 'payment-approvals')[] }[] = [
-  {
-    title: 'Card',
-    rows: [
-      {
-        key: 'cardPayments',
-        icon: <CreditCard size={ICON_SIZE} color={ICON_COLOR} />,
-        title: 'Card payments',
-        subtitle: 'Purchases, refunds and declines',
-      },
-      'payment-approvals',
-    ],
-  },
-  {
-    title: 'Money',
-    rows: [
-      {
-        key: 'depositsTransfers',
-        icon: <ArrowDownLeft size={ICON_SIZE} color={ICON_COLOR} />,
-        title: 'Deposits & transfers',
-        subtitle: 'When money arrives or leaves',
-      },
-      {
-        key: 'earn',
-        icon: <Wallet size={ICON_SIZE} color={ICON_COLOR} />,
-        title: 'Earn',
-        subtitle: 'Weekly yield summary',
-      },
-    ],
-  },
-  {
-    title: 'Rewards & news',
-    rows: [
-      {
-        key: 'cashbackRewards',
-        icon: <Sparkle size={ICON_SIZE} color={ICON_COLOR} />,
-        title: 'Cashback & rewards',
-        subtitle: 'Cashback earned, tier changes',
-      },
-      {
-        key: 'productNews',
-        icon: <Megaphone size={ICON_SIZE} color={ICON_COLOR} />,
-        title: 'Product news & offers',
-        subtitle: 'New features and promotions',
-      },
-    ],
-  },
-];
 
 /**
  * The way back into push notifications, and what the OS says about them now.
@@ -152,16 +80,9 @@ const PushPermissionCard = () => {
   );
 };
 
-/**
- * Settings → Notifications (Figma "Notifications").
- *
- * The OS permission at the top, then which kinds of push the account wants.
- * The categories only appear once the backend stores them — until then there
- * is nothing for a switch to change, so the screen shows the permission alone.
- */
+/** Settings → Notifications: view and manage this device's push permission. */
 export default function Notifications() {
   const { isDesktop } = useDimension();
-  const { preferences, isLoading, isError, update, isSaveError } = useNotificationPreferences();
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
@@ -198,55 +119,6 @@ export default function Notifications() {
         })}
       >
         <PushPermissionCard />
-
-        {isLoading ? (
-          <ActivityIndicator className="mt-8" size="small" color="#8E8E8E" />
-        ) : isError ? (
-          <Text className="mt-6 px-1 text-sm text-[#8E8E8E]">
-            Couldn&apos;t load your notification choices. Try again later.
-          </Text>
-        ) : preferences ? (
-          <>
-            {SECTIONS.map(section => (
-              <View key={section.title}>
-                <ProfileSectionLabel>{section.title}</ProfileSectionLabel>
-                <ProfileRowGroup>
-                  {section.rows.map(row =>
-                    row === 'payment-approvals' ? (
-                      <ProfileRow
-                        key={row}
-                        icon={<ShieldCheck size={ICON_SIZE} color={ICON_COLOR} />}
-                        title="Payment approvals"
-                        subtitle="3D Secure for online payments"
-                        value="Always on"
-                      />
-                    ) : (
-                      <ProfileRow
-                        key={row.key}
-                        icon={row.icon}
-                        title={row.title}
-                        subtitle={row.subtitle}
-                        accessory={
-                          <ToggleSwitch
-                            value={preferences[row.key]}
-                            onValueChange={value => update({ [row.key]: value })}
-                            accessibilityLabel={row.title}
-                          />
-                        }
-                      />
-                    ),
-                  )}
-                </ProfileRowGroup>
-              </View>
-            ))}
-            {isSaveError ? (
-              <Text className="mt-2 px-1 text-sm text-red-400">
-                Couldn&apos;t save that change. Please try again.
-              </Text>
-            ) : null}
-          </>
-        ) : null}
-
         <Text className="mt-3 px-1 text-sm leading-5 text-[#8E8E8E]">
           Security alerts and important account notices are always sent by email.
         </Text>

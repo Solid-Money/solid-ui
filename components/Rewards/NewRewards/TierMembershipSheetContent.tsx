@@ -17,6 +17,7 @@ import {
   membershipDateLabel,
 } from '@/lib/tierUpgrade';
 import { RewardsTier, TierSubscriptionStatus } from '@/lib/types';
+import { useUserStore } from '@/store/useUserStore';
 
 const GLOW_ASSET = 'images/rewards-tiers/glow.svg' as const;
 const GLOW_SIZE = 260;
@@ -41,6 +42,9 @@ const TierMembershipSheetContent = ({
   topPadding = 12,
 }: TierMembershipSheetContentProps) => {
   const { data: membership } = useTierMembership();
+  const accountCreatedAt = useUserStore(
+    state => state.users.find(user => user.selected)?.createdAt,
+  );
   const { mutateAsync: cancelSubscription, isPending: isCancelling } = useCancelTierSubscription();
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
 
@@ -83,7 +87,11 @@ const TierMembershipSheetContent = ({
         <TierDetailRow label="Current tier" value={getTierDisplayName(tier)} withDivider />
         <TierDetailRow
           label="Member since"
-          value={formatMembershipDay(membership?.memberSince) || '—'}
+          value={
+            formatMembershipDay(membership?.memberSince) ||
+            formatMembershipDay(accountCreatedAt) ||
+            '—'
+          }
         />
       </View>
 

@@ -13,7 +13,7 @@ import {
   verifyTypedData,
 } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
 import { readContract } from 'wagmi/actions';
 
@@ -25,7 +25,7 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
-import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
+import { bridgeDeposit, getLifiQuote } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
@@ -450,7 +450,11 @@ const useDepositFromEOA = (
       let transaction: { transactionHash: `0x${string}` } | undefined = {
         transactionHash: '' as `0x${string}`,
       };
-      if (isEthereum && token === 'USDC') {
+      // A sponsored deposit goes to the backend, which mints soUSD on Base: from
+      // Ethereum it is bridged there like any other chain, and pays the deposit
+      // fee. Only an unsponsored Ethereum deposit, which the wallet pays for
+      // itself, still goes straight into the Ethereum teller.
+      if (isEthereum && token === 'USDC' && !isSponsor) {
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
@@ -482,77 +486,39 @@ const useDepositFromEOA = (
           }
         }
 
-        if (isSponsor) {
-          Sentry.addBreadcrumb({
-            message: 'Creating sponsored deposit on Ethereum',
-            category: 'deposit',
-            data: { amount, eoaAddress, isEthereum: true, isSponsor: true },
+        trackingId = await createEvent(amount, spender, token);
+
+        const nonce = await getNonce(srcChainId, tokenAddress);
+        const tokenName = await getTokenName(srcChainId, tokenAddress);
+        const result = await signPermit(
+          eoaAddress,
+          spender,
+          amount,
+          amountWei,
+          srcChainId,
+          nonce,
+          tokenName,
+          user,
+          isSponsor,
+          tokenAddress,
+        );
+        const fee = await getFee();
+        transaction = await depositOnEthereum(
+          amount,
+          amountWei,
+          result.signatureData,
+          result.deadline,
+          user,
+          fee,
+        );
+
+        if (transaction?.transactionHash) {
+          // Do NOT set hash here. This tx hash will appear in Blockscout as a
+          // "Deposit soUSD to Savings" activity, and deduplicateTransactions
+          // would replace "Deposited USDC" with it.
+          updateActivity(trackingId, {
+            status: TransactionStatus.PROCESSING,
           });
-
-          trackingId = await createEvent(amount, spender, token);
-
-          withRefreshToken(() =>
-            createDeposit({
-              eoaAddress,
-              amount,
-              trackingId,
-            }),
-          )
-            .then(result => {
-              if (result?.transactionHash) {
-                // NOTE: Do NOT set hash here. The backend returns the protocol
-                // deposit hash, which is the same hash set on the "Deposit soUSD
-                // to Savings" activity. Setting it would cause dedup collisions.
-                updateActivity(trackingId!, {
-                  status: TransactionStatus.PROCESSING,
-                });
-              }
-            })
-            .catch(err => {
-              console.error('Sponsored deposit failed:', err);
-              // Don't immediately set FAILED — the on-chain tx may have succeeded
-              // even if the backend HTTP response errored (e.g. LayerZero monitoring).
-              // Keep PROCESSING and let polling/SSE determine the real status.
-              updateActivity(trackingId!, {
-                status: TransactionStatus.PROCESSING,
-                metadata: { depositError: err?.message || 'Backend returned error' },
-              });
-            });
-        } else {
-          trackingId = await createEvent(amount, spender, token);
-
-          const nonce = await getNonce(srcChainId, tokenAddress);
-          const tokenName = await getTokenName(srcChainId, tokenAddress);
-          const result = await signPermit(
-            eoaAddress,
-            spender,
-            amount,
-            amountWei,
-            srcChainId,
-            nonce,
-            tokenName,
-            user,
-            isSponsor,
-            tokenAddress,
-          );
-          const fee = await getFee();
-          transaction = await depositOnEthereum(
-            amount,
-            amountWei,
-            result.signatureData,
-            result.deadline,
-            user,
-            fee,
-          );
-
-          if (transaction?.transactionHash) {
-            // Do NOT set hash here. This tx hash will appear in Blockscout as a
-            // "Deposit soUSD to Savings" activity, and deduplicateTransactions
-            // would replace "Deposited USDC" with it.
-            updateActivity(trackingId, {
-              status: TransactionStatus.PROCESSING,
-            });
-          }
         }
       } else {
         await switchChain(srcChainId);
@@ -612,7 +578,7 @@ const useDepositFromEOA = (
             is_sponsor: isSponsor,
             source_chain_id: srcChainId,
             source_chain_name: BRIDGE_TOKENS[srcChainId]?.name,
-            target_chain_id: mainnet.id,
+            target_chain_id: base.id,
             deposit_type: 'connected_wallet',
             deposit_method: 'cross_chain_bridge',
           });

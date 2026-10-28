@@ -1,7 +1,9 @@
-import { supportCall } from '@/lib/api/support';
+import { SupportApiError, supportCall } from '@/lib/api/support';
 
 import type {
   HelpArticle,
+  HelpArticleSummary,
+  HelpCollection,
   HelpCollectionPage,
   HelpHome,
   HelpRedirect,
@@ -16,8 +18,47 @@ import type {
  * Backend: apps/flash-support-service/src/help in solid-backend.
  */
 
-export const getHelpHome = (signal?: AbortSignal) =>
-  supportCall<HelpHome>('/help/home', { signal });
+const isText = (value: unknown): value is string => typeof value === 'string';
+
+const isArticleSummary = (value: unknown): value is HelpArticleSummary => {
+  const article = value as HelpArticleSummary | null;
+  return !!article && isText(article.id) && isText(article.slug) && isText(article.title);
+};
+
+const isCollection = (value: unknown, depth = 0): value is HelpCollection => {
+  const collection = value as HelpCollection | null;
+  return (
+    !!collection &&
+    depth < 8 &&
+    isText(collection.slug) &&
+    isText(collection.name) &&
+    typeof collection.articleCount === 'number' &&
+    Array.isArray(collection.articles) &&
+    collection.articles.every(isArticleSummary) &&
+    Array.isArray(collection.children) &&
+    collection.children.every(child => isCollection(child, depth + 1))
+  );
+};
+
+/** The shape the help center screens read; anything else is refused before it is shown or cached. */
+export const isHelpHome = (value: unknown): value is HelpHome => {
+  const home = value as HelpHome | null;
+  return (
+    !!home &&
+    Array.isArray(home.collections) &&
+    home.collections.every(collection => isCollection(collection)) &&
+    Array.isArray(home.otherArticles) &&
+    home.otherArticles.every(isArticleSummary)
+  );
+};
+
+export const getHelpHome = async (signal?: AbortSignal): Promise<HelpHome> => {
+  const home = await supportCall<unknown>('/help/home', { signal });
+  if (!isHelpHome(home)) {
+    throw new SupportApiError(502, 'The help center sent something unexpected');
+  }
+  return home;
+};
 
 export const getHelpCollection = (slug: string, signal?: AbortSignal) =>
   supportCall<HelpCollectionPage | HelpRedirect>(`/help/collections/${encodeURIComponent(slug)}`, {

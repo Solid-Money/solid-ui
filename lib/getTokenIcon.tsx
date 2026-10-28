@@ -1,5 +1,6 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
 import { G_DOLLAR_LOGO_URI } from '@/constants/gooddollar';
+import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 
 import { AssetPath, getAsset } from './assets';
 import { TokenIcon } from './types';
@@ -18,10 +19,13 @@ const SHARE_ICONS: Record<string, AssetPath> = {
   SOUSD: 'images/sousd-4x.png',
   SOETH: 'images/soeth-4x.png',
   SOFUSE: 'images/sofuse-4x.png',
+  // EUR Yield's share: its on-chain symbol is SOEUR, the app's name for it soEURC.
+  SOEUR: 'images/soeur-4x.png',
+  SOEURC: 'images/soeur-4x.png',
 };
 
 const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): TokenIcon => {
-  // soUSD, soETH and soFUSE have canonical in-app marks: their product's mark with the
+  // soUSD, soETH, soFUSE and soEUR have canonical in-app marks: their product's mark with the
   // green live dot (Figma 28445:4885). External token metadata can return older logos, so
   // resolve them before the generic logoUrl override.
   const shareIcon = SHARE_ICONS[tokenSymbol?.toUpperCase() ?? ''];
@@ -68,16 +72,30 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/wfuse.png'),
       };
+    // Coinbase's wrapped ZEC, a Base collateral; the deposit list carries the mark as ZEC.
+    case 'CBZEC':
+      return {
+        type: 'image',
+        source: getAsset('images/zec.png'),
+      };
     case 'G$':
       return {
         type: 'image',
         source: { uri: G_DOLLAR_LOGO_URI },
       };
-    default:
+    default: {
+      // The rest of what the deposit screen takes (PAXG, WBTC, SOL, ...), with
+      // the marks it draws them with, so a deposit looks the same once it lands.
+      const depositToken = WALLET_DEPOSIT_TOKENS.find(
+        token => token.symbol.toUpperCase() === tokenSymbol?.toUpperCase(),
+      );
+      if (depositToken) return { type: 'image', source: getAsset(depositToken.icon) };
+
       return {
         type: 'component',
         component: <DefaultTokenIcon size={size} symbol={tokenSymbol || 'T'} />,
       };
+    }
   }
 };
 

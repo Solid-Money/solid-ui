@@ -203,6 +203,9 @@ export const TRACKING_EVENTS = {
   CASH_OUT_ORDER_FAILED: 'cash_out_order_failed',
   CASH_OUT_DEPOSIT_SENT: 'cash_out_deposit_sent',
   CASH_OUT_DEPOSIT_FAILED: 'cash_out_deposit_failed',
+  CASH_OUT_BRIDGE_SENT: 'cash_out_bridge_sent',
+  CASH_OUT_BRIDGE_DELIVERED: 'cash_out_bridge_delivered',
+  CASH_OUT_BRIDGE_FAILED: 'cash_out_bridge_failed',
   BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
   BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
   BUY_CRYPTO_KYC_SHARE_RESULT: 'buy_crypto_kyc_share_result',
@@ -438,6 +441,12 @@ export const TRACKING_EVENTS = {
   CARD_EURO_SPEND_ENABLE_COMPLETED: 'card_euro_spend_enable_completed',
   CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
   CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
+  // The "Not enough to pay" card on a declined receipt. Viewed carries the fix it led with
+  // (turn_on_euro | swap | add_funds) and whether the balance already covers the payment;
+  // pressed carries which button was tapped. Together with the decline push's open they make
+  // "declined → fixed" a funnel instead of a guess.
+  CARD_DECLINE_FIX_VIEWED: 'card_decline_fix_viewed',
+  CARD_DECLINE_FIX_PRESSED: 'card_decline_fix_pressed',
   // Rain Real-Time Funding: granting the ERC-20 allowance that lets a card
   // authorization pull from the cardholder's own wallet at swipe time.
   //
@@ -503,6 +512,11 @@ export const TRACKING_EVENTS = {
   ERROR_RETRY_PRESSED: 'error_retry_pressed',
   ERROR_SUPPORT_PRESSED: 'error_support_pressed',
   ERROR_REF_COPIED: 'error_ref_copied',
+  // Our paymaster refused a transaction on its cost cap and the user was asked
+  // to pay the network fee themselves.
+  NETWORK_FEE_PAYMENT_PROMPTED: 'network_fee_payment_prompted',
+  NETWORK_FEE_PAYMENT_ACCEPTED: 'network_fee_payment_accepted',
+  NETWORK_FEE_PAYMENT_DECLINED: 'network_fee_payment_declined',
 
   // QR Scanner Events
   QR_SCANNER_OPENED: 'qr_scanner_opened',
@@ -527,6 +541,9 @@ export const TRACKING_EVENTS = {
   OTA_UPDATE_APPLIED: 'ota_update_applied',
   OTA_UPDATE_FAILED: 'ota_update_failed',
 
+  // One per launch: how long until the home screen showed real balances, by phase
+  APP_STARTUP_TIMING: 'app_startup_timing',
+
   // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
   TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',
@@ -544,10 +561,19 @@ export const TRACKING_EVENTS = {
   TIER_LOCK_CANCELLED: 'tier_lock_cancelled',
   TIER_LOCK_COMPLETED: 'tier_lock_completed',
   TIER_LOCK_FAILED: 'tier_lock_failed',
+  // Sent, but not seen through: the receipt wait gave up (usually the app was
+  // backgrounded) or the confirm failed. Not a failure — the lock is finished
+  // by the reconciler, which reports what became of it.
+  TIER_LOCK_PENDING: 'tier_lock_pending',
+  TIER_LOCK_RECONCILED: 'tier_lock_reconciled',
   TIER_SUBSCRIBE_PRESSED: 'tier_subscribe_pressed',
   TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
   TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
   TIER_SUBSCRIBE_FAILED: 'tier_subscribe_failed',
+  // Paying the annual fee from another chain: the LI.FI swap into USDC on Fuse.
+  TIER_FUNDING_SWAP_PRESSED: 'tier_funding_swap_pressed',
+  TIER_FUNDING_SWAP_SENT: 'tier_funding_swap_sent',
+  TIER_FUNDING_SWAP_FAILED: 'tier_funding_swap_failed',
   TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
   TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
   TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, formatUnits, zeroAddress } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
@@ -14,6 +14,7 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import {
   bridgedShareValues,
@@ -37,8 +38,8 @@ import { LIVE_VAULTS } from '@/lib/vaults';
  * The vaults this model values: every live vault valued in USD. soEURC is held in
  * EUR and is never converted into the USD totals built here (Earn, total assets,
  * net balance), so it is left out rather than entered as an unknown — an unknown
- * part would mark every portfolio that holds soEURC as incomplete.
- * TODO(soEURC): give Assets its own € row for the EUR vault.
+ * part would mark every portfolio that holds soEURC as incomplete. It has its own
+ * `eurYield` entry instead, in euros.
  */
 const PORTFOLIO_VAULTS = LIVE_VAULTS.filter(
   (vault): vault is Vault & { type: UsdVaultType } => !isEurVault(vault.type),
@@ -71,6 +72,7 @@ export function usePortfolio() {
   const usdApy = useMaxAPY(VaultType.USDC);
   const fuseApy = useMaxAPY(VaultType.FUSE);
   const ethApy = useMaxAPY(VaultType.ETH);
+  const eurApy = useMaxAPY(VaultType.EUR);
   const custody = usePortfolioCustody({
     userId: user?.userId,
     safeAddress: user?.safeAddress as Address | undefined,
@@ -95,6 +97,14 @@ export function usePortfolio() {
     'ethPriceUsd',
     (exactSavings?.[VaultType.ETH] ?? 0) > 0,
   );
+  const holdsEurYield = (savings.eurValue ?? 0) > 0;
+  // Only for the "≈ $" line beside soEURC's euro value; it never enters a dollar total.
+  const eurcPrice = useQuery({
+    queryKey: ['eurcPriceUsd'],
+    queryFn: () => fetchTokenPriceUsd('EURC'),
+    enabled: holdsEurYield,
+    staleTime: 60_000,
+  });
 
   const model = useMemo(() => {
     const collateral = (credit?.collateral ?? []).map(token => {
@@ -207,6 +217,18 @@ export function usePortfolio() {
     // Shown instead of the daily figure when that rounds below a cent.
     const monthlyYield = periodYield(12);
 
+    // EUR Yield, held in euros. Its dollar figure is an estimate for display and ordering only.
+    const usdPerEurc = Number(eurcPrice.data);
+    const eurYield =
+      savings.eurValue === undefined
+        ? undefined
+        : {
+            valueEur: savings.eurValue,
+            valueUsdEstimate: usdPerEurc > 0 ? savings.eurValue * usdPerEurc : undefined,
+            shareAmount: savings.eurShares ?? 0,
+            apy: !eurApy.isAPYsLoading && eurApy.maxAPY > 0 ? eurApy.maxAPY : undefined,
+          };
+
     return {
       cashAssets,
       cashTotal,
@@ -223,6 +245,7 @@ export function usePortfolio() {
       debt,
       dailyYield,
       monthlyYield,
+      eurYield,
       ...totals,
     };
   }, [
@@ -234,6 +257,10 @@ export function usePortfolio() {
     usdApy,
     fuseApy,
     ethApy,
+    eurApy,
+    savings.eurValue,
+    savings.eurShares,
+    eurcPrice.data,
     lockedFuse,
     fusePrice.data,
     ethPrice.data,

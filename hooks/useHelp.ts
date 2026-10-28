@@ -6,6 +6,7 @@ import {
   getHelpArticle,
   getHelpCollection,
   getHelpHome,
+  isHelpHome,
   isHelpRedirect,
   searchHelp,
 } from '@/lib/api/help';
@@ -32,7 +33,9 @@ export const useSyncNativeHelp = () => {
 };
 
 export const useHelpHome = () => {
-  const cached = useHelpCacheStore(state => state.home);
+  const saved = useHelpCacheStore(state => state.home);
+  // A copy saved by an older build is only shown if it still has the shape the screen reads.
+  const cached = saved && isHelpHome(saved.value) ? saved : null;
   return useQuery({
     queryKey: ['help', 'home'],
     queryFn: async ({ signal }) => {

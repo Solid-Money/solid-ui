@@ -1,12 +1,15 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import CardBottomSheet from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet';
 import SpendModeSheetContent, {
   SPEND_MODE_SHEET_BOTTOM,
   SPEND_MODE_SHEET_TOP,
 } from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheetContent';
+import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import { useSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
 import type { SpendModeSheetProps } from './SpendModeSheet.types';
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
@@ -27,7 +30,21 @@ const SpendModeSheet = ({
   onAddFunds,
 }: SpendModeSheetProps) => {
   const figures = useSpendModeFigures();
+  // Fuse and Base together, with the collateral behind each — read only while the sheet is open.
+  const credit = useCreditModeFigures({ enabled: isOpen });
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
+  // The assets the balance is made of — EURC among them once it is on for the card.
+  const assets = useSpendableAssetRows();
+  const { formatUsdAmount } = useCardDisplayCurrency();
+
+  const balance = useMemo(
+    () => ({
+      // In the cardholder's main currency; the rows below keep each asset's own.
+      total: formatUsdAmount(assets.totalUsd),
+      rows: assets.rows,
+    }),
+    [assets, formatUsdAmount],
+  );
 
   const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
 
@@ -53,6 +70,8 @@ const SpendModeSheet = ({
         <SpendModeSheetContent
           activeMode={activeMode}
           figures={figures}
+          credit={credit}
+          balance={balance}
           session={session}
           onConfirm={confirm}
           isSwitching={isSwitchingMode}

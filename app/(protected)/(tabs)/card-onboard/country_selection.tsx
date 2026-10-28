@@ -12,7 +12,12 @@ import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
-import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
+import {
+  canReplaceClosedCard,
+  hasCard,
+  hasCardStatusWithRainApplication,
+  hasPendingCard,
+} from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
@@ -53,6 +58,7 @@ export default function CountrySelection() {
   const clearedGate =
     hasCard(cardStatus) ||
     hasPendingCard(cardStatus) ||
+    canReplaceClosedCard(cardStatus) ||
     hasCardStatusWithRainApplication(cardStatus);
 
   const { countryInfo, setCountryInfo } = useCountryStore(

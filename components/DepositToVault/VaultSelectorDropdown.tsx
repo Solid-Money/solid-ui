@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, Pressable, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
@@ -20,8 +20,7 @@ const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
   [VaultType.USDC]: 'images/usd-yield-4x.png',
   [VaultType.ETH]: 'images/eth-yield-4x.png',
   [VaultType.FUSE]: 'images/fuse-yield-4x.png',
-  // TODO(soEURC): the EURC coin mark until design supplies an EUR Yield product icon.
-  [VaultType.EUR]: 'images/eurc.png',
+  [VaultType.EUR]: 'images/eur-yield-4x.png',
 };
 const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
 
@@ -111,14 +110,17 @@ const VaultSelectorDropdown = () => {
           {/* Backdrop to close on outside tap */}
           <Pressable
             onPress={closeDropdown}
-            style={{
-              position: Platform.OS === 'web' ? 'fixed' : 'absolute',
-              top: Platform.OS === 'web' ? 0 : -1000,
-              left: Platform.OS === 'web' ? 0 : -1000,
-              right: Platform.OS === 'web' ? 0 : -1000,
-              bottom: Platform.OS === 'web' ? 0 : -1000,
-              zIndex: 40,
-            }}
+            // `fixed` is web-only CSS, so React Native's ViewStyle doesn't know it
+            style={
+              {
+                position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+                top: Platform.OS === 'web' ? 0 : -1000,
+                left: Platform.OS === 'web' ? 0 : -1000,
+                right: Platform.OS === 'web' ? 0 : -1000,
+                bottom: Platform.OS === 'web' ? 0 : -1000,
+                zIndex: 40,
+              } as ViewStyle
+            }
           />
           <Animated.View
             style={[

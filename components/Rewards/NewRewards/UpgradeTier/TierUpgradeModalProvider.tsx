@@ -6,7 +6,9 @@ import ResponsiveModal from '@/components/ResponsiveModal';
 import { TIER_UPGRADE_MODAL } from '@/constants/modals';
 import { isTierUpgradeOpen, useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
+import CashTokenSelector from './CashTokenSelector';
 import LockTokenSelector from './LockTokenSelector';
+import UpgradeFundingStatus from './UpgradeFundingStatus';
 import UpgradeReviewContent from './UpgradeReviewContent';
 import UpgradeTierContent from './UpgradeTierContent';
 
@@ -35,6 +37,7 @@ const TierUpgradeModalProvider = () => {
     })),
   );
   const isOpen = useTierUpgradeStore(isTierUpgradeOpen);
+  const route = useTierUpgradeStore(state => state.route);
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -88,6 +91,7 @@ const TierUpgradeModalProvider = () => {
 
   const isReview = currentModal.name === TIER_UPGRADE_MODAL.OPEN_REVIEW.name;
   const isTokenSelector = currentModal.name === TIER_UPGRADE_MODAL.OPEN_TOKEN_SELECTOR.name;
+  const isFunding = currentModal.name === TIER_UPGRADE_MODAL.OPEN_FUNDING_STATUS.name;
 
   return (
     <ResponsiveModal
@@ -103,11 +107,11 @@ const TierUpgradeModalProvider = () => {
       // arrow returns to the offer rather than closing the flow, which is the
       // one thing a user who has just read a one-year commitment — or opened
       // the picker to compare balances — is most likely to want.
-      showBackButton={isReview || isTokenSelector}
+      showBackButton={isReview || isTokenSelector || isFunding}
       onBackPress={back}
       contentKey={currentModal.name}
       contentClassName="md:max-w-[480px]"
-      gradientHeader={!isReview && !isTokenSelector}
+      gradientHeader={!isReview && !isTokenSelector && !isFunding}
       scrollViewRef={scrollViewRef}
       scrollViewProps={{
         onContentSizeChange: handleContentSizeChange,
@@ -122,8 +126,14 @@ const TierUpgradeModalProvider = () => {
     >
       {isReview ? (
         <UpgradeReviewContent />
+      ) : isFunding ? (
+        <UpgradeFundingStatus />
       ) : isTokenSelector ? (
-        <LockTokenSelector />
+        route === 'cash' ? (
+          <CashTokenSelector />
+        ) : (
+          <LockTokenSelector />
+        )
       ) : (
         <UpgradeTierContent onRouteSelected={handleRouteSelected} />
       )}

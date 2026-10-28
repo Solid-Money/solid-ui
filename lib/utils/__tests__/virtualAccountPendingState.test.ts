@@ -97,6 +97,35 @@ describe('resolveVirtualAccountPendingState', () => {
     ).toBe('deposit-required');
   });
 
+  it('asks to verify again when Rain can never accept the SSN', () => {
+    // Didit approved, the SSN answer was not 9 digits, and the hand-off failed
+    // before Rain saw anything. This read as "waiting" for a decision that
+    // would never come.
+    expect(
+      resolveVirtualAccountPendingState({
+        ...wirexCardholder,
+        rainApplication: {
+          status: 'didit_forward_failed',
+          kycStatus: KycStatus.INCOMPLETE,
+          resubmitVerification: true,
+        },
+      }),
+    ).toBe('verification-resubmit');
+  });
+
+  it('prefers verifying again over a deposit hold the forward already got past', () => {
+    expect(
+      resolveVirtualAccountPendingState({
+        ...wirexCardholder,
+        rainApplication: {
+          kycStatus: KycStatus.INCOMPLETE,
+          forwardPendingDeposit: true,
+          resubmitVerification: true,
+        },
+      }),
+    ).toBe('verification-resubmit');
+  });
+
   it('keeps waiting through Rain review', () => {
     for (const status of [RainApplicationStatus.PENDING, RainApplicationStatus.MANUAL_REVIEW]) {
       expect(

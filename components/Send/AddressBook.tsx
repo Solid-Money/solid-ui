@@ -1,19 +1,33 @@
 import React from 'react';
 import { Controller } from 'react-hook-form';
 import { TextInput, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { SEND_MODAL } from '@/constants/modals';
 import { useAddressBook } from '@/hooks/useAddressBook';
 import { useSendStore } from '@/store/useSendStore';
 
 const AddressBook: React.FC = () => {
   const address = useSendStore(state => state.address);
+  const recipientModal = useSendStore(state => state.recipientModal);
+  const returnToRecipients = recipientModal.name === SEND_MODAL.OPEN_SEND_OPTIONS.name;
 
   const { control, handleSubmit, errors, isValid, handleAddContact, addToAddressBookMutation } =
     useAddressBook({
       defaultAddress: address || '',
       defaultName: '',
+      onSuccess: returnToRecipients
+        ? () => {
+            const state = useSendStore.getState();
+            state.setAddress('');
+            state.setName('');
+            state.setSearchQuery('');
+            state.setModal(recipientModal);
+            Toast.show({ type: 'success', text1: 'Added to contacts' });
+          }
+        : undefined,
     });
 
   return (

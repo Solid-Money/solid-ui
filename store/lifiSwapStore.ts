@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { LifiSwapStatusValue } from '@/lib/types/lifi-swap';
+import { LifiSwapPurpose, LifiSwapStatusValue } from '@/lib/types/lifi-swap';
 
 /** A cross-chain swap whose source leg is mined and whose delivery we are waiting on. */
 export interface TrackedLifiSwap {
@@ -24,6 +24,12 @@ export interface TrackedLifiSwap {
   substatusMessage?: string;
   explorerLink?: string;
   receivingTxLink?: string;
+  /** What the swap was for, when it was not a plain swap. */
+  purpose?: LifiSwapPurpose;
+  /** The quote's USD value of what was sent, as LI.FI priced it. */
+  fromAmountUsd?: string;
+  /** Set once whatever the swap was for has used it — a membership it paid. */
+  consumed?: boolean;
 }
 
 /** After this long a swap is no longer polled; its activity row stays as it was. */

@@ -12,6 +12,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { buildSupportMessage, ErrorReport, reportError } from '@/lib/errors';
 import { openIntercomWithMessage } from '@/lib/intercom';
+import { clearPersistedQueryCache } from '@/lib/queryPersistence';
 import { isStaleBundleError, reloadForNewBundle } from '@/lib/staleBundle';
 import { reportError as reportToErrorsPage } from '@/lib/telemetry/reportError';
 
@@ -48,6 +49,8 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             source: 'error_boundary',
             platform: Platform.OS,
           }).then(shown => setReport(shown.report));
+          // A render crash must not restore the same broken cached data on launch.
+          clearPersistedQueryCache();
         } else {
           // Counted on the Errors page as the app updating under an open
           // tab, not as a crash: it recovers on reload.

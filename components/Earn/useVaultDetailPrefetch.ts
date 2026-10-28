@@ -22,7 +22,6 @@ import { LIVE_VAULTS } from '@/lib/vaults';
  */
 export const useVaultDetailPrefetch = () => {
   const queryClient = useQueryClient();
-
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       // The vaults Earn shows a tile for — a coming-soon vault has no detail screen to warm.

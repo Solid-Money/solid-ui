@@ -13,6 +13,9 @@ export const CROSS_CHAIN_SEND_DECIMALS = 6;
 /** The backend's catch-all destination id: accepts every live route, no exchange rules. */
 export const OTHER_EXCHANGE = 'other_exchange';
 
+/** The backend's destination id for a send to the user's own wallet; same routes as above. */
+export const OWN_WALLET = 'own_wallet';
+
 /**
  * The display symbol the bridge uses for a Fuse token, or null when the token
  * has no Stargate route (every token but USDC.e and USDT on Fuse).

@@ -5,6 +5,9 @@ import { Text } from '@/components/ui/text';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import {
   CASHBACK_EARNED_COLOR,
+  isMonthlyCashbackCapReached,
+  monthlyCashbackCap,
+  monthlyCashbackHeadroom,
   monthlyCashbackTotal,
   resolveCashbackProgress,
 } from '@/lib/cashbackProgress';
@@ -32,7 +35,9 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
     rewardsData?.cashbackThisMonth,
     rewardsData?.cashbackPendingThisMonth,
   );
-  const cap = rewardsData?.maxCashbackMonthly ?? 0;
+  // What this month's purchases are paid up to — above the tier's cap after a
+  // trial ends mid-month, since purchases made during it keep the trial's cap.
+  const cap = monthlyCashbackCap(rewardsData);
   // The rate this card's own sheet quotes, so "spend $X more" is the spend that
   // actually reaches the cap at the advertised rate.
   const rate = resolveUserCashbackRate(rewardsData);
@@ -40,8 +45,11 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
   const earnedPct = resolveCashbackProgress(earned, cap);
   // Spend needed to reach the monthly cap. Escrowed cashback draws down the
   // same cap when it matures, so it counts against the target too — otherwise
-  // this asks for spend that will be capped.
-  const remainingSpend = rate > 0 ? (Math.max(0, cap - earned) * 100) / rate : 0;
+  // this asks for spend that will be capped. Measured against what a purchase
+  // made now can still earn, which a month carried by a trial may have none of.
+  const headroom = monthlyCashbackHeadroom(rewardsData, earned);
+  const capReached = isMonthlyCashbackCapReached(headroom);
+  const remainingSpend = rate > 0 ? (headroom * 100) / rate : 0;
 
   return (
     <Pressable
@@ -69,7 +77,9 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
       <View style={styles.hint}>
         {cap > 0 && (
           <Text className="text-[14px] font-normal text-white/70">
-            Spend ${formatNumber(remainingSpend, 0, 0)} more for max cashback this month
+            {capReached
+              ? "You've reached max cashback this month"
+              : `Spend $${formatNumber(remainingSpend, 0, 0)} more for max cashback this month`}
           </Text>
         )}
       </View>

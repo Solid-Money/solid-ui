@@ -50,6 +50,21 @@ export const toTokenUnits = (value: number, decimals: number, round: 'up' | 'dow
   return round === 'up' && dropped ? kept + 1n : kept;
 };
 
+/**
+ * The limits in a server response, or undefined unless both are usable numbers
+ * in order. They feed `toLimitUnits` during render, where a missing or null
+ * limit would throw and take the amount screen down with it.
+ */
+export const readCashoutLimits = (body: unknown): TransfiCashoutLimits | undefined => {
+  if (!body || typeof body !== 'object') return undefined;
+  const { minLimit, maxLimit } = body as Record<string, unknown>;
+  const usable = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  return usable(minLimit) && usable(maxLimit) && minLimit <= maxLimit
+    ? { minLimit, maxLimit }
+    : undefined;
+};
+
 export const toLimitUnits = (
   limits: TransfiCashoutLimits,
   decimals: number,

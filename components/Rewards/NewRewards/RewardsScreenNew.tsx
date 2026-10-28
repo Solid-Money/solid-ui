@@ -20,7 +20,7 @@ import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hoo
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
+import { monthlyCashbackCap, monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { isTierOnTrial, nextPurchasableTier } from '@/lib/tierUpgrade';
@@ -289,7 +289,8 @@ export default function RewardsScreenNew() {
             // part twice.
             cashbackThisMonth: cashbackSettled,
             cashbackPendingThisMonth: cashbackPending,
-            maxCashbackMonthly: rewardsData?.maxCashbackMonthly ?? 0,
+            maxCashbackMonthly: monthlyCashbackCap(rewardsData),
+            tierMonthlyCap: rewardsData?.maxCashbackMonthly,
             allTimeCashback,
           }}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
@@ -307,7 +308,8 @@ export default function RewardsScreenNew() {
             // escrowed part twice.
             cashbackThisMonth={cashbackSettled}
             cashbackPendingThisMonth={cashbackPending}
-            maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+            maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
+            tierMonthlyCap={rewardsData?.maxCashbackMonthly}
             allTimeCashback={allTimeCashback}
             {...benefitRates}
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}

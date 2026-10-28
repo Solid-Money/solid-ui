@@ -5,9 +5,14 @@ import { readContract } from 'viem/actions';
 
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { withdrawCardCollateral } from '@/lib/api';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import {
+  executeTransactions,
+  sendUserOperationPayingGasIfRefused,
+  USER_CANCELLED_TRANSACTION,
+} from '@/lib/execute';
 import { toErc1271Signature, waitForSmartAccountDeployment } from '@/lib/smartAccountSigning';
 import { Status, TransactionType, WithdrawCollateralSignatureResponse } from '@/lib/types';
+import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { getChain, publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
@@ -107,10 +112,18 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         // a counterfactual (undeployed) Safe produces a domain separator mismatch.
         const code = await client.getCode({ address: user.safeAddress as Address });
         if (!code || code === '0x') {
-          // Deploy the Safe by sending a no-op transaction (0-value self-transfer)
-          const deployHash = await smartAccountClient.sendUserOperation({
-            calls: [{ to: user.safeAddress as Address, data: '0x', value: 0n }],
-          });
+          // Deploy the Safe by sending a no-op transaction (0-value self-transfer).
+          // Gas as for any transaction: sponsored, or paid by the Safe if the
+          // user agrees once our paymaster's cost cap refuses it.
+          const deployHash = await sendUserOperationPayingGasIfRefused(
+            smartAccountClient,
+            [{ to: user.safeAddress as Address, data: '0x', value: 0n }],
+            undefined,
+            chain,
+          );
+          if (!deployHash) {
+            throw new Error('User cancelled transaction');
+          }
           await smartAccountClient.waitForUserOperationReceipt({ hash: deployHash });
           // Recreate client so it no longer includes factory/initCode for the deployed Safe
           smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
@@ -237,6 +250,14 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         setStatus(Status.SUCCESS);
         return transaction_result;
       } catch (err) {
+        // Declining the network fee or the passkey prompt is a decision, not a
+        // failure: nothing to report. Still thrown, so the caller stops; its
+        // failure sheet stays silent for a cancel.
+        if (isCancelledByUser(err)) {
+          setStatus(Status.IDLE);
+          throw err;
+        }
+
         console.error('Rain collateral withdrawal error:', err);
 
         Sentry.captureException(err, {

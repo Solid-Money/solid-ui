@@ -41,4 +41,67 @@ describe('sanitizeTechnicalMessage', () => {
   it('shortens calldata', () => {
     expect(sanitizeTechnicalMessage(`reverted 0x${'00'.repeat(100)}`)).toBe('reverted 0x00000000…');
   });
+
+  it('keeps the server’s Details line from after the request dump', () => {
+    // The Oct 14 Ethereum swap failure, as viem built it (key swapped out).
+    const message = [
+      'Invalid parameters were provided to the RPC method.',
+      'Double check you have provided the correct parameters.',
+      '',
+      'URL: https://api.pimlico.io/v2/1/rpc?apikey=pim_TestKey1234567890abc',
+      `Request body: {"method":"pm_getPaymasterData","params":[{"callData":"0x541d63c8${'00'.repeat(64)}"},"0x0000000071727De22E5E9d8BAf0edAc6f37da032","0x1",{"sponsorshipPolicyId":"sp_test"}]}`,
+      '',
+      'Details: sponsorshipPolicy perOpMaximumUsd reached',
+      'Version: viem@2.47.10',
+    ].join('\n');
+
+    const out = sanitizeTechnicalMessage(message);
+    expect(out).toBe(
+      'Invalid parameters were provided to the RPC method. Double check you have provided the correct parameters. URL: https://api.pimlico.io/… Details: sponsorshipPolicy perOpMaximumUsd reached',
+    );
+    expect(out).not.toContain('pim_');
+    expect(out).not.toContain('callData');
+  });
+
+  it('redacts a bare bearer token in the Details line, but not the word in a sentence', () => {
+    expect(
+      sanitizeTechnicalMessage(
+        'RPC Request failed.\n\nRequest body: {"id":1}\n\nDetails: rejected Bearer eyJhbGciOi.J9.abc123',
+      ),
+    ).toBe('RPC Request failed. Details: rejected [redacted]');
+    expect(sanitizeTechnicalMessage('Bearer authentication failed')).toBe(
+      'Bearer authentication failed',
+    );
+  });
+
+  it('redacts a bearer token in any case, and an all-letter one too long to be a word', () => {
+    expect(sanitizeTechnicalMessage('rejected bearer eyJhbGciOi.J9.abc123')).toBe(
+      'rejected [redacted]',
+    );
+    expect(sanitizeTechnicalMessage('rejected BEARER abcdefghijklmnopqrstuvwxyz')).toBe(
+      'rejected [redacted]',
+    );
+    expect(sanitizeTechnicalMessage('bearer token missing')).toBe('bearer token missing');
+  });
+
+  it('redacts the whole Authorization value, scheme and credential', () => {
+    expect(sanitizeTechnicalMessage('401 Authorization: Basic dXNlcjpzZWNyZXQ=')).toBe(
+      '401 Authorization: [redacted]',
+    );
+  });
+
+  it('drops a request dump that starts the message, keeping its Details', () => {
+    expect(
+      sanitizeTechnicalMessage(
+        'Request body: {"privateKey":"sensitiveValue"}\n\nDetails: nonce too low',
+      ),
+    ).toBe('Details: nonce too low');
+  });
+
+  it('redacts a key that turns up in the Details line itself', () => {
+    const out = sanitizeTechnicalMessage(
+      'RPC Request failed.\n\nRequest body: {"id":1}\n\nDetails: bad key apikey=pim_TestKey1234567890abc',
+    );
+    expect(out).toBe('RPC Request failed. Details: bad key apikey=[redacted]');
+  });
 });

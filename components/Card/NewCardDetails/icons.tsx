@@ -292,6 +292,26 @@ export const AppleWalletRowIcon = () => (
   </Svg>
 );
 
+/** Figma 29235:12800 — "Main currency": two opposing arrows. */
+export const MainCurrencyRowIcon = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M4 8.5H18.5M15 12L18.5 8.5L15 5"
+      stroke="white"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M20 15.5H5.5M9 19L5.5 15.5L9 12"
+      stroke="white"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 /** Figma 21843:1208 — the list rows' trailing chevron. */
 export const RowChevronIcon = () => (
   <Svg width={8.85221} height={14.5} viewBox="0 0 8.85221 14.5" fill="none">

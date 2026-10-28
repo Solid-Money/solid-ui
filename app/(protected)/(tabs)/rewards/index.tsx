@@ -23,6 +23,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { track } from '@/lib/analytics';
+import { monthlyCashbackCap } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { hasCard } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
@@ -70,7 +71,7 @@ function LegacyRewards() {
 
   const bannerData = useMemo(() => {
     if (!rewardsData) return [];
-    const { cashbackThisMonth, cashbackPendingThisMonth, cashbackRate, maxCashbackMonthly } =
+    const { cashbackThisMonth, cashbackPendingThisMonth, cashbackRate, cashbackHeadroomThisMonth } =
       rewardsData;
     return [
       <CashbackCard
@@ -78,7 +79,8 @@ function LegacyRewards() {
         cashbackThisMonth={cashbackThisMonth}
         cashbackPendingThisMonth={cashbackPendingThisMonth}
         cashbackRate={cashbackRate}
-        maxCashbackMonthly={maxCashbackMonthly}
+        maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
+        cashbackHeadroomThisMonth={cashbackHeadroomThisMonth}
       />,
       // The referral program banner (opens the referral popup) is now shown to
       // all users as part of the referral program launch.

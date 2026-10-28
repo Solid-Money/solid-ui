@@ -6,6 +6,18 @@ on:
   pull_request:
     branches: [master, qa]
 
+# A new push to a PR makes the run for the previous commit moot, so stop paying
+# for it. Pushes to master/qa each keep their own run, even when both branches
+# point at the same commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The job only reads the checkout. Without this it would inherit the repo's
+# default token permissions while running dependency install scripts.
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -26,6 +38,5 @@ jobs:
       - name: Run ESLint with Expo (includes Prettier)
         run: npm run lint
 
-      # Temporarily disabled - fix TypeScript errors first
-      # - name: TypeScript compilation check
-      #   run: npx tsc --noEmit
+      - name: TypeScript compilation check
+        run: npx tsc --noEmit

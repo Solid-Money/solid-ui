@@ -6,10 +6,12 @@ import {
   classifyError,
   getUserErrorMessage,
   isSafeServerMessage,
+  isSponsorshipLimitError,
   normalizeError,
   normalizeErrorAsync,
   toUserError,
 } from '@/lib/errors/classify';
+import { UserCopyError } from '@/lib/errors/UserCopyError';
 
 /** The shape `lib/api`'s ApiError has; the classifier reads it by duck type. */
 class ApiError extends Error {
@@ -45,6 +47,15 @@ const PIMLICO_ERROR = new Error(
 const RID = '9c1b4f2a0e6d4b7f8a1c2d3e4f5a6b7c';
 
 describe('toUserError', () => {
+  it.each([
+    'Your wallet is still setting up. Please try again shortly.',
+    'Real-Time Funding is not available for this card right now.',
+    'This network isn’t supported by this version of the app. Please update and try again.',
+    'This tier is not available with an annual fee.',
+  ])('preserves app-authored recovery instructions: %s', message => {
+    expect(getUserErrorMessage(new UserCopyError(message))).toBe(message);
+    expect(getUserErrorMessage(new Error(message))).not.toBe(message);
+  });
   it('turns the paymaster failure into "what failed" and "nothing was sent"', () => {
     const userError = toUserError(PIMLICO_ERROR, {
       action: 'move_to_card',
@@ -62,6 +73,48 @@ describe('toUserError', () => {
     // The technical cause is kept for telemetry, minus the key and the request dump.
     expect(userError.technical).not.toContain('pim_');
     expect(userError.technical).not.toContain('callData');
+  });
+
+  it('tells a sponsorship limit apart from a paymaster that is down', () => {
+    // Every LI.FI swap out of Ethereum on Oct 14 (key and calldata trimmed).
+    const capped = Object.assign(
+      new Error(
+        [
+          'Invalid parameters were provided to the RPC method.',
+          'Double check you have provided the correct parameters.',
+          '',
+          'URL: https://api.pimlico.io/v2/1/rpc?apikey=pim_REDACTEDREDACTED',
+          'Request body: {"method":"pm_getPaymasterData","params":[{"callData":"0x541d63c8"},"0x0000000071727De22E5E9d8BAf0edAc6f37da032","0x1",{"sponsorshipPolicyId":"sp_test"}]}',
+          '',
+          'Details: sponsorshipPolicy perOpMaximumUsd reached',
+          'Version: viem@2.47.10',
+        ].join('\n'),
+      ),
+      {
+        name: 'InvalidParamsRpcError',
+        shortMessage: 'Invalid parameters were provided to the RPC method.',
+        details: 'sponsorshipPolicy perOpMaximumUsd reached',
+      },
+    );
+
+    expect(isSponsorshipLimitError(capped)).toBe(true);
+    expect(
+      isSponsorshipLimitError(Object.assign(new Error('Swap failed'), { cause: capped })),
+    ).toBe(true);
+    expect(toUserError(capped, { action: 'swap' })).toMatchObject({
+      code: 'SPONSORSHIP_LIMIT',
+      nothingSent: true,
+      body: 'Nothing was sent. The network fee for this is above what we cover.',
+    });
+
+    // A request body naming the policy is not a refusal by it.
+    expect(isSponsorshipLimitError(PIMLICO_ERROR)).toBe(false);
+    expect(
+      isSponsorshipLimitError(
+        new Error('Request body: {"params":[{},"0x0","0x1",{"sponsorshipPolicyId":"sp_reached"}]}'),
+      ),
+    ).toBe(false);
+    expect(classifyError(normalizeError(PIMLICO_ERROR)).code).toBe('PAYMASTER_REJECTED');
   });
 
   it('says nothing when the user backed out of the passkey or wallet prompt', () => {

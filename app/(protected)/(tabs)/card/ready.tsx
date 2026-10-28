@@ -11,8 +11,14 @@ import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { activationDailyLimit, formatUsd, usdToOnChain } from '@/constants/cardSpendModule';
 import { path } from '@/constants/path';
+import {
+  BASE_SPEND_DEPLOYMENT,
+  isSpendDeploymentConfigured,
+} from '@/constants/spendModuleDeployments';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
+import { useCardSpendDeployments, useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { WALLET_ELIGIBILITY_KEY } from '@/hooks/useWalletEligibility';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
 import { openHelpLink } from '@/lib/help/links';
@@ -58,7 +64,7 @@ const underlineProps = {
  * user. A single boolean could not: one of the steps raises a signature prompt, and
  * "Activating..." over a passkey sheet says nothing about what is being signed.
  */
-type ActivationPhase = 'idle' | 'enabling-spend' | 'creating';
+type ActivationPhase = 'idle' | 'enabling-spend' | 'enabling-eurc' | 'creating';
 
 export default function CardReady() {
   const router = useRouter();
@@ -77,6 +83,11 @@ export default function CardReady() {
     register: registerCardSpending,
     refetch: refetchSpendRegistration,
   } = useCardSpendRegistration({ enabled: true });
+
+  // The Base instance, which lets the card pay with EURC. Registered at activation beside Fuse, so
+  // a new cardholder's card can pay euro shops from EURC without a second setup later.
+  const euroSpend = useEuroSpendEnablement();
+  const { refetch: refetchSpendDeployments } = useCardSpendDeployments();
 
   const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
   const setShouldShowWelcomePopup = useCardWelcomePopupStore(
@@ -136,6 +147,15 @@ export default function CardReady() {
 
   /** A Wirex card declines every payment until the Safe is registered, so activation waits. */
   const needsSpendSetup = isWirexApplicant && !isSpendRegistered;
+
+  /**
+   * Whether activation also registers the Base instance. Skipped when this build has no Base
+   * addresses, or the backend has switched Base off (`available: false`) — there is nothing to
+   * register against, and the backend would refuse to record it.
+   */
+  const offersEurcSetup =
+    isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT) && euroSpend.deployment?.available !== false;
+  const needsEurcSetup = isWirexApplicant && offersEurcSetup && !euroSpend.isEnabled;
 
   /**
    * The org has no daily limit this Safe could be registered with, so there is nothing to
@@ -231,6 +251,55 @@ export default function CardReady() {
     }
   };
 
+  /**
+   * Enable the spend module on the Safe on Base and register it at the module's default limits, so
+   * the card can pay with EURC. A second passkey prompt after the Fuse one, because it is another
+   * chain.
+   *
+   * A gate, like the Fuse grant: false means nothing was created, and pressing Activate card again
+   * resumes here — the Fuse half is already done and is not asked for twice.
+   */
+  const grantEurcSpending = async (): Promise<boolean> => {
+    try {
+      setActivationPhase('enabling-eurc');
+
+      if (!(await euroSpend.enableAsync('card_activation'))) {
+        Toast.show({
+          type: 'info',
+          text1: 'Card not activated',
+          text2:
+            'Your card also pays with your EURC, so it is only created once you approve that signature. Nothing was created — tap Activate card to try again.',
+          props: { badgeText: '' },
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error enabling EURC spending during activation:', error);
+
+      // The backend's record gets the last word, as the chain does for the Fuse grant: a confirm
+      // that landed while its response was lost is a finished grant. A user operation whose
+      // receipt timed out needs no new signature either — the next press reads the chain, finds
+      // both halves done and only confirms.
+      try {
+        const { data } = await refetchSpendDeployments();
+        const base = data?.deployments.find(
+          deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId,
+        );
+        if (base?.enabled) return true;
+      } catch {
+        // The read failed too; fall through and report the original failure.
+      }
+
+      void showErrorToast(error, {
+        action: 'card_activate',
+        body: 'No card was created. Try again in a moment.',
+      });
+      return false;
+    }
+  };
+
   const handleActivateCard = async () => {
     if (!allAccepted) return;
 
@@ -252,6 +321,12 @@ export default function CardReady() {
         setActivationPhase('creating');
       }
 
+      // Then Base, the same way: no card until the Safe there can pay with EURC too.
+      if (provider === CardProvider.WIREX && offersEurcSetup && !euroSpend.isEnabled) {
+        if (!(await grantEurcSpending())) return;
+        setActivationPhase('creating');
+      }
+
       await withRefreshToken(() =>
         submitCardConsents({
           ...consents,
@@ -264,6 +339,7 @@ export default function CardReady() {
       if (!card) throw new Error('Failed to create card');
 
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [WALLET_ELIGIBILITY_KEY] });
 
       // Show the welcome popup whenever the card lands, including when it opens a
       // moment later on the issuance flow.
@@ -370,9 +446,11 @@ export default function CardReady() {
         <Text className="text-base font-bold text-primary-foreground">
           {activationPhase === 'enabling-spend'
             ? 'Enabling card spending...'
-            : activating
-              ? 'Activating...'
-              : 'Activate card'}
+            : activationPhase === 'enabling-eurc'
+              ? 'Enabling EURC payments...'
+              : activating
+                ? 'Activating...'
+                : 'Activate card'}
         </Text>
       </Button>
 
@@ -386,9 +464,21 @@ export default function CardReady() {
             ? `Approve the signature to let your card spend from your savings, up to ${formatUsd(
                 usdToOnChain(initialDailyLimit),
               )} a day.`
-            : `Your card spends straight from your savings, so activating asks for one signature: it lets the card spend up to ${formatUsd(
-                usdToOnChain(initialDailyLimit),
-              )} a day. You can change that limit or turn spending off any time from your card.`}
+            : activationPhase === 'enabling-eurc'
+              ? 'Approve the second signature to let your card pay with your EURC.'
+              : needsEurcSetup
+                ? `Your card spends straight from your savings, so activating asks for two signatures: one lets the card spend up to ${formatUsd(
+                    usdToOnChain(initialDailyLimit),
+                  )} a day, the other lets it pay with your EURC. You can change that limit or turn spending off any time from your card.`
+                : `Your card spends straight from your savings, so activating asks for one signature: it lets the card spend up to ${formatUsd(
+                    usdToOnChain(initialDailyLimit),
+                  )} a day. You can change that limit or turn spending off any time from your card.`}
+        </Text>
+      ) : !needsSpendSetup && needsEurcSetup ? (
+        <Text className="mt-3 text-center text-xs leading-snug text-[#ACACAC]">
+          {activationPhase === 'enabling-eurc'
+            ? 'Approve the signature to let your card pay with your EURC.'
+            : 'Activating asks for one signature: it lets your card pay with your EURC.'}
         </Text>
       ) : null}
 
