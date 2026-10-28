@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { EASE_OUT_QUINT } from '@/components/Card/NewCardDetails/heroMotion';
 import ConfettiOverlay from '@/components/SpinAndWin/ConfettiOverlay';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogCloseButton, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import { DigitalWalletType } from '@/constants/digital-wallet';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -170,7 +170,9 @@ const CardLivePopup = ({
                 </Text>
               </View>
             ) : null}
-            <Text className="text-[26px] font-semibold text-white">Your card is live</Text>
+            <DialogTitle className="text-[26px] font-semibold text-white">
+              Your card is live
+            </DialogTitle>
             <Text className="text-center text-base leading-[22px] text-[#ACACAC]">
               Add funds and start spending. No FX fees on euro and dollar payments.
             </Text>

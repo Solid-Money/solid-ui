@@ -160,7 +160,14 @@ export default function CountrySelection() {
     let cancelled = false;
     checkProductAccess('card', selectedCode)
       .then(hasAccess => {
-        if (!cancelled) setAvailability(prev => ({ ...prev, [selectedCode]: hasAccess === true }));
+        // checkProductAccess resolves null for a failed/indeterminate check: keep
+        // it null (not false) so the country is not pinned as a definitive "no"
+        // and handleCountrySelectorOk can retry the lookup.
+        if (!cancelled)
+          setAvailability(prev => ({
+            ...prev,
+            [selectedCode]: typeof hasAccess === 'boolean' ? hasAccess : null,
+          }));
       })
       .catch(() => {
         if (!cancelled) setAvailability(prev => ({ ...prev, [selectedCode]: null }));

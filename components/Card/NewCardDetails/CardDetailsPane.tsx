@@ -481,28 +481,32 @@ const CardDetailsPane = () => {
           <CardDetailsHeader onBack={close} />
         </View>
       </View>
-      {isWirexCard ? (
-        <CardLivePopup
-          isOpen={isOpen && shouldShowWelcomePopup}
-          onClose={() => setShouldShowWelcomePopup(false)}
-          last4={cardDetails?.card_details?.last_4}
-          onAddFunds={
-            canAddFundsToCard(fundsAccess)
-              ? () => openDepositFlow({ source: 'card_live_popup', buttonText: 'Add funds' })
-              : undefined
-          }
-          wallet={DEVICE_DIGITAL_WALLET}
-          onAddToWallet={wallet => {
-            setWalletFromManage(wallet);
-            setIsAddToWalletOpen(true);
-          }}
-        />
-      ) : (
-        <CardWelcomePopup
-          isOpen={isOpen && shouldShowWelcomePopup}
-          onClose={() => setShouldShowWelcomePopup(false)}
-        />
-      )}
+      {/* Wait until the issuer query has answered (provider resolves non-null)
+          before choosing a popup, so a Wirex card never flashes the non-Wirex
+          welcome popup first. */}
+      {provider !== null &&
+        (isWirexCard ? (
+          <CardLivePopup
+            isOpen={isOpen && shouldShowWelcomePopup}
+            onClose={() => setShouldShowWelcomePopup(false)}
+            last4={cardDetails?.card_details?.last_4}
+            onAddFunds={
+              canAddFundsToCard(fundsAccess)
+                ? () => openDepositFlow({ source: 'card_live_popup', buttonText: 'Add funds' })
+                : undefined
+            }
+            wallet={DEVICE_DIGITAL_WALLET}
+            onAddToWallet={wallet => {
+              setWalletFromManage(wallet);
+              setIsAddToWalletOpen(true);
+            }}
+          />
+        ) : (
+          <CardWelcomePopup
+            isOpen={isOpen && shouldShowWelcomePopup}
+            onClose={() => setShouldShowWelcomePopup(false)}
+          />
+        ))}
       <ManageCardSheet
         isOpen={isOpen && spendSheetSource !== null}
         onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}

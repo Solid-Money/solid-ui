@@ -108,11 +108,13 @@ export function WirexCardApproval() {
     state => state.setShouldShowWelcomePopup,
   );
 
-  const isUS = countryInfo?.countryCode?.toUpperCase() === 'US';
-  const { consents, toggle, allAccepted, submission } = useCardConsents(isUS);
-
   // The residence the KYC established, which is evidenced, before the one the user picked.
   const countryCode = cardStatusResponse?.country ?? countryInfo?.countryCode;
+  // Derive US from the same KYC-first country the currency suggestion uses, so the consent set
+  // and the currency never disagree when the picked country differs from the one KYC evidenced.
+  const isUS = countryCode?.toUpperCase() === 'US';
+  const { consents, toggle, allAccepted, submission } = useCardConsents(isUS);
+
   const countryName = COUNTRIES.find(country => country.code === countryCode?.toUpperCase())?.name;
   const suggested = suggestedCardCurrency(countryCode);
 
