@@ -15,6 +15,7 @@ const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
 const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const BASE_USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
 const CBBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
+const WETH = '0x4200000000000000000000000000000000000006';
 const SOL = '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82';
 const AAVE = '0x63706e401c06ac8513145b7687A14804d17f814b';
 const CBZEC = '0xB2000000000000000000008501b13360000cb2EC';
@@ -158,6 +159,7 @@ describe('buildSpendableAssetRows', () => {
         EURC,
         ADDRESSES.base.soEurcVault,
         CBBTC,
+        WETH,
         SOL,
         AAVE,
         CBZEC,
@@ -169,6 +171,7 @@ describe('buildSpendableAssetRows', () => {
         ['EURC', 'for euro purchases'],
         ['soEUR', 'for euro purchases'],
         ['cbBTC', undefined],
+        ['WETH', undefined],
         ['SOL', undefined],
         ['AAVE', undefined],
         ['cbZEC', undefined],

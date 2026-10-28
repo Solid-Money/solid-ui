@@ -10,7 +10,7 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { TokenBalance } from '@/lib/types';
 import { matchesAsset } from '@/lib/utils/cardSpendable';
 
-/** Which logo a "Spendable assets" row draws. The last four are the crypto Base can sell. */
+/** Which logo a "Spendable assets" row draws. The last five are the crypto Base can sell. */
 export type SpendableAssetIcon =
   | 'usdc'
   | 'usdt'
@@ -18,6 +18,7 @@ export type SpendableAssetIcon =
   | 'eurc'
   | 'soeur'
   | 'cbbtc'
+  | 'weth'
   | 'sol'
   | 'aave'
   | 'zec';
@@ -76,6 +77,7 @@ const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {
   EURC: 'eurc',
   soEUR: 'soeur',
   cbBTC: 'cbbtc',
+  WETH: 'weth',
   SOL: 'sol',
   AAVE: 'aave',
   cbZEC: 'zec',
@@ -84,6 +86,7 @@ const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {
 /** The crypto Base can sell, by name under its ticker. */
 const CRYPTO_NAME: Record<string, string> = {
   cbBTC: 'Bitcoin',
+  WETH: 'Ethereum',
   SOL: 'Solana',
   AAVE: 'Aave',
   cbZEC: 'Zcash',
@@ -168,6 +171,7 @@ export const buildSpendableAssetRows = (
         ];
       }
       case 'cbbtc':
+      case 'weth':
       case 'sol':
       case 'aave':
       case 'zec': {

@@ -28,7 +28,7 @@ import type { BorrowedSummaryFigures } from '@/components/Card/NewCardDetails/Sp
  * A collateral row's mark: the yield glyphs for Solid's own shares, the token's logo for the
  * crypto Base takes as collateral.
  */
-export type CollateralIcon = 'usd' | 'eur' | 'cbbtc' | 'sol' | 'aave' | 'zec';
+export type CollateralIcon = 'usd' | 'eur' | 'cbbtc' | 'weth' | 'sol' | 'aave' | 'zec';
 
 /** One "Collateral assets" row (Figma 29123:9528, 29123:9541). */
 export interface CollateralRowFigures {
@@ -76,6 +76,7 @@ const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> 
   soUSD: { label: 'USD Yield', icon: 'usd' },
   soEUR: { label: 'EUR Yield', icon: 'eur' },
   cbBTC: { label: 'Bitcoin', icon: 'cbbtc' },
+  WETH: { label: 'Ethereum', icon: 'weth' },
   SOL: { label: 'Solana', icon: 'sol' },
   AAVE: { label: 'Aave', icon: 'aave' },
   cbZEC: { label: 'Zcash', icon: 'zec' },

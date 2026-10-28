@@ -89,9 +89,13 @@ const COLLATERAL_ICON = {
   },
 } as const;
 
-/** The crypto Base takes as collateral, drawn with the marks the deposit screen uses. */
+/**
+ * The crypto Base takes as collateral, drawn with the marks the deposit screen uses. WETH takes
+ * the ETH mark, as `getTokenIcon` draws it on the repay step.
+ */
 const COLLATERAL_TOKEN_LOGO = {
   cbbtc: getAsset('images/cbbtc.png'),
+  weth: getAsset('images/eth.png'),
   sol: getAsset('images/sol.png'),
   aave: getAsset('images/aave.png'),
   zec: getAsset('images/zec.png'),
@@ -118,7 +122,7 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  * (Figma "so-token / soUSD / badge dot").
  */
 const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
-  if (icon === 'cbbtc' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
+  if (icon === 'cbbtc' || icon === 'weth' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
     return (
       <Image
         accessible={false}
@@ -378,7 +382,7 @@ interface CreditPanelProps extends BorrowedSummaryFigures {
 /**
  * The Credit panel (Figma 29123:9483): the borrowed block over the assets that back it, on
  * every instance the card borrows on — soUSD on Fuse and, once euro spending is enabled, soEUR
- * and the crypto collateral (cbBTC, SOL, AAVE, cbZEC) on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
+ * and the crypto collateral (cbBTC, WETH, SOL, AAVE, cbZEC) on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
  * is in dollars.
  */
 export const SpendModeCreditPanel = ({

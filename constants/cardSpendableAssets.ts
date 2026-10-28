@@ -107,7 +107,7 @@ const BASE_CBZEC = '0xb2000000000000000000008501b13360000cb2ec';
 
 /**
  * A Base spend token's ticker, from its address: soEUR by this build's vault, EURC by the bridge
- * config's Base EURC, cbZEC by the one address above, the rest — USDC, USDT, cbBTC, SOL, AAVE —
+ * config's Base EURC, cbZEC by the one address above, the rest — USDC, USDT, cbBTC, WETH, SOL, AAVE —
  * by the deposit token table, which already holds each one's Base contract. EURC is matched
  * directly rather than through that table because it is the one that carries the euro
  * qualifier. `undefined` for an address this build cannot name.
