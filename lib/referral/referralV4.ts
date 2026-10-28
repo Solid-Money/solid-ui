@@ -34,9 +34,19 @@ export const REFERRAL_V4_TERMS_FALLBACK = {
   monthTwoToDays: 60,
 } as const;
 
-/** True when the referral v4 program is live for this user. */
-export const isReferralV4Live = (summary: ReferralV4Summary | null | undefined): boolean =>
+/** True while referral v4 is open to new signups: a new invite joins it. */
+export const isReferralV4Open = (summary: ReferralV4Summary | null | undefined): boolean =>
   summary?.terms?.enabled === true;
+
+/**
+ * True when this user sees referral v4: while it is open to new signups, and,
+ * once it closes, for anyone already on it — a referrer with friends on v4, or
+ * a friend on v4 themselves — since what they were promised still pays out.
+ */
+export const isReferralV4Live = (summary: ReferralV4Summary | null | undefined): boolean =>
+  isReferralV4Open(summary) ||
+  (summary?.friends ?? []).some(friend => friend.program === 'v4') ||
+  summary?.asFriend?.program === 'v4';
 
 /** "$2,000" — whole dollars, for terms and targets. */
 export const formatUsdWhole = (value: number): string =>
@@ -129,6 +139,12 @@ export const monthTwoPhrase = (bonusLimit: ReferralV4Terms['bonusLimit'] | undef
     ? `in their ${ordinal} month`
     : `between day ${from} and day ${to} after they join`;
 };
+
+/** Refer & Earn's note once v4 is closed to new invites. Null while it is open. */
+export const closedNote = (summary: ReferralV4Summary | null | undefined): string | null =>
+  summary && !isReferralV4Open(summary)
+    ? "New invites earn our standard referral rewards. Friends you've already invited keep earning as shown."
+    : null;
 
 /** Refer & Earn's note while payouts are switched off. Null while they run. */
 export const pausedNote = (terms: ReferralV4Terms | null | undefined): string | null =>

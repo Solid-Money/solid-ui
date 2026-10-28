@@ -3,6 +3,7 @@ import {
   asFriendReversedLine,
   bigSpenderStepLine,
   capProgress,
+  closedNote,
   debtLine,
   formatPayoutDay,
   formatRate,
@@ -10,6 +11,7 @@ import {
   friendInitials,
   friendStatusLine,
   isReferralV4Live,
+  isReferralV4Open,
   monthTwoPhrase,
   offsetNote,
   pausedNote,
@@ -157,6 +159,34 @@ describe('formatting', () => {
       false,
     );
     expect(isReferralV4Live({ terms } as ReferralV4Summary)).toBe(true);
+  });
+
+  it('keeps v4 for those already on it once it closes to new signups', () => {
+    const closed = { ...terms, enabled: false };
+    const referrer = {
+      terms: closed,
+      friends: [row({ program: 'legacy' }), row({ program: 'v4' })],
+      asFriend: null,
+    } as unknown as ReferralV4Summary;
+    const friend = {
+      terms: closed,
+      friends: [],
+      asFriend: { program: 'v4' },
+    } as unknown as ReferralV4Summary;
+    const legacyOnly = {
+      terms: closed,
+      friends: [row({ program: 'legacy' })],
+      asFriend: { program: 'legacy' },
+    } as unknown as ReferralV4Summary;
+
+    expect(isReferralV4Live(referrer)).toBe(true);
+    expect(isReferralV4Live(friend)).toBe(true);
+    expect(isReferralV4Live(legacyOnly)).toBe(false);
+    expect(isReferralV4Open(referrer)).toBe(false);
+    expect(closedNote(referrer)).toBe(
+      "New invites earn our standard referral rewards. Friends you've already invited keep earning as shown.",
+    );
+    expect(closedNote({ terms, friends: [] } as unknown as ReferralV4Summary)).toBeNull();
   });
 });
 

@@ -15,6 +15,7 @@ import {
   friendName,
   friendStatusLine,
   isReferralV4Live,
+  isReferralV4Open,
 } from '@/lib/referral/referralV4';
 import { cn } from '@/lib/utils';
 
@@ -173,7 +174,7 @@ export default function ReferInvitesScreen() {
         {code ? (
           <ReferShareFooter
             code={code}
-            friendCreditUsd={terms.welcome.friendUsd}
+            friendCreditUsd={isReferralV4Open(summary) ? terms.welcome.friendUsd : undefined}
             surface="invites"
           />
         ) : null}

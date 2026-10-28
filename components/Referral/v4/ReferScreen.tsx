@@ -13,11 +13,13 @@ import { track } from '@/lib/analytics';
 import {
   asFriendProgressLine,
   asFriendReversedLine,
+  closedNote,
   debtLine,
   formatRate,
   formatUsdCents,
   formatUsdWhole,
   isReferralV4Live,
+  isReferralV4Open,
   pausedNote,
   REVERSED_REASON,
 } from '@/lib/referral/referralV4';
@@ -211,6 +213,7 @@ export default function ReferScreen() {
   const { terms, rewards } = summary;
   const code = summary.referralCode || user?.referralCode || '';
   const earned = (amount: number) => (hasInvites ? amount : null);
+  const closed = closedNote(summary);
   const paused = pausedNote(terms);
   const debt = debtLine(summary.debt);
 
@@ -311,6 +314,7 @@ export default function ReferScreen() {
             </View>
 
             <TotalsCard summary={summary} />
+            {closed ? <ReferNote>{closed}</ReferNote> : null}
             {paused ? <ReferNote>{paused}</ReferNote> : null}
             {debt ? <ReferNote>{debt}</ReferNote> : null}
             {hasInvites ? <InvitesRow summary={summary} /> : null}
@@ -318,7 +322,12 @@ export default function ReferScreen() {
         </ScrollView>
 
         {code ? (
-          <ReferShareFooter code={code} friendCreditUsd={terms.welcome.friendUsd} surface="refer" />
+          <ReferShareFooter
+            code={code}
+            // Closed to new invites: a friend who joins now is not offered v4's credit.
+            friendCreditUsd={isReferralV4Open(summary) ? terms.welcome.friendUsd : undefined}
+            surface="refer"
+          />
         ) : null}
       </View>
 
