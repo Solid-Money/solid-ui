@@ -7,6 +7,7 @@ import SendModal from '@/components/Send/SendModal';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { coinSwapPreset } from '@/lib/swapDefaults';
 import { TokenBalance } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { TokenVault } from '@/lib/vaults';
@@ -64,6 +65,8 @@ const CoinActionPills = ({ tokenVault, token }: CoinActionPillsProps) => {
       {/* Both SVGs declare a fixed canvas without a viewBox, so resizing them
           requires passing the original viewBox alongside the new dimensions. */}
       <SwapModal
+        entryPoint="coin_page"
+        preset={coinSwapPreset(token)}
         trigger={
           <Pill label="Swap" icon={<HomeSwap width={20} height={19.5} viewBox="0 0 29 28" />} />
         }

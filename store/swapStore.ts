@@ -29,6 +29,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { SWAP_MODAL } from '@/constants/modals';
 import { isLifiRoute } from '@/constants/swapChains';
 import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
 import { BestTrade, useBestTrade } from '@/hooks/swap/useBestTrade';
 import { useQuoteInput } from '@/hooks/swap/useQuoteInput';
@@ -36,6 +37,7 @@ import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
 import { useSwapFeeRate } from '@/hooks/useProductFees';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { getSwapFundingError } from '@/lib/swapFunding';
 import { RewardsTier, SwapModal, TransactionStatusModal } from '@/lib/types';
 import { LifiRouteOrder, SwapAsset } from '@/lib/types/lifi-swap';
@@ -56,6 +58,8 @@ interface SwapState {
   readonly previousModal: SwapModal;
   readonly buyFuseTier: RewardsTier | undefined;
   readonly buyFuseUpgrade: BuyFuseUpgradeContext | undefined;
+  /** The last swap the new flow made, for its done and on-its-way screens. */
+  readonly receipt: SwapReceipt | undefined;
   readonly transaction: TransactionStatusModal & {
     inputCurrencySymbol?: string;
     outputCurrencySymbol?: string;
@@ -76,7 +80,51 @@ interface SwapState {
     openBuyFuse: (tier?: RewardsTier, upgrade?: { depositToSavings: boolean }) => void;
     setTransaction: (transaction: SwapState['transaction']) => void;
     setLifiRouteOrder: (order: LifiRouteOrder) => void;
+    setReceipt: (receipt: SwapReceipt | undefined) => void;
+    /**
+     * Opens the swap form from a screen, on the pair that screen implies and
+     * with no amount (or `amount`), and records where it was opened from.
+     */
+    openSwap: (options: OpenSwapOptions) => void;
   };
+}
+
+/** Where a swap was opened from, for `swap_modal_viewed`. */
+export type SwapEntryPoint =
+  | 'home'
+  | 'coin_page'
+  | 'savings'
+  | 'dashboard'
+  | 'card_fund'
+  | 'not_enough_to_pay'
+  | 'unknown';
+
+/** A swap the new flow made, as its outcome screens show it. */
+export interface SwapReceipt {
+  /** `bridging` until the coin lands on the other network. */
+  kind: 'completed' | 'bridging';
+  fromAmount: number;
+  fromName: string;
+  toAmount: number;
+  toName: string;
+  toAsset: SwapAsset;
+  feeUsd: number | undefined;
+  completedAt: number;
+  transactionHash: string;
+  fromChainId: number;
+  toChainId: number;
+  /** The cross-network swap the tracker follows (lifiSwapStore). */
+  clientTxId?: string;
+}
+
+export interface OpenSwapOptions {
+  entryPoint: SwapEntryPoint;
+  /** "You pay". The current one stays when left out. */
+  input?: { address: string; chainId: number };
+  /** "You get". The current one stays when left out. */
+  output?: { address: string; chainId: number };
+  /** Typed into "You pay" once the form opens. */
+  amount?: string;
 }
 
 /** A token on a chain. Fuse on both sides is an Algebra swap; anything else goes through LI.FI. */
@@ -98,12 +146,13 @@ export interface BuyFuseUpgradeContext {
 export const useSwapState = create<SwapState>((set, get) => ({
   independentField: SwapField.INPUT,
   typedValue: '',
+  // USD Yield to USDC until a screen opens the form on another pair.
   [SwapField.INPUT]: {
-    currencyId: USDC_STARGATE_TOKEN.address as Address, // TOOD: DEFAULT TOKEN, change it to load from localStorage
+    currencyId: soUSDC_TOKEN.address as Address,
     chainId: fuse.id,
   },
   [SwapField.OUTPUT]: {
-    currencyId: soUSDC_TOKEN.address as Address,
+    currencyId: USDC_STARGATE_TOKEN.address as Address,
     chainId: fuse.id,
   },
   wasInverted: false,
@@ -114,6 +163,7 @@ export const useSwapState = create<SwapState>((set, get) => ({
   buyFuseTier: undefined,
   buyFuseUpgrade: undefined,
   transaction: {},
+  receipt: undefined,
   actions: {
     selectCurrency: (field, currencyId, chainId = fuse.id) => {
       const otherField = field === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT;
@@ -161,6 +211,39 @@ export const useSwapState = create<SwapState>((set, get) => ({
       }),
     setTransaction: transaction => set({ transaction }),
     setLifiRouteOrder: lifiRouteOrder => set({ lifiRouteOrder }),
+    setReceipt: receipt => set({ receipt }),
+    openSwap: ({ entryPoint, input, output, amount }) => {
+      const { selectCurrency } = get().actions;
+      // Both at once: one after the other could briefly match the old other
+      // side and flip the pair.
+      if (input && output) {
+        const pair = {
+          [SwapField.INPUT]: { currencyId: input.address as Address, chainId: input.chainId },
+          [SwapField.OUTPUT]: { currencyId: output.address as Address, chainId: output.chainId },
+        } as SwapPair;
+        set({ ...pair, ...entryField(pair, SwapField.INPUT) });
+      } else if (input) {
+        selectCurrency(SwapField.INPUT, input.address, input.chainId);
+      } else if (output) {
+        selectCurrency(SwapField.OUTPUT, output.address, output.chainId);
+      }
+      set({
+        independentField: SwapField.INPUT,
+        lastFocusedField: SwapField.INPUT,
+        typedValue: amount ?? '',
+        previousModal: get().currentModal,
+        currentModal: SWAP_MODAL.OPEN_FORM,
+      });
+      const state = get();
+      track(TRACKING_EVENTS.SWAP_MODAL_VIEWED, {
+        entry_point: entryPoint,
+        input_chain_id: state[SwapField.INPUT].chainId,
+        input_token: state[SwapField.INPUT].currencyId,
+        output_chain_id: state[SwapField.OUTPUT].chainId,
+        output_token: state[SwapField.OUTPUT].currencyId,
+        has_amount: !!amount,
+      });
+    },
   },
 }));
 
@@ -416,7 +499,42 @@ function useSwapInfo(): DerivedSwapInfo {
     if (key === lastLoggedQuote.current) return;
     lastLoggedQuote.current = key;
     console.log('[swap-quote] algebra quote', summary);
-  }, [amountToQuote, amountToRoute, isExactIn, currentTrade.state, currentTrade.trade]);
+
+    // SYNCING is a refresh of a price already on screen, not a new one.
+    if (currentTrade.state === TradeState.SYNCING) return;
+    const priceProps = {
+      trade_type: 'standard',
+      surface:
+        useSwapState.getState().currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name
+          ? 'buy_fuse'
+          : 'swap',
+      input_currency: inputCurrency?.symbol,
+      output_currency: outputCurrency?.symbol,
+      from_chain_id: fuse.id,
+      to_chain_id: fuse.id,
+      input_amount: amountToQuote.toExact(),
+    };
+    if (currentTrade.state === TradeState.VALID && trade) {
+      track(TRACKING_EVENTS.SWAP_PRICE_SHOWN, {
+        ...priceProps,
+        output_amount: trade.outputAmount.toExact(),
+      });
+    } else {
+      track(TRACKING_EVENTS.SWAP_PRICE_FAILED, {
+        ...priceProps,
+        error_code:
+          currentTrade.state === TradeState.NO_ROUTE_FOUND ? 'NO_ROUTE' : 'QUOTE_UNAVAILABLE',
+      });
+    }
+  }, [
+    amountToQuote,
+    amountToRoute,
+    isExactIn,
+    currentTrade.state,
+    currentTrade.trade,
+    inputCurrency?.symbol,
+    outputCurrency?.symbol,
+  ]);
 
   const [addressA, addressB] = [
     inputCurrency?.isNative ? undefined : inputCurrency?.address || '',

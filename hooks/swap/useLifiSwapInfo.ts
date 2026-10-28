@@ -1,4 +1,13 @@
-import { createContext, createElement, ReactNode, useCallback, useContext, useMemo } from 'react';
+import {
+  createContext,
+  createElement,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { Percent } from '@cryptoalgebra/fuse-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -6,10 +15,13 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { CHAIN_NAMES } from '@/constants/chains';
 import { swapAssetKey } from '@/constants/swapChains';
-import { useQuoteInput } from '@/hooks/swap/useQuoteInput';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { SWAP_PRICE_RECHECK_MS, useQuoteInput } from '@/hooks/swap/useQuoteInput';
 import { findSwapAsset, useSwapAssets } from '@/hooks/swap/useSwapAssets';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { fetchLifiSwapQuote, LifiSwapApiError } from '@/lib/api/lifi-swap';
+import { SwapErrorCode, swapErrorCodeOf, swapErrorCopy } from '@/lib/swapErrors';
 import {
   LifiRouteOrder,
   LifiSwapQuote,
@@ -18,11 +30,12 @@ import {
 } from '@/lib/types/lifi-swap';
 import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
+import { formatSwapAmount } from '@/lib/utils/swap/format';
 import { useSwapState } from '@/store/swapStore';
 import { useUserSlippageToleranceWithDefault } from '@/store/userStore';
 
 /** How often a quote on screen is refreshed while the user looks at it. */
-export const LIFI_QUOTE_REFRESH_MS = 20_000;
+export const LIFI_QUOTE_REFRESH_MS = SWAP_PRICE_RECHECK_MS;
 
 const DEFAULT_SLIPPAGE = new Percent(50, 10_000); // 0.5%
 /** The backend's accepted range, as a fraction. */
@@ -41,8 +54,12 @@ export interface LifiSwapInfo {
   isQuoteStale: boolean;
   isQuoting: boolean;
   quoteError: string | undefined;
+  /** Why the quote failed, for the button's label and for tracking. */
+  quoteErrorCode: SwapErrorCode | undefined;
   /** Why the swap can't go ahead, in the button's words. */
   inputError: string | undefined;
+  /** The code behind `inputError`, when it has one. */
+  inputErrorCode: SwapErrorCode | undefined;
   /** Fraction, e.g. 0.005. */
   slippage: number;
   /** Which route LI.FI picks; switching it re-quotes. */
@@ -151,14 +168,67 @@ function useLifiSwapInfoState(): LifiSwapInfo {
     retry: (count, err) => !(err instanceof LifiSwapApiError && err.status < 500) && count < 2,
   });
 
+  const quoteErrorCode = canQuote && error ? swapErrorCodeOf(error) : undefined;
   const quoteError = useMemo(() => {
-    if (!canQuote || !error) return undefined;
-    if (error instanceof LifiSwapApiError) return error.message;
-    return 'Could not get a quote. Try again.';
-  }, [canQuote, error]);
+    if (!quoteErrorCode) return undefined;
+    // The backend sends the pair's minimum with AMOUNT_TOO_LOW, in base units.
+    const minRaw = error instanceof LifiSwapApiError ? error.details.minFromAmount : undefined;
+    const minAmount =
+      typeof minRaw === 'string' && fromAsset
+        ? formatSwapAmount(Number(formatUnits(BigInt(minRaw), fromAsset.decimals)))
+        : undefined;
+    return swapErrorCopy(quoteErrorCode, {
+      from: fromAsset?.symbol,
+      to: toAsset?.symbol,
+      minAmount,
+    });
+  }, [quoteErrorCode, error, fromAsset, toAsset]);
 
   const isQuoteStale =
     !!quote && (quoteInput.pending || quote.fromAmount !== amountToQuote?.toString());
+
+  // Once per pair and amount: the 20-second refresh of a price on screen is
+  // not a new one, and a failure that repeats on refresh is the same failure.
+  const trackedPrice = useRef('');
+  const priceKey = queryKey.join('|');
+  useEffect(() => {
+    if (!canQuote || quoteInput.pending || !fromAsset || !toAsset) return;
+    const outcome = quoteErrorCode ?? (quote && !isQuoteStale ? 'shown' : undefined);
+    if (!outcome) return;
+    const key = `${priceKey}|${outcome}`;
+    if (trackedPrice.current === key) return;
+    trackedPrice.current = key;
+    const props = {
+      trade_type: 'lifi',
+      surface: 'swap',
+      input_currency: fromAsset.symbol,
+      output_currency: toAsset.symbol,
+      from_chain_id: fromAsset.chainId,
+      to_chain_id: toAsset.chainId,
+      input_amount: quoteInput.typedValue,
+    };
+    if (outcome === 'shown' && quote) {
+      track(TRACKING_EVENTS.SWAP_PRICE_SHOWN, {
+        ...props,
+        output_amount: formatUnits(BigInt(quote.toAmount), quote.toToken.decimals),
+        input_amount_usd: quote.fromAmountUsd,
+        total_fee_usd: quote.totalFee?.amountUsd ?? null,
+        eta_seconds: quote.executionDurationSeconds,
+      });
+    } else {
+      track(TRACKING_EVENTS.SWAP_PRICE_FAILED, { ...props, error_code: outcome });
+    }
+  }, [
+    canQuote,
+    quoteInput.pending,
+    quoteInput.typedValue,
+    fromAsset,
+    toAsset,
+    quote,
+    isQuoteStale,
+    quoteErrorCode,
+    priceKey,
+  ]);
   const isQuoting = canQuote && (quoteInput.pending || (isFetching && !quote) || isQuoteStale);
 
   const fromBalance = hasBalance(fromAsset) ? fromAsset.balanceRaw : assetsLoading ? undefined : 0n;
@@ -176,23 +246,35 @@ function useLifiSwapInfoState(): LifiSwapInfo {
     return { asset: native, required };
   }, [activeQuote, fromAsset, assets]);
 
-  const inputError = useMemo(() => {
-    if (!user) return 'Connect Wallet';
-    if (!fromAsset || !toAsset) return 'Select a token';
-    if (samePair) return 'Select a different token';
-    if (!fromAmount || fromAmount <= 0n) return 'Enter an amount';
+  const { inputError, inputErrorCode } = useMemo((): {
+    inputError: string | undefined;
+    inputErrorCode: SwapErrorCode | undefined;
+  } => {
+    const plain = (message: string) => ({ inputError: message, inputErrorCode: undefined });
+    if (!user) return plain('Connect Wallet');
+    if (!fromAsset || !toAsset) return plain('Select a token');
+    if (samePair) {
+      return { inputError: swapErrorCopy('SAME_TOKEN'), inputErrorCode: 'SAME_TOKEN' };
+    }
+    if (!fromAmount || fromAmount <= 0n) return plain('Enter an amount');
     const network = CHAIN_NAMES[fromAsset.chainId] ?? 'this network';
     if (fromBalance !== undefined && fromBalance < fromAmount) {
-      return `Not enough ${fromAsset.symbol} on ${network}`;
+      return {
+        inputError: `Not enough ${fromAsset.symbol} on ${network}`,
+        inputErrorCode: 'NOT_ENOUGH_BALANCE',
+      };
     }
     if (nativeShortfall) {
       const { asset, required } = nativeShortfall;
       const amount = formatUnits(required, asset.decimals);
-      return fromAsset.isNative
-        ? `Not enough ${asset.symbol} on ${network} for the amount plus the bridge fee (${amount} ${asset.symbol})`
-        : `This route needs ${amount} ${asset.symbol} on ${network} for its bridge fee`;
+      return {
+        inputError: fromAsset.isNative
+          ? `Not enough ${asset.symbol} on ${network} for the amount plus the bridge fee (${amount} ${asset.symbol})`
+          : `This route needs ${amount} ${asset.symbol} on ${network} for its bridge fee`,
+        inputErrorCode: 'NOT_ENOUGH_GAS_MONEY',
+      };
     }
-    return undefined;
+    return { inputError: undefined, inputErrorCode: undefined };
   }, [user, fromAsset, toAsset, samePair, fromAmount, fromBalance, nativeShortfall]);
 
   const refreshQuote = useCallback(async () => {
@@ -220,7 +302,9 @@ function useLifiSwapInfoState(): LifiSwapInfo {
     isQuoteStale,
     isQuoting,
     quoteError,
+    quoteErrorCode,
     inputError,
+    inputErrorCode,
     slippage,
     routeOrder,
     setRouteOrder,

@@ -1,6 +1,7 @@
 import React, { Fragment, ReactNode } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Check } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
@@ -100,3 +101,110 @@ export const DetailCard = ({ rows, className }: DetailCardProps) => (
 );
 
 export const Divider = () => <View className="h-px bg-white/10" />;
+
+type MaxPillProps = {
+  onPress: () => void;
+};
+
+/** "Max" beside an available balance: fills the amount with all of it. */
+export const MaxPill = ({ onPress }: MaxPillProps) => (
+  <Pressable
+    onPress={onPress}
+    hitSlop={6}
+    accessibilityRole="button"
+    accessibilityLabel="Use the whole balance"
+    className="rounded-[18px] bg-[rgba(148,242,127,0.16)] px-2 pb-[3px] pt-[2px]"
+  >
+    <Text className="text-sm leading-4 text-brand">Max</Text>
+  </Pressable>
+);
+
+export type StepTone = 'done' | 'active' | 'pending' | 'failed' | 'confirming';
+
+export type TrackerStep = {
+  key: string;
+  tone: StepTone;
+  title: string;
+  subtitle: string;
+  subtitleTone?: 'brand' | 'muted' | 'danger';
+  onSubtitlePress?: () => void;
+};
+
+const DOT_SIZE = 28;
+
+const StepDot = ({ tone }: { tone: StepTone }) => {
+  const base = { width: DOT_SIZE, height: DOT_SIZE };
+  if (tone === 'done') {
+    return (
+      <View className="items-center justify-center rounded-full bg-brand" style={base}>
+        <Check size={16} color="black" strokeWidth={3} />
+      </View>
+    );
+  }
+  if (tone === 'failed') {
+    return <View className="rounded-full bg-red-500" style={base} />;
+  }
+  if (tone === 'confirming') {
+    return (
+      <View className="items-center justify-center rounded-full border-2 border-brand" style={base}>
+        <ActivityIndicator size="small" color={BRAND} />
+      </View>
+    );
+  }
+  if (tone === 'active') {
+    return (
+      <View className="items-center justify-center rounded-full border-2 border-brand" style={base}>
+        <View className="h-2 w-2 rounded-full bg-brand" />
+      </View>
+    );
+  }
+  return <View className="rounded-full border-2 border-white/25" style={base} />;
+};
+
+/**
+ * The vertical progress card a cross-network send or swap shows: one dot per
+ * step, joined by a line that turns green as steps finish.
+ */
+export const StepTracker = ({ steps }: { steps: TrackerStep[] }) => (
+  <View className="rounded-[15px] bg-card px-[18px] py-5">
+    {steps.map((step, index) => {
+      const isLast = index === steps.length - 1;
+      const titleMuted = step.tone === 'pending';
+      return (
+        <View key={step.key} className="flex-row gap-3">
+          <View className="items-center">
+            <StepDot tone={step.tone} />
+            {!isLast ? (
+              <View
+                className={cn('w-[2px]', step.tone === 'done' ? 'bg-brand' : 'bg-white/15')}
+                style={{ height: 34 }}
+              />
+            ) : null}
+          </View>
+          <View className={cn('flex-1 gap-0.5', !isLast && 'pb-2')}>
+            <Text
+              className={cn(
+                'text-base font-semibold leading-6',
+                titleMuted ? 'text-white/50' : 'text-white',
+              )}
+            >
+              {step.title}
+            </Text>
+            <Pressable onPress={step.onSubtitlePress} disabled={!step.onSubtitlePress}>
+              <Text
+                className={cn(
+                  'text-sm leading-[18px]',
+                  step.subtitleTone === 'brand' && 'text-brand',
+                  step.subtitleTone === 'danger' && 'text-red-400',
+                  (!step.subtitleTone || step.subtitleTone === 'muted') && 'text-white/60',
+                )}
+              >
+                {step.subtitle}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      );
+    })}
+  </View>
+);
