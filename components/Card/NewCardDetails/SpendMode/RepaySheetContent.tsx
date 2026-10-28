@@ -88,7 +88,7 @@ interface RepaySheetContentProps {
  *
  * The source list mixes the two ways the module can be paid. Wallet rows are tender tokens the
  * Safe holds loose; collateral rows spend what is already escrowed against the loan — soUSD on
- * Fuse; soEUR, cbBTC, SOL, AAVE or cbZEC on Base — which is how someone with nothing loose
+ * Fuse; soEUR, cbBTC, WETH, SOL, AAVE or cbZEC on Base — which is how someone with nothing loose
  * closes a position. The escrow itself is listed under "Collateral locked". The same token can appear twice, so
  * every row and the balance line say which of the two it is.
  *

@@ -1,4 +1,5 @@
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
@@ -14,6 +15,7 @@ import type {
   SpendableAssetRow,
 } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import type { ReactNode } from 'react';
 
 /**
  * The cards the spend-mode surfaces are built from.
@@ -27,19 +29,26 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
  * header, 16 below the last row; the divider (27) and the "Spendable assets" title (34) only when
  * there is a row to title. A row is 48pt, or 56 with a second line. Fixed per row, so the sheet can
  * reserve room for the panel before it renders.
+ *
+ * With Base's stables and crypto beside Fuse's, a Safe can hold a dozen of these, and a panel
+ * that grew a row each pushed the sheet off the screen. The list stops growing at four and a half
+ * rows and scrolls inside the panel instead; the half row showing is what says there is more.
  */
 const BALANCE_HEADER_HEIGHT = 23 + 50;
 const BALANCE_ASSETS_TITLE_HEIGHT = 27 + 34;
 const BALANCE_PANEL_BOTTOM = 16;
+const MAX_ASSET_LIST_HEIGHT = 4.5 * 56;
 const assetRowHeight = (row: Pick<SpendableAssetRow, 'subtitle' | 'detail'>) =>
   row.subtitle || row.detail ? 56 : 48;
+const assetListContentHeight = (rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[]) =>
+  rows.reduce((sum, row) => sum + assetRowHeight(row), 0);
+const assetListHeight = (rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[]) =>
+  Math.min(assetListContentHeight(rows), MAX_ASSET_LIST_HEIGHT);
 export const balancePanelHeight = (
   rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[],
 ) =>
   BALANCE_HEADER_HEIGHT +
-  (rows.length
-    ? BALANCE_ASSETS_TITLE_HEIGHT + rows.reduce((sum, row) => sum + assetRowHeight(row), 0)
-    : 0) +
+  (rows.length ? BALANCE_ASSETS_TITLE_HEIGHT + assetListHeight(rows) : 0) +
   BALANCE_PANEL_BOTTOM;
 /** Figma 25961:3504. Fixed, so the sheet can reserve room for any stack of these. */
 export const BORROWED_PANEL_HEIGHT = 126;
@@ -48,12 +57,16 @@ export const BORROWED_PANEL_HEIGHT = 126;
  * Figma 29123:9483, which grows a 58pt row per collateral asset: the borrowed block and the
  * divider take 120, the collateral title 18 + 20 + 8 above the rows, and 12 is left below them.
  * Fixed per row count, so the sheet can still reserve room for the panel before it renders.
+ * Past three and a half rows the list scrolls, as the balance panel's does.
  */
 const CREDIT_PANEL_BASE_HEIGHT = 120 + 18 + 28 + 12;
 const COLLATERAL_ROW_HEIGHT = 58;
+const MAX_COLLATERAL_LIST_HEIGHT = 3.5 * COLLATERAL_ROW_HEIGHT;
+const collateralListHeight = (collateralRows: number) =>
+  Math.min(COLLATERAL_ROW_HEIGHT * collateralRows, MAX_COLLATERAL_LIST_HEIGHT);
 export const creditPanelHeight = (collateralRows: number) =>
   collateralRows > 0
-    ? CREDIT_PANEL_BASE_HEIGHT + COLLATERAL_ROW_HEIGHT * collateralRows
+    ? CREDIT_PANEL_BASE_HEIGHT + collateralListHeight(collateralRows)
     : BORROWED_PANEL_HEIGHT;
 /**
  * Figma 26974:14829, at its two-line wrap on the 419pt artboard. Not fixed like the panels:
@@ -76,9 +89,13 @@ const COLLATERAL_ICON = {
   },
 } as const;
 
-/** The crypto Base takes as collateral, drawn with the marks the deposit screen uses. */
+/**
+ * The crypto Base takes as collateral, drawn with the marks the deposit screen uses. WETH takes
+ * the ETH mark, as `getTokenIcon` draws it on the repay step.
+ */
 const COLLATERAL_TOKEN_LOGO = {
   cbbtc: getAsset('images/cbbtc.png'),
+  weth: getAsset('images/eth.png'),
   sol: getAsset('images/sol.png'),
   aave: getAsset('images/aave.png'),
   zec: getAsset('images/zec.png'),
@@ -105,6 +122,15 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  * (Figma "so-token / soUSD / badge dot").
  */
 const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+  if (icon === 'cbbtc' || icon === 'weth' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
+    return (
+      <Image
+        accessible={false}
+        source={COLLATERAL_TOKEN_LOGO[icon]}
+        style={styles.collateralLogo}
+      />
+    );
+  }
   if (icon === 'usdc' || icon === 'eurc') {
     return (
       <Image
@@ -149,6 +175,31 @@ const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
     <Image accessible={false} source={COLLATERAL_TOKEN_LOGO[icon]} style={styles.collateralLogo} />
   );
 };
+
+/**
+ * A panel's rows at a fixed height, scrolling once they outgrow it.
+ *
+ * Gesture handler's scroll view rather than React Native's, so on native a drag inside the list
+ * scrolls the list instead of dragging the bottom sheet it sits in.
+ */
+const PanelList = ({
+  height,
+  overflows,
+  children,
+}: {
+  height: number;
+  overflows: boolean;
+  children: ReactNode;
+}) => (
+  <ScrollView
+    style={{ height }}
+    scrollEnabled={overflows}
+    nestedScrollEnabled
+    showsVerticalScrollIndicator={false}
+  >
+    {children}
+  </ScrollView>
+);
 
 interface BalancePanelProps {
   /** "$246.50": every spendable asset, euro ones at their dollar value. */
@@ -216,29 +267,36 @@ export const SpendModeBalancePanel = ({
             <HelpBadge />
           )}
         </View>
-        {rows.map(row => (
-          <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
-            <AssetLogo icon={row.icon} />
-            <View style={styles.assetLeft}>
-              <Text className="text-[16px] font-medium leading-[20px] text-white">{row.name}</Text>
-              {row.subtitle ? (
-                <Text className="text-[14px] font-normal leading-[18px] text-white/50">
-                  {row.subtitle}
+        <PanelList
+          height={assetListHeight(rows)}
+          overflows={assetListContentHeight(rows) > MAX_ASSET_LIST_HEIGHT}
+        >
+          {rows.map(row => (
+            <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
+              <AssetLogo icon={row.icon} />
+              <View style={styles.assetLeft}>
+                <Text className="text-[16px] font-medium leading-[20px] text-white">
+                  {row.name}
                 </Text>
-              ) : null}
-            </View>
-            <View style={styles.assetRight}>
-              <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                {row.value}
-              </Text>
-              {row.detail ? (
-                <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                  {row.detail}
+                {row.subtitle ? (
+                  <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.subtitle}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={styles.assetRight}>
+                <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                  {row.value}
                 </Text>
-              ) : null}
+                {row.detail ? (
+                  <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.detail}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+        </PanelList>
       </>
     ) : null}
   </View>
@@ -324,7 +382,7 @@ interface CreditPanelProps extends BorrowedSummaryFigures {
 /**
  * The Credit panel (Figma 29123:9483): the borrowed block over the assets that back it, on
  * every instance the card borrows on — soUSD on Fuse and, once euro spending is enabled, soEUR
- * and the crypto collateral (cbBTC, SOL, AAVE, cbZEC) on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
+ * and the crypto collateral (cbBTC, WETH, SOL, AAVE, cbZEC) on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
  * is in dollars.
  */
 export const SpendModeCreditPanel = ({
@@ -377,24 +435,29 @@ export const SpendModeCreditPanel = ({
             </Text>
           ) : null}
         </View>
-        {collateral.map(row => (
-          <View key={row.key} style={styles.collateralRow}>
-            <CollateralLogo icon={row.icon} />
-            <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
-              {row.label}
-            </Text>
-            <View style={styles.collateralValue}>
-              <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                {row.value}
+        <PanelList
+          height={collateralListHeight(collateral.length)}
+          overflows={COLLATERAL_ROW_HEIGHT * collateral.length > MAX_COLLATERAL_LIST_HEIGHT}
+        >
+          {collateral.map(row => (
+            <View key={row.key} style={styles.collateralRow}>
+              <CollateralLogo icon={row.icon} />
+              <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
+                {row.label}
               </Text>
-              {row.usdEquivalent ? (
-                <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                  {row.usdEquivalent}
+              <View style={styles.collateralValue}>
+                <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                  {row.value}
                 </Text>
-              ) : null}
+                {row.usdEquivalent ? (
+                  <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.usdEquivalent}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+        </PanelList>
       </View>
     ) : null}
   </View>
