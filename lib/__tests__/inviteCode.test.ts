@@ -3,6 +3,7 @@ import {
   buildPlayStoreInviteUrl,
   inviteClipboardText,
   inviteLinkLabel,
+  isSameReferralCode,
   normalizeReferralCode,
   parseInstallReferrer,
   parseInviteCodeFromText,
@@ -10,8 +11,13 @@ import {
 } from '@/lib/referral/inviteCode';
 
 describe('normalizeReferralCode', () => {
-  it('upper-cases and trims a code', () => {
-    expect(normalizeReferralCode(' ab12c ')).toBe('AB12C');
+  it('trims a code and keeps its case', () => {
+    expect(normalizeReferralCode(' AB12C ')).toBe('AB12C');
+    expect(normalizeReferralCode(' ab12c ')).toBe('ab12c');
+  });
+
+  it('accepts the mixed-case codes issued in 2025 as they are', () => {
+    expect(normalizeReferralCode('aB3xK')).toBe('aB3xK');
   });
 
   it('rejects anything outside 4–12 letters and digits', () => {
@@ -35,6 +41,11 @@ describe('referralCodeFromParams', () => {
   it('never takes the rewards screen instruction for a code', () => {
     expect(referralCodeFromParams(new URLSearchParams('referral=open'))).toBeNull();
     expect(referralCodeFromParams(new URLSearchParams('referral=OPEN&utm_medium=push'))).toBeNull();
+    expect(referralCodeFromParams(new URLSearchParams('referral=Open'))).toBeNull();
+  });
+
+  it('keeps a mixed-case code as the link spelled it', () => {
+    expect(referralCodeFromParams(new URLSearchParams('ref=aB3xK'))).toBe('aB3xK');
   });
 
   it('skips a value that is not a code and keeps looking', () => {
@@ -46,17 +57,19 @@ describe('referralCodeFromParams', () => {
 describe('parseInviteCodeFromText', () => {
   it('reads what the invite page copies', () => {
     expect(parseInviteCodeFromText('solid-invite:AB12C')).toBe('AB12C');
-    expect(parseInviteCodeFromText('  SOLID-INVITE:ab12c\n')).toBe('AB12C');
+    expect(parseInviteCodeFromText('  SOLID-INVITE:aB3xK\n')).toBe('aB3xK');
   });
 
   it('reads invite links and old referral links', () => {
     expect(parseInviteCodeFromText('https://app.solid.xyz/invite/AB12C')).toBe('AB12C');
     expect(parseInviteCodeFromText('https://app.solid.xyz/invite/AB12C?utm=x')).toBe('AB12C');
     expect(parseInviteCodeFromText('https://www.solid.xyz/refer?ref=AB12C')).toBe('AB12C');
+    expect(parseInviteCodeFromText('https://app.solid.xyz/invite/aB3xK')).toBe('aB3xK');
   });
 
   it('reads a bare code', () => {
-    expect(parseInviteCodeFromText('ab12c')).toBe('AB12C');
+    expect(parseInviteCodeFromText('ab12c')).toBe('ab12c');
+    expect(parseInviteCodeFromText(' aB3xK ')).toBe('aB3xK');
   });
 
   it('returns null for anything else', () => {
@@ -74,6 +87,10 @@ describe('parseInstallReferrer', () => {
 
   it('decodes a referrer that is still encoded', () => {
     expect(parseInstallReferrer('ref%3DAB12C%26utm_source%3Dinvite')).toBe('AB12C');
+  });
+
+  it('keeps a mixed-case code from the referrer as it is', () => {
+    expect(parseInstallReferrer('ref=aB3xK&utm_source=invite')).toBe('aB3xK');
   });
 
   it('finds nothing in an organic install', () => {
@@ -118,5 +135,24 @@ describe('invite links', () => {
 
   it('round-trips the clipboard text', () => {
     expect(parseInviteCodeFromText(inviteClipboardText('AB12C'))).toBe('AB12C');
+    expect(parseInviteCodeFromText(inviteClipboardText('aB3xK'))).toBe('aB3xK');
+  });
+
+  it('round-trips a mixed-case code through the Play referrer', () => {
+    const referrer = new URL(buildPlayStoreInviteUrl('aB3xK')).searchParams.get('referrer');
+    expect(parseInstallReferrer(referrer)).toBe('aB3xK');
+  });
+});
+
+describe('isSameReferralCode', () => {
+  it('ignores case and surrounding space', () => {
+    expect(isSameReferralCode('aB3xK', 'AB3XK')).toBe(true);
+    expect(isSameReferralCode(' ab3xk', 'aB3xK ')).toBe(true);
+  });
+
+  it('tells different codes apart, and nothing matches a missing code', () => {
+    expect(isSameReferralCode('aB3xK', 'aB3xL')).toBe(false);
+    expect(isSameReferralCode('aB3xK', null)).toBe(false);
+    expect(isSameReferralCode(undefined, undefined)).toBe(false);
   });
 });

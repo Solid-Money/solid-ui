@@ -3928,7 +3928,7 @@ export interface ReferralV4Summary {
 export type ReferralInviteLookup =
   | {
       valid: true;
-      /** Normalised to upper case. */
+      /** The code's canonical spelling — store and send this one. */
       code: string;
       referrer: { username: string };
       program: ReferralV4Program;

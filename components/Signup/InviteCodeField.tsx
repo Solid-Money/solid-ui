@@ -115,7 +115,9 @@ const InviteCodeField = ({
         value={value}
         onChangeText={onChangeText}
         placeholder="Optional"
-        autoCapitalize="characters"
+        // Codes are kept as typed: older ones mix cases, and the lookup answers
+        // with the canonical spelling.
+        autoCapitalize="none"
         autoCorrect={false}
         autoComplete="off"
         maxLength={80}

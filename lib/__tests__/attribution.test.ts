@@ -6,8 +6,8 @@ describe('parseAttributionFromURL referral codes', () => {
   it('captures a referral code from a link', () => {
     expect(parseAttributionFromURL('https://app.solid.xyz/?ref=AB12C').referral_code).toBe('AB12C');
     expect(
-      parseAttributionFromURL('https://app.solid.xyz/signup?referralCode=ab12c').referral_code,
-    ).toBe('AB12C');
+      parseAttributionFromURL('https://app.solid.xyz/signup?referralCode=aB3xK').referral_code,
+    ).toBe('aB3xK');
   });
 
   it('does not take the referral screen instruction for a code', () => {

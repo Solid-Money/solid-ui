@@ -124,11 +124,13 @@ export default function SignupEmail() {
     inviteLookup.isError,
   ]);
 
-  // Once per code: a code nobody owns is worth knowing about, whichever way it came.
+  // Once per code — case never makes a different code: a code nobody owns is
+  // worth knowing about, whichever way it came.
   useEffect(() => {
     if (inviteStatus.kind !== 'invalid' || !inviteCode) return;
-    if (reportedInvalidCodes.current.has(inviteCode)) return;
-    reportedInvalidCodes.current.add(inviteCode);
+    const key = inviteCode.toLowerCase();
+    if (reportedInvalidCodes.current.has(key)) return;
+    reportedInvalidCodes.current.add(key);
     track(TRACKING_EVENTS.INVITE_CODE_INVALID, { source: inviteSource ?? 'manual' });
   }, [inviteStatus.kind, inviteCode, inviteSource]);
 
@@ -221,7 +223,8 @@ export default function SignupEmail() {
       // The invite code field decides the referral code: it was prefilled from
       // the link / install referrer / attribution store, and the user may have
       // changed or cleared it. A code the lookup says nobody owns isn't sent;
-      // one it couldn't check is, and the backend decides.
+      // one it couldn't check is, as typed, and the backend decides. A checked
+      // one goes in the lookup's own spelling — older codes mix cases.
       const codeToSend =
         !inviteCode || inviteStatus.kind === 'invalid'
           ? ''
@@ -231,8 +234,10 @@ export default function SignupEmail() {
       setReferralCode(codeToSend);
       if (codeToSend) {
         console.warn('✅ Referral code saved to signup flow:', codeToSend);
+        if (inviteSource === 'manual' || inviteStatus.kind === 'valid') {
+          useReferralStore.getState().setReferralCode(codeToSend, inviteSource ?? 'manual');
+        }
         if (inviteSource === 'manual') {
-          useReferralStore.getState().setReferralCode(codeToSend, 'manual');
           track(TRACKING_EVENTS.INVITE_CODE_APPLIED, { source: 'manual' });
         }
       }

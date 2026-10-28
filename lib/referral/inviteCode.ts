@@ -2,11 +2,12 @@ import { PLAY_STORE_URL } from '@/constants/appStores';
 import { SOLID_APP_URL } from '@/lib/config';
 
 /**
- * A referral code as the backend issues it: upper-case letters and digits.
- * The backend matches codes case-insensitively, so anything typed or pasted is
- * upper-cased before it is checked against this.
+ * A referral code: 4–12 letters and digits. Codes issued before Dec 2025 mix
+ * cases ("aB3xK"); the backend matches them case-insensitively and answers the
+ * invite lookup with the canonical spelling, so the app keeps a code exactly as
+ * it arrived and never changes its case.
  */
-export const REFERRAL_CODE_PATTERN = /^[A-Z0-9]{4,12}$/;
+export const REFERRAL_CODE_PATTERN = /^[A-Za-z0-9]{4,12}$/;
 
 /**
  * What the invite page copies to the iOS clipboard before sending the friend to
@@ -23,14 +24,20 @@ const REFERRAL_PARAM_NAMES = ['ref', 'refCode', 'referralCode', 'referral'] as c
  * (`/rewards?referral=open`), not a code — and "OPEN" happens to fit the code
  * pattern. Values the app itself puts in that param are never codes.
  */
-const RESERVED_REFERRAL_PARAM_VALUES = new Set(['OPEN']);
+const RESERVED_REFERRAL_PARAM_VALUES = new Set(['open']);
 
-/** The code, upper-cased, or null when `raw` cannot be a referral code. */
+/** The code, trimmed and otherwise as it arrived, or null when `raw` cannot be one. */
 export const normalizeReferralCode = (raw: string | null | undefined): string | null => {
   if (typeof raw !== 'string') return null;
-  const code = raw.trim().toUpperCase();
+  const code = raw.trim();
   return REFERRAL_CODE_PATTERN.test(code) ? code : null;
 };
+
+/** Whether two codes are the same code — case never distinguishes one. */
+export const isSameReferralCode = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
  * The referral code a URL's query carries, or null.
@@ -42,7 +49,7 @@ export const referralCodeFromParams = (params: URLSearchParams): string | null =
   for (const name of REFERRAL_PARAM_NAMES) {
     const code = normalizeReferralCode(params.get(name));
     if (!code) continue;
-    if (name === 'referral' && RESERVED_REFERRAL_PARAM_VALUES.has(code)) continue;
+    if (name === 'referral' && RESERVED_REFERRAL_PARAM_VALUES.has(code.toLowerCase())) continue;
     return code;
   }
   return null;
