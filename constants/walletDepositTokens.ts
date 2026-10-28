@@ -1,4 +1,4 @@
-import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 import { EURC_TOKENS } from '@/constants/bridge';
@@ -211,19 +211,89 @@ export const WALLET_DEPOSIT_CHAIN_IDS: readonly number[] = [
   fuse.id,
 ];
 
+/**
+ * Contracts the deposit screen once offered and no longer does: every token on
+ * every chain #2752 listed, to the team in production and to everyone on
+ * qa/preview builds, that `WALLET_DEPOSIT_TOKENS` has since dropped. Never
+ * offered again, but what was sent while they were must still show in the
+ * wallet and its activity. Keep a contract here when removing it above.
+ */
+const RETIRED_DEPOSIT_CONTRACTS: Record<number, string[]> = {
+  [mainnet.id]: [
+    '0x45804880De22913dAFE09f4980848ECE6EcbAf78', // PAXG
+    '0x4833e7f4f0460f4B72A3a5879A6C9841bCC5B58B', // SLVx
+    '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // WBTC
+    '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC
+    '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // UNI
+    '0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4', // NEAR
+    '0x57e114B691Db790C35207b2e685D4A43181e6061', // ENA
+    '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', // AAVE
+    '0xD31a59c85aE9D8edEFeC411D448f90841571b89c', // SOL
+    '0x163f8C2467924be0ae7B5347228CABF260318753', // WLD
+    '0xB50721BCf8d664c30412Cfbc6cf7a15145234ad1', // ARB
+  ],
+  [polygon.id]: [
+    '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6', // WBTC
+    '0xb33EaAd8d922B1083446DC23f610c2567fB5180f', // UNI
+    '0xD6DF932A45C0f255f85145f286eA0b292B21C90B', // AAVE
+    '0xd93f7E271cB87c23AaA73edC008A79646d1F9912', // SOL
+    '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619', // WETH
+  ],
+  [base.id]: [
+    '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC
+    '0xc3De830EA07524a0761646a6a4e4be0e114a3C83', // UNI
+    '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', // ENA
+  ],
+  [arbitrum.id]: [
+    '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f', // WBTC
+    '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC
+    '0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0', // UNI
+    '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', // ENA
+    '0xba5DdD1f9d7F570dc94a51479a000E3BCE967196', // AAVE
+    '0x2bcC6D6CdBbDC0a4071e48bb3B969b06B3330c07', // SOL
+    '0x912CE59144191C1204E64559FE8253a0e49E6548', // ARB
+    '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', // WETH
+  ],
+  [optimism.id]: [
+    '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', // USDC
+    '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', // USDT
+    '0x68f180fcCe6836688e9084f035309E29Bf0A2095', // WBTC
+    '0x6fd9d7AD17242c41f7131d257212c54A0e816691', // UNI
+    '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', // ENA
+    '0x76FB31fb4af56892A25e32cFC43De717950c9278', // AAVE
+    '0xdC6fF44d5d932Cbd77B52E5612Ba0529DC6226F1', // WLD
+    '0x4200000000000000000000000000000000000042', // OP
+    '0x4200000000000000000000000000000000000006', // WETH
+  ],
+  [bsc.id]: [
+    '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', // Binance-Peg ETH
+    '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC
+    '0x1Ba42e5193dfA8B03D15dd1B86a3113bbBEF8Eeb', // ZEC
+    '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', // UNI
+    '0x1Fa4a73a3F0133f0025378af00236f3aBDEE5D63', // NEAR
+    '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', // ENA
+    '0xfb6115445Bff7b52FeB98650C87f44907E58f802', // AAVE
+    '0x570A5D26f7765Ecb712C0924E4De545B89fD43dF', // SOL
+  ],
+};
+
 const depositContractKey = (chainId: number, address: string) =>
   `${chainId}:${address.toLowerCase()}`;
 
-const DEPOSIT_CONTRACT_KEYS: ReadonlySet<string> = new Set(
-  WALLET_DEPOSIT_TOKENS.flatMap(token =>
+const DEPOSIT_CONTRACT_KEYS: ReadonlySet<string> = new Set([
+  ...WALLET_DEPOSIT_TOKENS.flatMap(token =>
     Object.entries(token.contracts)
       .filter(([, address]) => address !== NATIVE_COIN)
       .map(([chainId, address]) => depositContractKey(Number(chainId), address)),
   ),
-);
+  ...Object.entries(RETIRED_DEPOSIT_CONTRACTS).flatMap(([chainId, addresses]) =>
+    addresses.map(address => depositContractKey(Number(chainId), address)),
+  ),
+]);
 
 /**
- * Whether a contract is one the deposit screen tells people to send.
+ * Whether a contract is one the deposit screen tells, or once told, people to
+ * send (see `RETIRED_DEPOSIT_CONTRACTS`).
  *
  * The wallet only shows a token the curated swap list names (see
  * `useBalances`), and that list is for the swap picker. A token someone was
@@ -232,7 +302,7 @@ const DEPOSIT_CONTRACT_KEYS: ReadonlySet<string> = new Set(
 export const isWalletDepositContract = (chainId: number, address: string | undefined): boolean =>
   !!address && DEPOSIT_CONTRACT_KEYS.has(depositContractKey(chainId, address));
 
-/** Every deposit contract on every chain, for lists keyed the same way. */
+/** Every deposit contract, offered or retired, on every chain, for lists keyed the same way. */
 export const getWalletDepositContracts = (): { chainId: number; address: string }[] =>
   Array.from(DEPOSIT_CONTRACT_KEYS, key => {
     const [chainId, address] = key.split(':');

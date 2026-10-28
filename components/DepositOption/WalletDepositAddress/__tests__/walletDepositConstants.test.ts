@@ -619,28 +619,45 @@ describe('isWalletDepositContract', () => {
     );
   });
 
-  it('names no contract of a token the screen does not take', () => {
+  it('still names a contract the screen once offered, so what was sent then shows', () => {
     // WETH on Arbitrum, Binance-Peg ETH, USDC on Optimism.
     expect(isWalletDepositContract(arbitrum.id, '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')).toBe(
-      false,
+      true,
     );
     expect(isWalletDepositContract(bsc.id, '0x2170Ed0880ac9A755fd29B2688956BD959F933F8')).toBe(
-      false,
+      true,
     );
     expect(isWalletDepositContract(optimism.id, '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85')).toBe(
-      false,
+      true,
     );
     // WBTC on Base and Arbitrum, OP, and PAXG on Ethereum.
     expect(isWalletDepositContract(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(
-      false,
+      true,
     );
     expect(isWalletDepositContract(arbitrum.id, '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f')).toBe(
-      false,
+      true,
     );
     expect(isWalletDepositContract(optimism.id, '0x4200000000000000000000000000000000000042')).toBe(
-      false,
+      true,
     );
     expect(isWalletDepositContract(mainnet.id, '0x45804880De22913dAFE09f4980848ECE6EcbAf78')).toBe(
+      true,
+    );
+  });
+
+  it('offers none of the contracts it only still names', () => {
+    const offered = (chainId: number, address: string) =>
+      WALLET_DEPOSIT_TOKENS.some(
+        token => token.contracts[chainId]?.toLowerCase() === address.toLowerCase(),
+      );
+    expect(offered(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(false);
+    expect(offered(arbitrum.id, '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')).toBe(false);
+    expect(offered(optimism.id, '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85')).toBe(false);
+  });
+
+  it('names no contract the screen never offered', () => {
+    // DAI on Ethereum.
+    expect(isWalletDepositContract(mainnet.id, '0x6B175474E89094C44Da98b954EedeAC495271d0F')).toBe(
       false,
     );
   });
