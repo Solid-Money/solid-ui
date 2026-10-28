@@ -43,7 +43,15 @@ const underlineProps = {
  * also accept the Account Opening Privacy Notice; nobody else is shown it.
  */
 export function useCardConsents(isUS: boolean) {
-  const [consents, setConsents] = useState<ConsentState>(initialConsents);
+  // Answers belong to the jurisdiction (isUS) they were given under. isUS can flip while mounted
+  // — the KYC country can resolve after the picked one — so start over on a change, or acceptance
+  // (including the Terms, whose link changes with isUS) carries into a jurisdiction the applicant
+  // never saw.
+  const [answers, setAnswers] = useState<{ isUS: boolean; consents: ConsentState }>({
+    isUS,
+    consents: initialConsents,
+  });
+  const consents = answers.isUS === isUS ? answers.consents : initialConsents;
 
   const requiredKeys = useMemo<ConsentKey[]>(
     () =>
@@ -69,7 +77,11 @@ export function useCardConsents(isUS: boolean) {
     [requiredKeys, consents],
   );
 
-  const toggle = (key: ConsentKey) => setConsents(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggle = (key: ConsentKey) =>
+    setAnswers(prev => {
+      const current = prev.isUS === isUS ? prev.consents : initialConsents;
+      return { isUS, consents: { ...current, [key]: !current[key] } };
+    });
 
   /** What `submitCardConsents` is sent. */
   const submission = {
