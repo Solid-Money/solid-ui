@@ -16,12 +16,18 @@ import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useAiApiOverview } from '@/hooks/useAiApi';
-import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import {
+  useOptInToRewards,
+  useReferralSummary,
+  useReferralV4Summary,
+  useRewardsUserData,
+} from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
+import { isReferralV4Live } from '@/lib/referral/referralV4';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { isTierOnTrial, nextPurchasableTier } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
@@ -57,6 +63,10 @@ export default function RewardsScreenNew() {
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
+  // Referral v4's switch: while it is off — or its summary can't be read — the
+  // referral entry points keep opening today's popup.
+  const { data: referralV4, isLoading: isReferralV4Loading } = useReferralV4Summary();
+  const isReferralV4 = isReferralV4Live(referralV4);
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
@@ -109,13 +119,30 @@ export default function RewardsScreenNew() {
     }
   }, [hasCompletedIntro, isFocused, rewardsLocked, welcomeDismissed]);
 
-  // Support the `/rewards?referral=open` deep link (e.g. settings "Refer & Earn").
-  useEffect(() => {
-    if (referralParam === 'open') {
-      setIsReferralModalOpen(true);
-      router.setParams({ referral: undefined });
+  /**
+   * The referral program, wherever it is opened from: the v4 Refer screen while
+   * v4 is live, today's popup otherwise.
+   */
+  const openReferral = useCallback(() => {
+    if (isReferralV4) {
+      router.push(path.REFER);
+      return;
     }
-  }, [referralParam]);
+    track(TRACKING_EVENTS.REFERRAL_SCREEN_VIEWED, {
+      program: 'legacy',
+      hasInvites: (referralSummary?.referrals.length ?? 0) > 0,
+    });
+    setIsReferralModalOpen(true);
+  }, [isReferralV4, referralSummary?.referrals.length]);
+
+  // Support the `/rewards?referral=open` deep link (e.g. settings "Refer & Earn",
+  // `/referral`, referral pushes). Waits for the v4 switch so the link lands on
+  // the right referral screen rather than flashing the popup first.
+  useEffect(() => {
+    if (referralParam !== 'open' || isReferralV4Loading) return;
+    router.setParams({ referral: undefined });
+    openReferral();
+  }, [referralParam, isReferralV4Loading, openReferral]);
 
   if (isLoading) {
     return (
@@ -197,7 +224,10 @@ export default function RewardsScreenNew() {
   const cashbackPending = rewardsData?.cashbackPendingThisMonth;
   // One figure, settled and escrowed together — see `monthlyCashbackTotal`.
   const cashback = monthlyCashbackTotal(cashbackSettled, cashbackPending);
-  const referrals = referralSummary?.totalRewardedUsd ?? 0;
+  // v4's total already includes the legacy rewards paid, so it replaces today's figure.
+  const referrals = isReferralV4
+    ? (referralV4?.totals.earnedUsd ?? 0)
+    : (referralSummary?.totalRewardedUsd ?? 0);
   // All-time counts only what has actually been paid, so this month's escrowed
   // part is deliberately not floored into it.
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackSettled);
@@ -245,7 +275,7 @@ export default function RewardsScreenNew() {
           />
           <View className="flex-row gap-3 px-4">
             <Pressable
-              onPress={() => setIsReferralModalOpen(true)}
+              onPress={openReferral}
               className="h-14 flex-1 items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
             >
               <Text className="text-base font-bold text-black">Invite friends</Text>
@@ -293,7 +323,7 @@ export default function RewardsScreenNew() {
             allTimeCashback,
           }}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
-          onReferralsPress={() => setIsReferralModalOpen(true)}
+          onReferralsPress={openReferral}
         />
 
         <View className="mt-8">
@@ -312,7 +342,7 @@ export default function RewardsScreenNew() {
             {...benefitRates}
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
-            onReferralsPress={() => setIsReferralModalOpen(true)}
+            onReferralsPress={openReferral}
             onUpgradeSubscriptionTier={handleUpgradeTier}
             aiApi={
               aiApi?.available

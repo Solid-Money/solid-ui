@@ -85,8 +85,16 @@ type Path = {
   PASSKEY_NOT_SUPPORTED: Href;
   POINTS: Href;
   REFERRAL: Href;
-  /** Deep link that opens the referral program popup on the rewards screen. */
+  /**
+   * Deep link to the referral program: the v4 Refer screen when the program is
+   * live, today's referral popup on the rewards screen otherwise. The rewards
+   * screen makes that call, which is why every entry point goes through here.
+   */
   REFERRAL_PROGRAM: Href;
+  /** Referral v4: the Refer & Earn screen. Falls back to `REFERRAL_PROGRAM` while v4 is off. */
+  REFER: Href;
+  /** Referral v4: every invited friend and what each has earned the user. */
+  REFER_INVITES: Href;
   POINTS_LEADERBOARD: Href;
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
@@ -157,6 +165,9 @@ export const path: Path = {
   POINTS: '/points',
   REFERRAL: '/referral',
   REFERRAL_PROGRAM: { pathname: '/rewards', params: { referral: 'open' } } as Href,
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  REFER: '/rewards/refer' as Href,
+  REFER_INVITES: '/rewards/refer/invites' as Href,
   POINTS_LEADERBOARD: '/points/leaderboard',
   REWARDS: '/rewards',
   REWARDS_BENEFITS: '/rewards/benefits',
@@ -224,6 +235,21 @@ export const cardInfoWalletGuidePath = (wallet: DigitalWalletType): Href =>
  */
 export const cardTransactionDetailPath = (transactionId: string): Href =>
   `/activity/card-${transactionId}` as Href;
+
+/** Referral v4: one invited friend, by their user id. */
+export const referFriendPath = (referredUserId: string): Href =>
+  ({
+    pathname: '/rewards/refer/[friendId]',
+    params: { friendId: referredUserId },
+    // Expo Router's generated route types are rebuilt when the dev server
+    // starts, so a route added in the same change is not in them yet.
+  }) as unknown as Href;
+
+/**
+ * The public invite page for a referral code — the in-app address of the
+ * `https://app.solid.xyz/invite/CODE` link a referrer shares.
+ */
+export const invitePath = (code: string): Href => `/invite/${encodeURIComponent(code)}` as Href;
 
 export const cardThreeDsRequestPath = (
   transactionId: string,

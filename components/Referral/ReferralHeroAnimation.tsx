@@ -82,9 +82,11 @@ const getPhase = (progress: number, start: number, end: number) => {
 const ReferralAvatar = ({
   motion,
   progress,
+  scale,
 }: {
   motion: AvatarMotion;
   progress: SharedValue<number>;
+  scale: number;
 }) => {
   const animatedStyle = useAnimatedStyle(() => {
     const opacityPhase = getPhase(progress.value, motion.opacityStart, motion.opacityEnd);
@@ -94,7 +96,7 @@ const ReferralAvatar = ({
     return {
       opacity: OPACITY_EASING(opacityPhase),
       transform: [
-        { translateX: motion.initialTranslateX * (1 - easedTransform) },
+        { translateX: motion.initialTranslateX * scale * (1 - easedTransform) },
         { scale: motion.initialScale + (1 - motion.initialScale) * easedTransform },
       ],
     };
@@ -105,17 +107,17 @@ const ReferralAvatar = ({
       style={[
         {
           position: 'absolute',
-          left: motion.left,
-          top: motion.top,
-          width: motion.width,
-          height: motion.height,
+          left: motion.left * scale,
+          top: motion.top * scale,
+          width: motion.width * scale,
+          height: motion.height * scale,
         },
         animatedStyle,
       ]}
     >
       <Image
         source={getAsset(motion.asset)}
-        style={{ width: motion.width, height: motion.height }}
+        style={{ width: motion.width * scale, height: motion.height * scale }}
         contentFit="contain"
       />
     </Animated.View>
@@ -124,12 +126,19 @@ const ReferralAvatar = ({
 
 interface ReferralHeroAnimationProps {
   isActive: boolean;
+  /**
+   * Multiplies the whole illustration, travel included. The geometry above is
+   * the referral modal's (Figma 21109:698); the v4 Refer screen draws the same
+   * three avatars at 0.8 of it (Figma 29615:13405), with the same timeline.
+   */
+  scale?: number;
 }
 
 /**
- * Staggered avatar entrance exported from Figma node 21109:698.
+ * Staggered avatar entrance exported from Figma node 21109:698. Plays once each
+ * time `isActive` turns true — never on a loop.
  */
-export default function ReferralHeroAnimation({ isActive }: ReferralHeroAnimationProps) {
+export default function ReferralHeroAnimation({ isActive, scale = 1 }: ReferralHeroAnimationProps) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -147,9 +156,9 @@ export default function ReferralHeroAnimation({ isActive }: ReferralHeroAnimatio
   }, [isActive, progress]);
 
   return (
-    <View style={{ width: 150, height: 109 }}>
+    <View style={{ width: 150 * scale, height: 109 * scale }}>
       {AVATARS.map(motion => (
-        <ReferralAvatar key={motion.asset} motion={motion} progress={progress} />
+        <ReferralAvatar key={motion.asset} motion={motion} progress={progress} scale={scale} />
       ))}
     </View>
   );

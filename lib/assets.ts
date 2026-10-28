@@ -932,6 +932,74 @@ export const ASSETS = {
     module: require('@/assets/images/referral-new-whatsapp.png'),
     hash: '6a535fd2',
   },
+  'images/referral-v4/chevron.svg': {
+    module: require('@/assets/images/referral-v4/chevron.svg'),
+    hash: '014a80ed',
+  },
+  'images/referral-v4/close.svg': {
+    module: require('@/assets/images/referral-v4/close.svg'),
+    hash: '4a70ca15',
+  },
+  'images/referral-v4/copy.svg': {
+    module: require('@/assets/images/referral-v4/copy.svg'),
+    hash: '6e0b861b',
+  },
+  'images/referral-v4/gift-16.svg': {
+    module: require('@/assets/images/referral-v4/gift-16.svg'),
+    hash: '8f86b063',
+  },
+  'images/referral-v4/gift-72.svg': {
+    module: require('@/assets/images/referral-v4/gift-72.svg'),
+    hash: '772c169d',
+  },
+  'images/referral-v4/reward-big-spender-36.svg': {
+    module: require('@/assets/images/referral-v4/reward-big-spender-36.svg'),
+    hash: '73424f81',
+  },
+  'images/referral-v4/reward-big-spender-56.svg': {
+    module: require('@/assets/images/referral-v4/reward-big-spender-56.svg'),
+    hash: 'e47546dc',
+  },
+  'images/referral-v4/reward-big-spender.svg': {
+    module: require('@/assets/images/referral-v4/reward-big-spender.svg'),
+    hash: 'bcc6132d',
+  },
+  'images/referral-v4/reward-share-36.svg': {
+    module: require('@/assets/images/referral-v4/reward-share-36.svg'),
+    hash: '330b3890',
+  },
+  'images/referral-v4/reward-share-56.svg': {
+    module: require('@/assets/images/referral-v4/reward-share-56.svg'),
+    hash: 'a33ebe2a',
+  },
+  'images/referral-v4/reward-share.svg': {
+    module: require('@/assets/images/referral-v4/reward-share.svg'),
+    hash: '4a5000bb',
+  },
+  'images/referral-v4/reward-upgrade-36.svg': {
+    module: require('@/assets/images/referral-v4/reward-upgrade-36.svg'),
+    hash: 'bfe5fade',
+  },
+  'images/referral-v4/reward-upgrade-56.svg': {
+    module: require('@/assets/images/referral-v4/reward-upgrade-56.svg'),
+    hash: 'b3f40140',
+  },
+  'images/referral-v4/reward-upgrade.svg': {
+    module: require('@/assets/images/referral-v4/reward-upgrade.svg'),
+    hash: 'b7fb3c9a',
+  },
+  'images/referral-v4/reward-welcome-36.svg': {
+    module: require('@/assets/images/referral-v4/reward-welcome-36.svg'),
+    hash: 'd122fd1d',
+  },
+  'images/referral-v4/reward-welcome-56.svg': {
+    module: require('@/assets/images/referral-v4/reward-welcome-56.svg'),
+    hash: '9467c688',
+  },
+  'images/referral-v4/reward-welcome.svg': {
+    module: require('@/assets/images/referral-v4/reward-welcome.svg'),
+    hash: '0afb1cff',
+  },
   'images/referral_large.png': {
     module: require('@/assets/images/referral_large.png'),
     hash: '79bcfd00',
