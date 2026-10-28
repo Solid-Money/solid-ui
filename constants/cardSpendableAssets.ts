@@ -1,7 +1,7 @@
 import { base, fuse } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
 import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 import { ADDRESSES } from '@/lib/config';
 
@@ -106,12 +106,15 @@ export const baseEurcSpendableAsset = (addresses: string[]): CardSpendableAsset 
 const BASE_CBZEC = '0xb2000000000000000000008501b13360000cb2ec';
 
 /**
- * A Base spend token's ticker, from its address: soEUR by this build's vault, cbZEC by the one
- * address above, the rest — EURC, USDC, USDT, cbBTC, SOL, AAVE — by the deposit token table,
- * which already holds each one's Base contract. `undefined` for an address this build cannot name.
+ * A Base spend token's ticker, from its address: soEUR by this build's vault, EURC by the bridge
+ * config's Base EURC, cbZEC by the one address above, the rest — USDC, USDT, cbBTC, SOL, AAVE —
+ * by the deposit token table, which already holds each one's Base contract. EURC is matched
+ * directly rather than through that table because it is the one that carries the euro
+ * qualifier. `undefined` for an address this build cannot name.
  */
 const baseTokenSymbol = (address: string): string | undefined => {
   if (address === ADDRESSES.base.soEurcVault.toLowerCase()) return 'soEUR';
+  if (address === EURC_TOKENS[base.id]?.address.toLowerCase()) return 'EURC';
   if (address === BASE_CBZEC) return 'cbZEC';
   return WALLET_DEPOSIT_TOKENS.find(token => token.contracts[base.id]?.toLowerCase() === address)
     ?.symbol;
