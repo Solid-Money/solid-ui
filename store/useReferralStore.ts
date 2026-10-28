@@ -5,11 +5,26 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
+import { referralCodeFromParams } from '@/lib/referral/inviteCode';
+
+/**
+ * How a referral code reached this device: a `?ref=` link (`url`), the invite
+ * page (`link`), the Play install referrer, the iOS clipboard hand-off, or typed
+ * on the signup screen.
+ */
+export type ReferralCodeSource = 'url' | 'link' | 'install_referrer' | 'clipboard' | 'manual';
 
 interface ReferralState {
   referralCode: string | null;
+  referralSource: ReferralCodeSource | null;
+  /**
+   * Android: the Play install referrer has been read. It is the same answer on
+   * every launch, so it is asked for once, on the first launch.
+   */
+  installReferrerChecked: boolean;
   _hasHydrated: boolean;
-  setReferralCode: (code: string | null) => void;
+  setReferralCode: (code: string | null, source?: ReferralCodeSource) => void;
+  setInstallReferrerChecked: () => void;
   setHasHydrated: (state: boolean) => void;
   clearReferralCode: () => void;
   detectAndSaveReferralCode: () => string | null;
@@ -23,14 +38,20 @@ export const useReferralStore = create<ReferralState>()(
   persist(
     (set, get) => ({
       referralCode: null,
+      referralSource: null,
+      installReferrerChecked: false,
       _hasHydrated: false,
 
-      setReferralCode: (code: string | null) => {
+      setReferralCode: (code: string | null, source?: ReferralCodeSource) => {
         const trimmedCode = code && code.trim() ? code.trim() : null;
-        set({ referralCode: trimmedCode });
+        set({ referralCode: trimmedCode, referralSource: trimmedCode ? (source ?? null) : null });
         if (trimmedCode) {
           console.warn('Referral code saved:', trimmedCode);
         }
+      },
+
+      setInstallReferrerChecked: () => {
+        set({ installReferrerChecked: true });
       },
 
       setHasHydrated: (state: boolean) => {
@@ -38,7 +59,7 @@ export const useReferralStore = create<ReferralState>()(
       },
 
       clearReferralCode: () => {
-        set({ referralCode: null });
+        set({ referralCode: null, referralSource: null });
         console.warn('Referral code cleared');
       },
 
@@ -46,15 +67,13 @@ export const useReferralStore = create<ReferralState>()(
         if (Platform.OS !== 'web') return null;
 
         try {
-          const urlParams = new URLSearchParams(window.location.search);
-          // Check for both 'ref', 'refCode' (legacy) and 'referralCode' (legacy)
-          const code =
-            urlParams.get('ref') || urlParams.get('refCode') || urlParams.get('referralCode');
+          // 'ref', plus the legacy 'refCode' / 'referralCode' / 'referral' —
+          // only values that are actually codes (`/rewards?referral=open` is not).
+          const code = referralCodeFromParams(new URLSearchParams(window.location.search));
 
-          if (code && code.trim()) {
-            const trimmedCode = code.trim();
-            get().setReferralCode(trimmedCode);
-            return trimmedCode;
+          if (code) {
+            get().setReferralCode(code, 'url');
+            return code;
           }
         } catch (error) {
           console.warn('Failed to detect and save referral code:', error);
@@ -73,16 +92,14 @@ export const useReferralStore = create<ReferralState>()(
         // First try to get from URL (in case user just clicked a referral link)
         if (Platform.OS === 'web') {
           try {
-            const urlParams = new URLSearchParams(window.location.search);
-            // Check for both 'ref', 'refCode' (legacy) and 'referralCode' (legacy)
-            const urlReferralCode =
-              urlParams.get('ref') || urlParams.get('refCode') || urlParams.get('referralCode');
+            const urlReferralCode = referralCodeFromParams(
+              new URLSearchParams(window.location.search),
+            );
 
-            if (urlReferralCode && urlReferralCode.trim()) {
-              const trimmedCode = urlReferralCode.trim();
+            if (urlReferralCode) {
               // Save it to storage for future use
-              get().setReferralCode(trimmedCode);
-              return trimmedCode;
+              get().setReferralCode(urlReferralCode, 'url');
+              return urlReferralCode;
             }
           } catch (error) {
             console.warn('Failed to extract referral code from URL:', error);

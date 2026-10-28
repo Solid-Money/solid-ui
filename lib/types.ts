@@ -2964,6 +2964,11 @@ export interface CardTransaction {
    * read only, so it is available on the detail screen and not in the list.
    */
   spend_details?: CardSpendDetails;
+  /**
+   * Card credit this purchase used (Wirex only). Absent when none was used,
+   * and on backends that predate card credit.
+   */
+  card_credit?: CardTransactionCardCredit;
 }
 
 /** What the activity surfaces need to render a fee, derived from `fees`. */
@@ -3838,6 +3843,355 @@ export interface ReferralSummary {
   friendsPending: number;
   hasActiveCard: boolean;
   referrals: ReferralRewardListItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Referral program v4 (card credit + spend share)
+//
+// Mirrors the cross-repo contract: `GET /rewards/v1/referral/v4/summary` for the
+// referrer, `GET /accounts/v1/referral/invite/:code` for the public invite page.
+// Every amount is USD. `program: 'legacy'` rows are friends who signed up before
+// v4 launched and stay on today's $25 + $25 soFUSE engine.
+// ---------------------------------------------------------------------------
+
+export type ReferralV4Program = 'v4' | 'legacy';
+
+export type ReferralV4RewardStatus =
+  /** Not reached, still reachable — the friend hasn't started. */
+  | 'locked'
+  /** The friend is working toward it. */
+  | 'in_progress'
+  /** Earned; unlocking over the hold, see `unlocksAt`. */
+  | 'on_hold'
+  /** Earned, over the referrer's bonus limit — kept, paid when the limit grows. */
+  | 'limit_reached'
+  /** Earned; held for manual review. */
+  | 'under_review'
+  /** Card credit granted. */
+  | 'credited'
+  /** Spend share paid (soFUSE). */
+  | 'paid'
+  /** The window closed without reaching it. */
+  | 'expired'
+  /** Country rule. */
+  | 'excluded'
+  /** Refunded, fraud or rejected. */
+  | 'cancelled'
+  /**
+   * Credited, then the purchases that qualified it were refunded back under the
+   * target: the amount is owed back, out of later rewards (see `debt`).
+   */
+  | 'reversed';
+
+export type ReferralV4BoostStep = 'welcome' | 'big_spender' | 'upgrade';
+
+export interface ReferralV4Boost {
+  id: string;
+  name: string;
+  multiplier: number;
+  startsAt: string;
+  endsAt: string;
+  steps: ReferralV4BoostStep[];
+  sides: 'both' | 'referrer' | 'friend';
+}
+
+/**
+ * The program's live settings, admin-managed. Every number the referral screens
+ * show comes from here. Fields marked "absent on older backends" arrived later
+ * and are read defensively.
+ */
+export interface ReferralV4Terms {
+  /**
+   * Open to new signups. The app shows v4 only while this is on, and keeps
+   * today's referral program otherwise.
+   */
+  enabled: boolean;
+  launchAt: string | null;
+  /**
+   * The incident switch: nothing is credited or paid while it is on, but
+   * friends keep earning and nothing is lost. Absent on older backends.
+   */
+  paused?: boolean;
+  welcome: {
+    referrerUsd: number;
+    friendUsd: number;
+    spendTargetUsd: number;
+    merchantTarget: number;
+    windowDays: number;
+  };
+  bigSpender: {
+    referrerUsd: number;
+    friendUsd: number;
+    spendTargetUsd: number;
+    windowDays: number;
+  };
+  upgrade: {
+    primeUsd: number;
+    ultraUsd: number;
+    primeLockFuse: number;
+    ultraLockFuse: number;
+    lockHoldDays: number;
+  };
+  spendShare: {
+    rate: number;
+    capPerFriendUsd: number;
+    /** The weekly payout run's weekday in UTC: 0 = Sunday … 6, like `Date.getUTCDay`. */
+    payoutWeekday: number;
+    /** The payout run's hour, UTC (0–23). Absent on older backends. */
+    payoutHourUtc?: number;
+    /** A week's transfer smaller than this waits for a later week. Absent on older backends. */
+    minWeeklyPayoutUsd?: number;
+  };
+  holdDays: number;
+  bonusLimit: {
+    enabled: boolean;
+    base: number;
+    perActiveFriend: number;
+    activeSpendUsd: number;
+    /**
+     * The friend's "second month", in days after signup: spending
+     * `activeSpendUsd` in [`monthTwoFromDays`, `monthTwoToDays`) grows the
+     * limit. Absent on older backends.
+     */
+    monthTwoFromDays?: number;
+    monthTwoToDays?: number;
+  };
+  excludedCountries: string[];
+  /** The boost running right now, if any. */
+  boost: ReferralV4Boost | null;
+  /**
+   * A credited welcome or big spender bonus whose qualifying purchases are
+   * refunded within `watchDays` of crediting is reversed. Absent on older
+   * backends, which never reverse one.
+   */
+  clawback?: { enabled: boolean; watchDays: number };
+}
+
+export interface ReferralV4StepView {
+  status: ReferralV4RewardStatus;
+  /** What this step pays the referrer (or the friend, in `asFriend`). */
+  amountUsd: number;
+  /** Spend toward the target (welcome / big spender). */
+  progressUsd?: number;
+  targetUsd?: number;
+  /** Welcome only. */
+  merchantCount?: number;
+  merchantTarget?: number;
+  /** Window end: signup + the step's `windowDays`. */
+  deadlineAt?: string;
+  earnedAt?: string;
+  /** `on_hold` → credited at the first payout run at or after this. */
+  unlocksAt?: string;
+  creditedAt?: string;
+  /** When a credited bonus was reversed (`status: 'reversed'`). */
+  reversedAt?: string;
+  /** The part of this bonus that went to repay a reversed one, rather than to the user. */
+  offsetUsd?: number;
+}
+
+export interface ReferralV4UpgradeView {
+  status: ReferralV4RewardStatus;
+  /** Prime's or Ultra's amount: the total earned or earnable from this friend's upgrade. */
+  amountUsd: number;
+  tier: 'prime' | 'ultra' | null;
+  via: 'paid' | 'lock' | null;
+  /** Lock route: when the lock has been held for `upgrade.lockHoldDays`. */
+  lockEligibleAt?: string;
+  earnedAt?: string;
+  unlocksAt?: string;
+  creditedAt?: string;
+  /** When a credited bonus was reversed (`status: 'reversed'`). */
+  reversedAt?: string;
+  /** The part of this bonus that went to repay a reversed one, rather than to the user. */
+  offsetUsd?: number;
+}
+
+export type ReferralV4FriendStage =
+  | 'registered'
+  | 'verifying'
+  | 'card_ordered'
+  /** Active card, no spend share yet this week. */
+  | 'spending'
+  /** Generated spend share this week. */
+  | 'earning'
+  /** Active card, no purchases this week. */
+  | 'idle'
+  /** Reached the per-friend cap. */
+  | 'capped'
+  | 'expired'
+  | 'under_review'
+  | 'reversed';
+
+export interface ReferralV4FriendRow {
+  referredUserId: string;
+  username: string;
+  joinedAt: string;
+  program: ReferralV4Program;
+  stage: ReferralV4FriendStage;
+  /** Credited + paid to the referrer from this friend. */
+  earnedUsd: number;
+  /** Earned but not yet credited (on hold, over the limit, in review). */
+  onHoldUsd: number;
+  /** The per-friend cap on v4; the legacy reward amount on legacy rows. */
+  capUsd: number;
+  countryExcluded: boolean;
+  spendShare: { earnedUsd: number; thisWeekUsd: number };
+  welcome: ReferralV4StepView;
+  bigSpender: ReferralV4StepView;
+  upgrade: ReferralV4UpgradeView;
+  /** Only on `program: 'legacy'` rows: today's row, unchanged. */
+  legacy?: ReferralRewardListItem;
+}
+
+export interface ReferralV4RewardEvent {
+  referredUserId: string;
+  username: string;
+  amountUsd: number;
+  status: ReferralV4RewardStatus;
+  earnedAt: string;
+  unlocksAt?: string;
+  creditedAt?: string;
+}
+
+export interface ReferralV4Summary {
+  terms: ReferralV4Terms;
+  referralCode: string;
+  totals: {
+    /** Lifetime credited + paid (v4), plus legacy paid referrer rewards. */
+    earnedUsd: number;
+    /** The same, credited or paid in the current UTC month. */
+    thisMonthUsd: number;
+    /** Earned, not yet credited. */
+    onHoldUsd: number;
+    /** Accrued for the current week, paid in the next payout run. */
+    pendingSpendShareUsd: number;
+    /** The next weekly payout run. */
+    nextPayoutAt: string;
+  };
+  rewards: {
+    spendShare: { earnedUsd: number; thisWeekUsd: number };
+    welcome: { earnedUsd: number; events: ReferralV4RewardEvent[] };
+    bigSpender: { earnedUsd: number; events: ReferralV4RewardEvent[] };
+    upgrade: { earnedUsd: number; events: ReferralV4RewardEvent[] };
+  };
+  /** Null when the bonus limit is off. */
+  bonusLimit: { limit: number; used: number; waiting: number } | null;
+  counts: { invited: number; earning: number };
+  /** Newest first. */
+  friends: ReferralV4FriendRow[];
+  /** This user's own invite, when they were referred. */
+  asFriend: {
+    referrerUsername: string;
+    program: ReferralV4Program;
+    /** `amountUsd` is the friend's side (`terms.welcome.friendUsd`). */
+    welcome: ReferralV4StepView;
+    /** `amountUsd` is the friend's side (`terms.bigSpender.friendUsd`). */
+    bigSpender: ReferralV4StepView;
+  } | null;
+  hasActiveCard: boolean;
+  /**
+   * What this user owes back for reversed bonuses, recovered from their later
+   * bonuses and spend share — never from card credit. Null when nothing is
+   * owed; absent on older backends.
+   */
+  debt?: { remainingUsd: number; reversedCount: number } | null;
+}
+
+/**
+ * The public invite lookup behind the invite page and the signup "Invite code"
+ * field. An unknown code is a 200 with `valid: false`, never a 404.
+ */
+export type ReferralInviteLookup =
+  | {
+      valid: true;
+      /** The code's canonical spelling — store and send this one. */
+      code: string;
+      referrer: { username: string };
+      program: ReferralV4Program;
+      /** The v4 friend offer; null while v4 is off. */
+      offer: {
+        friendCreditUsd: number;
+        spendTargetUsd: number;
+        merchantTarget: number;
+        windowDays: number;
+      } | null;
+      /** Today's offer; null once v4 is on. */
+      legacyOffer: {
+        friendRewardUsd: number;
+        spendTargetUsd: number;
+        merchantTarget: number;
+        windowDays: number;
+        payoutToken: string;
+      } | null;
+    }
+  | { valid: false; code: string };
+
+// ---------------------------------------------------------------------------
+// Card credit — money Solid gives that can only be spent with the Wirex card.
+// Never part of the balance: it is spent first, at the moment of purchase.
+// ---------------------------------------------------------------------------
+
+export type CardCreditSourceType =
+  | 'referral_welcome'
+  | 'referral_big_spender'
+  | 'referral_upgrade'
+  | 'referral_boost'
+  | 'admin_grant';
+
+export interface CardCreditSource {
+  id: string;
+  type: CardCreditSourceType;
+  amountUsd: number;
+  /** Ready to show — "Dana's invite", "Welcome bonus", "Solid team". */
+  label: string;
+  createdAt: string;
+}
+
+export interface CardCreditSummary {
+  /** Spendable now; excludes credit held by pending authorizations. */
+  availableUsd: number;
+  /** Reserved by card authorizations awaiting settlement. */
+  pendingUsd: number;
+  lifetimeGrantedUsd: number;
+  lifetimeSpentUsd: number;
+  /** The user has an active Wirex card, the only card credit can be spent on. */
+  spendable: boolean;
+  /** Latest 10 grants, newest first. */
+  sources: CardCreditSource[];
+}
+
+export interface CardCreditHistoryEntry {
+  id: string;
+  kind: 'grant' | 'hold' | 'spend' | 'release' | 'refund' | 'revoke';
+  amountUsd: number;
+  balanceAfterUsd: number;
+  label: string;
+  transactionId?: string;
+  merchantName?: string;
+  createdAt: string;
+}
+
+export interface CardCreditHistoryResponse {
+  entries: CardCreditHistoryEntry[];
+  hasMore: boolean;
+}
+
+/**
+ * The card credit a Wirex purchase used, on the card transaction itself.
+ * Cashback for that purchase is computed on `from_balance_usd` only.
+ */
+export interface CardTransactionCardCredit {
+  /** Credit applied to this purchase. */
+  used_usd: number;
+  /** The rest, paid from the balance. */
+  from_balance_usd: number;
+  /** Credit left right after this purchase. */
+  remaining_usd: number;
+  /** Credit returned to the user by refunds of this purchase. */
+  refunded_usd?: number;
+  /** "Dana's invite". */
+  source_label?: string;
+  state: 'held' | 'spent' | 'released';
 }
 
 /**

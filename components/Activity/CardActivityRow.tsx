@@ -5,6 +5,7 @@ import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { usedCardCredit } from '@/lib/cardCredit';
 import { CardProvider, CardTransaction, CardTransactionCategory, Cashback } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
@@ -72,6 +73,9 @@ const CardActivityRow = ({
 
   const cashbackLabel =
     cashbackInfo?.isPending && !cashbackInfo.isEscrowed ? 'Cashback (Pending)' : 'Cashback';
+  // Card credit paid some or all of it. Never just "Credit": that is Credit mode,
+  // the card's borrowing, a different thing entirely.
+  const paidWithCardCredit = usedCardCredit(transaction.card_credit);
 
   return (
     <Pressable
@@ -100,6 +104,11 @@ const CardActivityRow = ({
               <CashbackDiamondIcon size={13} />
               <Text className="text-sm font-medium text-brand">{cashbackLabel}</Text>
             </View>
+          )}
+          {paidWithCardCredit && (
+            <Text className="text-sm font-medium text-white/70" numberOfLines={1}>
+              Paid with card credit
+            </Text>
           )}
           {statusLabel && (
             <Text

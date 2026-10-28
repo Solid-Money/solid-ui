@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
+import { referralCodeFromParams } from '@/lib/referral/inviteCode';
 
 import { useReferralStore } from './useReferralStore';
 
@@ -70,6 +71,7 @@ interface AttributionState {
   setAttributionData: (data: Partial<AttributionData>) => void;
   updateAttribution: (data: Partial<AttributionData>) => void;
   clearAttribution: () => void;
+  clearReferralAttribution: () => void;
   captureFromURL: (url?: string) => AttributionData | null;
   captureFromDeepLink: (deepLinkUrl: string) => AttributionData | null;
   saveFirstTouchAttribution: (data: AttributionData) => void;
@@ -108,12 +110,9 @@ const parseAttributionFromURL = (url: string): Partial<AttributionData> => {
     if (params.get('msclkid')) attribution.msclkid = params.get('msclkid')!;
     if (params.get('ttclid')) attribution.ttclid = params.get('ttclid')!;
 
-    // Referral codes (multiple param names for compatibility)
-    const refCode =
-      params.get('ref') ||
-      params.get('refCode') ||
-      params.get('referralCode') ||
-      params.get('referral');
+    // Referral codes (multiple param names for compatibility). Only values that
+    // are codes: `/rewards?referral=open` opens the referral screen, it is not one.
+    const refCode = referralCodeFromParams(params);
     if (refCode) {
       attribution.referral_code = refCode;
       attribution.referral_source = 'url';
@@ -236,6 +235,22 @@ export const useAttributionStore = create<AttributionState>()(
       },
 
       /**
+       * Forget the referral code (and how it arrived) once it has been used.
+       * The first-touch record keeps it for attribution; this only stops the
+       * next signup on this device from picking it up again.
+       */
+      clearReferralAttribution: () => {
+        set(state => {
+          const {
+            referral_code: _referralCode,
+            referral_source: _referralSource,
+            ...rest
+          } = state.attributionData;
+          return { attributionData: rest };
+        });
+      },
+
+      /**
        * Capture attribution from current URL (web only)
        */
       captureFromURL: (url?: string) => {
@@ -273,7 +288,7 @@ export const useAttributionStore = create<AttributionState>()(
             // Sync referral code to referral store for backward compatibility
             if (parsed.referral_code) {
               const referralStore = useReferralStore.getState();
-              referralStore.setReferralCode(parsed.referral_code);
+              referralStore.setReferralCode(parsed.referral_code, 'url');
               console.warn('Referral code synced to referral store:', parsed.referral_code);
             }
 
@@ -316,7 +331,7 @@ export const useAttributionStore = create<AttributionState>()(
             // Sync referral code to referral store for backward compatibility
             if (parsed.referral_code) {
               const referralStore = useReferralStore.getState();
-              referralStore.setReferralCode(parsed.referral_code);
+              referralStore.setReferralCode(parsed.referral_code, 'link');
               console.warn('Referral code synced to referral store:', parsed.referral_code);
             }
 
