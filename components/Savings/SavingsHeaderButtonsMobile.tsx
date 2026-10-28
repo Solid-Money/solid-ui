@@ -70,6 +70,7 @@ const SavingsHeaderButtonsMobile = ({
 
       {!hideSwap && (
         <SwapModal
+          entryPoint="savings"
           trigger={
             <CircleButton
               icon={HomeSwap}

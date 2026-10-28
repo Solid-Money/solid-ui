@@ -175,12 +175,15 @@ const TokenRow = ({
   asset,
   onSelect,
   locked,
+  lockedReason,
   style,
   index = 0,
 }: {
   asset: SwapAssetWithBalance;
   onSelect: (asset: SwapAsset) => void;
   locked: boolean;
+  /** Shown in place of the network when the row is off the swap list. */
+  lockedReason?: string;
   style: StyleProp<ViewStyle>;
   index?: number;
 }) => {
@@ -298,7 +301,9 @@ const TokenRow = ({
           onPressOut={handlePressOut}
           style={typeof style === 'object' ? { ...style, height: 82 } : { height: 82 }}
           accessibilityLabel={`${asset.symbol} on ${CHAIN_NAMES[asset.chainId] ?? 'unknown network'} with balance ${balanceString}`}
-          accessibilityHint={lock ? 'This token cannot be selected' : 'Tap to select this token'}
+          accessibilityHint={
+            lock ? (lockedReason ?? 'This token cannot be selected') : 'Tap to select this token'
+          }
           accessibilityRole="button"
           accessibilityState={{ disabled: lock }}
         >
@@ -330,7 +335,7 @@ const TokenRow = ({
                   isPopular ? 'font-medium text-muted-foreground' : 'text-muted-foreground'
                 }`}
               >
-                {CHAIN_NAMES[asset.chainId] ?? asset.name}
+                {lockedReason ?? CHAIN_NAMES[asset.chainId] ?? asset.name}
               </Text>
             </View>
           </View>
@@ -518,14 +523,22 @@ const LoadingState = () => {
   );
 };
 
+const UNSWAPPABLE_REASON = 'Can’t be swapped yet';
+
 const SwapTokenSelector = ({
   onSelect,
   otherAsset,
   showNativeToken = true,
+  side = 'pay',
 }: {
   onSelect: (asset: SwapAsset) => void;
   otherAsset: SwapAsset | undefined;
   showNativeToken?: boolean;
+  /**
+   * "You get" only offers what can be quoted. "You pay" still lists a held
+   * token that can't, greyed out, so the balance isn't a mystery.
+   */
+  side?: 'pay' | 'get';
 }) => {
   const { assets, isLoading } = useSwapAssets();
   const [chainFilter, setChainFilter] = useState<number | null>(null);
@@ -538,14 +551,16 @@ const SwapTokenSelector = ({
     const visible = assets.filter(
       asset =>
         (showNativeToken || !asset.isNative) &&
+        (side === 'pay' || asset.swappable) &&
         (chainFilter === null || asset.chainId === chainFilter),
     );
     const held = visible
-      .filter(asset => asset.balance > 0)
+      .filter(asset => asset.swappable && asset.balance > 0)
       .sort((a, b) => b.balanceUsd - a.balanceUsd || b.balance - a.balance);
-    const rest = visible.filter(asset => !(asset.balance > 0));
-    return [...held, ...rest];
-  }, [assets, chainFilter, showNativeToken]);
+    const rest = visible.filter(asset => asset.swappable && !(asset.balance > 0));
+    const unswappable = visible.filter(asset => !asset.swappable);
+    return [...held, ...rest, ...unswappable];
+  }, [assets, chainFilter, showNativeToken, side]);
 
   const [matchedTokens, setMatchedTokens] = useState<SwapAssetWithBalance[]>([]);
   const [currentQuery, setCurrentQuery] = useState<string | undefined>();
@@ -575,7 +590,8 @@ const SwapTokenSelector = ({
         <TokenRow
           asset={item}
           onSelect={onSelect}
-          locked={swapAssetKey(item) === otherKey}
+          locked={!item.swappable || swapAssetKey(item) === otherKey}
+          lockedReason={item.swappable ? undefined : UNSWAPPABLE_REASON}
           style={{}}
           index={index}
         />
