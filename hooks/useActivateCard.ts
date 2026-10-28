@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { path } from '@/constants/path';
+import { path, wirexCountrySelectionPath } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
+import { useProspectiveCardIssuer } from '@/hooks/useProspectiveCardIssuer';
 import { track } from '@/lib/analytics';
 import { CardStatus, KycStatus } from '@/lib/types';
 import {
@@ -16,6 +17,8 @@ import {
 } from '@/lib/utils';
 import { isCardIssuanceUnderReview } from '@/lib/utils/cardReviewState';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
+import { isWirexOnboarding, resolveWirexOnboardingStep } from '@/lib/utils/wirexOnboarding';
+import { useCountryStore } from '@/store/useCountryStore';
 
 export function useActivateCard() {
   const router = useRouter();
@@ -30,6 +33,8 @@ export function useActivateCard() {
     kycStatus?: KycStatus;
     countryConfirmed?: string;
   }>();
+  // A country the user picked themselves is confirmed already; an IP guess is not.
+  const countrySource = useCountryStore(state => state.countryInfo?.source);
 
   // Card status
   const { data: cardStatusResponse, isLoading: isCardStatusLoading } = useCardStatus({
@@ -85,7 +90,37 @@ export function useActivateCard() {
     activatingCard,
     cardsEndorsement,
     pushCardReady,
+    startKyc,
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
+
+  // Wirex applicants get the onboarding screens instead of the steps list. `/cards/status` names
+  // the issuer once the Sumsub session has created a card customer; before that the routing
+  // endpoint says who would serve this user, from their declared (or detected) country.
+  const statusNamesIssuer = Boolean(cardStatusResponse?.provider);
+  const { issuer: prospectiveIssuer, isLoading: isResolvingIssuer } = useProspectiveCardIssuer({
+    enabled: !isCardStatusLoading && !statusNamesIssuer,
+  });
+  const isWirexFlow = isWirexOnboarding(cardStatusResponse, prospectiveIssuer);
+  const wirexStep = isWirexFlow ? resolveWirexOnboardingStep(cardStatusResponse) : null;
+
+  // Country is step 1 of the Wirex onboarding, asked before "What you'll need" rather than when
+  // its button is pressed. Only for an applicant the backend has not placed yet: once the Sumsub
+  // session has run, the server holds their country and asking again would only add a screen.
+  const needsCountryStep =
+    wirexStep === 'verify' &&
+    !statusNamesIssuer &&
+    countryConfirmed !== 'true' &&
+    countrySource !== 'manual';
+
+  useEffect(() => {
+    if (needsCountryStep) router.replace(wirexCountrySelectionPath());
+  }, [needsCountryStep, router]);
+
+  // Approved with no card: the Approved screen, directly — from the waiting screen, the push and
+  // the Home banner alike, all of which land here.
+  useEffect(() => {
+    if (wirexStep === 'approved') router.replace(path.CARD_READY);
+  }, [wirexStep, router]);
 
   // Derived: under review state — the screen shows "your card is on its way"
   // instead of a steps list the user cannot move. Previously read from the
@@ -155,6 +190,17 @@ export function useActivateCard() {
     // Loading state
     isCardStatusLoading,
     isCheckingCountry,
+    // Still asking which issuer would serve a user `/cards/status` cannot place yet, or on the way
+    // to a screen the Wirex flow redirects to — either way nothing should render underneath.
+    isResolvingWirexFlow:
+      (!statusNamesIssuer && isResolvingIssuer) || needsCountryStep || wirexStep === 'approved',
+    // The Wirex onboarding screen to render in place of the steps list, or null for everyone
+    // else (Rain, an unknown issuer, every cardholder).
+    wirexStep,
+    kycWarnings: cardStatusResponse?.kycWarnings,
+    hasOpenedCheck: Boolean(cardStatusResponse?.kycReviewStatus),
+    startKyc,
+    pushCardReady,
     // Card status flags
     isCardPending,
     isCardBlocked,

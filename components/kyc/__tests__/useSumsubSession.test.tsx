@@ -45,6 +45,9 @@ jest.mock('@/store/useCountryStore', () => ({
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: { getState: () => ({ setModal: jest.fn() }) },
 }));
+jest.mock('@/store/useUserStore', () => ({
+  useUserStore: { getState: () => ({ users: [{ selected: true, userId: 'test-user' }] }) },
+}));
 
 const fallback = 'Identity verification is temporarily unavailable. Please try again shortly.';
 

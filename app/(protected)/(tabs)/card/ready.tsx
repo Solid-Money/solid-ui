@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Redirect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { CardConsentList, useCardConsents } from '@/components/Card/CardConsents';
 import { CardStatusPage } from '@/components/Card/CardStatusPage';
+import { WirexCardApproval } from '@/components/Card/WirexOnboarding/WirexCardApproval';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
-import { Underline } from '@/components/ui/underline';
 import { activationDailyLimit, formatUsd, usdToOnChain } from '@/constants/cardSpendModule';
 import { path } from '@/constants/path';
 import {
@@ -21,43 +22,11 @@ import { useCardSpendDeployments, useEuroSpendEnablement } from '@/hooks/useEuro
 import { WALLET_ELIGIBILITY_KEY } from '@/hooks/useWalletEligibility';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
-import { openHelpLink } from '@/lib/help/links';
 import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
+import { isWirexOnboarding } from '@/lib/utils/wirexOnboarding';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
-
-type ConsentKey =
-  | 'agreedToEsign'
-  | 'agreedToAccountOpeningPrivacy'
-  | 'isTermsOfServiceAccepted'
-  | 'agreedToCertify'
-  | 'agreedToNoSolicitation';
-
-type ConsentState = Record<ConsentKey, boolean>;
-
-const initialConsents: ConsentState = {
-  agreedToEsign: false,
-  agreedToAccountOpeningPrivacy: false,
-  isTermsOfServiceAccepted: false,
-  agreedToCertify: false,
-  agreedToNoSolicitation: false,
-};
-
-const ESIGN_CONSENT_URL =
-  'https://support.solid.xyz/en/articles/14167249-e-sign-electronic-communications-notice';
-const ACCOUNT_OPENING_PRIVACY_URL =
-  'https://support.solid.xyz/en/articles/14285527-account-opening-privacy-notice-fuse-network-lt-solid-xyz';
-const US_CARD_TERMS_URL =
-  'https://support.solid.xyz/en/articles/14285503-fuse-network-ltd-card-terms-for-u-s-consumer-program';
-const INTL_CARD_TERMS_URL =
-  'https://support.solid.xyz/en/articles/14167076-card-terms-for-international-consumer-program';
-const ISSUER_PRIVACY_URL = 'https://www.third-national.com/privacypolicy';
-
-const underlineProps = {
-  textClassName: 'text-sm font-bold text-white' as const,
-  borderColor: 'rgba(255, 255, 255, 1)' as const,
-};
 
 /**
  * What the activation button is doing, so the label can name the step in front of the
@@ -66,12 +35,24 @@ const underlineProps = {
  */
 type ActivationPhase = 'idle' | 'enabling-spend' | 'enabling-eurc' | 'creating';
 
+/**
+ * The card ready screen, by applicant: a first-time Wirex applicant gets the onboarding's Approved
+ * screen (card currency, the activation checklist, one passkey prompt); everyone else — Rain, and a
+ * Wirex cardholder ordering a replacement for a closed card — keeps this one.
+ */
 export default function CardReady() {
+  const { data: cardStatusResponse, isLoading } = useCardStatus();
+
+  if (isLoading) return <PageLayout isLoading>{null}</PageLayout>;
+  if (isWirexOnboarding(cardStatusResponse)) return <WirexCardApproval />;
+  return <IssuanceCardReady />;
+}
+
+function IssuanceCardReady() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: cardStatusResponse, refetch: refetchCardStatus } = useCardStatus();
   const [activationPhase, setActivationPhase] = useState<ActivationPhase>('idle');
-  const [consents, setConsents] = useState<ConsentState>(initialConsents);
   const activating = activationPhase !== 'idle';
 
   // Read the module state up front, before there is a card to resolve an issuer from —
@@ -94,33 +75,7 @@ export default function CardReady() {
     state => state.setShouldShowWelcomePopup,
   );
   const isUS = countryCode?.toUpperCase() === 'US';
-  const cardTermsUrl = isUS ? US_CARD_TERMS_URL : INTL_CARD_TERMS_URL;
-
-  const requiredKeys = useMemo<ConsentKey[]>(
-    () =>
-      isUS
-        ? [
-            'agreedToEsign',
-            'agreedToAccountOpeningPrivacy',
-            'isTermsOfServiceAccepted',
-            'agreedToCertify',
-            'agreedToNoSolicitation',
-          ]
-        : [
-            'agreedToEsign',
-            'isTermsOfServiceAccepted',
-            'agreedToCertify',
-            'agreedToNoSolicitation',
-          ],
-    [isUS],
-  );
-
-  const allAccepted = useMemo(
-    () => requiredKeys.every(key => consents[key]),
-    [requiredKeys, consents],
-  );
-
-  const toggle = (key: ConsentKey) => setConsents(prev => ({ ...prev, [key]: !prev[key] }));
+  const { consents, toggle, allAccepted, submission: consentSubmission } = useCardConsents(isUS);
 
   /**
    * The daily cap this activation would register with, for the copy under the button.
@@ -327,13 +282,7 @@ export default function CardReady() {
         setActivationPhase('creating');
       }
 
-      await withRefreshToken(() =>
-        submitCardConsents({
-          ...consents,
-          // Non-US users never see this consent; send false so the field is always present.
-          agreedToAccountOpeningPrivacy: isUS ? consents.agreedToAccountOpeningPrivacy : false,
-        }),
-      );
+      await withRefreshToken(() => submitCardConsents(consentSubmission));
 
       const card = await withRefreshToken(() => createCard());
       if (!card) throw new Error('Failed to create card');
@@ -383,58 +332,7 @@ export default function CardReady() {
   return (
     <CardStatusPage title="Your card is ready!">
       <View className="mt-4 w-full gap-3">
-        <ConsentRow checked={consents.agreedToEsign} onToggle={() => toggle('agreedToEsign')}>
-          I accept the{' '}
-          <Underline inline {...underlineProps} onPress={() => openHelpLink(ESIGN_CONSENT_URL)}>
-            E-Sign Consent
-          </Underline>
-          .
-        </ConsentRow>
-
-        {isUS && (
-          <ConsentRow
-            checked={consents.agreedToAccountOpeningPrivacy}
-            onToggle={() => toggle('agreedToAccountOpeningPrivacy')}
-          >
-            I accept the{' '}
-            <Underline
-              inline
-              {...underlineProps}
-              onPress={() => openHelpLink(ACCOUNT_OPENING_PRIVACY_URL)}
-            >
-              Account Opening Privacy Notice
-            </Underline>
-            .
-          </ConsentRow>
-        )}
-
-        <ConsentRow
-          checked={consents.isTermsOfServiceAccepted}
-          onToggle={() => toggle('isTermsOfServiceAccepted')}
-        >
-          I accept the{' '}
-          <Underline inline {...underlineProps} onPress={() => openHelpLink(cardTermsUrl)}>
-            Solid Card Terms
-          </Underline>{' '}
-          and the{' '}
-          <Underline inline {...underlineProps} onPress={() => Linking.openURL(ISSUER_PRIVACY_URL)}>
-            Issuer Privacy Policy
-          </Underline>
-          .
-        </ConsentRow>
-
-        <ConsentRow checked={consents.agreedToCertify} onToggle={() => toggle('agreedToCertify')}>
-          I certify that the information I have provided is accurate and that I will abide by all
-          the rules and requirements related to my Solid Spend Card.
-        </ConsentRow>
-
-        <ConsentRow
-          checked={consents.agreedToNoSolicitation}
-          onToggle={() => toggle('agreedToNoSolicitation')}
-        >
-          I acknowledge that applying for the Solid Spend Card does not constitute unauthorized
-          solicitation.
-        </ConsentRow>
+        <CardConsentList consents={consents} onToggle={toggle} isUS={isUS} />
       </View>
 
       <Button
@@ -491,24 +389,5 @@ export default function CardReady() {
         </Text>
       ) : null}
     </CardStatusPage>
-  );
-}
-
-function ConsentRow({
-  checked,
-  onToggle,
-  children,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <View className="w-full flex-row items-start">
-      <Checkbox checked={checked} onCheckedChange={onToggle} className="mr-3 mt-0.5" />
-      <Pressable onPress={onToggle} className="flex-1">
-        <Text className="text-left text-sm leading-5 text-[#ACACAC]">{children}</Text>
-      </Pressable>
-    </View>
   );
 }

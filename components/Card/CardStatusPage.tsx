@@ -7,6 +7,54 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 
+interface CardStatusPanelProps {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+  image?: ReactNode;
+  /** Above the title — a status tag such as "Action needed". */
+  badge?: ReactNode;
+}
+
+/**
+ * The panel every card status screen draws its content in: artwork, title, description and
+ * whatever the screen adds below (Figma "CardStatusPage box").
+ */
+export function CardStatusPanel({
+  title,
+  description,
+  children,
+  image,
+  badge,
+}: CardStatusPanelProps) {
+  return (
+    <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
+      <View className="mb-6">
+        {image ? (
+          image
+        ) : (
+          <Image
+            source={getAsset('images/card-fade.png')}
+            alt="Solid Card"
+            style={{ width: 402, height: 268 }}
+            contentFit="contain"
+          />
+        )}
+      </View>
+
+      {badge ? <View className="mb-1 mt-2">{badge}</View> : null}
+      <Text className="mt-2 text-center text-2xl font-bold text-white">{title}</Text>
+      {description ? (
+        <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
+          {description}
+        </Text>
+      ) : null}
+
+      {children}
+    </View>
+  );
+}
+
 interface CardStatusPageProps {
   title: string;
   description?: string;
@@ -36,29 +84,9 @@ export function CardStatusPage({
         </View>
 
         <View className="mb-10 mt-8">
-          <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
-            <View className="mb-6">
-              {image ? (
-                image
-              ) : (
-                <Image
-                  source={getAsset('images/card-fade.png')}
-                  alt="Solid Card"
-                  style={{ width: 402, height: 268 }}
-                  contentFit="contain"
-                />
-              )}
-            </View>
-
-            <Text className="mt-2 text-center text-2xl font-bold text-white">{title}</Text>
-            {description ? (
-              <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
-                {description}
-              </Text>
-            ) : null}
-
+          <CardStatusPanel title={title} description={description} image={image}>
             {children}
-          </View>
+          </CardStatusPanel>
         </View>
       </View>
     </PageLayout>

@@ -18,6 +18,8 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, CardSpendDeployment } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
 
+import type { PasskeyBatchParticipant } from '@/lib/passkeySignatureBatch';
+
 export const CARD_SPEND_DEPLOYMENTS_QUERY_KEY = 'cardSpendDeployments';
 
 /** How long the deployment list is trusted before it is asked again. */
@@ -110,7 +112,11 @@ interface EuroSpendEnablement {
    * Resolves true once EURC is on and recorded, false when the passkey prompt was dismissed.
    * Rejects on any other failure, with {@link error} set to the user-facing copy.
    */
-  enableAsync: (source: EuroSpendEnableSource) => Promise<boolean>;
+  enableAsync: (
+    source: EuroSpendEnableSource,
+    /** Card activation signs this with the card approval in one passkey prompt. */
+    options?: { signer?: PasskeyBatchParticipant },
+  ) => Promise<boolean>;
 }
 
 /** Where EURC was turned on for the card. Rides on the started event as `source`. */
@@ -190,7 +196,12 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const deployment = data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
 
   const enableMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      signer,
+    }: {
+      /** A place in a signature batch, so this approval shares a passkey prompt. */
+      signer?: PasskeyBatchParticipant;
+    } = {}) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
@@ -286,6 +297,7 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
           BASE_SPEND_DEPLOYMENT.chain,
           user.suborgId,
           user.signWith,
+          { signer },
         );
 
         const result = await executeTransactions(
@@ -335,6 +347,9 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
       setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
       track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_FAILED, { error: message });
     },
+    // Whatever happened, this signer is done: one with nothing left to sign (both halves already
+    // on-chain), or that failed before signing, must not keep a shared batch waiting on it.
+    onSettled: (_result, _error, variables) => variables?.signer?.release(),
   });
 
   const { mutate, mutateAsync } = enableMutation;
@@ -346,19 +361,20 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
         chain_id: BASE_SPEND_DEPLOYMENT.chainId,
         source,
       });
-      mutate();
+      mutate({});
     },
     [mutate],
   );
 
   const enableAsync = useCallback(
-    async (source: EuroSpendEnableSource) => {
+    async (source: EuroSpendEnableSource, options?: { signer?: PasskeyBatchParticipant }) => {
       setError(undefined);
       track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_STARTED, {
         chain_id: BASE_SPEND_DEPLOYMENT.chainId,
         source,
+        batched_signature: Boolean(options?.signer),
       });
-      return (await mutateAsync()) !== null;
+      return (await mutateAsync({ signer: options?.signer })) !== null;
     },
     [mutateAsync],
   );
