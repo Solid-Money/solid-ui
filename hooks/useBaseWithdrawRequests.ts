@@ -2,11 +2,14 @@ import { useCallback, useMemo } from 'react';
 import { QueryObserverResult, useQueries } from '@tanstack/react-query';
 import { Hex } from 'viem';
 import { base } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
 
 import { getVaultKey } from '@/constants/withdraw';
+import useUser from '@/hooks/useUser';
 import { isSoUsdBaseConfigured } from '@/lib/soUsdWithdraw';
 import { BaseWithdrawRequest, readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
+import { useActivityStore } from '@/store/useActivityStore';
 
 export const BASE_WITHDRAW_REQUEST = 'baseWithdrawRequest';
 
@@ -82,4 +85,55 @@ export function useBaseWithdrawRequests(
     })),
     combine,
   });
+}
+
+/** A soUSD withdrawal waiting in the Base queue: its shares have left the Safe, its USDC has not arrived. */
+export type PendingWithdrawal = {
+  clientTxId: string;
+  /** Undefined if the request asked for something other than USDC. */
+  amountUsd: number | undefined;
+  /** Unix seconds, from the activity. */
+  timestamp: string;
+};
+
+/**
+ * The user's soUSD withdrawals still waiting in the Base queue, newest first, and
+ * the USDC they will pay out.
+ *
+ * Between the request and the solve, which can take most of a day, the money is
+ * neither savings (the queue holds the shares) nor wallet (no USDC yet). Without
+ * this, every balance leaves it out and the user sees it vanish.
+ *
+ * A request not read yet is left out rather than guessed. Shares the user has
+ * asked to withdraw but not yet requested are still in the Safe and counted there.
+ */
+export function usePendingBaseWithdrawals(): {
+  withdrawals: PendingWithdrawal[];
+  totalUsd: number;
+} {
+  const { user } = useUser();
+  const activities = useActivityStore(
+    useShallow(state => (user?.userId ? state.events[user.userId] : undefined)),
+  );
+  const requests = useBaseWithdrawRequests(activities);
+
+  return useMemo(() => {
+    const withdrawals: PendingWithdrawal[] = [];
+    const seen = new Set<string>();
+    for (const activity of activities ?? []) {
+      if (!activity || !isBaseWithdrawRequest(activity)) continue;
+      const hash = activity.hash.toLowerCase();
+      if (seen.has(hash)) continue;
+      seen.add(hash);
+      if (requests[hash]?.status !== 'pending') continue;
+      withdrawals.push({
+        clientTxId: activity.clientTxId,
+        amountUsd: requests[hash].amountUsd,
+        timestamp: activity.timestamp,
+      });
+    }
+    withdrawals.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+    const totalUsd = withdrawals.reduce((sum, item) => sum + (item.amountUsd ?? 0), 0);
+    return { withdrawals, totalUsd };
+  }, [activities, requests]);
 }

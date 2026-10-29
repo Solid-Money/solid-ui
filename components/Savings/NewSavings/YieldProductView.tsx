@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { ChevronRight, Info } from 'lucide-react-native';
 
+import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import CountUp from '@/components/CountUp';
 import { EarnChip } from '@/components/Earn/EarnChips';
 import YieldIcon from '@/components/Earn/YieldIcon';
@@ -9,6 +10,7 @@ import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { PendingWithdrawal } from '@/hooks/useBaseWithdrawRequests';
 import { yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
@@ -85,6 +87,11 @@ export interface YieldProductViewProps {
   onOpenHelp: () => void;
   onOpenWallet?: () => void;
   onOpenCredit?: () => void;
+  /**
+   * This product's withdrawals waiting to be paid out. They have left the balance above, so
+   * the page says where they went — a full withdrawal would otherwise just read as no funds.
+   */
+  pendingWithdrawals?: PendingWithdrawal[];
 }
 
 /**
@@ -110,6 +117,7 @@ export default function YieldProductView({
   onOpenHelp,
   onOpenWallet,
   onOpenCredit,
+  pendingWithdrawals = [],
 }: YieldProductViewProps) {
   const name = yieldProductName(vaultType);
   const isEur = isEurVault(vaultType);
@@ -120,6 +128,13 @@ export default function YieldProductView({
   // otherwise read "+$0.00 today".
   const rate = Math.max(apy ?? 0, 0) / 100;
   const estimate = yieldEstimate((balanceUsd * rate) / 365, (balanceUsd * rate) / 12);
+
+  const withdrawing =
+    pendingWithdrawals.length > 0 ? (
+      <View className="mx-4 overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+        <WithdrawingRow withdrawals={pendingWithdrawals} />
+      </View>
+    ) : null;
 
   const footer = (
     <Text className="mx-4 text-center text-[13px] leading-[18px] text-white/40">
@@ -170,6 +185,8 @@ export default function YieldProductView({
               </View>
             ) : null}
           </View>
+
+          {withdrawing}
 
           <SavingsFundedActions vaultType={vaultType} />
 
@@ -242,6 +259,8 @@ export default function YieldProductView({
               {INTRO[vaultType]}
             </Text>
           </View>
+
+          {withdrawing}
 
           <StartEarningButton vaultType={vaultType} />
 

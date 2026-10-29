@@ -17,16 +17,21 @@ const mockClient = {
 
 jest.mock('@/lib/wagmi', () => ({ publicClient: () => mockClient }));
 jest.mock('@/lib/config', () => ({
-  ADDRESSES: { base: { boringQueue: '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2' } },
+  ADDRESSES: {
+    base: {
+      boringQueue: '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2',
+      usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    },
+  },
 }));
 
 /** The OnChainWithdrawRequested log the queue emits for a request. */
-const requestedLog = (address: string) => ({
+const requestedLog = (address: string, assetOut: string = USDC) => ({
   address,
   topics: encodeEventTopics({
     abi: BoringQueue_ABI,
     eventName: 'OnChainWithdrawRequested',
-    args: { requestId: REQUEST_ID, user: USER, assetOut: USDC },
+    args: { requestId: REQUEST_ID, user: USER, assetOut: assetOut as Hex },
   }),
   data: encodeAbiParameters(
     [
@@ -54,6 +59,7 @@ it('is pending while the request is in the queue', async () => {
   await expect(readBaseWithdrawRequest(TX)).resolves.toEqual({
     requestId: REQUEST_ID,
     status: 'pending',
+    amountUsd: 49.994963,
   });
 });
 
@@ -62,6 +68,7 @@ it('is finished once the request left the queue', async () => {
   await expect(readBaseWithdrawRequest(TX)).resolves.toEqual({
     requestId: REQUEST_ID,
     status: 'finished',
+    amountUsd: 49.994963,
   });
 });
 
@@ -69,4 +76,12 @@ it('ignores the same event from another contract', async () => {
   mockClient.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(OTHER)));
   await expect(readBaseWithdrawRequest(TX)).resolves.toBeNull();
   expect(mockClient.readContract).not.toHaveBeenCalled();
+});
+
+it('leaves the amount unknown when the request asked for something other than USDC', async () => {
+  mockClient.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(QUEUE, OTHER)));
+  mockClient.readContract.mockResolvedValue([REQUEST_ID]);
+  const request = await readBaseWithdrawRequest(TX);
+  expect(request).toMatchObject({ requestId: REQUEST_ID, status: 'pending' });
+  expect(request?.amountUsd).toBeUndefined();
 });

@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, formatUnits, zeroAddress } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { useMaxAPY } from '@/hooks/useAnalytics';
+import { usePendingBaseWithdrawals } from '@/hooks/useBaseWithdrawRequests';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
@@ -59,6 +60,7 @@ export function usePortfolio() {
   const queryClient = useQueryClient();
   const wallet = useWalletTokens();
   const savings = useTotalSavingsUSD();
+  const pendingWithdrawals = usePendingBaseWithdrawals();
   const membership = useTierMembership();
   const registration = useCardSpendRegistration();
   const cardStatus = useCardStatus();
@@ -198,6 +200,7 @@ export function usePortfolio() {
       locked: lockedTotal,
       cash: cashTotal,
       card: hasIncompleteCard ? undefined : cardBalance,
+      withdrawing: pendingWithdrawals.totalUsd,
       debt,
       complete: earnComplete && cashComplete,
     });
@@ -246,6 +249,8 @@ export function usePortfolio() {
       dailyYield,
       monthlyYield,
       eurYield,
+      pendingWithdrawals: pendingWithdrawals.withdrawals,
+      withdrawingTotal: pendingWithdrawals.totalUsd,
       ...totals,
     };
   }, [
@@ -269,6 +274,7 @@ export function usePortfolio() {
     cardDetails.data,
     cardDetails.isError,
     cardStatus.isError,
+    pendingWithdrawals,
   ]);
 
   const isLoading =
@@ -295,6 +301,19 @@ export function usePortfolio() {
         : Promise.resolve(),
     [queryClient, user?.userId, user?.safeAddress],
   );
+
+  // A withdrawal that left the queue has paid its USDC into the wallet. Re-read the wallet
+  // now rather than at its next poll, so the amount neither drops out of the total nor
+  // counts twice in between.
+  const pendingCount = pendingWithdrawals.withdrawals.length;
+  const lastPendingCount = useRef(pendingCount);
+  useEffect(() => {
+    if (pendingCount < lastPendingCount.current && user?.safeAddress) {
+      // Every mounted screen runs this; concurrent refetches share one request.
+      void refreshAccountQueries(queryClient, user.userId, user.safeAddress);
+    }
+    lastPendingCount.current = pendingCount;
+  }, [pendingCount, queryClient, user?.userId, user?.safeAddress]);
   return {
     ...model,
     isLoading,
