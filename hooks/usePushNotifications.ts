@@ -9,6 +9,7 @@ import { cardThreeDsRequestPath, cardTransactionDetailPath, path } from '@/const
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { registerPushToken } from '@/lib/api';
+import { pushNotificationData } from '@/lib/pushNotificationData';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -334,7 +335,7 @@ function handleNotificationResponse(
     rememberResponse(id);
   }
 
-  const data = response.notification.request.content.data as NotificationData | undefined;
+  const data = pushNotificationData(response.notification.request) as NotificationData | undefined;
   recordOpen(data);
 
   try {
