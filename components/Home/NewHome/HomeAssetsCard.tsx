@@ -5,6 +5,10 @@ import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
 
 import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
+import WithdrawingRow, {
+  openPendingWithdrawals,
+  pendingWithdrawalsUsd,
+} from '@/components/Assets/WithdrawingRow';
 import { isYieldShare, yieldHoldings } from '@/components/Earn/earnPortfolio';
 import YieldIcon from '@/components/Earn/YieldIcon';
 import {
@@ -191,6 +195,17 @@ export default function HomeAssetsCard({
           />
         ),
       })),
+    // Left savings, not in the wallet yet. Without this row the balance counts it and no row does.
+    ...(portfolio.pendingWithdrawals.length > 0
+      ? [
+          {
+            key: 'withdrawing',
+            value: pendingWithdrawalsUsd(portfolio.pendingWithdrawals),
+            onPress: () => openPendingWithdrawals(portfolio.pendingWithdrawals),
+            row: () => <WithdrawingRow withdrawals={portfolio.pendingWithdrawals} />,
+          },
+        ]
+      : []),
     ...(portfolio.hasCardBalance
       ? [
           {

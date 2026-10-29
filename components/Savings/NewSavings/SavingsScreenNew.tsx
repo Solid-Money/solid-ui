@@ -163,6 +163,8 @@ export default function SavingsScreenNew() {
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
+        // Only soUSD withdraws through the Base queue these are read from.
+        pendingWithdrawals={vaultType === VaultType.USDC ? portfolio.pendingWithdrawals : undefined}
       />
     </PageLayout>
   );

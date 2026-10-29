@@ -3,6 +3,7 @@ import React from 'react';
 import { cashToken } from '@/components/Assets/__tests__/fixtures';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { ADDRESSES } from '@/lib/config';
+import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
 import { CardProvider, VaultType } from '@/lib/types';
 
 const { act, create } = jest.requireActual('react-test-renderer');
@@ -16,6 +17,7 @@ let mockCard: any;
 let mockCardStatus: any;
 let mockProvider: string;
 let mockPriceError: boolean;
+let mockPending: { withdrawals: any[]; totalUsd: number };
 let model: ReturnType<typeof usePortfolio>;
 let root: any;
 jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
@@ -64,6 +66,9 @@ jest.mock('@/hooks/useAnalytics', () => ({
 }));
 jest.mock('@/lib/utils', () => ({ hasCard: (status: any) => !!status?.active }));
 jest.mock('@/lib/refreshAccountQueries', () => ({ refreshAccountQueries: jest.fn() }));
+jest.mock('@/hooks/useBaseWithdrawRequests', () => ({
+  usePendingBaseWithdrawals: () => mockPending,
+}));
 function Probe() {
   const value = usePortfolio();
   React.useEffect(() => {
@@ -81,6 +86,7 @@ beforeEach(() => {
   };
   mockProvider = CardProvider.WIREX;
   mockPriceError = false;
+  mockPending = { withdrawals: [], totalUsd: 0 };
   mockRegistration = {
     position: {},
     registration: { moduleAddress: 'credit-module' },
@@ -242,4 +248,58 @@ it('reads custody for the selected account and the membership pinned lock contra
     expect.objectContaining({ userId: 'account-b', safeAddress: '0xBBBB' }),
   );
   expect(model.isLoading).toBe(true);
+});
+
+it('counts a withdrawal waiting in the queue, which neither savings nor the wallet holds', () => {
+  mockPending = {
+    withdrawals: [{ clientTxId: 'w1', amountUsd: 11.995193, timestamp: '1792680523' }],
+    totalUsd: 11.995193,
+  };
+  act(() => root.update(<Probe />));
+  expect(model.withdrawingTotal).toBeCloseTo(11.995193);
+  expect(model.pendingWithdrawals).toHaveLength(1);
+  expect(model.totalAssets).toBeCloseTo(3218.4 + 11.995193);
+  expect(model.netBalance).toBeCloseTo(2868.4 + 11.995193);
+});
+
+it('flags the balance incomplete when a queued withdrawal pays out an unknown amount', () => {
+  mockPending = {
+    withdrawals: [
+      { clientTxId: 'w1', amountUsd: 12, timestamp: '2' },
+      { clientTxId: 'w2', amountUsd: undefined, timestamp: '1' },
+    ],
+    totalUsd: 12,
+  };
+  act(() => root.update(<Probe />));
+  expect(model.totalAssets).toBeCloseTo(3218.4 + 12);
+  expect(model.isComplete).toBe(false);
+  expect(model.isError).toBe(true);
+});
+
+it('re-reads the wallet once a withdrawal leaves the queue, and not before', () => {
+  mockPending = {
+    withdrawals: [{ clientTxId: 'w1', amountUsd: 12, timestamp: '1' }],
+    totalUsd: 12,
+  };
+  act(() => root.update(<Probe />));
+  expect(refreshAccountQueries).not.toHaveBeenCalled();
+
+  mockPending = { withdrawals: [], totalUsd: 0 };
+  act(() => root.update(<Probe />));
+  expect(refreshAccountQueries).toHaveBeenCalledTimes(1);
+  expect(refreshAccountQueries).toHaveBeenCalledWith(expect.anything(), 'account-a', '0xAAAA');
+});
+
+it('re-reads the wallet when one withdrawal pays out as another is queued', () => {
+  mockPending = {
+    withdrawals: [{ clientTxId: 'w1', amountUsd: 12, timestamp: '1' }],
+    totalUsd: 12,
+  };
+  act(() => root.update(<Probe />));
+  mockPending = {
+    withdrawals: [{ clientTxId: 'w2', amountUsd: 5, timestamp: '2' }],
+    totalUsd: 5,
+  };
+  act(() => root.update(<Probe />));
+  expect(refreshAccountQueries).toHaveBeenCalledTimes(1);
 });
