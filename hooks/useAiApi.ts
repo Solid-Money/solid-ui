@@ -125,6 +125,12 @@ export const useAllowAiApiCharges = () => {
           throw new Error('Couldn’t check your wallet. Please try again.');
         });
 
+      // Only for the account it started as: the app can sign out or change
+      // account while the Safe is read, and its signer is this account's.
+      if (selectedUserId() !== user.userId) {
+        throw new Error('Your account changed. Please try again.');
+      }
+
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
       const result = await executeTransactions(
         smartAccountClient,
@@ -162,6 +168,10 @@ export const useAllowAiApiCharges = () => {
         });
         return false;
       }
+
+      // Never told under another account's session: the mandate is on this
+      // account's Safe either way, and its next visit reads it from the chain.
+      if (selectedUserId() !== user.userId) return false;
 
       // Told afterwards, not before: the backend reads the mandate back from
       // the chain, and a paused account has its waiting charge tried at once.
