@@ -43,6 +43,19 @@ export const aiApiQueryKey = (userId?: string) => ['ai-api', userId] as const;
 /** The account the app is signed in as right now. */
 const selectedUserId = () => useUserStore.getState().users.find(user => user.selected)?.userId;
 
+/**
+ * `send`, for the account selected now and only while it stays selected:
+ * `withRefreshToken` can wait on a token refresh or retry after a 401, and
+ * each send carries whoever is signed in by the time it goes.
+ */
+const asSelectedAccount = <T>(send: () => Promise<T>) => {
+  const owner = selectedUserId();
+  return (): Promise<T> =>
+    owner && selectedUserId() === owner
+      ? send()
+      : Promise.reject(new Error('Your account changed. Please try again.'));
+};
+
 /** The AI API dashboard: keys, this month's spend and cashback, billing state. */
 export const useAiApiOverview = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
@@ -212,14 +225,7 @@ export const useCreateAiApiKey = () => {
       name: string;
       monthlyLimitUsd: number;
     }): Promise<CreateAiApiKeyResponse | null> => {
-      // Sent as the account that asked, or not at all: a token refresh can
-      // outlast a sign-out and sign-in, and the request would then carry
-      // whoever is signed in by the time it goes.
-      const owner = selectedUserId();
-      const create = () =>
-        owner && selectedUserId() === owner
-          ? createAiApiKey(input)
-          : Promise.reject(new Error('Your account changed. Please try again.'));
+      const create = asSelectedAccount(() => createAiApiKey(input));
 
       try {
         return await withRefreshToken(create);
@@ -273,8 +279,10 @@ export const useUpdateAiApiKey = () => {
       name?: string;
       monthlyLimitUsd?: number;
     }) => {
+      const update = asSelectedAccount(() => updateAiApiKey(id, input));
+
       try {
-        return await withRefreshToken(() => updateAiApiKey(id, input));
+        return await withRefreshToken(update);
       } catch (error) {
         const required = await readMandateRequired(error);
         if (!required?.moduleAddress) throw error;
@@ -287,7 +295,7 @@ export const useUpdateAiApiKey = () => {
         });
         if (!signed) return null;
 
-        return withRefreshToken(() => updateAiApiKey(id, input));
+        return withRefreshToken(update);
       }
     },
     onSuccess: (key, input) => {
@@ -314,7 +322,7 @@ export const useUpdateAiApiKey = () => {
 export const useDeleteAiApiKey = () => {
   const invalidate = useInvalidateAiApi();
   return useMutation({
-    mutationFn: (id: string) => withRefreshToken(() => deleteAiApiKey(id)),
+    mutationFn: (id: string) => withRefreshToken(asSelectedAccount(() => deleteAiApiKey(id))),
     onSuccess: () => {
       invalidate();
       track(TRACKING_EVENTS.AI_API_KEY_DELETED);
@@ -330,7 +338,7 @@ export const useDeleteAiApiKey = () => {
 export const useRetryAiApiBilling = () => {
   const invalidate = useInvalidateAiApi();
   return useMutation({
-    mutationFn: () => withRefreshToken(() => retryAiApiBilling()),
+    mutationFn: () => withRefreshToken(asSelectedAccount(() => retryAiApiBilling())),
     onSuccess: () => invalidate(),
   });
 };
