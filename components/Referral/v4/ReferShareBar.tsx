@@ -17,9 +17,7 @@ interface ReferShareBarProps {
 
 /**
  * "Your invite link" pinned to the bottom of the Refer screens (Figma
- * 29601:13290): the link, a copy control, and the green Share button. The
- * contract asks for the green 52pt button in both Refer states, so the white
- * pill in the no-invites frame is not used.
+ * 29601:13288): the link, a copy control, and the white Share pill.
  */
 const ReferShareBar = ({ share, code, onShare, onShowQr }: ReferShareBarProps) => {
   const prefix = share.linkLabel.endsWith(code)
@@ -28,7 +26,7 @@ const ReferShareBar = ({ share, code, onShare, onShowQr }: ReferShareBarProps) =
   const hasCode = prefix !== share.linkLabel;
 
   return (
-    <View className="w-full flex-row items-center gap-3 overflow-hidden rounded-[20px] border border-white/[0.06] bg-card py-2 pl-5 pr-2">
+    <View className="min-h-[69px] w-full flex-row items-center gap-3 overflow-hidden rounded-[20px] bg-card py-3.5 pl-[21px] pr-[18px]">
       <Pressable
         onPress={share.copy}
         accessibilityRole="button"
@@ -59,7 +57,9 @@ const ReferShareBar = ({ share, code, onShare, onShowQr }: ReferShareBarProps) =
         accessibilityRole="button"
         accessibilityLabel="Share your invite link"
         accessibilityHint="Long press to show a QR code"
-        className="h-[52px] items-center justify-center rounded-[14px] bg-brand px-6 transition-all active:scale-95 active:opacity-80 web:hover:opacity-90"
+        // The pill is 35pt tall; the slop brings the target up to the 44pt minimum.
+        hitSlop={{ top: 5, bottom: 5, left: 4, right: 4 }}
+        className="h-[35px] items-center justify-center rounded-full bg-white px-[13px] transition-all active:scale-95 active:opacity-80 web:hover:opacity-90"
       >
         <Text className="text-[16px] font-semibold text-black">Share</Text>
       </Pressable>
