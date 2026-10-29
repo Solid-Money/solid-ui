@@ -8,6 +8,7 @@ import { path } from '@/constants/path';
 import { useAiApiOverview } from '@/hooks/useAiApi';
 import { aiApiBaseUrl, aiApiSetupModel } from '@/lib/api/ai-api';
 import { useAiApiRevealStore } from '@/store/useAiApiRevealStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import AiApiHeader from './AiApiHeader';
 import AiApiKeyReady from './AiApiKeyReady';
@@ -21,12 +22,15 @@ const leave = () => (router.canGoBack() ? router.back() : router.replace(path.AI
  */
 export default function AiApiKeyScreen() {
   const secret = useAiApiRevealStore(state => state.secret);
+  const owner = useAiApiRevealStore(state => state.userId);
   const clear = useAiApiRevealStore(state => state.clear);
+  const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const { data: overview } = useAiApiOverview();
 
   useEffect(() => clear, [clear]);
 
-  if (!secret) return <Redirect href={path.AI_API} />;
+  // Only to the account it was made for; leaving clears it either way.
+  if (!secret || !owner || owner !== userId) return <Redirect href={path.AI_API} />;
 
   return (
     <PageLayout desktopOnly>

@@ -14,6 +14,7 @@ import { useAiApiOverview } from '@/hooks/useAiApi';
 import { track } from '@/lib/analytics';
 import { useAiApiRevealStore } from '@/store/useAiApiRevealStore';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import AiApiCreateKeySheet from './AiApiCreateKeySheet';
 import AiApiDashboard from './AiApiDashboard';
@@ -42,6 +43,7 @@ const LoadingState = () => (
 export default function AiApiScreen() {
   const { data: overview, isLoading, isError, refetch, isRefetching } = useAiApiOverview();
   const reveal = useAiApiRevealStore(state => state.reveal);
+  const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const setDepositModal = useDepositStore(state => state.setModal);
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
 
@@ -73,9 +75,14 @@ export default function AiApiScreen() {
   };
 
   const handleCreated = (secret: string, name: string) => {
+    // `userId` is who pressed create. A key that comes back after the app
+    // signed out or changed account is not shown to whoever is there now.
+    const current = useUserStore.getState().users.find(user => user.selected)?.userId;
+    if (!userId || current !== userId) return;
+
     setIsCreateOpen(false);
     setIsIntroOpen(false);
-    reveal(secret, name);
+    reveal(secret, name, userId);
     router.push(path.AI_API_KEY);
   };
 

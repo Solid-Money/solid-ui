@@ -4,7 +4,9 @@ interface AiApiRevealState {
   /** The full key just created. Shown once, then cleared. */
   secret: string | null;
   keyName: string | null;
-  reveal: (secret: string, keyName: string) => void;
+  /** Whose key it is. Shown to no one else, should the app change account. */
+  userId: string | null;
+  reveal: (secret: string, keyName: string, userId: string) => void;
   clear: () => void;
 }
 
@@ -19,6 +21,7 @@ interface AiApiRevealState {
 export const useAiApiRevealStore = create<AiApiRevealState>()(set => ({
   secret: null,
   keyName: null,
-  reveal: (secret, keyName) => set({ secret, keyName }),
-  clear: () => set({ secret: null, keyName: null }),
+  userId: null,
+  reveal: (secret, keyName, userId) => set({ secret, keyName, userId }),
+  clear: () => set({ secret: null, keyName: null, userId: null }),
 }));
