@@ -169,15 +169,17 @@ export const useAllowAiApiCharges = () => {
         return false;
       }
 
-      // Never told under another account's session: the mandate is on this
-      // account's Safe either way, and its next visit reads it from the chain.
-      if (selectedUserId() !== user.userId) return false;
-
       // Told afterwards, not before: the backend reads the mandate back from
       // the chain, and a paused account has its waiting charge tried at once.
-      await withRefreshToken(() =>
-        confirmAiApiBilling({ transactionHash: result.transactionHash }),
+      // Never under another account's session, checked as each send goes (a
+      // token refresh can come first): the mandate is on this account's Safe
+      // either way, and its next visit reads it from the chain.
+      const confirmed = await withRefreshToken(() =>
+        selectedUserId() === user.userId
+          ? confirmAiApiBilling({ transactionHash: result.transactionHash })
+          : Promise.resolve(null),
       );
+      if (!confirmed) return false;
       track(TRACKING_EVENTS.AI_API_MANDATE_SIGNED, {
         required_mandate_usd: requiredMandateUsd,
         transaction_hash: result.transactionHash,
