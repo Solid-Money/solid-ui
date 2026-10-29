@@ -143,7 +143,8 @@ const AiApiIntro = ({
             {modelCount > 1
               ? `Get an API key for ${modelCount} AI models. `
               : 'Get an API key for top AI models. '}
-            Pay as you go from your Wallet and get {cashbackRate >= 0.5 ? 'half' : rate} of it back.
+            Pay as you go from your Wallet and get {cashbackRate === 0.5 ? 'half' : rate} of it
+            back.
           </Text>
         </View>
       </View>

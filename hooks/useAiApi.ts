@@ -19,6 +19,7 @@ import {
 import { showErrorToast } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { withRefreshToken } from '@/lib/utils';
+import { publicClient } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
 import type {
@@ -108,11 +109,26 @@ export const useAllowAiApiCharges = () => {
       const mandate = BigInt(Math.ceil(requiredMandateUsd)) * 10n ** BILLING_DECIMALS;
       if (mandate <= 0n) throw new Error('Nothing to allow yet.');
 
+      // The API's answer can be behind the chain: a mandate signed a moment
+      // ago whose confirmation never reached it, or a read that failed on its
+      // side. Enabling a module twice reverts the whole batch (GS102), so the
+      // Safe has the last word; unread, the API's answer stands.
+      const alreadyEnabled =
+        moduleEnabled ||
+        (await publicClient(chain.id)
+          .readContract({
+            address: user.safeAddress as Address,
+            abi: Safe_ABI,
+            functionName: 'isModuleEnabled',
+            args: [moduleAddress as Address],
+          })
+          .catch(() => false));
+
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
       const result = await executeTransactions(
         smartAccountClient,
         [
-          ...(moduleEnabled
+          ...(alreadyEnabled
             ? []
             : [
                 {
@@ -159,8 +175,9 @@ export const useAllowAiApiCharges = () => {
     },
     // No error UI of its own: it runs inside key creation and limit changes,
     // whose own error handling reports it, and a second toast for the same
-    // failure would only be noise. Direct callers show theirs.
-    onSuccess: () => invalidate(),
+    // failure would only be noise. Direct callers show theirs. Refreshed
+    // either way: a signed mandate whose confirmation failed is still signed.
+    onSettled: () => invalidate(),
   });
 
   return { allow: mutation.mutateAsync, isAllowing: mutation.isPending };
