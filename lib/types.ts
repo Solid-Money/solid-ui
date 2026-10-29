@@ -1617,6 +1617,11 @@ export enum TransactionType {
   TIER_LOCK = 'tier_lock',
   TIER_SUBSCRIPTION = 'tier_subscription',
   /**
+   * One day of AI API usage, charged from the Wallet's USDC by the AI API's
+   * billing module. Every key's usage that day is one row.
+   */
+  AI_API_CHARGE = 'ai_api_charge',
+  /**
    * Cash-out to a bank account or mobile wallet: the USDC sent from the Safe to
    * a TransFi deposit address. Not SEND — a deposit address is not a contact,
    * and under SEND it would be offered as a recent recipient.
@@ -1651,6 +1656,7 @@ export enum TransactionCategory {
   GOODDOLLAR_UBI = 'GoodDollar UBI',
   TIER_MEMBERSHIP = 'Tier membership',
   RECEIVE = 'Receive',
+  AI_API = 'AI API',
 }
 
 export enum TransactionStatus {
