@@ -1,4 +1,5 @@
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 // The hook pulls in expo-notifications, firebase messaging and the API client
 // at import time. None of that is involved in routing or attribution, which is
@@ -253,6 +254,23 @@ const responseFor = (identifier: string, data: Record<string, string>) => ({
   notification: { request: { identifier, content: { data } } },
 });
 
+/**
+ * The same tap on iOS, for a push sent through FCM: `content.data` is null and
+ * the data keys sit in the APNs payload on `trigger.payload`.
+ */
+const iosResponseFor = (identifier: string, data: Record<string, string>) => ({
+  notification: {
+    request: {
+      identifier,
+      content: { data: null },
+      trigger: {
+        type: 'push',
+        payload: { aps: { sound: 'default' }, 'gcm.message_id': '1', ...data },
+      },
+    },
+  },
+});
+
 describe('handleNotificationResponse', () => {
   beforeEach(() => resetHandledResponses());
 
@@ -264,6 +282,58 @@ describe('handleNotificationResponse', () => {
     handleNotificationResponse(responseFor('n1', spend), navigate);
 
     expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+  });
+
+  describe('on iOS', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { track } = require('@/lib/analytics');
+
+    beforeEach(() => track.mockClear());
+
+    it('opens the transaction a spend push is about, not home', () => {
+      const navigate = jest.fn();
+
+      handleNotificationResponse(iosResponseFor('n1', spend), navigate);
+
+      expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+    });
+
+    it('follows the deep link a lifecycle push carries', () => {
+      const navigate = jest.fn();
+
+      handleNotificationResponse(
+        iosResponseFor('n1', {
+          type: 'kyc-approved',
+          link: link('/card?utm_source=id_verified_your_card_is_ready&utm_medium=push'),
+        }),
+        navigate,
+      );
+
+      expect(navigate).toHaveBeenCalledWith(path.CARD_INFO);
+    });
+
+    it('records the open with its type and campaign', () => {
+      handleNotificationResponse(
+        iosResponseFor('n1', {
+          ...spend,
+          utm_source: 'card_approved',
+          utm_medium: 'push',
+          utm_campaign: 'solid_transactional',
+        }),
+        jest.fn(),
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        TRACKING_EVENTS.PUSH_NOTIFICATION_OPENED,
+        expect.objectContaining({
+          notification_type: 'card-transaction',
+          utm_source: 'card_approved',
+          utm_medium: 'push',
+          utm_campaign: 'solid_transactional',
+          status: 'approved',
+        }),
+      );
+    });
   });
 
   it('acts on one tap once, however many times it is delivered', () => {

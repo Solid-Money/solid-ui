@@ -68,6 +68,7 @@ import {
   handleQuerySuccess,
 } from '@/lib/errors/queryErrors';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { pushNotificationData } from '@/lib/pushNotificationData';
 import {
   clearPersistedQueryCacheOnFatalError,
   persistQueryCache,
@@ -187,7 +188,8 @@ if (Platform.OS !== 'web') {
     handleNotification: async notification => {
       // A support reply the user is already reading in the chat gets no banner.
       const quiet =
-        notification.request.content.data?.type === SUPPORT_PUSH_TYPE && isSupportChatFocused();
+        pushNotificationData(notification.request)?.type === SUPPORT_PUSH_TYPE &&
+        isSupportChatFocused();
       return {
         shouldShowAlert: !quiet,
         shouldPlaySound: !quiet,
