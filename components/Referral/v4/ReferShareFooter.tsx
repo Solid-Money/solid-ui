@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ReferQrSheet from './ReferQrSheet';
 import ReferShareBar from './ReferShareBar';
@@ -8,6 +9,9 @@ import { useReferShare } from './useReferShare';
 
 /** Long enough for one sheet to finish closing before the next one rises. */
 const SHEET_SWAP_DELAY_MS = 320;
+
+/** The design's gap from the bar to the bottom of the screen (Figma 30003:13192). */
+const SHARE_BAR_BOTTOM_GAP = 28;
 
 interface ReferShareFooterProps {
   code: string;
@@ -22,6 +26,7 @@ interface ReferShareFooterProps {
  */
 const ReferShareFooter = ({ code, friendCreditUsd, surface }: ReferShareFooterProps) => {
   const share = useReferShare({ code, friendCreditUsd, surface });
+  const insets = useSafeAreaInsets();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const swapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,8 +46,13 @@ const ReferShareFooter = ({ code, friendCreditUsd, surface }: ReferShareFooterPr
     swapTimer.current = setTimeout(() => setIsQrOpen(true), SHEET_SWAP_DELAY_MS);
   }, []);
 
+  // The page already pads the bottom safe area, so only the part of the gap the
+  // inset doesn't cover is added: the bar never sits in the home indicator's area.
   return (
-    <View className="w-full px-4 pb-3 pt-2">
+    <View
+      className="w-full px-4 pt-2"
+      style={{ paddingBottom: Math.max(0, SHARE_BAR_BOTTOM_GAP - insets.bottom) }}
+    >
       <ReferShareBar
         share={share}
         code={code}

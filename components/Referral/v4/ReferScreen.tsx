@@ -257,11 +257,11 @@ export default function ReferScreen() {
               <Pressable
                 onPress={() => setIsDetailsOpen(true)}
                 accessibilityRole="button"
-                accessibilityLabel="How it works"
+                accessibilityLabel="Terms"
                 hitSlop={8}
                 className="flex-row items-center gap-1 active:opacity-70 web:hover:opacity-80"
               >
-                <Text className="text-[14px] font-medium text-white/50">Details</Text>
+                <Text className="text-[14px] font-medium text-white/50">Terms</Text>
                 <ReferIcon asset="images/referral-v4/chevron.svg" size={14} />
               </Pressable>
             </View>
