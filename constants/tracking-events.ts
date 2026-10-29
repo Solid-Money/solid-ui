@@ -337,6 +337,10 @@ export const TRACKING_EVENTS = {
   // whichever rung of the funnel the user is on (Figma 25141:6965).
   HOME_PROMPT_DISMISSED: 'home_prompt_dismissed',
   HOME_PROMPT_CTA_PRESSED: 'home_prompt_cta_pressed',
+  // Home notice for a known incident (outage, delay)
+  INCIDENT_NOTICE_OPENED: 'incident_notice_opened',
+  INCIDENT_NOTICE_DISMISSED: 'incident_notice_dismissed',
+  INCIDENT_NOTICE_CHAT_PRESSED: 'incident_notice_chat_pressed',
 
   // Card Waitlist Events
   CARD_WAITLIST_STARTED: 'card_waitlist_started',
