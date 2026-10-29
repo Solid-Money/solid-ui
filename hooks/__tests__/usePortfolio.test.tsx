@@ -262,6 +262,20 @@ it('counts a withdrawal waiting in the queue, which neither savings nor the wall
   expect(model.netBalance).toBeCloseTo(2868.4 + 11.995193);
 });
 
+it('flags the balance incomplete when a queued withdrawal pays out an unknown amount', () => {
+  mockPending = {
+    withdrawals: [
+      { clientTxId: 'w1', amountUsd: 12, timestamp: '2' },
+      { clientTxId: 'w2', amountUsd: undefined, timestamp: '1' },
+    ],
+    totalUsd: 12,
+  };
+  act(() => root.update(<Probe />));
+  expect(model.totalAssets).toBeCloseTo(3218.4 + 12);
+  expect(model.isComplete).toBe(false);
+  expect(model.isError).toBe(true);
+});
+
 it('re-reads the wallet once a withdrawal leaves the queue, and not before', () => {
   mockPending = {
     withdrawals: [{ clientTxId: 'w1', amountUsd: 12, timestamp: '1' }],
@@ -274,4 +288,18 @@ it('re-reads the wallet once a withdrawal leaves the queue, and not before', () 
   act(() => root.update(<Probe />));
   expect(refreshAccountQueries).toHaveBeenCalledTimes(1);
   expect(refreshAccountQueries).toHaveBeenCalledWith(expect.anything(), 'account-a', '0xAAAA');
+});
+
+it('re-reads the wallet when one withdrawal pays out as another is queued', () => {
+  mockPending = {
+    withdrawals: [{ clientTxId: 'w1', amountUsd: 12, timestamp: '1' }],
+    totalUsd: 12,
+  };
+  act(() => root.update(<Probe />));
+  mockPending = {
+    withdrawals: [{ clientTxId: 'w2', amountUsd: 5, timestamp: '2' }],
+    totalUsd: 5,
+  };
+  act(() => root.update(<Probe />));
+  expect(refreshAccountQueries).toHaveBeenCalledTimes(1);
 });
