@@ -40,6 +40,9 @@ const BILLING_CHAINS: Record<number, Chain> = { [base.id]: base };
 
 export const aiApiQueryKey = (userId?: string) => ['ai-api', userId] as const;
 
+/** The account the app is signed in as right now. */
+const selectedUserId = () => useUserStore.getState().users.find(user => user.selected)?.userId;
+
 /** The AI API dashboard: keys, this month's spend and cashback, billing state. */
 export const useAiApiOverview = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
@@ -197,8 +200,17 @@ export const useCreateAiApiKey = () => {
       name: string;
       monthlyLimitUsd: number;
     }): Promise<CreateAiApiKeyResponse | null> => {
+      // Sent as the account that asked, or not at all: a token refresh can
+      // outlast a sign-out and sign-in, and the request would then carry
+      // whoever is signed in by the time it goes.
+      const owner = selectedUserId();
+      const create = () =>
+        owner && selectedUserId() === owner
+          ? createAiApiKey(input)
+          : Promise.reject(new Error('Your account changed. Please try again.'));
+
       try {
-        return await withRefreshToken(() => createAiApiKey(input));
+        return await withRefreshToken(create);
       } catch (error) {
         const required = await readMandateRequired(error);
         if (!required?.moduleAddress) throw error;
@@ -211,7 +223,7 @@ export const useCreateAiApiKey = () => {
         });
         if (!signed) return null;
 
-        return withRefreshToken(() => createAiApiKey(input));
+        return withRefreshToken(create);
       }
     },
     onSuccess: result => {
