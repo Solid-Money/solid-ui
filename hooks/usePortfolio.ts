@@ -202,7 +202,10 @@ export function usePortfolio() {
       card: hasIncompleteCard ? undefined : cardBalance,
       withdrawing: pendingWithdrawals.totalUsd,
       debt,
-      complete: earnComplete && cashComplete,
+      complete:
+        earnComplete &&
+        cashComplete &&
+        pendingWithdrawals.withdrawals.every(item => item.amountUsd !== undefined),
     });
 
     // An estimate from APY, not a measured change since midnight, over the parts we know.
@@ -304,16 +307,19 @@ export function usePortfolio() {
 
   // A withdrawal that left the queue has paid its USDC into the wallet. Re-read the wallet
   // now rather than at its next poll, so the amount neither drops out of the total nor
-  // counts twice in between.
-  const pendingCount = pendingWithdrawals.withdrawals.length;
-  const lastPendingCount = useRef(pendingCount);
+  // counts twice in between. Compared by id: one can pay out as another is queued.
+  const pendingIds = pendingWithdrawals.withdrawals.map(item => item.clientTxId).join(',');
+  const lastPendingIds = useRef(pendingIds);
   useEffect(() => {
-    if (pendingCount < lastPendingCount.current && user?.safeAddress) {
+    const current = new Set(pendingIds.split(','));
+    const leftQueue =
+      !!lastPendingIds.current && lastPendingIds.current.split(',').some(id => !current.has(id));
+    if (leftQueue && user?.safeAddress) {
       // Every mounted screen runs this; concurrent refetches share one request.
       void refreshAccountQueries(queryClient, user.userId, user.safeAddress);
     }
-    lastPendingCount.current = pendingCount;
-  }, [pendingCount, queryClient, user?.userId, user?.safeAddress]);
+    lastPendingIds.current = pendingIds;
+  }, [pendingIds, queryClient, user?.userId, user?.safeAddress]);
   return {
     ...model,
     isLoading,
