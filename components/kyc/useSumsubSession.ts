@@ -19,6 +19,7 @@ import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import type { KycHandoffOutcome } from '@/components/kyc/KycStatusViews';
 
@@ -344,8 +345,15 @@ export function useSumsubSession() {
   ]);
 
   const markStarted = useCallback(() => {
+    // The same marker Didit writes, so Home can tell a card applicant who opened Sumsub and
+    // walked away ("Finish getting your card") from one who never started. Card only: the
+    // banner is about the card, and a bank-account or buy-crypto check is not one.
+    if (sumsubFlow === 'card') {
+      const userId = useUserStore.getState().users.find(user => user.selected)?.userId;
+      if (userId) useKycStore.getState().markKycStarted(userId);
+    }
     setSession({ phase: 'started' });
-  }, []);
+  }, [sumsubFlow]);
 
   const onVerificationComplete = useCallback(() => {
     Toast.show({

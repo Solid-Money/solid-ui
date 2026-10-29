@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
-import { path } from '@/constants/path';
+import { path, wirexCountrySelectionPath } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
@@ -327,7 +327,12 @@ export function useCardSteps(
         kycProvider,
         countryCode,
       });
-      router.push(path.CARD_COUNTRY_SELECTION as any);
+      // A Wirex applicant confirms their country as step 1 of their own onboarding.
+      router.push(
+        (kycProvider === KycProvider.SUMSUB
+          ? wirexCountrySelectionPath()
+          : path.CARD_COUNTRY_SELECTION) as any,
+      );
       return;
     }
 
@@ -477,5 +482,9 @@ export function useCardSteps(
     // Exposed so the failure banner can offer the same action the activate
     // step does, rather than owning a second, divergent route to issuance.
     pushCardReady,
+    // The KYC step's own action, for the Wirex onboarding screens: "Start verification" and
+    // "Continue verification" run exactly what the step button does — the provider routing,
+    // the under-review guard and the declared-country gate.
+    startKyc: handleProceedToKyc,
   };
 }

@@ -217,6 +217,19 @@ export const cardInfoWalletGuidePath = (wallet: DigitalWalletType): Href =>
 export const cardTransactionDetailPath = (transactionId: string): Href =>
   `/activity/card-${transactionId}` as Href;
 
+/** `?flow=wirex` on the country screen: step 1 of the Wirex onboarding, under its stepper. */
+export const WIREX_ONBOARDING_FLOW = 'wirex';
+
+/**
+ * The country screen as step 1 of the Wirex card onboarding (Figma 1 · Country). The plain
+ * `CARD_COUNTRY_SELECTION` keeps today's screen for every other entry point.
+ */
+export const wirexCountrySelectionPath = (): Href =>
+  ({
+    pathname: '/card-onboard/country_selection',
+    params: { flow: WIREX_ONBOARDING_FLOW },
+  }) as Href;
+
 export const cardThreeDsRequestPath = (
   transactionId: string,
   preview?: {

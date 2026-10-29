@@ -1,7 +1,13 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
-import { CardStatus, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
+import {
+  CardProvider,
+  CardStatus,
+  CardStatusResponse,
+  KycStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 
 import { getActiveCardRoute, hasCard } from './cardStatusRouting';
 
@@ -86,6 +92,11 @@ export function resolveCardPendingDestination({
   if (PENDING_KYC_STATUSES.includes(kycStatus)) return null;
 
   if (kycStatus === KycStatus.APPROVED) {
+    // Wirex's approval is the last decision before the card: straight to the
+    // Approved screen, where the card is activated.
+    if (cardStatus.provider === CardProvider.WIREX && !rainApplicationStatus) {
+      return path.CARD_READY;
+    }
     // Rain has a second adjudication after KYC. Approved on both → the card is
     // ready to issue; anything else → activate, which renders whichever step
     // Rain is still waiting on.

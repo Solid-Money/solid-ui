@@ -44,6 +44,7 @@ import { publicClient } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
+import type { PasskeyBatchParticipant } from '@/lib/passkeySignatureBatch';
 
 export const CARD_SPEND_REGISTRATION_QUERY_KEY = 'cardSpendRegistration';
 
@@ -1197,7 +1198,14 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   );
 
   const mutation = useMutation({
-    mutationFn: async ({ dailyLimitUsd, monthlyLimitUsd }: CardSpendLimitChange) => {
+    mutationFn: async ({
+      dailyLimitUsd,
+      monthlyLimitUsd,
+      signer,
+    }: CardSpendLimitChange & {
+      /** A place in a signature batch, so this approval shares a passkey prompt. */
+      signer?: PasskeyBatchParticipant;
+    }) => {
       if (!user?.suborgId || !user?.signWith || !safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
@@ -1231,7 +1239,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       }
 
       const timezoneOffset = getDeviceTimezoneOffsetSeconds();
-      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith, { signer });
 
       // Only the calls that are actually needed — each of these reverts if its work is
       // already done, and both half-states are reachable in practice:
@@ -1332,6 +1340,9 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);
       track(TRACKING_EVENTS.CARD_SPEND_REGISTER_FAILED, { error: message });
     },
+    // Whatever happened, this signer is done: one that never got to its signature (already
+    // registered, a limit refused, an error) must not keep a shared batch waiting on it.
+    onSettled: (_result, _error, variables) => variables.signer?.release(),
   });
 
   /**
@@ -1839,14 +1850,21 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       source: CardSpendRegistrationSource = 'spending_sheet',
       /** Ten times the daily cap when omitted, as the activation press wants. */
       monthlyLimitUsd?: number,
+      /** Card activation signs this with the euro approval in one passkey prompt. */
+      options?: { signer?: PasskeyBatchParticipant },
     ): Promise<boolean> => {
       setError(null);
       track(TRACKING_EVENTS.CARD_SPEND_REGISTER_PRESSED, {
         daily_limit_usd: dailyLimitUsd,
         monthly_limit_usd: monthlyLimitUsd,
         source,
+        batched_signature: Boolean(options?.signer),
       });
-      const result = await mutation.mutateAsync({ dailyLimitUsd, monthlyLimitUsd });
+      const result = await mutation.mutateAsync({
+        dailyLimitUsd,
+        monthlyLimitUsd,
+        signer: options?.signer,
+      });
       return result !== null;
     },
     [mutation],

@@ -1,16 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import { TickIcon } from '@/components/Card/MainCurrency/icons';
+import { WirexOnboardingLayout } from '@/components/Card/WirexOnboarding/WirexOnboardingLayout';
+import CountryFlagImage from '@/components/CountryFlagImage';
 import { CountryDropdown, CountrySelector, filterCountries } from '@/components/CountryPicker';
 import PageLayout from '@/components/PageLayout';
 import { RegionUnavailableView } from '@/components/RegionUnavailable';
 import { BackButton } from '@/components/ui/back-button';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
-import { path } from '@/constants/path';
+import { path, WIREX_ONBOARDING_FLOW } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { PROSPECTIVE_CARD_ISSUER_QUERY_KEY } from '@/hooks/useProspectiveCardIssuer';
+import { track } from '@/lib/analytics';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
 import {
   canReplaceClosedCard,
@@ -22,6 +31,11 @@ import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  // `?flow=wirex`: this screen is step 1 of the Wirex card onboarding and wears its stepper.
+  // Every other entry point keeps today's screen.
+  const { flow } = useLocalSearchParams<{ flow?: string }>();
+  const isWirexFlow = flow === WIREX_ONBOARDING_FLOW;
 
   // Return to wherever the flow started — the redesigned home reaches this
   // screen from its card CTAs. `/card` is a redirect shim now, and it would send
@@ -135,12 +149,43 @@ export default function CountrySelection() {
     setShowDropdown(false);
   };
 
+  // Wirex step 1 says whether the card is offered in the picked country before Continue, so the
+  // answer is not a surprise one tap later. Checked once per country and kept, which also lets
+  // Continue reuse it. `null` is a check that failed: say nothing rather than guess.
+  const [availability, setAvailability] = useState<Record<string, boolean | null>>({});
+  const selectedCode = selectedCountry?.code;
+  useEffect(() => {
+    if (!isWirexFlow || !selectedCode || availability[selectedCode] !== undefined) return;
+
+    let cancelled = false;
+    checkProductAccess('card', selectedCode)
+      .then(hasAccess => {
+        // checkProductAccess resolves null for a failed/indeterminate check: keep
+        // it null (not false) so the country is not pinned as a definitive "no"
+        // and handleCountrySelectorOk can retry the lookup.
+        if (!cancelled)
+          setAvailability(prev => ({
+            ...prev,
+            [selectedCode]: typeof hasAccess === 'boolean' ? hasAccess : null,
+          }));
+      })
+      .catch(() => {
+        if (!cancelled) setAvailability(prev => ({ ...prev, [selectedCode]: null }));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isWirexFlow, selectedCode, availability]);
+
   const handleCountrySelectorOk = async () => {
     if (!selectedCountry) return;
 
     setProcessing(true);
     try {
-      const hasAccess = await checkProductAccess('card', selectedCountry.code);
+      const hasAccess =
+        availability[selectedCountry.code] ??
+        (await checkProductAccess('card', selectedCountry.code));
 
       setCountryInfo({
         countryCode: selectedCountry.code,
@@ -150,6 +195,18 @@ export default function CountrySelection() {
         isAvailable: hasAccess === true,
         source: 'manual',
       });
+
+      // Which issuer serves the user follows from this country, and the activation screen reads
+      // that answer from a cache keyed only by user: drop it so the next screen asks again.
+      void queryClient.invalidateQueries({ queryKey: [PROSPECTIVE_CARD_ISSUER_QUERY_KEY] });
+
+      if (isWirexFlow) {
+        track(TRACKING_EVENTS.CARD_ONBOARDING_CTA_PRESSED, {
+          step: 'country',
+          countryCode: selectedCountry.code,
+          available: hasAccess === true,
+        });
+      }
 
       if (hasAccess) {
         router.push({ pathname: '/card/activate', params: { countryConfirmed: 'true' } });
@@ -183,6 +240,88 @@ export default function CountrySelection() {
     );
   }
 
+  const countryDropdown = (
+    <CountryDropdown
+      visible={showDropdown}
+      searchQuery={searchQuery}
+      filteredCountries={filteredCountries}
+      onClose={() => setShowDropdown(false)}
+      onSearchChange={setSearchQuery}
+      onCountrySelect={handleCountrySelect}
+    />
+  );
+
+  // Step 1 of the Wirex onboarding (Figma 1 · Country): country only — no currency question
+  // before KYC — and whether the card is offered there, said under the field.
+  if (isWirexFlow) {
+    const isAvailable = selectedCode ? availability[selectedCode] : undefined;
+
+    return (
+      <WirexOnboardingLayout
+        step={1}
+        onBack={goBack}
+        footer={
+          <Button
+            variant="brand"
+            className="w-full"
+            onPress={handleCountrySelectorOk}
+            disabled={!selectedCountry || processing}
+          >
+            {processing ? <ActivityIndicator color="#000000" /> : <Text>Continue</Text>}
+          </Button>
+        }
+      >
+        <View className="gap-6">
+          <View className="items-center gap-1.5">
+            <Text className="text-center text-2xl font-semibold text-white">
+              Where do you live?
+            </Text>
+            <Text className="text-center text-sm text-[#ACACAC]">
+              We’ll check the Solid card is available there.
+            </Text>
+          </View>
+
+          <View className="gap-2">
+            <Text className="text-sm font-medium text-[#ACACAC]">Country of residence</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Country of residence"
+              onPress={handleOpenDropdown}
+              className="h-14 flex-row items-center gap-3 rounded-2xl bg-[#1C1C1C] px-4"
+            >
+              {selectedCountry ? (
+                <CountryFlagImage
+                  isoCode={selectedCountry.code}
+                  size={28}
+                  countryName={selectedCountry.name}
+                />
+              ) : null}
+              <Text className="flex-1 text-base text-white">
+                {selectedCountry ? selectedCountry.name : 'Select country'}
+              </Text>
+              <ChevronDown color="white" size={20} />
+            </Pressable>
+
+            {selectedCountry && isAvailable === true ? (
+              <View className="flex-row items-center gap-2">
+                <TickIcon size={16} />
+                <Text className="text-[13px] text-[#ACACAC]">
+                  The Solid card is available in {selectedCountry.name}
+                </Text>
+              </View>
+            ) : null}
+            {selectedCountry && isAvailable === false ? (
+              <Text className="text-[13px] text-[#ACACAC]">
+                The Solid card isn’t available in {selectedCountry.name} yet
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        {countryDropdown}
+      </WirexOnboardingLayout>
+    );
+  }
+
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg px-4 pt-12">
@@ -200,14 +339,7 @@ export default function CountrySelection() {
           onOk={handleCountrySelectorOk}
           processing={processing}
         />
-        <CountryDropdown
-          visible={showDropdown}
-          searchQuery={searchQuery}
-          filteredCountries={filteredCountries}
-          onClose={() => setShowDropdown(false)}
-          onSearchChange={setSearchQuery}
-          onCountrySelect={handleCountrySelect}
-        />
+        {countryDropdown}
       </View>
     </PageLayout>
   );

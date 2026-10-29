@@ -7,7 +7,7 @@ import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { createAccount } from '@turnkey/viem';
 import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { toSafeSmartAccount } from 'permissionless/accounts';
-import { Chain, hashTypedData, http } from 'viem';
+import { Chain, hashTypedData, Hex, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
@@ -30,6 +30,12 @@ import {
   USER,
 } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
+import {
+  createPasskeySignatureBatch,
+  PasskeyBatchParticipant,
+  PasskeySignatureBatch,
+  serializeTurnkeySignature,
+} from '@/lib/passkeySignatureBatch';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
@@ -55,6 +61,34 @@ import { useUserStore } from '@/store/useUserStore';
 
 import { fetchIsDeposited } from './useAnalytics';
 
+export interface SafeAAOptions {
+  /**
+   * A place in a signature batch: the Safe owner's signature joins the batch's other hashes and
+   * is approved in the same passkey prompt. See `createSignatureBatch`.
+   */
+  signer?: PasskeyBatchParticipant;
+}
+
+/**
+ * A signing prompt that fails may be pinned to credentials this device does not hold — the state a
+ * passkey recovery leaves behind on a client that has not logged in since. Dropping the filter
+ * costs nothing (the authenticator still only offers passkeys for this relying party, and the next
+ * login re-pins from the credential that signs), and turns a dead end into a prompt that works on
+ * the retry.
+ */
+const unpinOnPasskeyFailure = <T extends (...args: any[]) => Promise<any>>(sign: T): T =>
+  (async (...args: any[]) => {
+    try {
+      return await sign(...args);
+    } catch (error) {
+      const pinnedUserId = useUserStore.getState().users.find(u => u.selected)?.userId;
+      if (pinnedUserId && isPasskeyPromptError(error)) {
+        useUserStore.getState().clearUserCredentialId(pinnedUserId);
+      }
+      throw error;
+    }
+  }) as unknown as T;
+
 interface UseUserReturn {
   user: User | undefined;
   handleLogin: () => Promise<void>;
@@ -67,8 +101,9 @@ interface UseUserReturn {
     chain: Chain,
     subOrganization: string,
     signWith: string,
-    turnkeyClient?: any,
+    options?: SafeAAOptions,
   ) => Promise<SmartAccountClient>;
+  createSignatureBatch: () => PasskeySignatureBatch;
   checkBalance: (user: User) => Promise<boolean>;
 }
 
@@ -109,7 +144,7 @@ const useUser = (): UseUserReturn => {
   const clearBalance = useBalanceStore(state => state.clearBalance);
 
   const safeAA = useCallback(
-    async (chain: Chain, subOrganization: string, signWith: string) => {
+    async (chain: Chain, subOrganization: string, signWith: string, options?: SafeAAOptions) => {
       // Create a passkey-specific HTTP client that always requires passkey signing
       // This ensures every transaction requires explicit user confirmation via passkey
       const passkeyClient = createHttpClient({
@@ -121,6 +156,13 @@ const useUser = (): UseUserReturn => {
         organizationId: subOrganization,
         signWith: signWith,
       });
+
+      // A Safe owner signature is a raw hash signature. In a signature batch the hash joins the
+      // others and is signed with them in one passkey prompt; otherwise it is its own prompt.
+      if (turnkeyAccount.sign && options?.signer) {
+        const { signer } = options;
+        turnkeyAccount.sign = async ({ hash }) => signer.sign(hash);
+      }
 
       // WORKAROUND: Fix @turnkey/viem signTypedData bug
       // The SDK's signTypedData sends the hash to Turnkey with PAYLOAD_ENCODING_EIP712,
@@ -134,25 +176,6 @@ const useUser = (): UseUserReturn => {
           return originalSign({ hash });
         };
       }
-
-      // A signing prompt that fails may be pinned to credentials this device
-      // does not hold — the state a passkey recovery leaves behind on a client
-      // that has not logged in since. Dropping the filter costs nothing (the
-      // authenticator still only offers passkeys for this relying party, and
-      // the next login re-pins from the credential that signs), and turns a
-      // dead end into a prompt that works on the retry.
-      const unpinOnPasskeyFailure = <T extends (...args: any[]) => Promise<any>>(sign: T): T =>
-        (async (...args: any[]) => {
-          try {
-            return await sign(...args);
-          } catch (error) {
-            const pinnedUserId = useUserStore.getState().users.find(u => u.selected)?.userId;
-            if (pinnedUserId && isPasskeyPromptError(error)) {
-              useUserStore.getState().clearUserCredentialId(pinnedUserId);
-            }
-            throw error;
-          }
-        }) as unknown as T;
 
       // Every entry point the Safe owner can be asked to sign through. Applied
       // after the signTypedData workaround above so the guard wraps the
@@ -225,6 +248,35 @@ const useUser = (): UseUserReturn => {
     },
     [createHttpClient, user?.userId, user?.safeAddress],
   );
+
+  /**
+   * A batch the next few Safe signatures can share, so they cost one passkey prompt.
+   *
+   * Each signer takes a `participant()` and passes it to {@link safeAA}; their hashes are signed
+   * together by one Turnkey `signRawPayloads` request, stamped by the passkey like any other.
+   * Nothing is delegated and no session key is minted: the passkey approves exactly these hashes.
+   */
+  const createSignatureBatch = useCallback((): PasskeySignatureBatch => {
+    const subOrganization = user?.suborgId;
+    const signWith = user?.signWith;
+    if (!subOrganization || !signWith) {
+      throw new Error('Your wallet is still setting up. Please try again shortly.');
+    }
+
+    return createPasskeySignatureBatch({
+      signAll: unpinOnPasskeyFailure(async (hashes: Hex[]) => {
+        const passkeyClient = createHttpClient({ defaultStamperType: StamperType.Passkey });
+        const { signatures } = await passkeyClient.signRawPayloads({
+          organizationId: subOrganization,
+          signWith,
+          payloads: hashes,
+          encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
+          hashFunction: 'HASH_FUNCTION_NO_OP',
+        });
+        return (signatures ?? []).map(serializeTurnkeySignature);
+      }),
+    });
+  }, [createHttpClient, user?.suborgId, user?.signWith]);
 
   const checkBalance = useCallback(
     async (user: User): Promise<boolean> => {
@@ -782,6 +834,7 @@ const useUser = (): UseUserReturn => {
     handleRemoveUsers,
     handleDeleteAccount,
     safeAA,
+    createSignatureBatch,
     checkBalance,
   };
 };
