@@ -109,20 +109,19 @@ export const useAllowAiApiCharges = () => {
       const mandate = BigInt(Math.ceil(requiredMandateUsd)) * 10n ** BILLING_DECIMALS;
       if (mandate <= 0n) throw new Error('Nothing to allow yet.');
 
-      // The API's answer can be behind the chain: a mandate signed a moment
-      // ago whose confirmation never reached it, or a read that failed on its
-      // side. Enabling a module twice reverts the whole batch (GS102), so the
-      // Safe has the last word; unread, the API's answer stands.
-      const alreadyEnabled =
-        moduleEnabled ||
-        (await publicClient(chain.id)
-          .readContract({
-            address: user.safeAddress as Address,
-            abi: Safe_ABI,
-            functionName: 'isModuleEnabled',
-            args: [moduleAddress as Address],
-          })
-          .catch(() => false));
+      // The API's answer can be behind the chain either way: a mandate signed
+      // a moment ago whose confirmation never reached it, or a module turned
+      // off since. Enabling a module twice reverts the whole batch (GS102), and
+      // skipping it leaves every charge refused, so the Safe has the last word;
+      // unread, the API's answer stands.
+      const alreadyEnabled = await publicClient(chain.id)
+        .readContract({
+          address: user.safeAddress as Address,
+          abi: Safe_ABI,
+          functionName: 'isModuleEnabled',
+          args: [moduleAddress as Address],
+        })
+        .catch(() => moduleEnabled);
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
       const result = await executeTransactions(
