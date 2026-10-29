@@ -90,13 +90,11 @@ export const useAllowAiApiCharges = () => {
     mutationFn: async ({
       requiredMandateUsd,
       moduleAddress,
-      moduleEnabled,
       periodSeconds,
       chainId,
     }: {
       requiredMandateUsd: number;
       moduleAddress: string;
-      moduleEnabled: boolean;
       periodSeconds: number;
       chainId: number;
     }) => {
@@ -109,11 +107,10 @@ export const useAllowAiApiCharges = () => {
       const mandate = BigInt(Math.ceil(requiredMandateUsd)) * 10n ** BILLING_DECIMALS;
       if (mandate <= 0n) throw new Error('Nothing to allow yet.');
 
-      // The API's answer can be behind the chain either way: a mandate signed
-      // a moment ago whose confirmation never reached it, or a module turned
-      // off since. Enabling a module twice reverts the whole batch (GS102), and
-      // skipping it leaves every charge refused, so the Safe has the last word;
-      // unread, the API's answer stands.
+      // Asked of the Safe itself, never the API, whose answer can be behind
+      // the chain either way. Enabling a module twice reverts the whole batch
+      // (GS102), and skipping it signs a mandate no charge can use, so an
+      // unread Safe stops here rather than guess.
       const alreadyEnabled = await publicClient(chain.id)
         .readContract({
           address: user.safeAddress as Address,
@@ -121,7 +118,9 @@ export const useAllowAiApiCharges = () => {
           functionName: 'isModuleEnabled',
           args: [moduleAddress as Address],
         })
-        .catch(() => moduleEnabled);
+        .catch(() => {
+          throw new Error('Couldn’t check your wallet. Please try again.');
+        });
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
       const result = await executeTransactions(
@@ -207,7 +206,6 @@ export const useCreateAiApiKey = () => {
         const signed = await allow({
           requiredMandateUsd: required.requiredMandateUsd,
           moduleAddress: required.moduleAddress,
-          moduleEnabled: required.moduleEnabled,
           periodSeconds: required.periodSeconds,
           chainId: required.chainId,
         });
@@ -260,7 +258,6 @@ export const useUpdateAiApiKey = () => {
         const signed = await allow({
           requiredMandateUsd: required.requiredMandateUsd,
           moduleAddress: required.moduleAddress,
-          moduleEnabled: required.moduleEnabled,
           periodSeconds: required.periodSeconds,
           chainId: required.chainId,
         });

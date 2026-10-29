@@ -102,7 +102,6 @@ const StatusBanner = ({
       await allow({
         requiredMandateUsd: billing.requiredMandateUsd,
         moduleAddress: billing.moduleAddress,
-        moduleEnabled: billing.mandate?.moduleEnabled ?? false,
         periodSeconds: billing.periodSeconds,
         chainId: billing.chainId,
       });
