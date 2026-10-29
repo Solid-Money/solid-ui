@@ -1,4 +1,4 @@
-import { decodeEventLog, Hex, isAddressEqual } from 'viem';
+import { decodeEventLog, formatUnits, Hex, isAddressEqual } from 'viem';
 import { base } from 'viem/chains';
 
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
@@ -22,7 +22,15 @@ export type BaseWithdrawRequestStatus = 'pending' | 'finished';
 export type BaseWithdrawRequest = {
   requestId: Hex;
   status: BaseWithdrawRequestStatus;
+  /**
+   * The USDC the request pays out, fixed when it was made. Undefined if it asked
+   * for another asset. A plain number so the query stays JSON-safe.
+   */
+  amountUsd?: number;
 };
+
+/** Base USDC, the only asset the app asks the Base queue for. */
+const USDC_DECIMALS = 6;
 
 /**
  * The request a withdraw transaction made on the Base queue, and its status.
@@ -37,12 +45,16 @@ export async function readBaseWithdrawRequest(
 
   const receipt = await client.getTransactionReceipt({ hash: requestTxHash });
   let requestId: Hex | undefined;
+  let amountUsd: number | undefined;
   for (const log of receipt.logs) {
     if (!isAddressEqual(log.address, queue)) continue;
     try {
       const event = decodeEventLog({ abi: BoringQueue_ABI, data: log.data, topics: log.topics });
       if (event.eventName === 'OnChainWithdrawRequested') {
         requestId = event.args.requestId;
+        if (isAddressEqual(event.args.assetOut, ADDRESSES.base.usdc)) {
+          amountUsd = Number(formatUnits(event.args.amountOfAssets, USDC_DECIMALS));
+        }
         break;
       }
     } catch {
@@ -57,5 +69,5 @@ export async function readBaseWithdrawRequest(
     functionName: 'getRequestIds',
   });
   const isPending = outstanding.some(id => id.toLowerCase() === requestId.toLowerCase());
-  return { requestId, status: isPending ? 'pending' : 'finished' };
+  return { requestId, status: isPending ? 'pending' : 'finished', amountUsd };
 }

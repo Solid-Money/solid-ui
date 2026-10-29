@@ -226,6 +226,7 @@ export const portfolioTotals = ({
   locked,
   cash,
   card,
+  withdrawing = 0,
   debt,
   complete = true,
 }: {
@@ -233,11 +234,18 @@ export const portfolioTotals = ({
   locked: number | undefined;
   cash: number | undefined;
   card: number | undefined;
+  /** Withdrawals between savings and wallet: requested from the queue, not yet paid out. */
+  withdrawing?: number;
   debt: number | undefined;
   /** False when a part already summed above is itself partial (a failed network, say). */
   complete?: boolean;
 }) => {
-  const assets = sumKnownValues([earn, locked, cash, card]);
+  const parts = sumKnownValues([earn, locked, cash, card]);
+  // Never the only known part: on its own it would turn "balances unavailable" into a figure.
+  const assets = {
+    ...parts,
+    total: parts.total === undefined ? undefined : parts.total + withdrawing,
+  };
   return {
     totalAssets: assets.total,
     netBalance: assets.total === undefined ? undefined : assets.total - (debt ?? 0),

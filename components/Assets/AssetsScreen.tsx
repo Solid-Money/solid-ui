@@ -6,6 +6,7 @@ import { Href, router } from 'expo-router';
 
 import AssetRow, { assetAmountLabel } from '@/components/Assets/AssetRow';
 import PortfolioIcon, { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
+import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import { BalanceHeadline } from '@/components/BalanceHeadline';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
@@ -101,7 +102,8 @@ export function AssetsOverview({
     portfolio.eurYield && portfolio.eurYield.valueEur > 0 ? portfolio.eurYield : undefined;
   const showEarn = earnAssets.length > 0 || !!eurYield || showLocked;
   const showStable = stable.all.length > 0 || portfolio.hasCardBalance;
-  const isEmpty = !showStable && !showEarn && crypto.all.length === 0;
+  const showWithdrawing = portfolio.pendingWithdrawals.length > 0;
+  const isEmpty = !showStable && !showEarn && crypto.all.length === 0 && !showWithdrawing;
   const hasDebt = (portfolio.debt ?? 0) > 0;
   const estimate = yieldEstimate(portfolio.dailyYield, portfolio.monthlyYield);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace(path.HOME));
@@ -332,6 +334,12 @@ export function AssetsOverview({
                     />
                   </>
                 )}
+              </Group>
+            )}
+
+            {showWithdrawing && (
+              <Group title="On the way">
+                <WithdrawingRow withdrawals={portfolio.pendingWithdrawals} />
               </Group>
             )}
 

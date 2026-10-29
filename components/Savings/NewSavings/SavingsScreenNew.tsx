@@ -168,6 +168,8 @@ export default function SavingsScreenNew() {
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
         depositsOnItsWay={depositsOnItsWay}
+        // Only soUSD withdraws through the Base queue these are read from.
+        pendingWithdrawals={vaultType === VaultType.USDC ? portfolio.pendingWithdrawals : undefined}
       />
     </PageLayout>
   );
