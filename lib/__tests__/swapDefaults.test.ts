@@ -8,6 +8,8 @@ import {
 } from '@/lib/swapDefaults';
 import { TokenBalance, TokenType } from '@/lib/types';
 
+const USDC_ON_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+
 const token = (overrides: Partial<TokenBalance>): TokenBalance => ({
   contractTickerSymbol: 'ETH',
   contractName: 'Ether',
@@ -24,18 +26,31 @@ describe('swap presets', () => {
     expect(HOME_SWAP_PRESET).toEqual({ input: USD_YIELD_ON_FUSE, output: USDC_ON_FUSE });
   });
 
-  it('pays with a held coin', () => {
+  it('pays with a held coin, into USDC on its own network', () => {
     expect(coinSwapPreset(token({}))).toEqual({
       input: { address: '0x4200000000000000000000000000000000000006', chainId: 8453 },
-      output: USDC_ON_FUSE,
+      output: { address: USDC_ON_BASE, chainId: 8453 },
     });
   });
 
-  it('gets a coin that isn’t held, with USDC', () => {
+  it('gets a coin that isn’t held, with USDC on its own network', () => {
     expect(coinSwapPreset(token({ balance: '0' }))).toEqual({
-      input: USDC_ON_FUSE,
+      input: { address: USDC_ON_BASE, chainId: 8453 },
       output: { address: '0x4200000000000000000000000000000000000006', chainId: 8453 },
     });
+  });
+
+  it('pairs USDC off Fuse with USDT on the same network', () => {
+    expect(coinSwapPreset(token({ contractAddress: USDC_ON_BASE.toLowerCase() })).output).toEqual({
+      address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+      chainId: 8453,
+    });
+  });
+
+  it('pairs a Fuse coin with USDC on Fuse', () => {
+    expect(
+      coinSwapPreset(token({ type: TokenType.NATIVE, contractAddress: '0xeeee', chainId: 122 })),
+    ).toEqual({ input: { address: zeroAddress, chainId: 122 }, output: USDC_ON_FUSE });
   });
 
   it('uses the zero address for a native coin', () => {

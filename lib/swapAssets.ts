@@ -1,6 +1,14 @@
 import { fuse } from 'viem/chains';
 
 import { fallbackTierFees, formatFeeValue } from '@/components/Rewards/NewRewards/tierFees';
+import {
+  isSwapPairOpen,
+  SWAP_CHAIN_IDS,
+  SWAP_LIST,
+  SwapAssetCategory,
+  swapAssetKey,
+  swapListing,
+} from '@/constants/swapChains';
 import { RewardsTier } from '@/lib/types';
 import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 
@@ -8,12 +16,12 @@ import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
  * The swap pickers list assets, not contracts: USDC is one row however many
  * networks it is held on, and soUSD is "USD Yield". The network is picked for
  * the user (the one holding most on "You pay", the quickest to arrive on "You
- * get") and named only where it matters.
+ * get") and named only where it matters. What's offered is `SWAP_LIST`.
  */
 
-export type SwapAssetCategory = 'stablecoins' | 'euro' | 'earn' | 'crypto';
+export type { SwapAssetCategory };
 
-/** Share tokens, by the product they are. Matched on symbol: the list is curated. */
+/** Share tokens, by the product they are, for coins off the swap list. */
 const YIELD_PRODUCTS: Record<string, string> = {
   soUSD: 'USD Yield',
   soUSDC: 'USD Yield',
@@ -32,23 +40,41 @@ const SAME_ASSET: Record<string, string> = {
   'USDT.e': 'USDT',
 };
 
-const DOLLAR_COINS = new Set(['USDC', 'USDT', 'DAI', 'USDS', 'PYUSD', 'FDUSD', 'USDe']);
-const EURO_COINS = new Set(['EURC', 'EURe', 'EURS', 'EURA']);
+const STABLECOINS = new Set([
+  'USDC',
+  'USDT',
+  'DAI',
+  'USDS',
+  'PYUSD',
+  'FDUSD',
+  'USDe',
+  'EURC',
+  'EURe',
+  'EURS',
+  'EURA',
+]);
 
 const DESCRIPTIONS: Record<string, string> = {
   USDC: 'Dollar coin',
   USDT: 'Dollar coin',
-  DAI: 'Dollar coin',
   EURC: 'Euro coin',
   FUSE: 'Fuse token',
+  WFUSE: 'Wrapped FUSE',
   ETH: 'Ether',
   WETH: 'Wrapped Ether',
-  BNB: 'BNB',
-  POL: 'Polygon',
+  cbBTC: 'Bitcoin, by Coinbase',
+  WBTC: 'Wrapped Bitcoin',
+  AAVE: 'Aave',
+  ENA: 'Ethena',
+  SOL: 'Solana',
+  UNI: 'Uniswap',
 };
 
-/** What "You get" lists first, in this order. */
-const POPULAR = ['USDC', 'USDT', 'FUSE'];
+/** Where each row sits within its section: the swap list's order. */
+const LIST_ORDER = new Map<string, number>();
+SWAP_LIST.forEach((listing, index) => {
+  if (!LIST_ORDER.has(listing.name)) LIST_ORDER.set(listing.name, index);
+});
 
 export interface SwapAssetIdentity {
   /** One row per key. */
@@ -59,20 +85,31 @@ export interface SwapAssetIdentity {
   isYield: boolean;
 }
 
-export function assetIdentity(asset: Pick<SwapAsset, 'symbol'>): SwapAssetIdentity {
+type NamedAsset = { symbol: string; chainId?: number; address?: string };
+
+/** A coin's row: the swap list's entry when it's on it, its symbol when not. */
+export function assetIdentity(asset: NamedAsset): SwapAssetIdentity {
+  const listing =
+    asset.chainId !== undefined && asset.address
+      ? swapListing({ chainId: asset.chainId, address: asset.address })
+      : undefined;
+  if (listing) {
+    return {
+      key: listing.name,
+      name: listing.name,
+      category: listing.category,
+      isYield: listing.category === 'earn',
+    };
+  }
   const product = YIELD_PRODUCTS[asset.symbol];
   if (product) return { key: product, name: product, category: 'earn', isYield: true };
   const name = SAME_ASSET[asset.symbol] ?? asset.symbol;
-  const category: SwapAssetCategory = DOLLAR_COINS.has(name)
-    ? 'stablecoins'
-    : EURO_COINS.has(name)
-      ? 'euro'
-      : 'crypto';
+  const category: SwapAssetCategory = STABLECOINS.has(name) ? 'stablecoins' : 'crypto';
   return { key: name, name, category, isYield: false };
 }
 
 /** "USD Yield", "USDC": how the screens name an asset, never its share token. */
-export const assetDisplayName = (asset: Pick<SwapAsset, 'symbol'>) => assetIdentity(asset).name;
+export const assetDisplayName = (asset: NamedAsset) => assetIdentity(asset).name;
 
 export interface SwapAssetRow {
   key: string;
@@ -123,9 +160,19 @@ const groupBy = (assets: SwapAssetWithBalance[]) => {
 const section = (key: string, title: string, rows: SwapAssetRow[]): SwapAssetSection[] =>
   rows.length ? [{ key, title, rows }] : [];
 
+/** Stablecoins, Earn, Crypto: the design's order, on both pickers. */
+const bySection = (rows: SwapAssetRow[]): SwapAssetSection[] => {
+  const inCategory = (category: SwapAssetCategory) => rows.filter(row => row.category === category);
+  return [
+    ...section('stablecoins', 'Stablecoins', inCategory('stablecoins')),
+    ...section('earn', 'Earn', inCategory('earn')),
+    ...section('crypto', 'Crypto', inCategory('crypto')),
+  ];
+};
+
 /**
- * "You pay": what the user holds, one row per asset, paying from the network
- * holding most of it. A holding the backend won't quote sits at the bottom
+ * "You pay": what the user holds of the swap list, one row per asset, paying
+ * from the network holding most of it. Any other holding sits at the bottom
  * under "Can't be swapped yet", one row per network so it's clear which.
  */
 export function payAssetSections(
@@ -133,9 +180,10 @@ export function payAssetSections(
   { query = '', chainName }: { query?: string; chainName: ChainName },
 ): SwapAssetSection[] {
   const held = assets.filter(asset => asset.balance > 0);
+  const payable = (asset: SwapAssetWithBalance) => asset.swappable && !!swapListing(asset);
   const rows: SwapAssetRow[] = [];
 
-  for (const members of groupBy(held.filter(asset => asset.swappable)).values()) {
+  for (const members of groupBy(held.filter(payable)).values()) {
     const sorted = [...members].sort(byValue);
     const [asset] = sorted;
     const identity = assetIdentity(asset);
@@ -159,12 +207,19 @@ export function payAssetSections(
   }
 
   const blocked: SwapAssetRow[] = held
-    .filter(asset => !asset.swappable)
+    .filter(asset => !payable(asset))
     .map(asset => {
       const identity = assetIdentity(asset);
+      // An old version of a listed coin, like Fuse's deprecated bridged USDC,
+      // goes by its own name so it isn't read as the one that swaps.
+      const lookalike =
+        !swapListing(asset) &&
+        SWAP_LIST.some(
+          listing => listing.chainId === asset.chainId && listing.name === identity.name,
+        );
       return {
-        key: `blocked:${asset.chainId}:${asset.address.toLowerCase()}`,
-        name: `${identity.name} on ${chainName(asset.chainId)}`,
+        key: `blocked:${swapAssetKey(asset)}`,
+        name: lookalike ? asset.name : `${identity.name} on ${chainName(asset.chainId)}`,
         subtitle: identity.isYield ? 'Withdraw it in Earn instead' : 'Not on the swap list yet',
         category: identity.category,
         asset,
@@ -178,13 +233,9 @@ export function payAssetSections(
   const visible = rows
     .filter(row => matches(row, query))
     .sort((a, b) => b.balanceUsd - a.balanceUsd);
-  const inCategory = (...categories: SwapAssetCategory[]) =>
-    visible.filter(row => categories.includes(row.category));
 
   return [
-    ...section('stablecoins', 'Stablecoins', inCategory('stablecoins', 'euro')),
-    ...section('earn', 'Earn', inCategory('earn')),
-    ...section('crypto', 'Crypto', inCategory('crypto')),
+    ...bySection(visible),
     ...section(
       'blocked',
       'Can’t be swapped yet',
@@ -194,8 +245,9 @@ export function payAssetSections(
 }
 
 /**
- * "You get": every asset the "You pay" one can become, one row each, arriving
- * on the network quickest to reach: the same one when it's there, then Fuse.
+ * "You get": every asset on the swap list the "You pay" one can become, one
+ * row each, arriving on the network quickest to reach: the same one when it's
+ * there, then in `SWAP_CHAIN_IDS` order. Only pairs `isSwapPairOpen` allows.
  *
  * `reachable` is the backend's answer for the "You pay" token, as
  * `chainId:address` keys. Null while it loads or when it couldn't be read: the
@@ -215,19 +267,20 @@ export function getAssetSections(
     chainName: ChainName;
   },
 ): SwapAssetSection[] {
-  const fromKey = from ? `${from.chainId}:${from.address.toLowerCase()}` : undefined;
+  const fromKey = from ? swapAssetKey(from) : undefined;
   const candidates = assets.filter(asset => {
-    if (!asset.swappable) return false;
-    const key = `${asset.chainId}:${asset.address.toLowerCase()}`;
+    if (!asset.swappable || !swapListing(asset)) return false;
+    const key = swapAssetKey(asset);
     if (key === fromKey) return false;
-    // A Fuse coin reaches every Fuse coin through Algebra, imported ones
-    // included, which the backend's list doesn't know about.
+    if (from && !isSwapPairOpen(from.chainId, asset.chainId)) return false;
+    // A Fuse coin reaches every Fuse coin through Algebra, which the
+    // backend's route map doesn't speak for.
     const onAlgebra = from?.chainId === fuse.id && asset.chainId === fuse.id;
     return !reachable || onAlgebra || reachable.has(key);
   });
 
   const preference = (asset: SwapAsset) =>
-    asset.chainId === from?.chainId ? 0 : asset.chainId === fuse.id ? 1 : 2;
+    asset.chainId === from?.chainId ? -1 : SWAP_CHAIN_IDS.indexOf(asset.chainId);
 
   const rows: SwapAssetRow[] = [];
   for (const members of groupBy(candidates).values()) {
@@ -259,19 +312,10 @@ export function getAssetSections(
     });
   }
 
-  const visible = rows.filter(row => matches(row, query));
-  const popular = POPULAR.flatMap(name => visible.filter(row => row.name === name));
-  const rest = visible.filter(row => !POPULAR.includes(row.name));
-  const inCategory = (category: SwapAssetCategory) =>
-    rest.filter(row => row.category === category).sort((a, b) => a.name.localeCompare(b.name));
-
-  return [
-    ...section('popular', 'Popular', popular),
-    ...section('stablecoins', 'Stablecoins', inCategory('stablecoins')),
-    ...section('euro', 'Euro', inCategory('euro')),
-    ...section('earn', 'Earn', inCategory('earn')),
-    ...section('crypto', 'Crypto', inCategory('crypto')),
-  ];
+  const visible = rows
+    .filter(row => matches(row, query))
+    .sort((a, b) => (LIST_ORDER.get(a.name) ?? 0) - (LIST_ORDER.get(b.name) ?? 0));
+  return bySection(visible);
 }
 
 /**
