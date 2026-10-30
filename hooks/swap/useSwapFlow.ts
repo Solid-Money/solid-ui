@@ -268,8 +268,10 @@ function useFuseFlowModel(): SwapFlowModel {
     () => findSwapAsset(assets, fuse.id, inputId ?? zeroAddress),
     [assets, inputId],
   );
+  // No "You get" is none, not FUSE: the picker clears it when a new "You pay"
+  // can't reach it.
   const toAsset = useMemo(
-    () => findSwapAsset(assets, fuse.id, outputId ?? zeroAddress),
+    () => (outputId ? findSwapAsset(assets, fuse.id, outputId) : undefined),
     [assets, outputId],
   );
 

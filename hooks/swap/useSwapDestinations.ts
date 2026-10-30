@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { fuse } from 'viem/chains';
 
 import { swapAssetKey } from '@/constants/swapChains';
 import useUser from '@/hooks/useUser';
@@ -14,12 +15,15 @@ const DESTINATIONS_STALE_MS = 5 * 60_000;
  * the "You get" picker. Null while it loads, when it fails, or when the backend
  * couldn't check routes: the picker then offers the whole swap list and the
  * quote has the last word, rather than showing nothing.
+ *
+ * Not asked for a Fuse coin: it only swaps on Fuse, where Algebra reaches
+ * every coin whatever LI.FI's map says.
  */
 export function useSwapDestinations(from: SwapAsset | undefined): ReadonlySet<string> | null {
   const { user } = useUser();
   const { data } = useQuery({
     queryKey: ['swap-destinations', from && swapAssetKey(from)],
-    enabled: !!user && !!from,
+    enabled: !!user && !!from && from.chainId !== fuse.id,
     queryFn: ({ signal }) =>
       withRefreshToken(() =>
         fetchLifiSwapDestinations({ fromChain: from!.chainId, fromToken: from!.address }, signal),

@@ -7,6 +7,7 @@ import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
 import { Text } from '@/components/ui/text';
 import { CHAIN_NAMES } from '@/constants/chains';
 import { SWAP_MODAL } from '@/constants/modals';
+import { isSwapPairOpen } from '@/constants/swapChains';
 import { useSwapAssets } from '@/hooks/swap/useSwapAssets';
 import { useSwapDestinations } from '@/hooks/swap/useSwapDestinations';
 import { useSwapFlow } from '@/hooks/swap/useSwapFlow';
@@ -73,7 +74,12 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
   const { assets, isLoading } = useSwapAssets();
   const reachable = useSwapDestinations(side === 'get' ? fromAsset : undefined);
   const { onAssetSelection } = useSwapActionHandlers();
-  const { setModal } = useSwapState(useShallow(state => ({ setModal: state.actions.setModal })));
+  const { setModal, selectCurrency } = useSwapState(
+    useShallow(state => ({
+      setModal: state.actions.setModal,
+      selectCurrency: state.actions.selectCurrency,
+    })),
+  );
   const [query, setQuery] = useState('');
 
   const sections = useMemo(
@@ -87,9 +93,16 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
   const handleSelect = useCallback(
     (row: SwapAssetRow) => {
       onAssetSelection(side === 'pay' ? SwapField.INPUT : SwapField.OUTPUT, row.asset);
+      // A "You get" the new "You pay" can't reach is cleared for the user to
+      // pick again, rather than left to quote "No route". Read back from the
+      // store, since picking the coin "You get" holds swaps the two.
+      const { [SwapField.INPUT]: pay, [SwapField.OUTPUT]: get } = useSwapState.getState();
+      if (side === 'pay' && get.currencyId && !isSwapPairOpen(pay.chainId, get.chainId)) {
+        selectCurrency(SwapField.OUTPUT, undefined, pay.chainId);
+      }
       setModal(SWAP_MODAL.OPEN_FORM);
     },
-    [side, onAssetSelection, setModal],
+    [onAssetSelection, side, selectCurrency, setModal],
   );
 
   return (
