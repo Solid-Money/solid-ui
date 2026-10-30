@@ -84,8 +84,6 @@ export interface SwapListing {
   /** The row it joins: "USDC" on every network, "USD Yield" for soUSD. */
   name: string;
   category: SwapAssetCategory;
-  /** In "You pay" only: held, and swapped out of, but never offered. */
-  payOnly?: boolean;
 }
 
 const listed = (
@@ -93,8 +91,7 @@ const listed = (
   address: Address,
   name: string,
   category: SwapAssetCategory,
-  payOnly?: boolean,
-): SwapListing => ({ chainId, address, name, category, ...(payOnly ? { payOnly } : {}) });
+): SwapListing => ({ chainId, address, name, category });
 
 /**
  * The swap list: exactly what the new pickers offer, in the order "You get"
@@ -116,10 +113,10 @@ export const SWAP_LIST: readonly SwapListing[] = [
   listed(bsc.id, '0x55d398326f99059fF775485246999027B3197955', 'USDT', 'stablecoins'),
   listed(base.id, '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42', 'EURC', 'stablecoins'),
   listed(mainnet.id, '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c', 'EURC', 'stablecoins'),
-  // Crypto: FUSE at home, the rest on Base only. WFUSE is for paying out of,
-  // mostly what soFUSE withdrawals leave; FUSE to WFUSE is the old wrap screen.
+  // Crypto: FUSE and WFUSE at home, the rest on Base only. FUSE to WFUSE and
+  // back is the old wrap screen; any other Fuse coin reaches WFUSE on Algebra.
   listed(fuse.id, zeroAddress, 'FUSE', 'crypto'),
-  listed(fuse.id, WRAPPED_FUSE, 'WFUSE', 'crypto', true),
+  listed(fuse.id, WRAPPED_FUSE, 'WFUSE', 'crypto'),
   listed(base.id, zeroAddress, 'ETH', 'crypto'),
   listed(base.id, '0x4200000000000000000000000000000000000006', 'WETH', 'crypto'),
   listed(base.id, '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', 'cbBTC', 'crypto'),

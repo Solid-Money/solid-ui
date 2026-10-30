@@ -111,12 +111,6 @@ export function assetIdentity(asset: NamedAsset): SwapAssetIdentity {
 /** "USD Yield", "USDC": how the screens name an asset, never its share token. */
 export const assetDisplayName = (asset: NamedAsset) => assetIdentity(asset).name;
 
-/** On the swap list for this picker: WFUSE is paid with, never offered. */
-const onSwapList = (asset: SwapAsset, side: 'pay' | 'get') => {
-  const listing = swapListing(asset);
-  return !!listing && (side === 'pay' || !listing.payOnly);
-};
-
 export interface SwapAssetRow {
   key: string;
   name: string;
@@ -186,7 +180,7 @@ export function payAssetSections(
   { query = '', chainName }: { query?: string; chainName: ChainName },
 ): SwapAssetSection[] {
   const held = assets.filter(asset => asset.balance > 0);
-  const payable = (asset: SwapAssetWithBalance) => asset.swappable && onSwapList(asset, 'pay');
+  const payable = (asset: SwapAssetWithBalance) => asset.swappable && !!swapListing(asset);
   const rows: SwapAssetRow[] = [];
 
   for (const members of groupBy(held.filter(payable)).values()) {
@@ -275,7 +269,7 @@ export function getAssetSections(
 ): SwapAssetSection[] {
   const fromKey = from ? swapAssetKey(from) : undefined;
   const candidates = assets.filter(asset => {
-    if (!asset.swappable || !onSwapList(asset, 'get')) return false;
+    if (!asset.swappable || !swapListing(asset)) return false;
     const key = swapAssetKey(asset);
     if (key === fromKey) return false;
     if (from && !isSwapPairOpen(from.chainId, asset.chainId)) return false;
