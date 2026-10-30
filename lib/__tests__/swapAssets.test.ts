@@ -1,3 +1,4 @@
+import { WNATIVE } from '@cryptoalgebra/fuse-sdk';
 import { zeroAddress } from 'viem';
 
 import { isSwapPairOpen, SWAP_LIST } from '@/constants/swapChains';
@@ -188,16 +189,23 @@ describe('You get', () => {
     expect(titles(getAssetSections(all, { from, reachable: null, chainName }))).toEqual([
       'Stablecoins: USDC, USDT',
       'Earn: FUSE Yield',
-      'Crypto: FUSE',
+      'Crypto: FUSE, WFUSE',
     ]);
   });
 
-  it('never offers WFUSE, even for FUSE', () => {
+  it('offers WFUSE for any Fuse coin, FUSE included', () => {
     const from = find('FUSE', FUSE);
-    const names = getAssetSections(all, { from, reachable: null, chainName }).flatMap(section =>
-      section.rows.map(row => row.name),
+    const crypto = getAssetSections(all, { from, reachable: null, chainName }).find(
+      section => section.key === 'crypto',
     );
-    expect(names).not.toContain('WFUSE');
+    expect(crypto?.rows.map(row => row.name)).toEqual(['WFUSE']);
+  });
+
+  // The flow hands FUSE to WFUSE to the old wrap form when "You get" is the
+  // router's wrapped FUSE, so the listed WFUSE has to be that token.
+  it('lists the WFUSE the wrap form takes', () => {
+    const wfuse = SWAP_LIST.find(listing => listing.name === 'WFUSE');
+    expect(wfuse?.address.toLowerCase()).toBe(WNATIVE[FUSE].address.toLowerCase());
   });
 
   it('offers Ethereum, Base and BNB Chain coins for a Base coin, crypto on Base only', () => {
@@ -240,7 +248,7 @@ describe('You get', () => {
     expect(titles(getAssetSections(all, { from, reachable, chainName }))).toEqual([
       'Stablecoins: USDT',
       'Earn: USD Yield, FUSE Yield',
-      'Crypto: FUSE',
+      'Crypto: FUSE, WFUSE',
     ]);
   });
 });
