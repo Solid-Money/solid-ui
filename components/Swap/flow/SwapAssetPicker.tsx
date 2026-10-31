@@ -53,7 +53,7 @@ const AssetRow = ({
       </Text>
     </View>
     {showBalance && row.balance > 0 ? (
-      <Balance usd={row.balanceUsd} amount={row.balance} symbol={row.asset.symbol} />
+      <Balance usd={row.balanceUsd} amount={row.balance} symbol={assetDisplayName(row.asset)} />
     ) : row.members.length > 1 && !row.disabled ? (
       <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
     ) : null}
@@ -130,7 +130,11 @@ const NetworkStep = ({
               </Text>
             </View>
             {side === 'pay' && member.balance > 0 ? (
-              <Balance usd={member.balanceUsd} amount={member.balance} symbol={member.symbol} />
+              <Balance
+                usd={member.balanceUsd}
+                amount={member.balance}
+                symbol={assetDisplayName(member)}
+              />
             ) : null}
           </Pressable>
         </Fragment>
