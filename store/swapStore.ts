@@ -27,7 +27,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 
 import { SWAP_MODAL } from '@/constants/modals';
-import { isLifiRoute } from '@/constants/swapChains';
+import { isLifiRoute, SolidBridgeRoute, solidBridgeRoute } from '@/constants/swapChains';
 import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
@@ -97,6 +97,7 @@ export type SwapEntryPoint =
   | 'dashboard'
   | 'card_fund'
   | 'not_enough_to_pay'
+  | 'swap_arrival'
   | 'unknown';
 
 /** A swap the new flow made, as its outcome screens show it. */
@@ -115,6 +116,18 @@ export interface SwapReceipt {
   toChainId: number;
   /** The cross-network swap the tracker follows (lifiSwapStore). */
   clientTxId?: string;
+  /** Set when it went over Solid's bridge, which the backend tracks by `sendId`. */
+  bridge?: {
+    sendId: string;
+    /** Decimals of the coin sent, which the send's amounts are in. */
+    sentDecimals: number;
+    /** What landed and what the user asked for, when a swap on Fuse follows. */
+    thenSwap?: {
+      landsAs: { chainId: number; address: string };
+      landsAsName: string;
+      to: { chainId: number; address: string };
+    };
+  };
 }
 
 export interface OpenSwapOptions {
@@ -276,6 +289,23 @@ function entryField(
     lastFocusedField: SwapField.INPUT,
     ...(preferred === SwapField.OUTPUT ? { typedValue: '' } : {}),
   };
+}
+
+/** The move over Solid's bridge the pair takes, if it takes one. */
+export function useSolidBridgeRoute(): SolidBridgeRoute | undefined {
+  const { input, output } = useSwapState(
+    useShallow(state => ({ input: state[SwapField.INPUT], output: state[SwapField.OUTPUT] })),
+  );
+  return useMemo(
+    () =>
+      input.currencyId && output.currencyId
+        ? solidBridgeRoute(
+            { chainId: input.chainId, address: input.currencyId },
+            { chainId: output.chainId, address: output.currencyId },
+          )
+        : undefined,
+    [input.chainId, input.currencyId, output.chainId, output.currencyId],
+  );
 }
 
 /** True when the pair leaves Fuse and the LI.FI form should render. */

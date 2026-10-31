@@ -2,7 +2,8 @@ import { fuse } from 'viem/chains';
 
 import { fallbackTierFees, formatFeeValue } from '@/components/Rewards/NewRewards/tierFees';
 import {
-  isSwapPairOpen,
+  isSwapRouteOpen,
+  solidBridgeRoute,
   SWAP_CHAIN_IDS,
   SWAP_LIST,
   SwapAssetCategory,
@@ -171,9 +172,11 @@ const bySection = (rows: SwapAssetRow[]): SwapAssetSection[] => {
 };
 
 /**
- * "You pay": what the user holds of the swap list, one row per asset, paying
- * from the network holding most of it. Any other holding sits at the bottom
- * under "Can't be swapped yet", one row per network so it's clear which.
+ * "You pay": what the user holds of the swap list, one row per asset, every
+ * network holding it among its `members`. Earn shows every yield position,
+ * greyed where it's withdrawn in Earn rather than swapped. Any other holding
+ * sits at the bottom under "Can't be swapped yet", one row per network so it's
+ * clear which.
  */
 export function payAssetSections(
   assets: SwapAssetWithBalance[],
@@ -206,33 +209,34 @@ export function payAssetSections(
     });
   }
 
-  const blocked: SwapAssetRow[] = held
-    .filter(asset => !payable(asset))
-    .map(asset => {
-      const identity = assetIdentity(asset);
-      // An old version of a listed coin, like Fuse's deprecated bridged USDC,
-      // goes by its own name so it isn't read as the one that swaps.
-      const lookalike =
-        !swapListing(asset) &&
-        SWAP_LIST.some(
-          listing => listing.chainId === asset.chainId && listing.name === identity.name,
-        );
-      return {
-        key: `blocked:${swapAssetKey(asset)}`,
-        name: lookalike ? asset.name : `${identity.name} on ${chainName(asset.chainId)}`,
-        subtitle: identity.isYield ? 'Withdraw it in Earn instead' : 'Not on the swap list yet',
-        category: identity.category,
-        asset,
-        members: [asset],
-        balance: asset.balance,
-        balanceUsd: asset.balanceUsd,
-        disabled: true,
-      };
-    });
+  const blocked: SwapAssetRow[] = [];
+  for (const asset of held.filter(member => !payable(member))) {
+    const identity = assetIdentity(asset);
+    // An old version of a listed coin, like Fuse's deprecated bridged USDC,
+    // goes by its own name so it isn't read as the one that swaps.
+    const lookalike =
+      !swapListing(asset) &&
+      SWAP_LIST.some(
+        listing => listing.chainId === asset.chainId && listing.name === identity.name,
+      );
+    const row: SwapAssetRow = {
+      key: `blocked:${swapAssetKey(asset)}`,
+      name: lookalike ? asset.name : `${identity.name} on ${chainName(asset.chainId)}`,
+      subtitle: identity.isYield ? 'Withdraw it in Earn instead' : 'Not on the swap list yet',
+      category: identity.category,
+      asset,
+      members: [asset],
+      balance: asset.balance,
+      balanceUsd: asset.balanceUsd,
+      disabled: true,
+    };
+    if (identity.isYield && !lookalike) rows.push(row);
+    else blocked.push(row);
+  }
 
   const visible = rows
     .filter(row => matches(row, query))
-    .sort((a, b) => b.balanceUsd - a.balanceUsd);
+    .sort((a, b) => Number(a.disabled) - Number(b.disabled) || b.balanceUsd - a.balanceUsd);
 
   return [
     ...bySection(visible),
@@ -247,7 +251,7 @@ export function payAssetSections(
 /**
  * "You get": every asset on the swap list the "You pay" one can become, one
  * row each, arriving on the network quickest to reach: the same one when it's
- * there, then in `SWAP_CHAIN_IDS` order. Only pairs `isSwapPairOpen` allows.
+ * there, then in `SWAP_CHAIN_IDS` order. Only pairs `isSwapRouteOpen` allows.
  *
  * `reachable` is the backend's answer for the "You pay" token, as
  * `chainId:address` keys. Null while it loads or when it couldn't be read: the
@@ -272,11 +276,13 @@ export function getAssetSections(
     if (!asset.swappable || !swapListing(asset)) return false;
     const key = swapAssetKey(asset);
     if (key === fromKey) return false;
-    if (from && !isSwapPairOpen(from.chainId, asset.chainId)) return false;
-    // A Fuse coin reaches every Fuse coin through Algebra, which the
-    // backend's route map doesn't speak for.
+    if (from && !isSwapRouteOpen(from, asset)) return false;
+    // A Fuse coin reaches every Fuse coin through Algebra, and Solid's bridge
+    // carries its own pairs; the backend's route map is LI.FI's and speaks for
+    // neither.
     const onAlgebra = from?.chainId === fuse.id && asset.chainId === fuse.id;
-    return !reachable || onAlgebra || reachable.has(key);
+    const onBridge = !!from && !!solidBridgeRoute(from, asset);
+    return !reachable || onAlgebra || onBridge || reachable.has(key);
   });
 
   const preference = (asset: SwapAsset) =>

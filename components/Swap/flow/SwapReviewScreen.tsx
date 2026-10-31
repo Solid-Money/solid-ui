@@ -97,7 +97,7 @@ const SwapReviewScreen: React.FC = () => {
     () => ({
       user_id: user?.userId,
       safe_address: user?.safeAddress,
-      trade_type: model.route === 'lifi' ? 'lifi' : 'standard',
+      trade_type: model.route === 'fuse' ? 'standard' : model.route,
       flow: 'new',
       input_currency: fromAsset?.symbol,
       output_currency: toAsset?.symbol,
@@ -187,6 +187,10 @@ const SwapReviewScreen: React.FC = () => {
         </View>
 
         <DetailCard rows={swapDetailRows(model)} />
+
+        {model.notice ? (
+          <Text className="px-1 text-sm leading-5 text-white/60">{model.notice}</Text>
+        ) : null}
 
         {priceMoved || stopped ? (
           <View className="flex-row gap-2 rounded-[15px] bg-[rgba(148,242,127,0.12)] px-4 py-3">

@@ -104,7 +104,11 @@ export interface CrossChainSendConfig {
 
 export interface CrossChainSendQuote {
   quoteId: string;
+  /** Where the send leaves from: Fuse, or Ethereum, Base or BNB Chain into Fuse. */
+  srcChainId?: number;
   token: CrossChainSendToken;
+  /** Decimals of the coin sent, which every amount here is in: 18 from BNB Chain, else 6. */
+  decimals?: number;
   dstChainId: number;
   dstEid: number;
   oft: string;
@@ -147,6 +151,8 @@ export interface CrossChainSendVoucher {
 }
 
 export interface CrossChainSendAuthoriseRequest {
+  /** Fuse when left out. */
+  srcChainId?: number;
   token: CrossChainSendToken;
   dstChainId: number;
   recipient: string;
