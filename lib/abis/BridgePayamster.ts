@@ -90,6 +90,31 @@ export default narrow([
   },
   {
     type: 'function',
+    name: 'lifiCall',
+    inputs: [
+      {
+        name: 'v',
+        type: 'tuple',
+        internalType: 'struct BridgePaymaster.LifiVoucher',
+        components: [
+          { name: 'from', type: 'address', internalType: 'address' },
+          { name: 'target', type: 'address', internalType: 'address' },
+          { name: 'token', type: 'address', internalType: 'address' },
+          { name: 'amount', type: 'uint256', internalType: 'uint256' },
+          { name: 'dataHash', type: 'bytes32', internalType: 'bytes32' },
+          { name: 'nativeFee', type: 'uint256', internalType: 'uint256' },
+          { name: 'nonce', type: 'uint256', internalType: 'uint256' },
+          { name: 'deadline', type: 'uint64', internalType: 'uint64' },
+        ],
+      },
+      { name: 'data', type: 'bytes', internalType: 'bytes' },
+      { name: 'signature', type: 'bytes', internalType: 'bytes' },
+    ],
+    outputs: [{ name: 'transactionId', type: 'bytes32', internalType: 'bytes32' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
     name: 'minSponsoredAmount',
     inputs: [
       {

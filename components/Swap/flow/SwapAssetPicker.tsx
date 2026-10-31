@@ -7,7 +7,7 @@ import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
 import { Text } from '@/components/ui/text';
 import { CHAIN_NAMES } from '@/constants/chains';
 import { SWAP_MODAL } from '@/constants/modals';
-import { isSwapRouteOpen, solidBridgeRoute } from '@/constants/swapChains';
+import { isSwapPairOpen } from '@/constants/swapChains';
 import { useSwapAssets } from '@/hooks/swap/useSwapAssets';
 import { useSwapDestinations } from '@/hooks/swap/useSwapDestinations';
 import { useSwapFlow } from '@/hooks/swap/useSwapFlow';
@@ -75,8 +75,6 @@ const Balance = ({ usd, amount, symbol }: { usd: number; amount: number; symbol:
 /** How a coin on "You get" reaches the user from what they pay with. */
 const arrivalHint = (from: SwapAsset | undefined, to: SwapAsset) => {
   if (!from || from.chainId === to.chainId) return 'Same network, straight away';
-  const bridge = solidBridgeRoute(from, to);
-  if (bridge?.thenSwap) return `Arrives as ${bridge.token}, then you swap it`;
   return `Arrives on ${chainName(to.chainId)} in a few minutes`;
 };
 
@@ -146,8 +144,8 @@ const NetworkStep = ({
 /**
  * Screens 2 and 3 of the swap: the coins, one row per asset rather than per
  * contract. "You pay" lists what's held; "You get" what the paying coin can
- * become, from the backend's route map and Solid's bridge. An asset on more
- * than one network asks which network next.
+ * become, from the route matrix and the backend's route map. An asset on
+ * more than one network asks which network next.
  */
 const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
   const { fromAsset } = useSwapFlow();
@@ -182,10 +180,7 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
         side === 'pay' &&
         pay.currencyId &&
         get.currencyId &&
-        !isSwapRouteOpen(
-          { chainId: pay.chainId, address: pay.currencyId },
-          { chainId: get.chainId, address: get.currencyId },
-        )
+        !isSwapPairOpen(pay.chainId, get.chainId)
       ) {
         selectCurrency(SwapField.OUTPUT, undefined, pay.chainId);
       }

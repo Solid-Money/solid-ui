@@ -2,8 +2,7 @@ import { fuse } from 'viem/chains';
 
 import { fallbackTierFees, formatFeeValue } from '@/components/Rewards/NewRewards/tierFees';
 import {
-  isSwapRouteOpen,
-  solidBridgeRoute,
+  isSwapPairOpen,
   SWAP_CHAIN_IDS,
   SWAP_LIST,
   SwapAssetCategory,
@@ -318,11 +317,12 @@ export function payAssetSections(
  * asset the "You pay" one can become can be picked, arriving on the network
  * quickest to reach: the same one when it's there, then in `SWAP_CHAIN_IDS`
  * order, every reachable network among its `members`. The rest is greyed with
- * why. Only pairs `isSwapRouteOpen` allows can be picked.
+ * why. Only pairs `isSwapPairOpen` allows can be picked.
  *
  * `reachable` is the backend's answer for the "You pay" token, as
  * `chainId:address` keys. Null while it loads or when it couldn't be read: the
- * pairs `isSwapRouteOpen` allows are offered and the quote has the last word.
+ * pairs `isSwapPairOpen` allows are offered and the quote has the last word.
+ * It is LI.FI's route map, so it only speaks for pairs off Fuse.
  */
 export function getAssetSections(
   assets: SwapAssetWithBalance[],
@@ -344,17 +344,12 @@ export function getAssetSections(
   const canBecome = (asset: SwapAssetWithBalance) => {
     if (!onList(asset) || isFrom(asset)) return false;
     if (!from) return true;
-    if (!isSwapRouteOpen(from, asset)) return false;
-    // A Fuse coin reaches every Fuse coin through Algebra, and Solid's bridge
-    // carries its own pairs; the backend's route map is LI.FI's and speaks for
-    // neither.
-    const onAlgebra = from.chainId === fuse.id && asset.chainId === fuse.id;
-    return (
-      !reachable ||
-      onAlgebra ||
-      !!solidBridgeRoute(from, asset) ||
-      reachable.has(swapAssetKey(asset))
-    );
+    if (!isSwapPairOpen(from.chainId, asset.chainId)) return false;
+    // A Fuse coin reaches every Fuse coin through Algebra. Between Fuse and
+    // another network LI.FI goes over Stargate with the paymaster paying its
+    // fee, which LI.FI's route map doesn't list; the quote has the last word.
+    const touchesFuse = from.chainId === fuse.id || asset.chainId === fuse.id;
+    return !reachable || touchesFuse || reachable.has(swapAssetKey(asset));
   };
 
   const preference = (asset: SwapAsset) =>

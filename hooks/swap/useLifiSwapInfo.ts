@@ -235,10 +235,11 @@ function useLifiSwapInfoState(): LifiSwapInfo {
 
   // LI.FI's transaction carries a native value: the amount itself on a native
   // swap, and on some routes a bridge fee paid on top. Gas is sponsored, that
-  // value is not, so the Safe has to hold it on the source chain.
+  // value is not, so the Safe has to hold it on the source chain. A sponsored
+  // quote's bridge fee is the paymaster's, and its amount is the balance check's.
   const activeQuote = canQuote ? quote : undefined;
   const nativeShortfall = useMemo(() => {
-    if (!activeQuote || !fromAsset) return undefined;
+    if (!activeQuote || !fromAsset || activeQuote.sponsorship) return undefined;
     const required = BigInt(activeQuote.transactionRequest.value || '0');
     if (required <= 0n) return undefined;
     const native = findSwapAsset(assets, fromAsset.chainId, zeroAddress);

@@ -21,7 +21,7 @@ jest.mock('@/constants/chains', () => ({ CHAIN_NAMES: { 122: 'Fuse', 8453: 'Base
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
-jest.mock('@/hooks/swap/useSwapFlow', () => ({ useSwapFlow: () => ({ fromAsset: undefined }) }));
+jest.mock('@/hooks/swap/useSwapFlow', () => ({ useSwapFlow: () => ({ fromAsset: mockFrom }) }));
 jest.mock('@/hooks/swap/useSwapAssets', () => ({
   useSwapAssets: () => ({ assets: mockAssets, isLoading: false }),
 }));
@@ -29,8 +29,8 @@ jest.mock('@/hooks/swap/useSwapDestinations', () => ({ useSwapDestinations: () =
 jest.mock('@/store/swapStore', () => {
   const state = () => ({
     actions: { setModal: mockSetModal, selectCurrency: mockSelectCurrency },
-    INPUT: { currencyId: undefined, chainId: 122 },
-    OUTPUT: { currencyId: undefined, chainId: 122 },
+    INPUT: mockPair.INPUT,
+    OUTPUT: mockPair.OUTPUT,
   });
   const useSwapState = (selector: any) => selector(state());
   useSwapState.getState = state;
@@ -43,6 +43,13 @@ jest.mock('@/store/swapStore', () => {
 const mockSetModal = jest.fn();
 const mockSelectCurrency = jest.fn();
 const mockAssetSelection = jest.fn();
+let mockFrom: any;
+type Side = { currencyId: string | undefined; chainId: number };
+let mockPair: { INPUT: Side; OUTPUT: Side };
+const NO_PAIR = {
+  INPUT: { currencyId: undefined, chainId: 122 },
+  OUTPUT: { currencyId: undefined, chainId: 122 },
+};
 
 const coin = (symbol: string, chainId: number, address: string, balance: number) => ({
   chainId,
@@ -63,9 +70,9 @@ const usdtFuse = coin('USDT', 122, '0x3695Dd1D1D43B794C0B13eb8be8419Eb3ac22bf7',
 let mockAssets = [usdcFuse, usdcBase, usdtFuse];
 
 let root: any;
-const mount = () =>
+const mount = (side: 'pay' | 'get' = 'pay') =>
   act(() => {
-    root = create(<SwapAssetPicker side="pay" />);
+    root = create(<SwapAssetPicker side={side} />);
   });
 const words = (node: any): string => {
   if (typeof node === 'string') return node;
@@ -89,6 +96,8 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   mockAssets = [usdcFuse, usdcBase, usdtFuse];
+  mockFrom = undefined;
+  mockPair = NO_PAIR;
 });
 afterEach(() => act(() => root.unmount()));
 
@@ -120,4 +129,44 @@ it('picks a coin held on one network straight away', () => {
   press('USDT,');
   expect(mockAssetSelection).toHaveBeenCalledWith(SwapField.INPUT, usdtFuse);
   expect(mockSetModal).toHaveBeenCalledWith(SWAP_MODAL.OPEN_FORM);
+});
+
+it('keeps a Fuse coin on "You get" when paying with a Base coin', () => {
+  mockPair = {
+    INPUT: { currencyId: usdcBase.address, chainId: 8453 },
+    OUTPUT: { currencyId: usdtFuse.address, chainId: 122 },
+  };
+  mount();
+  press('USDC,');
+  press('USDC on Base');
+  expect(mockSelectCurrency).not.toHaveBeenCalled();
+});
+
+it('clears "You get" when the network paid from can’t reach it', () => {
+  mockPair = {
+    INPUT: { currencyId: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', chainId: 42161 },
+    OUTPUT: { currencyId: usdtFuse.address, chainId: 122 },
+  };
+  mount();
+  press('USDT,');
+  expect(mockSelectCurrency).toHaveBeenCalledWith(SwapField.OUTPUT, undefined, 42161);
+});
+
+it('offers Fuse coins for a Base coin, arriving on Fuse', () => {
+  mockFrom = usdcBase;
+  mount('get');
+  expect(text()).toContain('Dollar coin · card and Send use it · arrives on Fuse');
+  press('USDT,');
+  expect(mockAssetSelection).toHaveBeenCalledWith(SwapField.OUTPUT, usdtFuse);
+});
+
+it('offers Base coins for a Fuse coin, asking which network', () => {
+  mockFrom = usdtFuse;
+  mount('get');
+  press('USDC,');
+  expect(text()).toContain('Get USDC on');
+  expect(text()).toContain('Same network, straight away');
+  expect(text()).toContain('Arrives on Base in a few minutes');
+  press('USDC on Base');
+  expect(mockAssetSelection).toHaveBeenCalledWith(SwapField.OUTPUT, usdcBase);
 });

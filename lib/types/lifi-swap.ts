@@ -98,6 +98,38 @@ export interface LifiSwapQuote {
     value: string;
     chainId: number;
   };
+  /**
+   * Set between Fuse and Ethereum, Base or BNB Chain, where LI.FI's only
+   * bridge is Stargate and its fee is in the sending network's native coin.
+   * The sending network's BridgePaymaster makes LI.FI's call with
+   * `transactionRequest.data` and pays that fee, under this voucher. Absent
+   * when the route needs no fee on top, and from a backend that predates it.
+   */
+  sponsorship?: LifiSwapSponsorship;
+}
+
+/**
+ * The paymaster's side of a sponsored LI.FI swap. Mirrors solid-backend's
+ * quote response; uints are decimal strings.
+ */
+export interface LifiSwapSponsorship {
+  /** The sending network's BridgePaymaster; the swap calls it rather than LI.FI. */
+  paymaster: `0x${string}`;
+  /** Wrap the FUSE paid with into WFUSE first, which the swap is quoted from (Fuse only). */
+  wrapNative: boolean;
+  /** `BridgePaymaster.LifiVoucher`, field for field. */
+  voucher: {
+    from: string;
+    target: string;
+    /** The coin the swap takes; the zero address for the network's native coin. */
+    token: string;
+    amount: string;
+    dataHash: string;
+    nativeFee: string;
+    nonce: string;
+    deadline: string;
+  };
+  signature: `0x${string}`;
 }
 
 /** A token the "You get" picker can offer for one "You pay" token. */

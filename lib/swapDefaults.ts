@@ -2,7 +2,7 @@ import { zeroAddress } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { USDC_STARGATE } from '@/constants/addresses';
-import { isSwapPairOpen, SWAP_LIST } from '@/constants/swapChains';
+import { SWAP_LIST } from '@/constants/swapChains';
 import { TokenBalance, TokenType } from '@/lib/types';
 
 export interface SwapSide {
@@ -45,7 +45,7 @@ const listedOn = (chainId: number, name: string): SwapSide | undefined => {
   return listing && { address: listing.address, chainId };
 };
 
-/** USDC, or USDT on USDC's own page, on a network that can't swap with Fuse yet. */
+/** USDC, or USDT on USDC's own page, on a network other than Fuse. */
 function partnerOffFuse(coin: SwapSide): SwapSide | undefined {
   const usdc = listedOn(coin.chainId, 'USDC');
   const usdt = listedOn(coin.chainId, 'USDT');
@@ -57,7 +57,7 @@ function partnerOffFuse(coin: SwapSide): SwapSide | undefined {
  * A coin page's Swap opens on its coin: paying with it when it's held,
  * getting it with USDC when it isn't. USDC's own page pairs it with USD Yield.
  * A coin on Ethereum, Base or BNB Chain pairs with USDC on its own network,
- * since those don't swap with Fuse yet.
+ * which swaps straight away rather than across networks.
  */
 export function coinSwapPreset(token: TokenBalance | undefined): SwapPreset {
   if (!token) return {};
@@ -66,7 +66,7 @@ export function coinSwapPreset(token: TokenBalance | undefined): SwapPreset {
     chainId: token.chainId,
   };
   const other =
-    (!isSwapPairOpen(coin.chainId, fuse.id) && partnerOffFuse(coin)) ||
+    (coin.chainId !== fuse.id && partnerOffFuse(coin)) ||
     (sameSide(coin, USDC_ON_FUSE) ? USD_YIELD_ON_FUSE : USDC_ON_FUSE);
   return holds(token) ? { input: coin, output: other } : { input: other, output: coin };
 }

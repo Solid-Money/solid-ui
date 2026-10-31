@@ -3,9 +3,7 @@ import { formatUnits, zeroAddress } from 'viem';
 import { fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
-import { SolidBridgeRoute } from '@/constants/swapChains';
 import { SwapFlowError, SwapFlowModel, SwapFlowStop } from '@/hooks/swap/swapFlowTypes';
-import { useBridgeFlowModel } from '@/hooks/swap/useBridgeFlowModel';
 import { useLifiSwapCallback } from '@/hooks/swap/useLifiSwapCallback';
 import { LifiSwapInfoProvider, useLifiSwapInfo } from '@/hooks/swap/useLifiSwapInfo';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
@@ -25,7 +23,6 @@ import {
   SwapReceipt,
   useDerivedSwapInfo,
   useIsLifiSwap,
-  useSolidBridgeRoute,
   useSwapState,
 } from '@/store/swapStore';
 import { useUserState } from '@/store/userStore';
@@ -41,22 +38,12 @@ export function useSwapFlow(): SwapFlowModel {
   return model;
 }
 
-/**
- * Quotes and executes on Algebra for a Fuse pair, over Solid's bridge for the
- * pairs it takes between Fuse and another network, and on LI.FI for the rest.
- */
+/** Quotes and executes on Algebra for a Fuse pair, on LI.FI for anything else. */
 export function SwapFlowProvider({ children }: { children: ReactNode }) {
-  const bridge = useSolidBridgeRoute();
   const isLifi = useIsLifiSwap();
-  if (bridge) return createElement(BridgeFlow, { route: bridge }, children);
   return isLifi
     ? createElement(LifiSwapInfoProvider, null, createElement(LifiFlow, null, children))
     : createElement(DerivedSwapInfoProvider, null, createElement(FuseFlow, null, children));
-}
-
-function BridgeFlow({ route, children }: { route: SolidBridgeRoute; children?: ReactNode }) {
-  const model = useBridgeFlowModel(route);
-  return createElement(SwapFlowContext.Provider, { value: model }, children);
 }
 
 function LifiFlow({ children }: { children: ReactNode }) {
