@@ -67,7 +67,8 @@ export function useLifiSwapCallback() {
       const fromAmount = BigInt(quote.fromAmount);
       const isNativeIn = BigInt(quote.fromToken.address) === 0n;
       const isCrossChain = quote.fromChainId !== quote.toChainId;
-      const fromSymbol = quote.fromToken.symbol;
+      // A sponsored swap from FUSE is quoted from WFUSE, which it wraps first; the user paid FUSE.
+      const fromSymbol = quote.sponsorship?.wrapNative ? 'FUSE' : quote.fromToken.symbol;
       const toSymbol = quote.toToken.symbol;
 
       const accountSession = useRewardsUpgradeStore.getState().session;
