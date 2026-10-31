@@ -18,11 +18,10 @@ export class SwapFlowStop extends Error {
 
 /**
  * Everything the new swap screens read and do, the same for a swap on Fuse
- * (Algebra), one touching another network (LI.FI), and a move between Fuse and
- * another network over Solid's bridge.
+ * (Algebra) and one touching another network (LI.FI).
  */
 export interface SwapFlowModel {
-  route: 'fuse' | 'lifi' | 'bridge';
+  route: 'fuse' | 'lifi';
   /**
    * A Fuse pair that isn't a swap: wrapping FUSE or migrating a pegged coin.
    * The flow hands those to the old form, which knows how.
@@ -48,8 +47,6 @@ export interface SwapFlowModel {
   /** 0 when it lands in the same transaction. */
   etaSeconds: number | undefined;
   isCrossChain: boolean;
-  /** A line under the details, for what the numbers alone don't say. */
-  notice?: string;
   isQuoting: boolean;
   error: SwapFlowError | undefined;
   /** A price is on screen for what's typed and nothing stands in the way. */

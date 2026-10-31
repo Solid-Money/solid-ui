@@ -49,7 +49,7 @@ export function swapDetailRows(model: SwapFlowModel): DetailRowSpec[] {
   ];
 }
 
-/** Rate, fee, network fee and arrival, and any notice, under the form. */
+/** Rate, fee, network fee and arrival, under the form and on the review screen. */
 const SwapDetailsCard = ({
   model,
   showFootnote = true,
@@ -62,7 +62,6 @@ const SwapDetailsCard = ({
     {showFootnote && model.feeFootnote ? (
       <Text className="px-1 text-xs text-white/50">{model.feeFootnote}</Text>
     ) : null}
-    {model.notice ? <Text className="px-1 text-sm text-white/60">{model.notice}</Text> : null}
   </View>
 );
 

@@ -1,12 +1,7 @@
 import { WNATIVE } from '@cryptoalgebra/fuse-sdk';
 import { zeroAddress } from 'viem';
 
-import {
-  isSwapPairOpen,
-  isSwapRouteOpen,
-  solidBridgeRoute,
-  SWAP_LIST,
-} from '@/constants/swapChains';
+import { isSwapPairOpen, SWAP_LIST } from '@/constants/swapChains';
 import { ADDRESSES } from '@/lib/config';
 import {
   assetDisplayName,
@@ -21,6 +16,7 @@ const BASE = 8453;
 const ETHEREUM = 1;
 const BSC = 56;
 const ARBITRUM = 42161;
+const POLYGON = 137;
 
 const NAMES: Record<number, string> = {
   [FUSE]: 'Fuse',
@@ -82,67 +78,19 @@ describe('the route matrix', () => {
     expect(isSwapPairOpen(BSC, BASE)).toBe(true);
   });
 
-  it('keeps Fuse apart from other networks, and leaves the rest out', () => {
-    expect(isSwapPairOpen(FUSE, BASE)).toBe(false);
-    expect(isSwapPairOpen(ETHEREUM, FUSE)).toBe(false);
-    expect(isSwapPairOpen(ARBITRUM, BASE)).toBe(false);
-    expect(isSwapPairOpen(ARBITRUM, ARBITRUM)).toBe(false);
-  });
-});
-
-describe('Solid’s bridge', () => {
-  const coin = (name: string, chainId: number) => ({ chainId, address: listedAt(name, chainId) });
-
-  it('moves USDC between Fuse and Base both ways, landing as the same coin', () => {
-    expect(solidBridgeRoute(coin('USDCe', FUSE), coin('USDC', BASE))).toEqual({
-      token: 'USDC',
-      srcChainId: FUSE,
-      dstChainId: BASE,
-      landsAs: { chainId: BASE, address: listedAt('USDC', BASE) },
-      thenSwap: false,
-    });
-    expect(solidBridgeRoute(coin('USDC', BASE), coin('USDCe', FUSE))).toMatchObject({
-      srcChainId: BASE,
-      dstChainId: FUSE,
-      thenSwap: false,
-    });
-  });
-
-  it('lands USDC on Fuse and swaps it after, for FUSE and WFUSE', () => {
-    for (const name of ['FUSE', 'WFUSE', 'USDT']) {
-      expect(solidBridgeRoute(coin('USDC', BASE), coin(name, FUSE))).toMatchObject({
-        token: 'USDC',
-        landsAs: { chainId: FUSE, address: listedAt('USDCe', FUSE) },
-        thenSwap: true,
-      });
+  it('swaps Fuse with Ethereum, Base and BNB Chain both ways', () => {
+    for (const other of [ETHEREUM, BASE, BSC]) {
+      expect(isSwapPairOpen(FUSE, other)).toBe(true);
+      expect(isSwapPairOpen(other, FUSE)).toBe(true);
     }
   });
 
-  it('moves USDT where a pool has it, and never into Base', () => {
-    expect(solidBridgeRoute(coin('USDT', BSC), coin('USDT', FUSE))?.thenSwap).toBe(false);
-    expect(solidBridgeRoute(coin('USDT', FUSE), coin('USDT', ETHEREUM))?.token).toBe('USDT');
-    expect(solidBridgeRoute(coin('USDT', FUSE), coin('USDT', BASE))).toBeUndefined();
-    expect(solidBridgeRoute(coin('USDT', BASE), coin('USDT', FUSE))).toBeUndefined();
-  });
-
-  it('takes no other pair', () => {
-    // Out of Fuse it lands as the coin sent, with no swap on the other side.
-    expect(solidBridgeRoute(coin('USDCe', FUSE), coin('EURC', BASE))).toBeUndefined();
-    // Only USDC and USDT ride it.
-    expect(solidBridgeRoute(coin('FUSE', FUSE), coin('USDC', BASE))).toBeUndefined();
-    expect(solidBridgeRoute(coin('ETH', BASE), coin('USDCe', FUSE))).toBeUndefined();
-    // Earn's coins have no price for the estimate.
-    expect(solidBridgeRoute(coin('USDC', BASE), coin('soUSD', FUSE))).toBeUndefined();
-    // Fuse on both sides, or neither, isn't the bridge's.
-    expect(solidBridgeRoute(coin('USDC', BASE), coin('USDC', ETHEREUM))).toBeUndefined();
-    expect(solidBridgeRoute(coin('USDCe', FUSE), coin('USDT', FUSE))).toBeUndefined();
-    expect(solidBridgeRoute(coin('USDC', ARBITRUM), coin('USDCe', FUSE))).toBeUndefined();
-  });
-
-  it('opens the bridge’s pairs alongside the swaps', () => {
-    expect(isSwapRouteOpen(coin('USDCe', FUSE), coin('USDC', BASE))).toBe(true);
-    expect(isSwapRouteOpen(coin('USDC', BASE), coin('USDC', ETHEREUM))).toBe(true);
-    expect(isSwapRouteOpen(coin('FUSE', FUSE), coin('USDC', BASE))).toBe(false);
+  it('leaves Arbitrum and Polygon out, Fuse included', () => {
+    expect(isSwapPairOpen(FUSE, ARBITRUM)).toBe(false);
+    expect(isSwapPairOpen(ARBITRUM, FUSE)).toBe(false);
+    expect(isSwapPairOpen(POLYGON, FUSE)).toBe(false);
+    expect(isSwapPairOpen(ARBITRUM, BASE)).toBe(false);
+    expect(isSwapPairOpen(ARBITRUM, ARBITRUM)).toBe(false);
   });
 });
 
@@ -292,8 +240,11 @@ describe('You get', () => {
     ]);
     const row = (name: string) =>
       sections.flatMap(section => section.rows).find(candidate => candidate.name === name)!;
-    expect(row('EURC')).toMatchObject({ disabled: true, subtitle: 'Not with USDC on Fuse yet' });
-    expect(row('ETH')).toMatchObject({ disabled: true, subtitle: 'Not with USDC on Fuse yet' });
+    expect(row('EURC')).toMatchObject({
+      disabled: false,
+      subtitle: 'Euro coin · arrives on Base',
+    });
+    expect(row('ETH')).toMatchObject({ disabled: false, subtitle: 'Ether · arrives on Base' });
     expect(row('ETH Yield')).toMatchObject({
       disabled: true,
       subtitle: 'Deposit it in Earn instead',
@@ -309,21 +260,43 @@ describe('You get', () => {
     expect(fuseRow).toMatchObject({ disabled: true, subtitle: 'You’re paying with this' });
   });
 
-  it('offers every Fuse coin for a Fuse coin, and nothing elsewhere', () => {
+  it('offers Base, Ethereum and BNB Chain coins for a Fuse coin, the Fuse one first', () => {
     const from = find('soUSD', FUSE);
-    expect(titles(offered(all, { from, reachable: null, chainName }))).toEqual([
-      'Stablecoins: USDC, USDT',
+    const sections = offered(all, { from, reachable: null, chainName });
+    expect(titles(sections)).toEqual([
+      'Stablecoins: USDC, USDT, EURC',
       'Earn: FUSE Yield',
-      'Crypto: FUSE, WFUSE',
+      'Crypto: FUSE, WFUSE, ETH, WETH, cbBTC, WBTC, AAVE, ENA, SOL, UNI',
     ]);
+    const [usdc, , eurc] = sections[0].rows;
+    expect(usdc.members).toEqual([
+      find('USDC', FUSE),
+      find('USDC', BASE),
+      find('USDC', ETHEREUM),
+      find('USDC', BSC),
+    ]);
+    expect(eurc).toMatchObject({
+      asset: find('EURC', BASE),
+      subtitle: 'Euro coin · arrives on Base',
+    });
   });
 
-  it('offers WFUSE for any Fuse coin, FUSE included', () => {
+  it('offers WFUSE and the other networks’ coins for FUSE', () => {
     const from = find('FUSE', FUSE);
     const crypto = offered(all, { from, reachable: null, chainName }).find(
       section => section.key === 'crypto',
     );
-    expect(crypto?.rows.map(row => row.name)).toEqual(['WFUSE']);
+    expect(crypto?.rows.map(row => row.name)).toEqual([
+      'WFUSE',
+      'ETH',
+      'WETH',
+      'cbBTC',
+      'WBTC',
+      'AAVE',
+      'ENA',
+      'SOL',
+      'UNI',
+    ]);
   });
 
   // The flow hands FUSE to WFUSE to the old wrap form when "You get" is the
@@ -333,11 +306,12 @@ describe('You get', () => {
     expect(wfuse?.address.toLowerCase()).toBe(WNATIVE[FUSE].address.toLowerCase());
   });
 
-  it('offers Fuse over Solid’s bridge for Base USDC, and the other networks over LI.FI', () => {
+  it('offers Fuse coins for a Base coin, Earn included, and the other networks', () => {
     const from = find('USDC', BASE);
     const sections = offered(all, { from, reachable: null, chainName });
     expect(titles(sections)).toEqual([
       'Stablecoins: USDC, USDT, EURC',
+      'Earn: USD Yield, FUSE Yield',
       'Crypto: FUSE, WFUSE, ETH, WETH, cbBTC, WBTC, AAVE, ENA, SOL, UNI',
     ]);
     const [usdc, usdt, eurc] = sections[0].rows;
@@ -347,42 +321,51 @@ describe('You get', () => {
     expect(usdt.subtitle).toBe('Dollar coin');
     expect(usdt.members).toContain(find('USDT', FUSE));
     expect(eurc.asset).toBe(find('EURC', BASE));
-    expect(sections[1].rows[0].subtitle).toBe('Fuse token · arrives on Fuse');
+    expect(sections[1].rows[0].subtitle).toBe('Earn on USD · arrives on Fuse');
+    expect(sections[2].rows[0].subtitle).toBe('Fuse token · arrives on Fuse');
   });
 
   it('delivers on the paying network when it can, then Fuse, then Base before Ethereum', () => {
     const from = find('USDT', BSC);
-    const [stablecoins, crypto] = offered(all, { from, reachable: null, chainName });
-    expect(stablecoins.rows.map(row => row.asset)).toEqual([
+    const sections = offered(all, { from, reachable: null, chainName });
+    const inSection = (sectionKey: string) =>
+      sections.find(section => section.key === sectionKey)!.rows;
+    expect(inSection('stablecoins').map(row => row.asset)).toEqual([
       find('USDC', BSC),
       find('USDT', FUSE),
       find('EURC', BASE),
     ]);
-    expect(crypto.rows.find(row => row.name === 'ETH')?.subtitle).toBe('Ether · arrives on Base');
+    expect(inSection('crypto').find(row => row.name === 'ETH')?.subtitle).toBe(
+      'Ether · arrives on Base',
+    );
   });
 
-  it('leaves Earn out of what Base USDC can become on Fuse', () => {
-    const from = find('USDC', BASE);
-    const sections = offered(all, { from, reachable: null, chainName });
-    expect(sections.find(section => section.key === 'earn')).toBeUndefined();
-  });
-
-  it('keeps to the backend’s routes once it has them', () => {
+  it('keeps to the backend’s routes off Fuse once it has them, and offers Fuse whatever they say', () => {
     const from = find('ETH', BASE);
     const reachable = new Set([key(find('USDT', BASE)), key(find('EURC', ETHEREUM))]);
-    const sections = offered(all, { from, reachable, chainName });
-    expect(titles(sections)).toEqual(['Stablecoins: USDT, EURC']);
-    expect(sections[0].rows[1].asset).toBe(find('EURC', ETHEREUM));
+    const sections = getAssetSections(all, { from, reachable, chainName });
+    const rows = sections.flatMap(section => section.rows);
+    expect(titles(offered(all, { from, reachable, chainName }))).toEqual([
+      'Stablecoins: USDC, USDT, EURC',
+      'Earn: USD Yield, FUSE Yield',
+      'Crypto: FUSE, WFUSE',
+    ]);
+    const row = (name: string) => rows.find(candidate => candidate.name === name)!;
+    // LI.FI's map has no route to USDC off Fuse, so it arrives on Fuse.
+    expect(row('USDC').members).toEqual([find('USDC', FUSE)]);
+    expect(row('USDT').asset).toBe(find('USDT', BASE));
+    expect(row('EURC').asset).toBe(find('EURC', ETHEREUM));
+    expect(row('WETH')).toMatchObject({ disabled: true, subtitle: 'Not with ETH on Base yet' });
   });
 
-  it('offers every Fuse coin from a Fuse coin, and the bridge’s pairs, whatever LI.FI says', () => {
+  it('offers every coin from a Fuse coin, whatever LI.FI’s route map says', () => {
     const from = find('USDC', FUSE);
     const reachable = new Set<string>();
     const sections = offered(all, { from, reachable, chainName });
     expect(titles(sections)).toEqual([
-      'Stablecoins: USDC, USDT',
+      'Stablecoins: USDC, USDT, EURC',
       'Earn: USD Yield, FUSE Yield',
-      'Crypto: FUSE, WFUSE',
+      'Crypto: FUSE, WFUSE, ETH, WETH, cbBTC, WBTC, AAVE, ENA, SOL, UNI',
     ]);
     expect(sections[0].rows[0].members).toEqual([
       find('USDC', BASE),
