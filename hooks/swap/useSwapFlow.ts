@@ -161,7 +161,8 @@ function useLifiFlowModel(): SwapFlowModel {
     return {
       kind: result.kind === 'bridging' ? 'bridging' : 'completed',
       fromAmount: human(fresh.fromAmount, fresh.fromToken.decimals),
-      fromName: assetDisplayName(fresh.fromToken),
+      // What the user picked: a swap from FUSE is quoted from the WFUSE it wraps first.
+      fromName: assetDisplayName(fromAsset ?? fresh.fromToken),
       toAmount: human(fresh.toAmount, fresh.toToken.decimals),
       toName: assetDisplayName(fresh.toToken),
       toAsset: toAsset!,
@@ -172,7 +173,7 @@ function useLifiFlowModel(): SwapFlowModel {
       toChainId: fresh.toChainId,
       clientTxId: result.kind === 'bridging' ? result.clientTxId : undefined,
     };
-  }, [refreshQuote, swap, toAsset, fee.usd]);
+  }, [refreshQuote, swap, fromAsset, toAsset, fee.usd]);
 
   return {
     route: 'lifi',
