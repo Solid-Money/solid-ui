@@ -312,7 +312,8 @@ function useLifiSwapInfoState(): LifiSwapInfo {
   };
 }
 
-function toBaseUnits(value: string, asset: SwapAsset | undefined): bigint | undefined {
+/** A typed amount in `asset`'s base units; undefined when it isn't a positive amount. */
+export function toBaseUnits(value: string, asset: SwapAsset | undefined): bigint | undefined {
   if (!asset || !value || value === '.') return undefined;
   try {
     // Trim past the token's precision rather than refuse the whole amount.

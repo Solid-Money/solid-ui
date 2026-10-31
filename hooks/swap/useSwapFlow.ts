@@ -3,6 +3,9 @@ import { formatUnits, zeroAddress } from 'viem';
 import { fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
+import { SolidBridgeRoute } from '@/constants/swapChains';
+import { SwapFlowError, SwapFlowModel, SwapFlowStop } from '@/hooks/swap/swapFlowTypes';
+import { useBridgeFlowModel } from '@/hooks/swap/useBridgeFlowModel';
 import { useLifiSwapCallback } from '@/hooks/swap/useLifiSwapCallback';
 import { LifiSwapInfoProvider, useLifiSwapInfo } from '@/hooks/swap/useLifiSwapInfo';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
@@ -22,65 +25,13 @@ import {
   SwapReceipt,
   useDerivedSwapInfo,
   useIsLifiSwap,
+  useSolidBridgeRoute,
   useSwapState,
 } from '@/store/swapStore';
 import { useUserState } from '@/store/userStore';
 
-/** A reason the swap can't go ahead, with the copy the form shows for it. */
-export interface SwapFlowError {
-  code: SwapErrorCode;
-  copy: string;
-}
-
-/** Thrown by `execute` for a stop the user should see, rather than a failure to report. */
-export class SwapFlowStop extends Error {
-  constructor(readonly code: SwapErrorCode) {
-    super(swapErrorCopy(code));
-    this.name = 'SwapFlowStop';
-  }
-}
-
-/**
- * Everything the new swap screens read and do, the same for a swap on Fuse
- * (Algebra) and one touching another network (LI.FI).
- */
-export interface SwapFlowModel {
-  route: 'fuse' | 'lifi';
-  /**
-   * A Fuse pair that isn't a swap: wrapping FUSE or migrating a pegged coin.
-   * The flow hands those to the old form, which knows how.
-   */
-  isLegacyPair: boolean;
-  fromAsset: SwapAssetWithBalance | SwapAsset | undefined;
-  toAsset: SwapAssetWithBalance | SwapAsset | undefined;
-  /** Base units; undefined while balances load. */
-  fromBalance: bigint | undefined;
-  /** The whole balance as typed text; gas is sponsored, so all of it can go. */
-  maxValue: string | undefined;
-  typedValue: string;
-  /** Human units of what arrives; undefined until priced. */
-  toAmount: number | undefined;
-  fromUsd: number | undefined;
-  toUsd: number | undefined;
-  /** How much "You get" one "You pay" buys, fees included. */
-  rate: number | undefined;
-  /** Every fee as one figure; null when the route left one unpriced. */
-  feeUsd: number | null | undefined;
-  feePercentage: number | null | undefined;
-  feeFootnote: string | undefined;
-  /** 0 when it lands in the same transaction. */
-  etaSeconds: number | undefined;
-  isCrossChain: boolean;
-  isQuoting: boolean;
-  error: SwapFlowError | undefined;
-  /** A price is on screen for what's typed and nothing stands in the way. */
-  canReview: boolean;
-  isSending: boolean;
-  /** Re-prices now. False when the new price is worse than the one shown. */
-  recheck: () => Promise<boolean>;
-  /** Re-checks, signs and sends. Undefined when the user cancelled the signature. */
-  execute: () => Promise<SwapReceipt | undefined>;
-}
+export { SwapFlowStop };
+export type { SwapFlowError, SwapFlowModel };
 
 const SwapFlowContext = createContext<SwapFlowModel | undefined>(undefined);
 
@@ -90,12 +41,22 @@ export function useSwapFlow(): SwapFlowModel {
   return model;
 }
 
-/** Quotes and executes on Algebra for a Fuse pair, on LI.FI for anything else. */
+/**
+ * Quotes and executes on Algebra for a Fuse pair, over Solid's bridge for the
+ * pairs it takes between Fuse and another network, and on LI.FI for the rest.
+ */
 export function SwapFlowProvider({ children }: { children: ReactNode }) {
+  const bridge = useSolidBridgeRoute();
   const isLifi = useIsLifiSwap();
+  if (bridge) return createElement(BridgeFlow, { route: bridge }, children);
   return isLifi
     ? createElement(LifiSwapInfoProvider, null, createElement(LifiFlow, null, children))
     : createElement(DerivedSwapInfoProvider, null, createElement(FuseFlow, null, children));
+}
+
+function BridgeFlow({ route, children }: { route: SolidBridgeRoute; children?: ReactNode }) {
+  const model = useBridgeFlowModel(route);
+  return createElement(SwapFlowContext.Provider, { value: model }, children);
 }
 
 function LifiFlow({ children }: { children: ReactNode }) {

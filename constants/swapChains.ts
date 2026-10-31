@@ -57,11 +57,12 @@ function native(chainId: number, symbol: string, name: string): SwapAsset {
 const LIFI_SWAP_NETWORKS: ReadonlySet<number> = new Set([mainnet.id, base.id, bsc.id]);
 
 /**
- * Whether "You get" offers a coin on `toChainId` for one paid on
- * `fromChainId`. Fuse to Fuse is Algebra, and Ethereum, Base and BNB Chain swap
- * among themselves through LI.FI. Fuse to or from any other network waits for
- * Solid's own bridge: LI.FI only reaches Fuse over Stargate, which charges its
- * fee in the other network's native coin.
+ * Whether LI.FI or Algebra swaps a coin on `fromChainId` for one on
+ * `toChainId`. Fuse to Fuse is Algebra, and Ethereum, Base and BNB Chain swap
+ * among themselves through LI.FI. LI.FI only reaches Fuse over Stargate, which
+ * charges its fee in the other network's native coin, so Fuse to or from
+ * another network goes over Solid's own bridge instead (`solidBridgeRoute`),
+ * for the coins it carries.
  */
 export const isSwapPairOpen = (fromChainId: number, toChainId: number) =>
   fromChainId === fuse.id || toChainId === fuse.id
@@ -135,3 +136,73 @@ const SWAP_LISTINGS = new Map(SWAP_LIST.map(listing => [swapAssetKey(listing), l
 /** The swap list's entry for a coin; undefined when it isn't on the list. */
 export const swapListing = (asset: { chainId: number; address: string }) =>
   SWAP_LISTINGS.get(`${asset.chainId}:${asset.address.toLowerCase()}`);
+
+/** A coin Solid's own bridge carries. */
+export type SolidBridgeToken = 'USDC' | 'USDT';
+
+type CoinRef = { chainId: number; address: string };
+
+const sameCoin = (a: CoinRef, b: CoinRef) =>
+  a.chainId === b.chainId && a.address.toLowerCase() === b.address.toLowerCase();
+
+/**
+ * What Solid's bridge moves, by network: Stargate pools whose fee the sending
+ * network's BridgePaymaster fronts and takes back in the coin itself
+ * (solid-backend cross-chain-send.constants.ts). Base has no USDT pool.
+ */
+const SOLID_BRIDGE_COINS: readonly (CoinRef & { address: Address; token: SolidBridgeToken })[] = [
+  { chainId: fuse.id, address: USDC_STARGATE, token: 'USDC' },
+  { chainId: fuse.id, address: USDT_STARGATE, token: 'USDT' },
+  { chainId: base.id, address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', token: 'USDC' },
+  { chainId: mainnet.id, address: ADDRESSES.ethereum.usdc, token: 'USDC' },
+  { chainId: mainnet.id, address: ADDRESSES.ethereum.usdt, token: 'USDT' },
+  { chainId: bsc.id, address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', token: 'USDC' },
+  { chainId: bsc.id, address: '0x55d398326f99059fF775485246999027B3197955', token: 'USDT' },
+];
+
+export interface SolidBridgeRoute {
+  token: SolidBridgeToken;
+  srcChainId: number;
+  dstChainId: number;
+  /** The coin the bridge delivers. */
+  landsAs: { chainId: number; address: Address };
+  /**
+   * "You get" is another Fuse coin: once `landsAs` arrives the user swaps it
+   * on Fuse, which takes a second signature.
+   */
+  thenSwap: boolean;
+}
+
+/**
+ * The pairs Solid's bridge takes between Fuse and Ethereum, Base or BNB Chain,
+ * with no fee in ETH or BNB on top. "You pay" is USDC or USDT. Out of Fuse,
+ * "You get" is the same coin on the other network. Into Fuse it is any Fuse
+ * stablecoin or crypto on the swap list: the bridge lands USDC or USDT and
+ * Algebra takes it from there.
+ */
+export function solidBridgeRoute(from: CoinRef, to: CoinRef): SolidBridgeRoute | undefined {
+  if ((from.chainId === fuse.id) === (to.chainId === fuse.id)) return undefined;
+  if (!LIFI_SWAP_NETWORKS.has(from.chainId === fuse.id ? to.chainId : from.chainId)) {
+    return undefined;
+  }
+  const sent = SOLID_BRIDGE_COINS.find(coin => sameCoin(coin, from));
+  const landed = sent
+    ? SOLID_BRIDGE_COINS.find(coin => coin.chainId === to.chainId && coin.token === sent.token)
+    : undefined;
+  if (!sent || !landed) return undefined;
+  const thenSwap = !sameCoin(landed, to);
+  // Earn's coins are left out: "You get" shows an estimate, with no price for them.
+  const category = swapListing(to)?.category;
+  if (thenSwap && (to.chainId !== fuse.id || !category || category === 'earn')) return undefined;
+  return {
+    token: sent.token,
+    srcChainId: from.chainId,
+    dstChainId: to.chainId,
+    landsAs: { chainId: landed.chainId, address: landed.address },
+    thenSwap,
+  };
+}
+
+/** Whether "You get" offers `to` for `from`: a swap, or a move over Solid's bridge. */
+export const isSwapRouteOpen = (from: CoinRef, to: CoinRef) =>
+  isSwapPairOpen(from.chainId, to.chainId) || !!solidBridgeRoute(from, to);
