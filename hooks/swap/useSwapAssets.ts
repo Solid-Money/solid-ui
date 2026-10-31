@@ -4,6 +4,7 @@ import { Address, erc20Abi, formatUnits, zeroAddress } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { NATIVE_SWAP_ASSETS, SWAP_CHAIN_IDS, swapAssetKey } from '@/constants/swapChains';
+import { VAULTS } from '@/constants/vaults';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
 import { SWAP_TOKENS_ALL_CHAINS_KEY } from '@/hooks/useListedTokens';
 import useUser from '@/hooks/useUser';
@@ -134,6 +135,25 @@ export function useSwapAssets() {
             isNative: false,
           },
           true,
+        );
+      }
+    }
+
+    // Earn's share tokens, so each of its products has a row on the pickers
+    // even where it can't be swapped and isn't held.
+    for (const vault of VAULTS) {
+      for (const { address, chainId } of vault.vaults) {
+        if (!SWAP_CHAIN_IDS.includes(chainId) || address === zeroAddress) continue;
+        add(
+          {
+            chainId,
+            address,
+            symbol: vault.vaultToken,
+            name: vault.vaultName ?? vault.vaultToken,
+            decimals: vault.decimals,
+            isNative: false,
+          },
+          false,
         );
       }
     }

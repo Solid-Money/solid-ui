@@ -71,6 +71,12 @@ const DESCRIPTIONS: Record<string, string> = {
   UNI: 'Uniswap',
 };
 
+/** The line under a coin's name when nothing more pressing is said there. */
+const describe = (identity: SwapAssetIdentity, asset: SwapAsset) =>
+  identity.isYield
+    ? `Earn on ${identity.name.replace(' Yield', '')}`
+    : (DESCRIPTIONS[identity.name] ?? asset.name);
+
 /** Where each row sits within its section: the swap list's order. */
 const LIST_ORDER = new Map<string, number>();
 SWAP_LIST.forEach((listing, index) => {
@@ -171,22 +177,76 @@ const bySection = (rows: SwapAssetRow[]): SwapAssetSection[] => {
   ];
 };
 
+/** Earn's products, in the order Earn lists them; the ones off the swap list too. */
+const EARN_PRODUCTS = ['USD Yield', 'FUSE Yield', 'ETH Yield', 'EUR Yield'];
+
+/** A row's place within its section, after the rows that can be tapped. */
+const listOrder = (row: SwapAssetRow) =>
+  LIST_ORDER.get(row.name) ?? SWAP_LIST.length + EARN_PRODUCTS.indexOf(row.name);
+
+const byReadiness = (a: SwapAssetRow, b: SwapAssetRow) =>
+  Number(a.disabled) - Number(b.disabled) ||
+  b.balanceUsd - a.balanceUsd ||
+  listOrder(a) - listOrder(b);
+
+/** On the swap list, and in this environment's catalogue so the backend quotes it. */
+const onList = (asset: SwapAssetWithBalance) => asset.swappable && !!swapListing(asset);
+
 /**
- * "You pay": what the user holds of the swap list, one row per asset, every
- * network holding it among its `members`. Earn shows every yield position,
- * greyed where it's withdrawn in Earn rather than swapped. Any other holding
- * sits at the bottom under "Can't be swapped yet", one row per network so it's
- * clear which.
+ * One row per asset `assets` has that isn't in `taken` yet: what's on the swap
+ * list, and each of Earn's products. Greyed, for the pickers to show the whole
+ * list, `subtitle` saying why each can't be picked.
+ */
+function remainingRows(
+  assets: SwapAssetWithBalance[],
+  taken: ReadonlySet<string>,
+  subtitle: (asset: SwapAssetWithBalance, listed: boolean) => string,
+): SwapAssetRow[] {
+  const rows: SwapAssetRow[] = [];
+  const universe = assets.filter(
+    asset => onList(asset) || EARN_PRODUCTS.includes(assetIdentity(asset).name),
+  );
+  for (const members of groupBy(universe).values()) {
+    const sorted = [...members].sort(
+      (a, b) =>
+        Number(onList(b)) - Number(onList(a)) ||
+        SWAP_CHAIN_IDS.indexOf(a.chainId) - SWAP_CHAIN_IDS.indexOf(b.chainId),
+    );
+    const [asset] = sorted;
+    const identity = assetIdentity(asset);
+    if (taken.has(identity.key)) continue;
+    rows.push({
+      key: identity.key,
+      name: identity.name,
+      subtitle: subtitle(asset, onList(asset)),
+      category: identity.category,
+      asset,
+      members: [asset],
+      balance: 0,
+      balanceUsd: 0,
+      disabled: true,
+    });
+  }
+  return rows;
+}
+
+/**
+ * "You pay": the whole swap list, one row per asset. What the user holds comes
+ * first, every network holding it among its `members`; the rest is greyed.
+ * Earn shows each of its products, greyed where it's withdrawn in Earn rather
+ * than swapped. Any other holding sits at the bottom under "Can't be swapped
+ * yet", one row per network so it's clear which.
  */
 export function payAssetSections(
   assets: SwapAssetWithBalance[],
   { query = '', chainName }: { query?: string; chainName: ChainName },
 ): SwapAssetSection[] {
   const held = assets.filter(asset => asset.balance > 0);
-  const payable = (asset: SwapAssetWithBalance) => asset.swappable && !!swapListing(asset);
   const rows: SwapAssetRow[] = [];
+  // Assets that already have a row, so the rest of the list doesn't repeat them.
+  const taken = new Set<string>();
 
-  for (const members of groupBy(held.filter(payable)).values()) {
+  for (const members of groupBy(held.filter(onList)).values()) {
     const sorted = [...members].sort(byValue);
     const [asset] = sorted;
     const identity = assetIdentity(asset);
@@ -195,7 +255,8 @@ export function payAssetSections(
         ? `On ${sorted.length} networks`
         : asset.chainId !== fuse.id
           ? `On ${chainName(asset.chainId)}`
-          : (DESCRIPTIONS[identity.name] ?? asset.name);
+          : describe(identity, asset);
+    taken.add(identity.key);
     rows.push({
       key: identity.key,
       name: identity.name,
@@ -210,7 +271,7 @@ export function payAssetSections(
   }
 
   const blocked: SwapAssetRow[] = [];
-  for (const asset of held.filter(member => !payable(member))) {
+  for (const asset of held.filter(member => !onList(member))) {
     const identity = assetIdentity(asset);
     // An old version of a listed coin, like Fuse's deprecated bridged USDC,
     // goes by its own name so it isn't read as the one that swaps.
@@ -230,16 +291,20 @@ export function payAssetSections(
       balanceUsd: asset.balanceUsd,
       disabled: true,
     };
-    if (identity.isYield && !lookalike) rows.push(row);
-    else blocked.push(row);
+    if (identity.isYield && !lookalike) {
+      taken.add(identity.key);
+      rows.push(row);
+    } else blocked.push(row);
   }
 
-  const visible = rows
-    .filter(row => matches(row, query))
-    .sort((a, b) => Number(a.disabled) - Number(b.disabled) || b.balanceUsd - a.balanceUsd);
+  rows.push(
+    ...remainingRows(assets, taken, (_asset, listed) =>
+      listed ? 'You don’t have any' : 'Deposit and withdraw it in Earn',
+    ),
+  );
 
   return [
-    ...bySection(visible),
+    ...bySection(rows.filter(row => matches(row, query)).sort(byReadiness)),
     ...section(
       'blocked',
       'Can’t be swapped yet',
@@ -249,13 +314,15 @@ export function payAssetSections(
 }
 
 /**
- * "You get": every asset on the swap list the "You pay" one can become, one
- * row each, arriving on the network quickest to reach: the same one when it's
- * there, then in `SWAP_CHAIN_IDS` order. Only pairs `isSwapRouteOpen` allows.
+ * "You get": the whole swap list, one row per asset, in the list's order. An
+ * asset the "You pay" one can become can be picked, arriving on the network
+ * quickest to reach: the same one when it's there, then in `SWAP_CHAIN_IDS`
+ * order, every reachable network among its `members`. The rest is greyed with
+ * why. Only pairs `isSwapRouteOpen` allows can be picked.
  *
  * `reachable` is the backend's answer for the "You pay" token, as
  * `chainId:address` keys. Null while it loads or when it couldn't be read: the
- * whole swap list is offered and the quote has the last word.
+ * pairs `isSwapRouteOpen` allows are offered and the quote has the last word.
  */
 export function getAssetSections(
   assets: SwapAssetWithBalance[],
@@ -272,24 +339,30 @@ export function getAssetSections(
   },
 ): SwapAssetSection[] {
   const fromKey = from ? swapAssetKey(from) : undefined;
-  const candidates = assets.filter(asset => {
-    if (!asset.swappable || !swapListing(asset)) return false;
-    const key = swapAssetKey(asset);
-    if (key === fromKey) return false;
-    if (from && !isSwapRouteOpen(from, asset)) return false;
+  const fromName = from ? `${assetDisplayName(from)} on ${chainName(from.chainId)}` : '';
+  const isFrom = (asset: SwapAsset) => swapAssetKey(asset) === fromKey;
+  const canBecome = (asset: SwapAssetWithBalance) => {
+    if (!onList(asset) || isFrom(asset)) return false;
+    if (!from) return true;
+    if (!isSwapRouteOpen(from, asset)) return false;
     // A Fuse coin reaches every Fuse coin through Algebra, and Solid's bridge
     // carries its own pairs; the backend's route map is LI.FI's and speaks for
     // neither.
-    const onAlgebra = from?.chainId === fuse.id && asset.chainId === fuse.id;
-    const onBridge = !!from && !!solidBridgeRoute(from, asset);
-    return !reachable || onAlgebra || onBridge || reachable.has(key);
-  });
+    const onAlgebra = from.chainId === fuse.id && asset.chainId === fuse.id;
+    return (
+      !reachable ||
+      onAlgebra ||
+      !!solidBridgeRoute(from, asset) ||
+      reachable.has(swapAssetKey(asset))
+    );
+  };
 
   const preference = (asset: SwapAsset) =>
     asset.chainId === from?.chainId ? -1 : SWAP_CHAIN_IDS.indexOf(asset.chainId);
 
   const rows: SwapAssetRow[] = [];
-  for (const members of groupBy(candidates).values()) {
+  const taken = new Set<string>();
+  for (const members of groupBy(assets.filter(canBecome)).values()) {
     const sorted = [...members].sort(
       (a, b) => preference(a) - preference(b) || b.balanceUsd - a.balanceUsd,
     );
@@ -299,10 +372,9 @@ export function getAssetSections(
     const description =
       identity.name === 'USDC' && asset.chainId === fuse.id
         ? 'Dollar coin · card and Send use it'
-        : identity.isYield
-          ? `Earn on ${identity.name.replace(' Yield', '')}`
-          : (DESCRIPTIONS[identity.name] ?? asset.name);
+        : describe(identity, asset);
     const crossChain = !!from && asset.chainId !== from.chainId;
+    taken.add(identity.key);
     rows.push({
       key: identity.key,
       name: identity.name,
@@ -318,10 +390,21 @@ export function getAssetSections(
     });
   }
 
-  const visible = rows
-    .filter(row => matches(row, query))
-    .sort((a, b) => (LIST_ORDER.get(a.name) ?? 0) - (LIST_ORDER.get(b.name) ?? 0));
-  return bySection(visible);
+  rows.push(
+    ...remainingRows(assets, taken, (asset, listed) => {
+      if (!listed) return 'Deposit it in Earn instead';
+      if (!from) return 'Can’t be swapped right now';
+      // Only on the paying coin's own network: it is the coin being paid with.
+      if (groupBy(assets.filter(onList)).get(assetIdentity(asset).key)?.every(isFrom)) {
+        return 'You’re paying with this';
+      }
+      return `Not with ${fromName} yet`;
+    }),
+  );
+
+  return bySection(
+    rows.filter(row => matches(row, query)).sort((a, b) => listOrder(a) - listOrder(b)),
+  );
 }
 
 /**
