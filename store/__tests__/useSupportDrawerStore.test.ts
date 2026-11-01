@@ -125,4 +125,24 @@ describe('held support requests', () => {
     holdSupportRequest({ chatMessage: '  ', context: { kind: 'nope' } as never });
     expect(takeHeldSupportRequest()).toEqual({ chatMessage: undefined, context: undefined });
   });
+
+  it('keeps only string Intercom attributes', () => {
+    holdSupportRequest({
+      chatMessage: 'My send failed',
+      intercomAttributes: { last_error_ref: 'AB12CD34', bad: 42 } as never,
+    });
+    expect(takeHeldSupportRequest()).toEqual({
+      chatMessage: 'My send failed',
+      intercomAttributes: { last_error_ref: 'AB12CD34' },
+    });
+  });
+
+  it('forgets the Intercom attributes when the drawer closes', () => {
+    openSupportDrawer({ intercomAttributes: { last_error_ref: 'AB12CD34' } });
+    expect(useSupportDrawerStore.getState().intercomAttributes).toEqual({
+      last_error_ref: 'AB12CD34',
+    });
+    closeSupportDrawer();
+    expect(useSupportDrawerStore.getState().intercomAttributes).toBeUndefined();
+  });
 });

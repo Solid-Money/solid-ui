@@ -12,12 +12,15 @@ import type { SupportDraftContext } from '@/store/useSupportChatStore';
 export interface SupportDrawerRequest {
   chatMessage?: string;
   context?: SupportDraftContext;
+  /** Set on the Intercom contact before the message opens (the failure sheet's error reference). */
+  intercomAttributes?: Record<string, string>;
 }
 
 interface SupportDrawerState {
   isOpen: boolean;
   chatMessage?: string;
   context?: SupportDraftContext;
+  intercomAttributes?: Record<string, string>;
   /**
    * The request a "contact support" button sent to the in-house chat screen
    * before the app knew whether this user has it. If the answer turns out to be
@@ -52,26 +55,48 @@ const asContext = (context?: unknown): SupportDraftContext | undefined => {
   };
 };
 
+/** Plain string values only: anything else is not something Intercom should get. */
+const asIntercomAttributes = (attributes?: unknown): Record<string, string> | undefined => {
+  if (typeof attributes !== 'object' || attributes === null || Array.isArray(attributes)) {
+    return undefined;
+  }
+  const entries = Object.entries(attributes).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  );
+  return entries.length ? Object.fromEntries(entries) : undefined;
+};
+
 const asRequest = (request?: unknown): SupportDrawerRequest => {
   if (typeof request === 'string') return { chatMessage: asChatMessage(request) };
   if (
     typeof request !== 'object' ||
     request === null ||
-    !('chatMessage' in request || 'context' in request)
+    !('chatMessage' in request || 'context' in request || 'intercomAttributes' in request)
   ) {
     return {};
   }
-  const { chatMessage, context } = request as Record<string, unknown>;
-  return { chatMessage: asChatMessage(chatMessage), context: asContext(context) };
+  const { chatMessage, context, intercomAttributes } = request as Record<string, unknown>;
+  return {
+    chatMessage: asChatMessage(chatMessage),
+    context: asContext(context),
+    intercomAttributes: asIntercomAttributes(intercomAttributes),
+  };
 };
 
 export const useSupportDrawerStore = create<SupportDrawerState>()(set => ({
   isOpen: false,
   chatMessage: undefined,
   context: undefined,
+  intercomAttributes: undefined,
   pending: undefined,
   open: request => set({ isOpen: true, ...asRequest(request) }),
-  close: () => set({ isOpen: false, chatMessage: undefined, context: undefined }),
+  close: () =>
+    set({
+      isOpen: false,
+      chatMessage: undefined,
+      context: undefined,
+      intercomAttributes: undefined,
+    }),
 }));
 
 /** Keep a request for the support screen to hand back if the chat turns out to be off. */

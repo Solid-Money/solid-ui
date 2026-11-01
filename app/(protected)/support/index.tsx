@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 
 import { useIsSidebarShell } from '@/components/Navbar/Sidebar';
 import PageLayout from '@/components/PageLayout';
@@ -29,13 +30,16 @@ export default function SupportScreen() {
   }, [availability]);
 
   // Leaving before the chat opened (a failed check, say) must not leave a
-  // context card behind for a later, unrelated message.
-  useEffect(
-    () => () => {
-      useSupportChatStore.getState().setDraftContext(null);
-      takeHeldSupportRequest();
-    },
-    [],
+  // context card behind for a later, unrelated message. On web the screen stays
+  // mounted under the next route, so this runs when it loses focus, not on unmount.
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        useSupportChatStore.getState().setDraftContext(null);
+        takeHeldSupportRequest();
+      },
+      [],
+    ),
   );
 
   if (availability === 'on') return <SupportChatPage />;
@@ -86,12 +90,17 @@ function SupportChatPage() {
 
 function NotAvailable({ loading }: { loading: boolean }) {
   const router = useRouter();
+  // An answer that arrives after the user moved on must not pull them back home.
+  // If they come back to /support later, it applies then (without the old request).
+  const focused = useIsFocused();
   useEffect(() => {
-    if (loading) return;
+    if (loading || !focused) return;
+    // Whatever the button that sent the user here meant for Intercom. Taken
+    // before leaving, because losing focus clears it.
+    const request = takeHeldSupportRequest();
     router.replace(path.HOME);
-    // Whatever the button that sent the user here meant for Intercom.
-    openSupportDrawer(takeHeldSupportRequest());
-  }, [loading, router]);
+    openSupportDrawer(request);
+  }, [focused, loading, router]);
   return (
     <View className="flex-1 items-center justify-center">
       <ActivityIndicator color="#FFFFFF" />

@@ -130,6 +130,7 @@ const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => 
   const nativeChat = useOpensSupportChat();
   const chatMessage = useSupportDrawerStore(state => state.chatMessage);
   const context = useSupportDrawerStore(state => state.context);
+  const intercomAttributes = useSupportDrawerStore(state => state.intercomAttributes);
 
   const runAfterDismiss = useCallback((action: () => void) => {
     closeSupportDrawer();
@@ -145,17 +146,22 @@ const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => 
         // The in-house chat: what the user was looking at rides along as a card, not a pasted draft.
         if (draftContext) useSupportChatStore.getState().setDraftContext(draftContext);
         // Kept for Intercom in case the screen learns this user doesn't have the chat.
-        holdSupportRequest({ chatMessage: draftMessage, context: draftContext });
+        holdSupportRequest({
+          chatMessage: draftMessage,
+          context: draftContext,
+          intercomAttributes,
+        });
         router.push(path.SUPPORT);
         return;
       }
+      if (intercomAttributes) intercom?.update({ customAttributes: intercomAttributes });
       if (chatMessage) {
         intercom?.showNewMessage(chatMessage);
       } else {
         intercom?.show();
       }
     });
-  }, [chatMessage, context, intercom, nativeChat, router, runAfterDismiss]);
+  }, [chatMessage, context, intercom, intercomAttributes, nativeChat, router, runAfterDismiss]);
 
   const openLink = useCallback(
     (url: string) => {
