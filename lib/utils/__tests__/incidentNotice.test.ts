@@ -72,6 +72,15 @@ describe('incidentNotice', () => {
     expect(incidentNotice([fixed], sawIt, later)).toBeNull();
   });
 
+  it('still says fixed after the live notice was closed, even if the wording never changed', () => {
+    // The portal resolves without touching updatedAt.
+    const live = incident('a');
+    const fixed = incident('a', { active: false, resolvedAt: '2026-10-29T10:30:00.000Z' });
+    const closedLive = { dismissed: [noticeKey(live)], seen: ['a'] };
+    expect(noticeKey(fixed)).not.toBe(noticeKey(live));
+    expect(incidentNotice([fixed], closedLive, now)).toMatchObject({ tone: 'resolved' });
+  });
+
   it('keeps the fixed one back while another incident is still live', () => {
     const fixed = incident('a', { active: false, resolvedAt: '2026-10-29T10:30:00.000Z' });
     expect(

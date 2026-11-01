@@ -7,11 +7,15 @@ export const RESOLVED_NOTICE_MS = 2 * 60 * 60 * 1000;
 const UPDATE_GRACE_MS = 60 * 1000;
 
 /**
- * One showing of an incident. The key changes whenever its wording does (and
- * when it is resolved), so closing the notice lasts until the next update.
+ * One showing of an incident. The key changes whenever its wording does, so
+ * closing the notice lasts until the next update. A fixed incident has a key
+ * of its own: the portal can resolve one without touching `updatedAt`, and
+ * closing the live notice must not also hide "Fixed".
  */
 export const noticeKey = (incident: KnownIncident): string =>
-  `${incident.id}@${incident.updatedAt ?? incident.startedAt ?? ''}`;
+  incident.active
+    ? `${incident.id}@${incident.updatedAt ?? incident.startedAt ?? ''}`
+    : `${incident.id}@fixed@${incident.resolvedAt ?? ''}`;
 
 const timeOf = (value: string | null): number => (value ? Date.parse(value) : NaN);
 

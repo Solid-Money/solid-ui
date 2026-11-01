@@ -91,8 +91,9 @@ const Pill = ({ label, color }: { label: string; color: string }) => (
  *
  * Tapping it opens the full notice (`IncidentNoticeSheet`); × hides it until
  * the next update. Renders nothing when there is no incident, which is nearly
- * always, and nothing when the check fails: it never stands between the user
- * and Home.
+ * always, or when the first check fails, so it never stands between the user
+ * and Home. If a later refresh fails, the last answer stays up: a notice
+ * shouldn't disappear just while the backend is struggling.
  */
 const HomeIncidentNotice = ({ className }: { className?: string }) => {
   const { data: incidents } = useKnownIncidents();
