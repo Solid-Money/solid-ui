@@ -1,7 +1,6 @@
 import React from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 import { ChevronDown, Wallet } from 'lucide-react-native';
-import { fuse } from 'viem/chains';
 
 import { MaxPill } from '@/components/Send/CrossChain/shared';
 import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
@@ -106,8 +105,7 @@ const SwapAmountCard = ({
           accessibilityLabel={`${label}: ${name}. Change coin`}
           className="h-[50px] flex-row items-center gap-2 rounded-full bg-[#333] pl-2 pr-3 web:hover:bg-[#3a3a3a]"
         >
-          {/* Fuse is home: only a coin on another network carries its badge. */}
-          <SwapAssetLogo asset={asset} size={32} showChain={!!asset && asset.chainId !== fuse.id} />
+          <SwapAssetLogo asset={asset} size={32} />
           <Text className="text-lg font-semibold text-white">{name}</Text>
           <ChevronDown size={20} color="white" />
         </Pressable>
