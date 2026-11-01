@@ -76,11 +76,7 @@ const SwapModalProvider = () => {
   const isNewFlow = NEW_SWAP_FLOW && SWAP_FLOW_STATES.includes(currentModal.name);
   const isFlowSubScreen =
     isNewFlow &&
-    [
-      SWAP_MODAL.OPEN_PAY_PICKER.name,
-      SWAP_MODAL.OPEN_GET_PICKER.name,
-      SWAP_MODAL.OPEN_REVIEW.name,
-    ].includes(currentModal.name);
+    [SWAP_MODAL.OPEN_PAY_PICKER.name, SWAP_MODAL.OPEN_GET_PICKER.name].includes(currentModal.name);
   const isFlowOutcome =
     currentModal.name === SWAP_MODAL.OPEN_SWAPPED.name ||
     currentModal.name === SWAP_MODAL.OPEN_ON_ITS_WAY.name;
@@ -123,13 +119,19 @@ const SwapModalProvider = () => {
     if (isNewFlow) {
       if (currentModal.name === SWAP_MODAL.OPEN_PAY_PICKER.name) return 'You pay';
       if (currentModal.name === SWAP_MODAL.OPEN_GET_PICKER.name) return 'You get';
-      if (currentModal.name === SWAP_MODAL.OPEN_REVIEW.name) return 'Confirm swap';
     }
     return isBuyFuse ? 'Buy FUSE' : 'Swap';
   }, [isBuyFuse, isTransactionStatus, isLifiStatus, isFlowOutcome, isNewFlow, currentModal.name]);
 
   const contentKey = useMemo(() => {
-    if (isNewFlow) return `swap-flow-${currentModal.name}`;
+    // Confirm swap is a sheet over the form, which stays put underneath it.
+    if (isNewFlow) {
+      const screen =
+        currentModal.name === SWAP_MODAL.OPEN_REVIEW.name
+          ? SWAP_MODAL.OPEN_FORM.name
+          : currentModal.name;
+      return `swap-flow-${screen}`;
+    }
     if (isTransactionStatus) return 'transaction-status';
     if (isLifiStatus) return 'lifi-status';
     if (isBuyFuse) return 'buy-fuse';

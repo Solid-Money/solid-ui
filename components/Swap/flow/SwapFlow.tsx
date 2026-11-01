@@ -27,7 +27,15 @@ const SwapFlowStep = ({ name }: { name: string }) => {
 
   if (name === SWAP_MODAL.OPEN_PAY_PICKER.name) return <SwapAssetPicker side="pay" />;
   if (name === SWAP_MODAL.OPEN_GET_PICKER.name) return <SwapAssetPicker side="get" />;
-  if (name === SWAP_MODAL.OPEN_REVIEW.name) return <SwapReviewScreen />;
+  if (name === SWAP_MODAL.OPEN_REVIEW.name) {
+    // Confirm swap slides up over the form, which stays behind it.
+    return (
+      <>
+        <SwapFormScreen />
+        <SwapReviewScreen />
+      </>
+    );
+  }
 
   // Wrapping FUSE and migrating a pegged coin aren't swaps; the old Fuse form
   // still does those, inside the same quote provider.

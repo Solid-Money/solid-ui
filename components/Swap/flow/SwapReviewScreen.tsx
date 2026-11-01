@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { RefreshCw } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -8,11 +9,13 @@ import { DetailCard } from '@/components/Send/CrossChain/shared';
 import { swapDetailRows } from '@/components/Swap/flow/SwapDetailsCard';
 import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import { CHAIN_NAMES } from '@/constants/chains';
 import { SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { SwapFlowStop, useSwapFlow } from '@/hooks/swap/useSwapFlow';
+import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { LifiSwapApiError } from '@/lib/api/lifi-swap';
@@ -21,12 +24,17 @@ import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import { assetDisplayName } from '@/lib/swapAssets';
 import { swapErrorCodeOf, swapErrorCopy } from '@/lib/swapErrors';
 import { SwapAsset } from '@/lib/types/lifi-swap';
+import { cn } from '@/lib/utils';
 import { formatSwapAmount, formatSwapUsd } from '@/lib/utils/swap/format';
 import { useSwapState } from '@/store/swapStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 
 /** A move under this share of what's shown isn't worth telling anyone about. */
 const PRICE_MOVE_NOTICE = 0.001;
+
+/** The failure sheet's sizes: a sheet up to this wide on phones, a dialog this wide on desktop. */
+const MAX_SHEET_WIDTH = 480;
+const DIALOG_WIDTH = 440;
 
 const SideRow = ({
   label,
@@ -39,20 +47,21 @@ const SideRow = ({
   amount: string;
   usd: number | undefined;
 }) => (
-  <View className="flex-row items-center gap-[13px] px-[18px] py-[14px]">
-    <SwapAssetLogo asset={asset} size={36} />
+  <View className="flex-row items-center gap-3.5 px-4 py-[15px]">
+    <SwapAssetLogo asset={asset} size={34} />
     <View className="flex-1 gap-0.5">
-      <Text className="text-sm leading-[18px] text-white/60">{label}</Text>
+      <Text className="text-sm leading-[18px] text-white/55">{label}</Text>
       <Text className="text-lg font-semibold leading-[22px] text-white">{amount}</Text>
     </View>
-    <Text className="text-sm text-white/60">{usd !== undefined ? formatSwapUsd(usd) : ''}</Text>
+    <Text className="text-sm text-white/55">{usd !== undefined ? formatSwapUsd(usd) : ''}</Text>
   </View>
 );
 
 /**
- * Screen 4 of the swap: the numbers to confirm. The price keeps re-checking
- * every 30 seconds underneath, and once more before the signature; a move is
- * said out loud rather than swapped in silently.
+ * Screen 4 of the swap: the numbers to confirm, in a sheet over the form (a
+ * dialog on desktop). The price keeps re-checking every 30 seconds underneath,
+ * and once more before the signature; a move is said out loud rather than
+ * swapped in silently.
  */
 const SwapReviewScreen: React.FC = () => {
   const model = useSwapFlow();
@@ -166,18 +175,86 @@ const SwapReviewScreen: React.FC = () => {
   }, [handleSwap]);
 
   const ready = model.canReview && !model.isQuoting;
+  const { isScreenMedium } = useDimension();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  // Dismissing the sheet goes back to the form; not while the swap is signing.
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && !executing.current && !isSending) setModal(SWAP_MODAL.OPEN_FORM);
+    },
+    [isSending, setModal],
+  );
 
   return (
-    <View className="flex-1 justify-between gap-8">
+    <Dialog open onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        webPresentation="bottom-sheet"
+        nativePresentation="bottom-sheet"
+        overlayClassName="bg-black/60 web:backdrop-blur-none"
+        className={cn(
+          'max-w-none gap-0 border-0 bg-card',
+          isScreenMedium
+            ? 'rounded-[24px] px-6 pb-6 pt-6'
+            : 'rounded-b-none rounded-t-[28px] px-4 pt-2.5',
+        )}
+        style={
+          isScreenMedium
+            ? { width: DIALOG_WIDTH, boxShadow: '0px 24px 64px rgba(0, 0, 0, 0.5)' }
+            : { width: Math.min(width, MAX_SHEET_WIDTH), paddingBottom: 16 + insets.bottom }
+        }
+      >
+        {!isScreenMedium ? (
+          <View className="mb-5 h-[5px] w-10 self-center rounded-[3px] bg-white/20" />
+        ) : null}
+        <DialogTitle className="mb-4 text-xl font-semibold leading-7 text-white">
+          Confirm swap
+        </DialogTitle>
+        <ReviewBody
+          model={model}
+          fromName={fromName}
+          toName={toName}
+          ready={ready}
+          priceMoved={priceMoved}
+          stopped={stopped}
+          onSwap={handleSwap}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const ReviewBody = ({
+  model,
+  fromName,
+  toName,
+  ready,
+  priceMoved,
+  stopped,
+  onSwap,
+}: {
+  model: ReturnType<typeof useSwapFlow>;
+  fromName: string;
+  toName: string;
+  ready: boolean;
+  priceMoved: boolean;
+  stopped: string | undefined;
+  onSwap: () => void;
+}) => {
+  const { fromAsset, toAsset, typedValue, toAmount, isSending } = model;
+  return (
+    <View className="gap-4">
       <View className="gap-4">
-        <View className="overflow-hidden rounded-[15px] bg-card">
+        <View className="overflow-hidden rounded-[15px] bg-[#262626]">
           <SideRow
             label="You pay"
             asset={fromAsset}
             amount={`${formatSwapAmount(Number(typedValue) || 0)} ${fromName}`}
             usd={model.fromUsd}
           />
-          <View className="h-px bg-white/10" />
+          <View className="mx-4 h-px bg-white/[0.07]" />
           <SideRow
             label="You get"
             asset={toAsset}
@@ -186,7 +263,7 @@ const SwapReviewScreen: React.FC = () => {
           />
         </View>
 
-        <DetailCard rows={swapDetailRows(model)} />
+        <DetailCard dense className="bg-[#262626]" rows={swapDetailRows(model, true)} />
 
         {priceMoved || stopped ? (
           <View className="flex-row gap-2 rounded-[15px] bg-[rgba(148,242,127,0.12)] px-4 py-3">
@@ -197,7 +274,7 @@ const SwapReviewScreen: React.FC = () => {
           </View>
         ) : null}
 
-        <Text className="px-1 text-sm leading-5 text-white/60">
+        <Text className="px-1 text-[13px] leading-[18px] text-white/55">
           Swaps can’t be undone. We re-check the price every 30 seconds and tell you if it changes.
         </Text>
       </View>
@@ -207,7 +284,7 @@ const SwapReviewScreen: React.FC = () => {
         className="h-12 rounded-full"
         size="lg"
         disabled={!ready || isSending}
-        onPress={handleSwap}
+        onPress={onSwap}
       >
         {isSending ? (
           <Text className="text-base font-bold">Swapping…</Text>

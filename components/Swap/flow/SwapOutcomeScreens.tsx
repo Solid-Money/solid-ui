@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday } from 'date-fns';
 import { ArrowUpRight, Check } from 'lucide-react-native';
+import { formatUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import { BRAND, DetailCard, StepTracker, TrackerStep } from '@/components/Send/CrossChain/shared';
@@ -42,12 +43,12 @@ const useCloseSwap = () => {
 };
 
 const OutcomeIcon = ({ kind }: { kind: 'done' | 'moving' }) => (
-  <View className="h-[88px] w-[88px] items-center justify-center rounded-full bg-[rgba(148,242,127,0.16)]">
-    <View className="h-[56px] w-[56px] items-center justify-center rounded-full bg-[rgba(148,242,127,0.24)]">
+  <View className="h-[120px] w-[120px] items-center justify-center rounded-full border border-[rgba(148,242,127,0.2)] bg-[rgba(148,242,127,0.08)]">
+    <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-[rgba(148,242,127,0.27)]">
       {kind === 'done' ? (
-        <Check size={28} color={BRAND} strokeWidth={3} />
+        <Check size={30} color={BRAND} strokeWidth={3} />
       ) : (
-        <ArrowUpRight size={28} color={BRAND} strokeWidth={2.5} />
+        <ArrowUpRight size={30} color={BRAND} strokeWidth={2.5} />
       )}
     </View>
   </View>
@@ -55,8 +56,17 @@ const OutcomeIcon = ({ kind }: { kind: 'done' | 'moving' }) => (
 
 /** Screen 5 of the swap: it's done, the coin is in the wallet, and it can go straight on to Send. */
 export const SwapSwappedScreen: React.FC = () => {
-  const router = useRouter();
   const receipt = useSwapState(state => state.receipt);
+  if (!receipt) return null;
+  return <SwappedView receipt={receipt} />;
+};
+
+/**
+ * "Swapped": straight after a swap on one network, and when a swap across
+ * networks lands, with what arrived (`receipt.toAmount`).
+ */
+const SwappedView = ({ receipt }: { receipt: SwapReceipt }) => {
+  const router = useRouter();
   const close = useCloseSwap();
 
   const handleActivity = useCallback(() => {
@@ -65,24 +75,24 @@ export const SwapSwappedScreen: React.FC = () => {
   }, [close, router]);
 
   const handleSend = useCallback(() => {
-    if (!receipt) return;
     close();
     setTimeout(() => openSendWithReceived(receipt), SHEET_HANDOFF_MS);
   }, [close, receipt]);
-
-  if (!receipt) return null;
 
   return (
     <View className="flex-1 justify-between gap-8 pt-6">
       <View className="gap-8">
         <View className="items-center gap-3">
           <OutcomeIcon kind="done" />
-          <Text className="text-center text-2xl font-semibold text-white">Swapped</Text>
-          <Text className="text-center text-base text-white/70">
+          <Text className="mt-3 text-center text-[26px] font-semibold leading-8 text-white">
+            Swapped
+          </Text>
+          <Text className="text-center text-base text-white/60">
             {formatSwapAmount(receipt.toAmount)} {receipt.toName} is in your wallet
           </Text>
         </View>
         <DetailCard
+          dense
           rows={[
             {
               key: 'paid',
@@ -131,7 +141,7 @@ export const SwapSwappedScreen: React.FC = () => {
  */
 export const SwapOnItsWayScreen: React.FC = () => {
   const receipt = useSwapState(state => state.receipt);
-  if (receipt?.bridge) return <BridgeOnItsWay receipt={receipt} sendId={receipt.bridge.sendId} />;
+  if (receipt?.bridge) return <BridgeOnItsWay receipt={receipt} bridge={receipt.bridge} />;
   return <LifiOnItsWay />;
 };
 
@@ -211,6 +221,11 @@ const LifiOnItsWay: React.FC = () => {
   }, [receipt, tracked]);
 
   if (!receipt) return null;
+  // Landed whole: the same "Swapped" as a swap on one network, with what arrived.
+  if (tracked?.status === 'DONE' && !tracked.substatus?.match(/PARTIAL|REFUNDED/)) {
+    const arrived = Number(tracked.toAmount);
+    return <SwappedView receipt={arrived > 0 ? { ...receipt, toAmount: arrived } : receipt} />;
+  }
   const toChain = CHAIN_NAMES[receipt.toChainId] ?? '';
 
   return (
@@ -248,8 +263,18 @@ const explorerTx = (chainId: number, hash: string) => {
   return explorer ? `${explorer}/tx/${hash}` : undefined;
 };
 
-/** USDC or USDT moving over Solid's bridge, followed through the backend's send tracker. */
-const BridgeOnItsWay = ({ receipt, sendId }: { receipt: SwapReceipt; sendId: string }) => {
+/**
+ * USDC or USDT moving over Solid's bridge, followed through the backend's send
+ * tracker; "Swapped" once it lands.
+ */
+const BridgeOnItsWay = ({
+  receipt,
+  bridge,
+}: {
+  receipt: SwapReceipt;
+  bridge: NonNullable<SwapReceipt['bridge']>;
+}) => {
+  const { sendId } = bridge;
   const close = useCloseSwap();
 
   const { data: send } = useQuery({
@@ -318,6 +343,11 @@ const BridgeOnItsWay = ({ receipt, sendId }: { receipt: SwapReceipt; sendId: str
           },
     ];
   }, [send, receipt, delivered, failed, status, fromChain, toChain]);
+
+  if (delivered && send) {
+    const arrived = Number(formatUnits(BigInt(send.amountReceivedLD), bridge.sentDecimals));
+    return <SwappedView receipt={arrived > 0 ? { ...receipt, toAmount: arrived } : receipt} />;
+  }
 
   return (
     <View className="flex-1 justify-between gap-8 pt-6">

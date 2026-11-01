@@ -84,16 +84,13 @@ it('follows USDC over Solid’s bridge from Ethereum to Fuse', () => {
   expect(steps()[1].subtitle).toBe('About 5 min');
 });
 
-it('says it arrived once the send is delivered', () => {
-  mockSend = {
-    status: 'delivered',
-    etaMinutes: 5,
-    dstExplorerUrl: 'https://explorer.fuse.io/tx/1',
-  };
+it('shows Swapped with what landed once the send is delivered', () => {
+  mockSend = { status: 'delivered', etaMinutes: 5, amountReceivedLD: '9990000' };
   mount();
-  expect(text()).toContain('Swap arrived');
-  expect(steps().map((step: any) => step.tone)).toEqual(['done', 'done', 'done']);
-  expect(steps()[2].subtitle).toBe('View transaction');
+  expect(text()).toContain('Swapped');
+  expect(text().replace(/\s+/g, ' ')).toContain('9.99 USDC is in your wallet');
+  const rows = root.root.findByType('DetailCard').props.rows;
+  expect(rows.find((row: any) => row.key === 'got').value).toBe('9.99 USDC');
 });
 
 it('shows why a send failed', () => {
