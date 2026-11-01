@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { format, isToday } from 'date-fns';
 import { ArrowUpRight, Check } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -12,9 +13,12 @@ import { Text } from '@/components/ui/text';
 import { CHAIN_NAMES } from '@/constants/chains';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { fetchCrossChainSend } from '@/lib/api/cross-chain-send';
+import { withRefreshToken } from '@/lib/utils';
 import { formatSwapAmount, formatSwapUsd } from '@/lib/utils/swap/format';
+import { getChain } from '@/lib/wagmi';
 import { useLifiSwapStore } from '@/store/lifiSwapStore';
-import { useSwapState } from '@/store/swapStore';
+import { SwapReceipt, useSwapState } from '@/store/swapStore';
 
 /** How long the swap modal takes to leave before Send's opens: two sheets at once is what this avoids. */
 const SHEET_HANDOFF_MS = 200;
@@ -122,10 +126,17 @@ export const SwapSwappedScreen: React.FC = () => {
 
 /**
  * Screen 6 of the swap: sent from one network, landing on another. The same
- * tracker as a cross-network send, fed by the LI.FI status watcher. Closing it
- * is fine; the watcher keeps going and the activity row follows.
+ * tracker as a cross-network send. Closing it is fine; the tracking carries on
+ * and the activity row follows.
  */
 export const SwapOnItsWayScreen: React.FC = () => {
+  const receipt = useSwapState(state => state.receipt);
+  if (receipt?.bridge) return <BridgeOnItsWay receipt={receipt} sendId={receipt.bridge.sendId} />;
+  return <LifiOnItsWay />;
+};
+
+/** A LI.FI swap across networks, fed by the LI.FI status watcher. */
+const LifiOnItsWay: React.FC = () => {
   const receipt = useSwapState(state => state.receipt);
   const tracked = useLifiSwapStore(state =>
     receipt?.clientTxId ? state.swaps[receipt.clientTxId] : undefined,
@@ -213,6 +224,111 @@ export const SwapOnItsWayScreen: React.FC = () => {
           <Text className="text-center text-base text-white/70">
             {formatSwapAmount(receipt.fromAmount)} {receipt.fromName} →{' '}
             {formatSwapAmount(receipt.toAmount)} {receipt.toName} on {toChain}
+          </Text>
+        </View>
+        <StepTracker steps={steps} />
+        <Text className="text-center text-sm text-white/60">
+          You can close this screen. We’ll let you know when it arrives.
+        </Text>
+      </View>
+
+      <Button variant="secondary" className="h-12 rounded-full" size="lg" onPress={close}>
+        <Text className="text-base font-bold text-white">Done</Text>
+      </Button>
+    </View>
+  );
+};
+
+/** Send statuses after which nothing more happens. */
+const BRIDGE_SETTLED: ReadonlySet<string> = new Set(['delivered', 'failed', 'expired']);
+const BRIDGE_POLL_MS = 5_000;
+
+const explorerTx = (chainId: number, hash: string) => {
+  const explorer = getChain(chainId)?.blockExplorers?.default.url;
+  return explorer ? `${explorer}/tx/${hash}` : undefined;
+};
+
+/** USDC or USDT moving over Solid's bridge, followed through the backend's send tracker. */
+const BridgeOnItsWay = ({ receipt, sendId }: { receipt: SwapReceipt; sendId: string }) => {
+  const close = useCloseSwap();
+
+  const { data: send } = useQuery({
+    queryKey: ['cross-chain-send', sendId],
+    queryFn: () => withRefreshToken(() => fetchCrossChainSend(sendId)),
+    refetchInterval: query => {
+      const status = query.state.data?.status;
+      return status && BRIDGE_SETTLED.has(status) ? false : BRIDGE_POLL_MS;
+    },
+  });
+
+  const status = send?.status;
+  const delivered = status === 'delivered';
+  const failed = status === 'failed' || status === 'expired';
+  const fromChain = CHAIN_NAMES[receipt.fromChainId] ?? 'the first network';
+  const toChain = CHAIN_NAMES[receipt.toChainId] ?? 'the other network';
+
+  const steps = useMemo((): TrackerStep[] => {
+    const sentLink =
+      send?.srcExplorerUrl ?? explorerTx(receipt.fromChainId, receipt.transactionHash);
+    const minutes = Math.max(1, send?.etaMinutes ?? 2);
+    const moving = `Moving ${receipt.toName} to ${toChain}`;
+    return [
+      {
+        key: 'sent',
+        tone: 'done',
+        title: `Sent from ${fromChain}`,
+        subtitle: sentLink
+          ? `${timeOf(receipt.completedAt)} · View transaction`
+          : timeOf(receipt.completedAt),
+        subtitleTone: sentLink ? 'brand' : 'muted',
+        onSubtitlePress: sentLink ? () => void Linking.openURL(sentLink) : undefined,
+      },
+      delivered
+        ? { key: 'moving', tone: 'done', title: moving, subtitle: 'Done', subtitleTone: 'muted' }
+        : failed
+          ? {
+              key: 'moving',
+              tone: 'failed',
+              title: moving,
+              subtitle: send?.failureReason || 'This didn’t go through. We’re looking into it.',
+              subtitleTone: 'danger',
+            }
+          : {
+              key: 'moving',
+              tone: 'active',
+              title: moving,
+              subtitle: status === 'stuck' ? 'Taking longer than usual' : `About ${minutes} min`,
+              subtitleTone: 'muted',
+            },
+      delivered && send?.dstExplorerUrl
+        ? {
+            key: 'arrived',
+            tone: 'done',
+            title: `Arrived on ${toChain}`,
+            subtitle: 'View transaction',
+            subtitleTone: 'brand',
+            onSubtitlePress: () => void Linking.openURL(send.dstExplorerUrl!),
+          }
+        : {
+            key: 'arrived',
+            tone: delivered ? 'done' : 'pending',
+            title: `Arrived on ${toChain}`,
+            subtitle: delivered ? 'Done' : 'View transaction once it lands',
+            subtitleTone: 'muted',
+          },
+    ];
+  }, [send, receipt, delivered, failed, status, fromChain, toChain]);
+
+  return (
+    <View className="flex-1 justify-between gap-8 pt-6">
+      <View className="gap-6">
+        <View className="items-center gap-3">
+          <OutcomeIcon kind={delivered ? 'done' : 'moving'} />
+          <Text className="text-center text-2xl font-semibold text-white">
+            {delivered ? 'Swap arrived' : 'Swap on its way'}
+          </Text>
+          <Text className="text-center text-base text-white/70">
+            {`${formatSwapAmount(receipt.fromAmount)} ${receipt.fromName} → ${formatSwapAmount(receipt.toAmount)} ${receipt.toName} on ${toChain}`}
           </Text>
         </View>
         <StepTracker steps={steps} />

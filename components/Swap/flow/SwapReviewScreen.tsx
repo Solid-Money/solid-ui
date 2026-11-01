@@ -97,7 +97,7 @@ const SwapReviewScreen: React.FC = () => {
     () => ({
       user_id: user?.userId,
       safe_address: user?.safeAddress,
-      trade_type: model.route === 'lifi' ? 'lifi' : 'standard',
+      trade_type: model.route === 'fuse' ? 'standard' : model.route,
       flow: 'new',
       input_currency: fromAsset?.symbol,
       output_currency: toAsset?.symbol,
