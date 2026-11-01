@@ -1,4 +1,4 @@
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -41,14 +41,14 @@ const AssetRow = ({
     accessibilityState={{ disabled: row.disabled }}
     accessibilityLabel={`${row.name}, ${row.subtitle}`}
     className={cn(
-      'flex-row items-center gap-[13px] px-[18px] py-[14px] web:hover:bg-card-hover',
-      row.disabled && 'opacity-50',
+      'flex-row items-center gap-3.5 px-[18px] py-[13px] web:hover:bg-card-hover',
+      row.disabled && 'opacity-40',
     )}
   >
-    <SwapAssetLogo asset={row.asset} size={36} showChain={row.members.length === 1} />
+    <SwapAssetLogo asset={row.asset} size={34} showChain={row.members.length === 1} />
     <View className="flex-1 gap-0.5">
       <Text className="text-base font-semibold leading-5 text-white">{row.name}</Text>
-      <Text numberOfLines={1} className="text-sm leading-[18px] text-white/60">
+      <Text numberOfLines={1} className="text-sm leading-[18px] text-white/55">
         {row.subtitle}
       </Text>
     </View>
@@ -66,7 +66,7 @@ const Balance = ({ usd, amount, symbol }: { usd: number; amount: number; symbol:
     {usd > 0 ? (
       <Text className="text-base font-semibold leading-5 text-white">{formatSwapUsd(usd)}</Text>
     ) : null}
-    <Text className="text-sm leading-[18px] text-white/60">
+    <Text className="text-sm leading-[18px] text-white/55">
       {formatSwapAmount(amount)} {symbol}
     </Text>
   </View>
@@ -108,34 +108,32 @@ const NetworkStep = ({
     <Text className="px-1 text-sm text-white/60">
       {side === 'pay' ? `Pay with ${row.name} from` : `Get ${row.name} on`}
     </Text>
-    <View className="overflow-hidden rounded-[15px] bg-card">
-      {row.members.map((member, index) => (
-        <Fragment key={`${member.chainId}:${member.address}`}>
-          {index > 0 ? <View className="h-px bg-white/10" /> : null}
-          <Pressable
-            onPress={() => onSelect(member)}
-            accessibilityRole="button"
-            accessibilityLabel={`${row.name} on ${chainName(member.chainId)}`}
-            className="flex-row items-center gap-[13px] px-[18px] py-[14px] web:hover:bg-card-hover"
-          >
-            <SwapAssetLogo asset={member} size={36} />
-            <View className="flex-1 gap-0.5">
-              <Text className="text-base font-semibold leading-5 text-white">
-                {chainName(member.chainId)}
-              </Text>
-              <Text numberOfLines={1} className="text-sm leading-[18px] text-white/60">
-                {side === 'pay' ? member.name : arrivalHint(from, member)}
-              </Text>
-            </View>
-            {side === 'pay' && member.balance > 0 ? (
-              <Balance
-                usd={member.balanceUsd}
-                amount={member.balance}
-                symbol={assetDisplayName(member)}
-              />
-            ) : null}
-          </Pressable>
-        </Fragment>
+    <View className="overflow-hidden rounded-[15px] bg-card py-[5px]">
+      {row.members.map(member => (
+        <Pressable
+          key={`${member.chainId}:${member.address}`}
+          onPress={() => onSelect(member)}
+          accessibilityRole="button"
+          accessibilityLabel={`${row.name} on ${chainName(member.chainId)}`}
+          className="flex-row items-center gap-3.5 px-[18px] py-[13px] web:hover:bg-card-hover"
+        >
+          <SwapAssetLogo asset={member} size={34} />
+          <View className="flex-1 gap-0.5">
+            <Text className="text-base font-semibold leading-5 text-white">
+              {chainName(member.chainId)}
+            </Text>
+            <Text numberOfLines={1} className="text-sm leading-[18px] text-white/55">
+              {side === 'pay' ? member.name : arrivalHint(from, member)}
+            </Text>
+          </View>
+          {side === 'pay' && member.balance > 0 ? (
+            <Balance
+              usd={member.balanceUsd}
+              amount={member.balance}
+              symbol={assetDisplayName(member)}
+            />
+          ) : null}
+        </Pressable>
       ))}
     </View>
   </View>
@@ -210,7 +208,7 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
   }
 
   return (
-    <View className="gap-4">
+    <View className="gap-2.5">
       <View className="h-12 flex-row items-center gap-2 rounded-[15px] bg-card px-4">
         <Search size={18} color="rgba(255,255,255,0.5)" />
         <TextInput
@@ -226,7 +224,7 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
       </View>
 
       {side === 'get' && fromAsset ? (
-        <Text className="px-1 text-sm text-white/60">
+        <Text className="px-1 text-sm text-white/55">
           Showing what you can get for {assetDisplayName(fromAsset)}
         </Text>
       ) : null}
@@ -244,15 +242,18 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
               : 'Nothing to swap this into yet'}
         </Text>
       ) : (
+        // Each section its own card under a small heading; no lines between coins.
         sections.map(section => (
-          <View key={section.key} className="gap-2">
-            <Text className="px-1 text-sm text-white/60">{section.title}</Text>
-            <View className="overflow-hidden rounded-[15px] bg-card">
-              {section.rows.map((row, index) => (
-                <Fragment key={row.key}>
-                  {index > 0 ? <View className="h-px bg-white/10" /> : null}
-                  <AssetRow row={row} showBalance={side === 'pay'} onPress={handleSelect} />
-                </Fragment>
+          <View key={section.key} className="gap-2.5">
+            <Text className="px-1 text-sm font-medium text-white/55">{section.title}</Text>
+            <View className="overflow-hidden rounded-[15px] bg-card py-[5px]">
+              {section.rows.map(row => (
+                <AssetRow
+                  key={row.key}
+                  row={row}
+                  showBalance={side === 'pay'}
+                  onPress={handleSelect}
+                />
               ))}
             </View>
           </View>

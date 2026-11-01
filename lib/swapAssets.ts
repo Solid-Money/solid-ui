@@ -297,9 +297,13 @@ export function payAssetSections(
   }
 
   rows.push(
-    ...remainingRows(assets, taken, (_asset, listed) =>
-      listed ? 'You don’t have any' : 'Deposit and withdraw it in Earn',
-    ),
+    ...remainingRows(assets, taken, (asset, listed) => {
+      if (!listed) return 'Deposit and withdraw it in Earn';
+      const description = describe(assetIdentity(asset), asset);
+      return asset.chainId === fuse.id
+        ? description
+        : `${description} · on ${chainName(asset.chainId)}`;
+    }),
   );
 
   return [
