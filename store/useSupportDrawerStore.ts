@@ -89,7 +89,11 @@ export const useSupportDrawerStore = create<SupportDrawerState>()(set => ({
   context: undefined,
   intercomAttributes: undefined,
   pending: undefined,
-  open: request => set({ isOpen: true, ...asRequest(request) }),
+  open: request => {
+    // Every field, so nothing from an earlier request rides along on this one.
+    const { chatMessage, context, intercomAttributes } = asRequest(request);
+    set({ isOpen: true, chatMessage, context, intercomAttributes });
+  },
   close: () =>
     set({
       isOpen: false,

@@ -137,6 +137,19 @@ describe('held support requests', () => {
     });
   });
 
+  it('does not carry an earlier request into the next open', () => {
+    openSupportDrawer({
+      chatMessage: 'My send failed',
+      context: { kind: 'card_transaction', id: 'tx_1' },
+      intercomAttributes: { last_error_ref: 'AB12CD34' },
+    });
+    openSupportDrawer('Another question');
+    const state = useSupportDrawerStore.getState();
+    expect(state.chatMessage).toBe('Another question');
+    expect(state.context).toBeUndefined();
+    expect(state.intercomAttributes).toBeUndefined();
+  });
+
   it('forgets the Intercom attributes when the drawer closes', () => {
     openSupportDrawer({ intercomAttributes: { last_error_ref: 'AB12CD34' } });
     expect(useSupportDrawerStore.getState().intercomAttributes).toEqual({
