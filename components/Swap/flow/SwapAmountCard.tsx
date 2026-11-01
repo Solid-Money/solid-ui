@@ -62,8 +62,12 @@ const SwapAmountCard = ({
 
       <View className="flex-row items-center gap-3 rounded-[15px] bg-card px-[18px] py-4">
         <View className="flex-1 gap-1">
+          {/* Keyed apart: reusing the "Getting price…" element for the price kept
+              its small grey style on web once the quote arrived. */}
           {pendingLabel ? (
-            <Text className="text-xl leading-[40px] text-white/50">{pendingLabel}</Text>
+            <Text key="pending" className="text-xl leading-[40px] text-white/50">
+              {pendingLabel}
+            </Text>
           ) : onChangeText ? (
             <TextInput
               value={groupAmountInput(value)}
@@ -81,6 +85,7 @@ const SwapAmountCard = ({
             />
           ) : (
             <Text
+              key="amount"
               numberOfLines={1}
               className={cn(
                 'text-[34px] font-semibold leading-[40px]',
