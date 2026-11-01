@@ -11,6 +11,9 @@ import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/
 import EuroLaunchPopup from '@/components/Home/NewHome/EuroLaunchPopup';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
 import HomeBalancePills from '@/components/Home/NewHome/HomeBalancePills';
+import HomeIncidentNotice, {
+  IncidentNoticeSheet,
+} from '@/components/Home/NewHome/HomeIncidentNotice';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
@@ -281,6 +284,7 @@ export default function HomeScreenNew() {
         <>
           <CardDetailsPane />
           <SpendModeModals figures={spendModeFigures} />
+          <IncidentNoticeSheet />
           <EuroLaunchPopup
             isWirexCardholder={showWirexTiles}
             // Undefined until the card details answer, so the popup never guesses "not on euro".
@@ -293,6 +297,9 @@ export default function HomeScreenNew() {
       refreshing={isRefreshing}
     >
       <View className="mb-5 w-full gap-5 pb-24">
+        {/* A known incident (an outage, a delay) the team has posted. Renders
+            nothing when there is none, which is nearly always. */}
+        <HomeIncidentNotice className="px-4" />
         {isBalanceSectionLoading ? (
           // Mirror the loaded wrappers and their heights so the wallet card does
           // not jump when the headline and actions replace these.
