@@ -2,7 +2,9 @@
 
 import {
   closeSupportDrawer,
+  holdSupportRequest,
   openSupportDrawer,
+  takeHeldSupportRequest,
   useSupportDrawerStore,
 } from '@/store/useSupportDrawerStore';
 
@@ -103,5 +105,24 @@ describe('useSupportDrawerStore typed requests', () => {
       id: undefined,
       label: undefined,
     });
+  });
+});
+
+describe('held support requests', () => {
+  it('hands a held request back once', () => {
+    holdSupportRequest({
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1' },
+    });
+    expect(takeHeldSupportRequest()).toEqual({
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1', label: undefined },
+    });
+    expect(takeHeldSupportRequest()).toBeUndefined();
+  });
+
+  it('drops what is not a usable request', () => {
+    holdSupportRequest({ chatMessage: '  ', context: { kind: 'nope' } as never });
+    expect(takeHeldSupportRequest()).toEqual({ chatMessage: undefined, context: undefined });
   });
 });

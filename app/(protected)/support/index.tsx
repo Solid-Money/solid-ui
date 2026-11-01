@@ -10,7 +10,8 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { useSupportChatAvailability } from '@/hooks/useSupportChat';
-import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { useSupportChatStore } from '@/store/useSupportChatStore';
+import { openSupportDrawer, takeHeldSupportRequest } from '@/store/useSupportDrawerStore';
 
 /**
  * The in-house support chat (replaces Intercom's messenger for users with the
@@ -21,12 +22,31 @@ import { openSupportDrawer } from '@/store/useSupportDrawerStore';
  */
 export default function SupportScreen() {
   const { availability, retry } = useSupportChatAvailability();
+
+  // The chat took over: the held request was only for the Intercom fallback.
+  useEffect(() => {
+    if (availability === 'on') takeHeldSupportRequest();
+  }, [availability]);
+
+  // Leaving before the chat opened (a failed check, say) must not leave a
+  // context card behind for a later, unrelated message.
+  useEffect(
+    () => () => {
+      useSupportChatStore.getState().setDraftContext(null);
+      takeHeldSupportRequest();
+    },
+    [],
+  );
+
   if (availability === 'on') return <SupportChatPage />;
   if (availability === 'error') return <CheckFailed onRetry={retry} />;
   return <NotAvailable loading={availability === 'loading'} />;
 }
 
 function CheckFailed({ onRetry }: { onRetry: () => void }) {
+  const router = useRouter();
+  // This route has no header, so the screen carries its own way out.
+  const leave = () => (router.canGoBack() ? router.back() : router.replace(path.HOME));
   return (
     <View className="flex-1 items-center justify-center gap-3 px-6">
       <Text className="text-center text-white/70">
@@ -38,6 +58,9 @@ function CheckFailed({ onRetry }: { onRetry: () => void }) {
         className="rounded-full bg-white/10 px-4 py-2 active:opacity-70"
       >
         <Text className="text-white">Try again</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={leave} className="px-4 py-2 active:opacity-70">
+        <Text className="text-white/70">Back</Text>
       </Pressable>
     </View>
   );
@@ -66,7 +89,8 @@ function NotAvailable({ loading }: { loading: boolean }) {
   useEffect(() => {
     if (loading) return;
     router.replace(path.HOME);
-    openSupportDrawer();
+    // Whatever the button that sent the user here meant for Intercom.
+    openSupportDrawer(takeHeldSupportRequest());
   }, [loading, router]);
   return (
     <View className="flex-1 items-center justify-center">

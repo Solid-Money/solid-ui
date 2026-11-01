@@ -18,6 +18,12 @@ interface SupportDrawerState {
   isOpen: boolean;
   chatMessage?: string;
   context?: SupportDraftContext;
+  /**
+   * The request a "contact support" button sent to the in-house chat screen
+   * before the app knew whether this user has it. If the answer turns out to be
+   * no, the screen reopens the drawer with it, so Intercom still gets the draft.
+   */
+  pending?: SupportDrawerRequest;
   open: (request?: string | SupportDrawerRequest) => void;
   close: () => void;
 }
@@ -63,9 +69,22 @@ export const useSupportDrawerStore = create<SupportDrawerState>()(set => ({
   isOpen: false,
   chatMessage: undefined,
   context: undefined,
+  pending: undefined,
   open: request => set({ isOpen: true, ...asRequest(request) }),
   close: () => set({ isOpen: false, chatMessage: undefined, context: undefined }),
 }));
+
+/** Keep a request for the support screen to hand back if the chat turns out to be off. */
+export const holdSupportRequest = (request: SupportDrawerRequest) => {
+  useSupportDrawerStore.setState({ pending: asRequest(request) });
+};
+
+/** The held request, once: reading it clears it. */
+export const takeHeldSupportRequest = (): SupportDrawerRequest | undefined => {
+  const { pending } = useSupportDrawerStore.getState();
+  useSupportDrawerStore.setState({ pending: undefined });
+  return pending;
+};
 
 export const openSupportDrawer = (request?: string | SupportDrawerRequest) => {
   useSupportDrawerStore.getState().open(request);

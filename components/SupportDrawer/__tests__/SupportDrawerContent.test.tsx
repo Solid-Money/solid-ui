@@ -2,7 +2,7 @@ import React from 'react';
 
 import SupportDrawerContent from '@/components/SupportDrawer/SupportDrawerContent';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
-import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { openSupportDrawer, takeHeldSupportRequest } from '@/store/useSupportDrawerStore';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -52,6 +52,11 @@ describe('SupportDrawerContent chat row', () => {
       label: 'Starbucks',
     });
     expect(mockIntercom.showNewMessage).not.toHaveBeenCalled();
+    // Held for Intercom in case the chat screen learns the answer is no.
+    expect(takeHeldSupportRequest()).toEqual({
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1', label: 'Starbucks' },
+    });
   });
 
   it('keeps Intercom, with its prefilled draft, for everyone else', () => {

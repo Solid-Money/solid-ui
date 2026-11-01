@@ -23,6 +23,7 @@ import {
   useFailureSheetStore,
 } from '@/store/useFailureSheetStore';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
+import { holdSupportRequest } from '@/store/useSupportDrawerStore';
 
 /** Same pause the support drawer leaves between closing and opening the chat. */
 const ACTION_DELAY_MS = 220;
@@ -65,9 +66,10 @@ const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
       if (nativeChat) {
         // The in-house chat takes the failure as a card the server resolves
         // (Solid AI and the agent inbox read it by its event ID), not a draft.
-        useSupportChatStore
-          .getState()
-          .setDraftContext(report ? buildSupportContext(content.title, report) : null);
+        const context = report ? buildSupportContext(content.title, report) : null;
+        useSupportChatStore.getState().setDraftContext(context);
+        // Kept for Intercom in case the screen learns this user doesn't have the chat.
+        holdSupportRequest({ chatMessage: message, context: context ?? undefined });
         router.push(path.SUPPORT);
         return;
       }
