@@ -10,6 +10,18 @@ jest.mock('lucide-react-native', () => ({ RefreshCw: 'RefreshCw' }));
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
+jest.mock('@/components/ui/dialog', () => ({
+  Dialog: 'Dialog',
+  DialogContent: 'DialogContent',
+  DialogTitle: 'DialogTitle',
+}));
+jest.mock('@/hooks/useDimension', () => ({ useDimension: () => ({ isScreenMedium: false }) }));
+jest.mock('@/lib/utils', () => ({
+  cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
+}));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 jest.mock('@/components/Swap/SwapAssetLogo', () => ({
   __esModule: true,
   default: 'SwapAssetLogo',
@@ -89,6 +101,20 @@ it('names what is about to be swapped on the button, behind the passkey', () => 
   expect(text()).toContain('18.43');
   expect(text()).toContain('USD Yield');
   expect(root.root.findAllByType('Image')).toHaveLength(1);
+});
+
+it('confirms in a sheet over the form, and dismissing it goes back to the form (04)', () => {
+  mount();
+  expect(text()).toContain('Confirm swap');
+  act(() => root.root.findByType('Dialog').props.onOpenChange(false));
+  expect(mockSetModal).toHaveBeenCalledWith(SWAP_MODAL.OPEN_FORM);
+});
+
+it('stays open while the swap is signing', () => {
+  mockModel.isSending = true;
+  mount();
+  act(() => root.root.findByType('Dialog').props.onOpenChange(false));
+  expect(mockSetModal).not.toHaveBeenCalled();
 });
 
 it('lands on Swapped with the receipt (05)', async () => {
