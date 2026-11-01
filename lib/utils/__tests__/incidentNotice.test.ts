@@ -81,6 +81,15 @@ describe('incidentNotice', () => {
     expect(incidentNotice([fixed], closedLive, now)).toMatchObject({ tone: 'resolved' });
   });
 
+  it('shows a fixed notice again if it is reworded after being closed', () => {
+    const resolvedAt = '2026-10-29T10:30:00.000Z';
+    const fixed = incident('a', { active: false, resolvedAt, updatedAt: resolvedAt });
+    const closedFixed = { dismissed: [noticeKey(fixed)], seen: ['a'] };
+    expect(incidentNotice([fixed], closedFixed, now)).toBeNull();
+    const reworded = { ...fixed, updatedAt: '2026-10-29T10:40:00.000Z' };
+    expect(incidentNotice([reworded], closedFixed, now)).toMatchObject({ tone: 'resolved' });
+  });
+
   it('keeps the fixed one back while another incident is still live', () => {
     const fixed = incident('a', { active: false, resolvedAt: '2026-10-29T10:30:00.000Z' });
     expect(

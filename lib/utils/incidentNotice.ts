@@ -10,12 +10,13 @@ const UPDATE_GRACE_MS = 60 * 1000;
  * One showing of an incident. The key changes whenever its wording does, so
  * closing the notice lasts until the next update. A fixed incident has a key
  * of its own: the portal can resolve one without touching `updatedAt`, and
- * closing the live notice must not also hide "Fixed".
+ * closing the live notice must not also hide "Fixed". Rewording a fixed one
+ * changes its key too.
  */
-export const noticeKey = (incident: KnownIncident): string =>
-  incident.active
-    ? `${incident.id}@${incident.updatedAt ?? incident.startedAt ?? ''}`
-    : `${incident.id}@fixed@${incident.resolvedAt ?? ''}`;
+export const noticeKey = (incident: KnownIncident): string => {
+  const wording = `${incident.id}@${incident.updatedAt ?? incident.startedAt ?? ''}`;
+  return incident.active ? wording : `${wording}@fixed@${incident.resolvedAt ?? ''}`;
+};
 
 const timeOf = (value: string | null): number => (value ? Date.parse(value) : NaN);
 
