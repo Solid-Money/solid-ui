@@ -36,6 +36,9 @@ export default function RewardsLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen name="ai-api" options={{ headerShown: false }} />
+        <Stack.Screen name="ai-api-key" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="ai-api-setup" options={{ headerShown: false }} />
       </Stack>
     </TierStarPreloadProvider>
   );

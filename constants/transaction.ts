@@ -157,6 +157,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.TIER_MEMBERSHIP,
   },
+  [TransactionType.AI_API_CHARGE]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.AI_API,
+  },
 };
 
 /**
