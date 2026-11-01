@@ -1,10 +1,10 @@
 import React from 'react';
-import { View } from 'react-native';
 
 import { DetailCard, DetailRowSpec } from '@/components/Send/CrossChain/shared';
 import { Text } from '@/components/ui/text';
 import { SwapFlowModel } from '@/hooks/swap/useSwapFlow';
 import { assetDisplayName } from '@/lib/swapAssets';
+import { cn } from '@/lib/utils';
 import { formatSwapAmount, formatSwapUsd } from '@/lib/utils/swap/format';
 
 /** "Instantly" in the same transaction, else whole minutes: "About 2 min". */
@@ -29,7 +29,8 @@ export const formatFee = (
   return `${formatSwapUsd(usd)}${share}`;
 };
 
-export function swapDetailRows(model: SwapFlowModel): DetailRowSpec[] {
+/** `dense` matches the weight of the form's tighter card. */
+export function swapDetailRows(model: SwapFlowModel, dense = false): DetailRowSpec[] {
   const from = model.fromAsset ? assetDisplayName(model.fromAsset) : '';
   const to = model.toAsset ? assetDisplayName(model.toAsset) : '';
   return [
@@ -43,26 +44,32 @@ export function swapDetailRows(model: SwapFlowModel): DetailRowSpec[] {
       key: 'network',
       label: 'Network fee',
       // Gas is sponsored on every network the swap runs on.
-      value: <Text className="text-base font-medium text-brand">Paid by Solid</Text>,
+      value: (
+        <Text
+          className={cn(
+            'text-brand',
+            dense ? 'text-[15px] font-semibold' : 'text-base font-medium',
+          )}
+        >
+          Paid by Solid
+        </Text>
+      ),
     },
     { key: 'arrives', label: 'Arrives', value: formatArrival(model.etaSeconds) },
   ];
 }
 
-/** Rate, fee, network fee and arrival, under the form and on the review screen. */
-const SwapDetailsCard = ({
-  model,
-  showFootnote = true,
-}: {
-  model: SwapFlowModel;
-  showFootnote?: boolean;
-}) => (
-  <View className="gap-2">
-    <DetailCard rows={swapDetailRows(model)} />
-    {showFootnote && model.feeFootnote ? (
-      <Text className="px-1 text-xs text-white/50">{model.feeFootnote}</Text>
-    ) : null}
-  </View>
+/** Rate, fee, network fee and arrival under the form, the plan's fee note inside the card. */
+const SwapDetailsCard = ({ model }: { model: SwapFlowModel }) => (
+  <DetailCard
+    dense
+    rows={swapDetailRows(model, true)}
+    footer={
+      model.feeFootnote ? (
+        <Text className="text-[13px] text-white/50">{model.feeFootnote}</Text>
+      ) : undefined
+    }
+  />
 );
 
 export default SwapDetailsCard;

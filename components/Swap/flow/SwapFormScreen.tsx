@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
-import { ArrowUpDown, CircleAlert } from 'lucide-react-native';
+import { CircleAlert, RefreshCw } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import SwapAmountCard from '@/components/Swap/flow/SwapAmountCard';
@@ -131,7 +131,7 @@ const SwapFormScreen: React.FC = () => {
             accessibilityLabel="Swap what you pay and what you get"
             className="h-9 w-9 items-center justify-center rounded-full bg-brand"
           >
-            <ArrowUpDown size={18} color="black" />
+            <RefreshCw size={20} color="black" />
           </Pressable>
         </View>
 

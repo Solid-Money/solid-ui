@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 import { ChevronDown, Wallet } from 'lucide-react-native';
+import { fuse } from 'viem/chains';
 
 import { MaxPill } from '@/components/Send/CrossChain/shared';
 import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
@@ -43,7 +44,7 @@ const SwapAmountCard = ({
 }: SwapAmountCardProps) => {
   const name = asset ? assetDisplayName(asset) : 'Select';
   return (
-    <View className="gap-3">
+    <View className="gap-4">
       <View className="flex-row items-center justify-between gap-2 px-1">
         <Text className="text-base text-white/70">{label}</Text>
         {balanceLabel ? (
@@ -53,8 +54,8 @@ const SwapAmountCard = ({
               color={Platform.OS === 'web' ? undefined : 'rgba(255,255,255,0.5)'}
               className="text-white/50"
             />
-            <Text className="text-sm text-white/50">{balanceLabel}</Text>
-            {onMax ? <MaxPill onPress={onMax} /> : null}
+            <Text className="text-base text-white/50">{balanceLabel}</Text>
+            {onMax ? <MaxPill tone="grey" onPress={onMax} /> : null}
           </View>
         ) : null}
       </View>
@@ -98,11 +99,12 @@ const SwapAmountCard = ({
           onPress={onPickAsset}
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${name}. Change coin`}
-          className="h-[45px] flex-row items-center gap-1.5 rounded-full bg-[#333] px-3 web:hover:bg-[#3a3a3a]"
+          className="h-[50px] flex-row items-center gap-2 rounded-full bg-[#333] pl-2 pr-3 web:hover:bg-[#3a3a3a]"
         >
-          <SwapAssetLogo asset={asset} size={26} />
-          <Text className="text-base font-medium text-white">{name}</Text>
-          <ChevronDown size={18} color="white" />
+          {/* Fuse is home: only a coin on another network carries its badge. */}
+          <SwapAssetLogo asset={asset} size={32} showChain={!!asset && asset.chainId !== fuse.id} />
+          <Text className="text-lg font-semibold text-white">{name}</Text>
+          <ChevronDown size={20} color="white" />
         </Pressable>
       </View>
     </View>
