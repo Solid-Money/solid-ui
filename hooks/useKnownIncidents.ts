@@ -17,6 +17,8 @@ export const useKnownIncidents = () =>
     queryFn: ({ signal }) => getKnownIncidents(signal),
     staleTime: 30_000,
     refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
+    // Every return to the foreground, even within staleTime: an incident may
+    // have been posted while the app was in the background.
+    refetchOnWindowFocus: 'always',
     retry: 1,
   });
