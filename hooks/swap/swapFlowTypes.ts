@@ -18,10 +18,11 @@ export class SwapFlowStop extends Error {
 
 /**
  * Everything the new swap screens read and do, the same for a swap on Fuse
- * (Algebra) and one touching another network (LI.FI).
+ * (Algebra), one touching another network (LI.FI), and USDC or USDT moving
+ * between Fuse and another network over Solid's bridge.
  */
 export interface SwapFlowModel {
-  route: 'fuse' | 'lifi';
+  route: 'fuse' | 'lifi' | 'bridge';
   /**
    * A Fuse pair that isn't a swap: wrapping FUSE or migrating a pegged coin.
    * The flow hands those to the old form, which knows how.
