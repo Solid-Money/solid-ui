@@ -12,7 +12,7 @@ const mockPush = jest.fn();
 const mockIntercom = { show: jest.fn(), showNewMessage: jest.fn() };
 
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
-jest.mock('@/hooks/useSupportChat', () => ({ useSupportChatEnabled: () => mockNativeChat }));
+jest.mock('@/hooks/useSupportChat', () => ({ useOpensSupportChat: () => mockNativeChat }));
 jest.mock('@/lib/intercom', () => ({ useIntercom: () => mockIntercom }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 

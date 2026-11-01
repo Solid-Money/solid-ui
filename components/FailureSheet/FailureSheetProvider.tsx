@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
-import { useSupportChatEnabled } from '@/hooks/useSupportChat';
+import { useOpensSupportChat } from '@/hooks/useSupportChat';
 import { track } from '@/lib/analytics';
 import { clampText, ERROR_COPY_LIMITS } from '@/lib/errors/copyLimits';
 import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
@@ -36,7 +36,7 @@ interface FailureBodyProps {
 
 const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
   const intercom = useIntercom();
-  const nativeChat = useSupportChatEnabled();
+  const nativeChat = useOpensSupportChat();
   const { report } = content;
   // A transaction that may already be out must not be sent again from here.
   const mayHaveGoneOut = content.nothingSent === false;

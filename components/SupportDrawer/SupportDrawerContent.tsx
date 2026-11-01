@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { useSupportChatEnabled } from '@/hooks/useSupportChat';
+import { useOpensSupportChat } from '@/hooks/useSupportChat';
 import { openHelpLink } from '@/lib/help/links';
 import { useIntercom } from '@/lib/intercom';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
@@ -123,7 +123,7 @@ interface SupportDrawerContentProps {
 const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => {
   const intercom = useIntercom();
   const router = useRouter();
-  const nativeChat = useSupportChatEnabled();
+  const nativeChat = useOpensSupportChat();
   const chatMessage = useSupportDrawerStore(state => state.chatMessage);
   const context = useSupportDrawerStore(state => state.context);
 
