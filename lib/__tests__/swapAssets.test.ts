@@ -187,8 +187,8 @@ describe('You pay', () => {
     ]);
     const [usdc, usdt] = sections[0].rows;
     expect(usdc.disabled).toBe(false);
-    expect(usdt).toMatchObject({ disabled: true, subtitle: 'You don’t have any' });
-    expect(sections[1].rows[1]).toMatchObject({ disabled: true, subtitle: 'You don’t have any' });
+    expect(usdt).toMatchObject({ disabled: true, subtitle: 'Dollar coin' });
+    expect(sections[1].rows[1]).toMatchObject({ disabled: true, subtitle: 'Earn on FUSE' });
     expect(sections[1].rows[2]).toMatchObject({
       disabled: true,
       subtitle: 'Deposit and withdraw it in Earn',
