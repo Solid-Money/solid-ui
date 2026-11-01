@@ -2,7 +2,9 @@
 
 import {
   closeSupportDrawer,
+  holdSupportRequest,
   openSupportDrawer,
+  takeHeldSupportRequest,
   useSupportDrawerStore,
 } from '@/store/useSupportDrawerStore';
 
@@ -103,5 +105,57 @@ describe('useSupportDrawerStore typed requests', () => {
       id: undefined,
       label: undefined,
     });
+  });
+});
+
+describe('held support requests', () => {
+  it('hands a held request back once', () => {
+    holdSupportRequest({
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1' },
+    });
+    expect(takeHeldSupportRequest()).toEqual({
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1', label: undefined },
+    });
+    expect(takeHeldSupportRequest()).toBeUndefined();
+  });
+
+  it('drops what is not a usable request', () => {
+    holdSupportRequest({ chatMessage: '  ', context: { kind: 'nope' } as never });
+    expect(takeHeldSupportRequest()).toEqual({ chatMessage: undefined, context: undefined });
+  });
+
+  it('keeps only string Intercom attributes', () => {
+    holdSupportRequest({
+      chatMessage: 'My send failed',
+      intercomAttributes: { last_error_ref: 'AB12CD34', bad: 42 } as never,
+    });
+    expect(takeHeldSupportRequest()).toEqual({
+      chatMessage: 'My send failed',
+      intercomAttributes: { last_error_ref: 'AB12CD34' },
+    });
+  });
+
+  it('does not carry an earlier request into the next open', () => {
+    openSupportDrawer({
+      chatMessage: 'My send failed',
+      context: { kind: 'card_transaction', id: 'tx_1' },
+      intercomAttributes: { last_error_ref: 'AB12CD34' },
+    });
+    openSupportDrawer('Another question');
+    const state = useSupportDrawerStore.getState();
+    expect(state.chatMessage).toBe('Another question');
+    expect(state.context).toBeUndefined();
+    expect(state.intercomAttributes).toBeUndefined();
+  });
+
+  it('forgets the Intercom attributes when the drawer closes', () => {
+    openSupportDrawer({ intercomAttributes: { last_error_ref: 'AB12CD34' } });
+    expect(useSupportDrawerStore.getState().intercomAttributes).toEqual({
+      last_error_ref: 'AB12CD34',
+    });
+    closeSupportDrawer();
+    expect(useSupportDrawerStore.getState().intercomAttributes).toBeUndefined();
   });
 });

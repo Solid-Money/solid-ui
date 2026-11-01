@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
-import { useSupportChatEnabled } from '@/hooks/useSupportChat';
+import { useOpensSupportChat } from '@/hooks/useSupportChat';
 import { track } from '@/lib/analytics';
 import { clampText, ERROR_COPY_LIMITS } from '@/lib/errors/copyLimits';
 import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
@@ -23,6 +23,7 @@ import {
   useFailureSheetStore,
 } from '@/store/useFailureSheetStore';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
+import { holdSupportRequest } from '@/store/useSupportDrawerStore';
 
 /** Same pause the support drawer leaves between closing and opening the chat. */
 const ACTION_DELAY_MS = 220;
@@ -36,7 +37,7 @@ interface FailureBodyProps {
 
 const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
   const intercom = useIntercom();
-  const nativeChat = useSupportChatEnabled();
+  const nativeChat = useOpensSupportChat();
   const { report } = content;
   // A transaction that may already be out must not be sent again from here.
   const mayHaveGoneOut = content.nothingSent === false;
@@ -60,29 +61,33 @@ const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
   const handleSupport = useCallback(() => {
     track(TRACKING_EVENTS.ERROR_SUPPORT_PRESSED, analytics);
     const message = buildSupportMessage(content.action, report, content.details);
+    // Also on the Intercom contact, for whoever picks up the conversation.
+    const intercomAttributes = report
+      ? {
+          last_error_ref: report.ref,
+          last_error_event_id: report.eventId,
+          last_error_action: content.action,
+          last_error_code: content.code,
+          last_error_at: report.occurredAt.toISOString(),
+        }
+      : undefined;
     closeFailureSheet();
     setTimeout(() => {
       if (nativeChat) {
         // The in-house chat takes the failure as a card the server resolves
         // (Solid AI and the agent inbox read it by its event ID), not a draft.
-        useSupportChatStore
-          .getState()
-          .setDraftContext(report ? buildSupportContext(content.title, report) : null);
+        const context = report ? buildSupportContext(content.title, report) : null;
+        useSupportChatStore.getState().setDraftContext(context);
+        // Kept for Intercom in case the screen learns this user doesn't have the chat.
+        holdSupportRequest({
+          chatMessage: message,
+          context: context ?? undefined,
+          intercomAttributes,
+        });
         router.push(path.SUPPORT);
         return;
       }
-      if (report) {
-        // Also on the Intercom contact, for whoever picks up the conversation.
-        intercom?.update({
-          customAttributes: {
-            last_error_ref: report.ref,
-            last_error_event_id: report.eventId,
-            last_error_action: content.action,
-            last_error_code: content.code,
-            last_error_at: report.occurredAt.toISOString(),
-          },
-        });
-      }
+      if (intercomAttributes) intercom?.update({ customAttributes: intercomAttributes });
       intercom?.showNewMessage(message);
     }, ACTION_DELAY_MS);
   }, [

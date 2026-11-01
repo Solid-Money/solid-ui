@@ -5,11 +5,15 @@ import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { useSupportChatEnabled } from '@/hooks/useSupportChat';
+import { useOpensSupportChat } from '@/hooks/useSupportChat';
 import { openHelpLink } from '@/lib/help/links';
 import { useIntercom } from '@/lib/intercom';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
-import { closeSupportDrawer, useSupportDrawerStore } from '@/store/useSupportDrawerStore';
+import {
+  closeSupportDrawer,
+  holdSupportRequest,
+  useSupportDrawerStore,
+} from '@/store/useSupportDrawerStore';
 
 const FAQ_URL = 'https://support.solid.xyz/en/collections/16780872-troubleshooting';
 const EMAIL_URL = 'mailto:hello@solid.xyz';
@@ -123,9 +127,10 @@ interface SupportDrawerContentProps {
 const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => {
   const intercom = useIntercom();
   const router = useRouter();
-  const nativeChat = useSupportChatEnabled();
+  const nativeChat = useOpensSupportChat();
   const chatMessage = useSupportDrawerStore(state => state.chatMessage);
   const context = useSupportDrawerStore(state => state.context);
+  const intercomAttributes = useSupportDrawerStore(state => state.intercomAttributes);
 
   const runAfterDismiss = useCallback((action: () => void) => {
     closeSupportDrawer();
@@ -135,20 +140,28 @@ const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => 
   const handleChatPress = useCallback(() => {
     // Read before the drawer closes, which clears them.
     const draftContext = context;
+    const draftMessage = chatMessage;
     runAfterDismiss(() => {
       if (nativeChat) {
         // The in-house chat: what the user was looking at rides along as a card, not a pasted draft.
         if (draftContext) useSupportChatStore.getState().setDraftContext(draftContext);
+        // Kept for Intercom in case the screen learns this user doesn't have the chat.
+        holdSupportRequest({
+          chatMessage: draftMessage,
+          context: draftContext,
+          intercomAttributes,
+        });
         router.push(path.SUPPORT);
         return;
       }
+      if (intercomAttributes) intercom?.update({ customAttributes: intercomAttributes });
       if (chatMessage) {
         intercom?.showNewMessage(chatMessage);
       } else {
         intercom?.show();
       }
     });
-  }, [chatMessage, context, intercom, nativeChat, router, runAfterDismiss]);
+  }, [chatMessage, context, intercom, intercomAttributes, nativeChat, router, runAfterDismiss]);
 
   const openLink = useCallback(
     (url: string) => {
