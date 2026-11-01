@@ -9,6 +9,9 @@ describe('canOpenSupportLink', () => {
     // Markdown turns "www.solid.xyz" into this.
     'http://www.solid.xyz',
     'HTTPS://SUPPORT.SOLID.XYZ/articles/x',
+    'https://support.solid.xyz:443/articles/x',
+    'https://solid.xyz?ref=ai',
+    'https://solid.xyz#top',
   ])('opens a Solid AI link to our domain: %s', href => {
     expect(canOpenSupportLink(href, 'solid')).toBe(true);
   });
@@ -19,6 +22,19 @@ describe('canOpenSupportLink', () => {
     'https://evilsolid.xyz/login',
     // The host before "@" is a username; the browser opens the one after.
     'https://solid.xyz@evil.example/',
+    // A browser takes the host after the LAST "@" (CodeRabbit on #2796).
+    'https://a@solid.xyz:443@evil.example',
+    'https://solid.xyz:443@evil.example/x',
+    // Anything else in the authority than a host and a numeric port.
+    'https://solid.xyz:443:80',
+    'https://solid.xyz:99999',
+    'https://.solid.xyz',
+    'https://support..solid.xyz',
+    'https://solid.xyz:https',
+    'https://solid%2Exyz',
+    'https://[::1]',
+    'https:///solid.xyz',
+    'https:solid.xyz',
     // A browser reads "\" as "/": this opens evil.example.
     'https://evil.example\\@solid.xyz',
     'https://solid.xyz /x',

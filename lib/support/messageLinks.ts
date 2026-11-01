@@ -12,13 +12,19 @@ export type SupportLinkPolicy = 'solid' | 'web';
 
 const OWN_DOMAIN = 'solid.xyz';
 
+/** The scheme of an absolute URL. */
+const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
+
 /**
- * Scheme and host of an absolute URL. Parsed by hand: React Native's `URL`
- * does not implement `protocol` or `hostname` on every platform. A userinfo
- * part (`https://solid.xyz@other.example`) is skipped, so the host is the one
- * the browser would open.
+ * An authority that is only a host name and, at most, a numeric port.
+ * Parsed by hand: React Native's `URL` does not implement `protocol` or
+ * `hostname` on every platform. Anything else is refused rather than read:
+ * a link to our domain never carries a username, and a browser takes the
+ * host after the LAST "@" (`https://a@solid.xyz:443@other.example` opens
+ * other.example), so an authority with "@", a percent-escape, brackets or a
+ * second ":" has no host this check will vouch for.
  */
-const URL_PARTS = /^([a-z][a-z0-9+.-]*):(?:\/\/(?:[^@/?#]*@)?([^/?#:]*))?/i;
+const PLAIN_AUTHORITY = /^((?:[a-z0-9-]+\.)*[a-z0-9-]+)\.?(?::(\d{1,5}))?$/i;
 
 /**
  * Whitespace, control characters and backslashes are how hosts get disguised
@@ -35,13 +41,19 @@ function hasHiddenCharacters(href: string): boolean {
 
 export function canOpenSupportLink(href: string, policy: SupportLinkPolicy): boolean {
   if (!href || hasHiddenCharacters(href)) return false;
-  const parts = URL_PARTS.exec(href);
-  if (!parts) return false;
-  const scheme = parts[1].toLowerCase();
+  const scheme = SCHEME.exec(href)?.[1].toLowerCase();
+  if (!scheme) return false;
   if (policy === 'web') {
     return scheme === 'https' || scheme === 'http' || scheme === 'mailto';
   }
   if (scheme !== 'https' && scheme !== 'http') return false;
-  const host = (parts[2] ?? '').toLowerCase().replace(/\.$/, '');
+  const rest = href.slice(scheme.length + 1);
+  if (!rest.startsWith('//')) return false;
+  // The authority runs to the first "/", "?" or "#" (backslashes were refused above).
+  const authority = rest.slice(2).split(/[/?#]/, 1)[0];
+  const plain = PLAIN_AUTHORITY.exec(authority);
+  // No empty labels (".solid.xyz") and a real port: anything else doesn't open.
+  if (!plain || (plain[2] !== undefined && Number(plain[2]) > 65535)) return false;
+  const host = plain[1].toLowerCase();
   return host === OWN_DOMAIN || host.endsWith(`.${OWN_DOMAIN}`);
 }
