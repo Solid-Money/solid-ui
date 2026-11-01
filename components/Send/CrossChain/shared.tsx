@@ -75,28 +75,53 @@ export type DetailRowSpec = {
 type DetailCardProps = {
   rows: DetailRowSpec[];
   className?: string;
+  /** Tight rows with no hairlines and quieter labels: the swap form's quote. */
+  dense?: boolean;
+  /** Small print under the rows, inside the card. */
+  footer?: ReactNode;
 };
 
 /** Label/value rows in a card, hairline-divided — the quote and review cards. */
-export const DetailCard = ({ rows, className }: DetailCardProps) => (
-  <View className={cn('overflow-hidden rounded-[15px] bg-card', className)}>
+export const DetailCard = ({ rows, className, dense, footer }: DetailCardProps) => (
+  <View
+    className={cn(
+      'overflow-hidden rounded-[15px] bg-card',
+      dense && 'gap-3 px-[18px] py-4',
+      className,
+    )}
+  >
     {rows.map((row, index) => (
       <Fragment key={row.key}>
-        {index > 0 ? <View className="h-px bg-white/10" /> : null}
-        <View className="flex-row items-center justify-between gap-3 px-[18px] py-[14px]">
+        {index > 0 && !dense ? <View className="h-px bg-white/10" /> : null}
+        <View
+          className={cn(
+            'flex-row items-center justify-between gap-3',
+            !dense && 'px-[18px] py-[14px]',
+          )}
+        >
           {typeof row.label === 'string' ? (
-            <Text className="text-base text-white/70">{row.label}</Text>
+            <Text className={dense ? 'text-[15px] text-white/60' : 'text-base text-white/70'}>
+              {row.label}
+            </Text>
           ) : (
             row.label
           )}
           {typeof row.value === 'string' ? (
-            <Text className="shrink text-right text-base font-medium text-white">{row.value}</Text>
+            <Text
+              className={cn(
+                'shrink text-right text-white',
+                dense ? 'text-[15px] font-semibold' : 'text-base font-medium',
+              )}
+            >
+              {row.value}
+            </Text>
           ) : (
             row.value
           )}
         </View>
       </Fragment>
     ))}
+    {footer}
   </View>
 );
 
@@ -104,18 +129,27 @@ export const Divider = () => <View className="h-px bg-white/10" />;
 
 type MaxPillProps = {
   onPress: () => void;
+  /** Grey on the swap form, brand green elsewhere. */
+  tone?: 'brand' | 'grey';
 };
 
 /** "Max" beside an available balance: fills the amount with all of it. */
-export const MaxPill = ({ onPress }: MaxPillProps) => (
+export const MaxPill = ({ onPress, tone = 'brand' }: MaxPillProps) => (
   <Pressable
     onPress={onPress}
     hitSlop={6}
     accessibilityRole="button"
     accessibilityLabel="Use the whole balance"
-    className="rounded-[18px] bg-[rgba(148,242,127,0.16)] px-2 pb-[3px] pt-[2px]"
+    className={cn(
+      'rounded-[18px]',
+      tone === 'brand'
+        ? 'bg-[rgba(148,242,127,0.16)] px-2 pb-[3px] pt-[2px]'
+        : 'bg-[#303030] px-2.5 py-1',
+    )}
   >
-    <Text className="text-sm leading-4 text-brand">Max</Text>
+    <Text className={cn('text-sm leading-4', tone === 'brand' ? 'text-brand' : 'text-white/50')}>
+      Max
+    </Text>
   </Pressable>
 );
 

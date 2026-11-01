@@ -7,9 +7,9 @@ import { SWAP_MODAL } from '@/constants/modals';
 const { act, create } = require('react-test-renderer');
 
 jest.mock('lucide-react-native', () => ({
-  ArrowUpDown: 'ArrowUpDown',
   ChevronDown: 'ChevronDown',
   CircleAlert: 'CircleAlert',
+  RefreshCw: 'RefreshCw',
   Wallet: 'Wallet',
 }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
@@ -104,8 +104,9 @@ it('prices the swap and offers Review (01)', () => {
   expect(text()).toContain('USD Yield');
   expect(text()).toContain('19.84');
   expect(text()).toContain('$19.94');
-  expect(text()).toContain('Core plan fee');
-  const rows = root.root.findByType('DetailCard').props.rows;
+  const card = root.root.findByType('DetailCard');
+  expect(card.props.footer.props.children).toContain('Core plan fee');
+  const rows = card.props.rows;
   expect(rows.map((row: any) => row.label)).toEqual(['Rate', 'Fee', 'Network fee', 'Arrives']);
   expect(rows.find((row: any) => row.key === 'fee').value).toBe('$0.10 (0.5%)');
   expect(rows.find((row: any) => row.key === 'arrives').value).toBe('Instantly');
