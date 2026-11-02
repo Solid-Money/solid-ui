@@ -135,6 +135,12 @@ export const TRACKING_EVENTS = {
   DEPOSIT_DIRECT_SESSION_COMPLETED: 'deposit_direct_session_completed',
   DEPOSIT_DIRECT_SESSION_DELETED: 'deposit_direct_session_deleted',
 
+  // Deposit Method: rhino.fi deposit address (chains the pipeline does not watch itself)
+  DEPOSIT_RHINO_NETWORK_SELECTED: 'deposit_rhino_network_selected',
+  DEPOSIT_RHINO_ADDRESS_VIEWED: 'deposit_rhino_address_viewed',
+  DEPOSIT_RHINO_ADDRESS_COPIED: 'deposit_rhino_address_copied',
+  DEPOSIT_RHINO_ADDRESS_FAILED: 'deposit_rhino_address_failed',
+
   // Deposit Method: Credit Card (Method 3)
   DEPOSIT_CARD_WIDGET_LOADING: 'deposit_card_widget_loading',
   DEPOSIT_CARD_WIDGET_LOADED: 'deposit_card_widget_loaded',

@@ -143,6 +143,10 @@ import {
   ResumeRainForwardResponse,
   RewardsTier,
   RewardsUserData,
+  RhinoDepositAddressRequest,
+  RhinoDepositAddressResponse,
+  RhinoDepositAssetsResponse,
+  RhinoDepositsResponse,
   SavingsSummaryResponse,
   SourceDepositInstructions,
   StatementDownload,
@@ -4940,6 +4944,90 @@ export const deleteDirectDepositSession = async (
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${clientTxId}`,
     {
       method: 'DELETE',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// rhino.fi Smart Deposit Address API
+
+/**
+ * The chains rhino.fi takes deposits on, the tokens on each and where each can
+ * be paid out. Unauthenticated, like `/deposit/assets`: the answer is config and
+ * the same for everyone. `enabled: false` means rhino.fi is not configured on
+ * this backend, and nothing rhino is offered.
+ */
+export const getRhinoDepositAssets = async (): Promise<RhinoDepositAssetsResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/rhino/assets`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The user's rhino.fi deposit address for a (chain, token, destination).
+ *
+ * A POST because the backend creates the address on first ask, but the answer is
+ * stable: one address per destination, the same on every EVM chain. Like the
+ * direct-deposit session it can wait on a third party, so it fails rather than
+ * hangs. 400: the combination is not offered; 412: the user has no wallet yet;
+ * 503: rhino.fi is unavailable or not configured.
+ */
+export const createRhinoDepositAddress = async (
+  request: RhinoDepositAddressRequest,
+): Promise<RhinoDepositAddressResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/rhino/address`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(request),
+    },
+    DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The user's rhino.fi deposits seen since `since` (epoch ms) — the leg before
+ * the payout reaches Solid, which the regular deposit pipeline reports from
+ * there on.
+ */
+export const getRhinoDeposits = async (since: number): Promise<RhinoDepositsResponse> => {
+  const jwt = getJWTToken();
+
+  const params = new URLSearchParams({ since: String(since) });
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/rhino/deposits?${params}`,
+    {
       headers: {
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),

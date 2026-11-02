@@ -21,6 +21,7 @@ import {
   WirexMoveAmount,
   WirexMoveHoldings,
 } from '@/components/Card/CardFund/WirexMoveFromWallet';
+import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { USDC_STARGATE } from '@/constants/addresses';
 import { SWAP_MODAL } from '@/constants/modals';
@@ -34,6 +35,7 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
+import { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { CardProvider, DepositModal } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
@@ -129,6 +131,10 @@ export default function WirexCardFundModal({
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
+  // Set when a rhino.fi chain was picked: the address step shows its address instead.
+  const [rhinoSelection, setRhinoSelection] = useState<RhinoDepositSelection | undefined>(
+    undefined,
+  );
   const [selectedHolding, setSelectedHolding] = useState<MovableHolding | undefined>(undefined);
   const { holdings, swappable, isLoading: areHoldingsLoading } = useMovableHoldings();
 
@@ -161,6 +167,7 @@ export default function WirexCardFundModal({
         setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
+        setRhinoSelection(undefined);
         setSelectedHolding(undefined);
       }
     },
@@ -190,6 +197,7 @@ export default function WirexCardFundModal({
       setSelectedToken(symbol);
       setSelectedChainId(undefined);
       setDepositAddress(undefined);
+      setRhinoSelection(undefined);
       goToStep('networks');
     },
     [goToStep],
@@ -203,12 +211,25 @@ export default function WirexCardFundModal({
         deposit_type: 'wirex_card_direct_deposit',
       });
 
+      setRhinoSelection(undefined);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
       prepareSession({ chainId, token: selectedToken });
       goToStep('address');
     },
     [goToStep, prepareSession, selectedToken],
+  );
+
+  // A rhino.fi chain from under the network list. Its address step fetches the
+  // user's rhino.fi address itself, so no direct-deposit session is minted.
+  const handleRhinoNetworkSelect = useCallback(
+    (selection: RhinoDepositSelection) => {
+      setSelectedChainId(undefined);
+      setDepositAddress(undefined);
+      setRhinoSelection(selection);
+      goToStep('address');
+    },
+    [goToStep],
   );
 
   // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
@@ -350,7 +371,13 @@ export default function WirexCardFundModal({
     }
 
     if (step === 'networks') {
-      return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
+      return (
+        <CardFundNetworks
+          symbol={selectedToken}
+          onSelect={handleNetworkSelect}
+          onSelectRhino={handleRhinoNetworkSelect}
+        />
+      );
     }
 
     if (step === 'moveHoldings') {
@@ -402,6 +429,16 @@ export default function WirexCardFundModal({
           holding={holding}
           suggestedAmount={suggestedAmountUsd}
           onDone={handleMoveSubmitted}
+        />
+      );
+    }
+
+    if (step === 'address' && rhinoSelection) {
+      return (
+        <RhinoDepositAddress
+          selection={rhinoSelection}
+          onChangeNetwork={handleBack}
+          onDepositDetected={handleDepositDetected}
         />
       );
     }

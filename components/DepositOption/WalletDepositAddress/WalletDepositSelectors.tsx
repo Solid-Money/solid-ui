@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
-import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
+import { ReactNode, useMemo } from 'react';
+import { ImageSourcePropType, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
 
+import RhinoChainIcon from '@/components/DepositOption/RhinoDeposit/RhinoChainIcon';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useRhinoDepositChains } from '@/hooks/useRhinoDepositAssets';
+import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -21,6 +24,12 @@ const ROW_ICON_STYLE = { width: 28, height: 28, borderRadius: 14 };
 const LIST_TOP = 35 + 12;
 /** Tall enough to cover the QR card the open list floats over. */
 const BACKDROP_HEIGHT = 900;
+/**
+ * About eight rows. Only applied once rhino.fi chains lengthen the list: it
+ * floats over the screen rather than in its flow, so rows past the end of the
+ * content beneath could never be scrolled to.
+ */
+const LONG_LIST_MAX_HEIGHT = 420;
 
 const styles = StyleSheet.create({
   overlay: {
@@ -32,16 +41,22 @@ const styles = StyleSheet.create({
   backdrop: {
     height: BACKDROP_HEIGHT,
   },
+  longList: {
+    maxHeight: LONG_LIST_MAX_HEIGHT,
+  },
 });
 
 const Pill = ({
   icon,
+  iconElement,
   label,
   isOpen,
   onPress,
   accessibilityLabel,
 }: {
   icon?: ImageSourcePropType;
+  /** Drawn in place of `icon`, for a chain with no logo to load. */
+  iconElement?: ReactNode;
   label: string;
   isOpen?: boolean;
   onPress: () => void;
@@ -53,11 +68,12 @@ const Pill = ({
     onPress={onPress}
     className="h-[35px] flex-row items-center gap-x-2 rounded-full bg-card px-3 web:transition-colors web:hover:bg-card-hover"
   >
-    {icon ? (
-      <Image source={icon} style={PILL_ICON_STYLE} contentFit="cover" />
-    ) : (
-      <View style={PILL_ICON_STYLE} />
-    )}
+    {iconElement ??
+      (icon ? (
+        <Image source={icon} style={PILL_ICON_STYLE} contentFit="cover" />
+      ) : (
+        <View style={PILL_ICON_STYLE} />
+      ))}
     <Text className="text-base font-semibold leading-none text-white">{label}</Text>
     <ChevronDown
       size={16}
@@ -70,6 +86,8 @@ const Pill = ({
 type WalletDepositSelectorsProps = {
   chainId: number;
   symbol: string;
+  /** The rhino.fi chain showing instead of `chainId`, when one is. */
+  rhinoChain?: { chain: string; name: string };
   isNetworkOpen: boolean;
   onToggleNetwork: () => void;
 };
@@ -86,6 +104,7 @@ type WalletDepositSelectorsProps = {
 const WalletDepositSelectors = ({
   chainId,
   symbol,
+  rhinoChain,
   isNetworkOpen,
   onToggleNetwork,
 }: WalletDepositSelectorsProps) => {
@@ -110,7 +129,12 @@ const WalletDepositSelectors = ({
       />
       <Pill
         icon={network?.icon}
-        label={network?.name ?? '—'}
+        iconElement={
+          rhinoChain ? (
+            <RhinoChainIcon chain={rhinoChain.chain} name={rhinoChain.name} size={20} />
+          ) : undefined
+        }
+        label={rhinoChain?.name ?? network?.name ?? '—'}
         isOpen={isNetworkOpen}
         onPress={onToggleNetwork}
         accessibilityLabel="Choose network"
@@ -122,7 +146,11 @@ const WalletDepositSelectors = ({
 type WalletDepositNetworkListProps = {
   chainId: number;
   symbol: string;
+  /** The rhino.fi chain selected instead of `chainId`, if any. */
+  rhinoChain?: string;
   onSelect: (chainId: number) => void;
+  /** A rhino.fi chain from under the list. Omit to leave them out. */
+  onSelectRhino?: (chain: string) => void;
   onDismiss: () => void;
 };
 
@@ -135,18 +163,54 @@ type WalletDepositNetworkListProps = {
  * `zIndex` does not carry from a nested child over a later sibling.
  *
  * It offers only the chains carrying the chosen currency, so changing network
- * can never quietly change the currency with it.
+ * can never quietly change the currency with it. Under them, when rhino.fi is
+ * offered, the rhino.fi chains that take the currency into the wallet.
  */
 export const WalletDepositNetworkList = ({
   chainId,
   symbol,
+  rhinoChain,
   onSelect,
+  onSelectRhino,
   onDismiss,
 }: WalletDepositNetworkListProps) => {
   const viewer = useWalletDepositViewer();
   const networks = useMemo(
     () => getWalletDepositNetworksForToken(symbol, viewer),
     [symbol, viewer],
+  );
+  const { chains: rhinoChains } = useRhinoDepositChains({ destinationType: 'WALLET', symbol });
+  const offeredRhinoChains = onSelectRhino ? rhinoChains : [];
+
+  const rows = (
+    <>
+      {networks.map((item, index) => (
+        <Pressable
+          key={item.chainId}
+          onPress={() => onSelect(item.chainId)}
+          className={cn(
+            'flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover',
+            index > 0 && 'border-t border-white/[0.06]',
+          )}
+        >
+          <Image source={item.icon} style={ROW_ICON_STYLE} contentFit="cover" />
+          <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
+          {item.chainId === chainId && !rhinoChain ? <Check size={18} color="#94F27F" /> : null}
+        </Pressable>
+      ))}
+      {offeredRhinoChains.map(item => (
+        <Pressable
+          key={item.chain}
+          onPress={() => onSelectRhino?.(item.chain)}
+          className="flex-row items-center gap-x-3 border-t border-white/[0.06] px-[18px] py-3 web:transition-colors web:hover:bg-card-hover"
+        >
+          <RhinoChainIcon chain={item.chain} name={item.name} size={ROW_ICON_STYLE.width} />
+          <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
+          <Text className="text-sm text-white/50">{RHINO_NETWORK_CHIP}</Text>
+          {item.chain === rhinoChain ? <Check size={18} color="#94F27F" /> : null}
+        </Pressable>
+      ))}
+    </>
   );
 
   return (
@@ -162,20 +226,18 @@ export const WalletDepositNetworkList = ({
         className="overflow-hidden rounded-[15px] bg-card web:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
         style={styles.overlay}
       >
-        {networks.map((item, index) => (
-          <Pressable
-            key={item.chainId}
-            onPress={() => onSelect(item.chainId)}
-            className={cn(
-              'flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover',
-              index > 0 && 'border-t border-white/[0.06]',
-            )}
+        {offeredRhinoChains.length ? (
+          <ScrollView
+            style={styles.longList}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Image source={item.icon} style={ROW_ICON_STYLE} contentFit="cover" />
-            <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
-            {item.chainId === chainId ? <Check size={18} color="#94F27F" /> : null}
-          </Pressable>
-        ))}
+            {rows}
+          </ScrollView>
+        ) : (
+          rows
+        )}
       </View>
     </>
   );

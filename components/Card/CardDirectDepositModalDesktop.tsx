@@ -17,6 +17,7 @@ import {
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import { UsdMethodList } from '@/components/DepositOption/DepositUsdOptions';
+import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
 import { OrchestraFlowContent } from '@/components/Orchestra/OrchestraFlow';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
@@ -39,6 +40,7 @@ import {
 } from '@/lib/buyCryptoFlow';
 import { EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT } from '@/lib/config';
 import { getOrchestraBackTarget, getOrchestraTitle, isOrchestraModal } from '@/lib/orchestraFlow';
+import { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -108,6 +110,10 @@ export default function CardDirectDepositModal({
   // Deposit address fetched after chain selection (both the direct-deposit and
   // the connected-wallet paths send to the same session wallet).
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
+  // Set when a rhino.fi chain was picked: the address step shows its address instead.
+  const [rhinoSelection, setRhinoSelection] = useState<RhinoDepositSelection | undefined>(
+    undefined,
+  );
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const walletConnectingRef = useRef(false);
@@ -168,6 +174,7 @@ export default function CardDirectDepositModal({
         setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
+        setRhinoSelection(undefined);
       }
     },
     [isControlled, onOpenChange],
@@ -307,6 +314,7 @@ export default function CardDirectDepositModal({
       setSelectedToken(symbol);
       setSelectedChainId(undefined);
       setDepositAddress(undefined);
+      setRhinoSelection(undefined);
       goToStep('networks');
     },
     [goToStep],
@@ -322,12 +330,25 @@ export default function CardDirectDepositModal({
         deposit_type: 'card_direct_deposit',
       });
 
+      setRhinoSelection(undefined);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
       prepareSession({ chainId, token: selectedToken });
       goToStep('address');
     },
     [goToStep, prepareSession, selectedToken],
+  );
+
+  // A rhino.fi chain from under the network list. Its address step fetches the
+  // user's rhino.fi address itself, so no direct-deposit session is minted.
+  const handleRhinoNetworkSelect = useCallback(
+    (selection: RhinoDepositSelection) => {
+      setSelectedChainId(undefined);
+      setDepositAddress(undefined);
+      setRhinoSelection(selection);
+      goToStep('address');
+    },
+    [goToStep],
   );
 
   // Connected-wallet path only — always navigates to the send form.
@@ -444,7 +465,23 @@ export default function CardDirectDepositModal({
     }
 
     if (step === 'networks') {
-      return <CardFundNetworks symbol={selectedToken} onSelect={handleDirectNetworkSelect} />;
+      return (
+        <CardFundNetworks
+          symbol={selectedToken}
+          onSelect={handleDirectNetworkSelect}
+          onSelectRhino={handleRhinoNetworkSelect}
+        />
+      );
+    }
+
+    if (step === 'address' && rhinoSelection) {
+      return (
+        <RhinoDepositAddress
+          selection={rhinoSelection}
+          onChangeNetwork={handleBack}
+          onDepositDetected={handleDepositDetected}
+        />
+      );
     }
 
     if (step === 'address') {
