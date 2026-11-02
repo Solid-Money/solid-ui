@@ -3,11 +3,16 @@ import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
-import { getSavingsFundNetworks } from '@/components/Savings/SavingsFund/constants';
+import {
+  getSavingsFundNetworks,
+  getSavingsFundToken,
+} from '@/components/Savings/SavingsFund/constants';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
+import { getRhinoChainsForDestination, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -34,16 +39,26 @@ const describeSessionError = (error: unknown): string => {
  */
 export const useSavingsFundFlow = () => {
   const router = useRouter();
-  const { session, setModal, setDirectDepositSession, resetDepositFlow, setDepositFromSolid } =
-    useDepositStore(
-      useShallow(state => ({
-        session: state.directDepositSession,
-        setModal: state.setModal,
-        setDirectDepositSession: state.setDirectDepositSession,
-        resetDepositFlow: state.resetDepositFlow,
-        setDepositFromSolid: state.setDepositFromSolid,
-      })),
-    );
+  const {
+    session,
+    rhinoDeposit,
+    setModal,
+    setDirectDepositSession,
+    setRhinoDeposit,
+    resetDepositFlow,
+    setDepositFromSolid,
+  } = useDepositStore(
+    useShallow(state => ({
+      session: state.directDepositSession,
+      rhinoDeposit: state.rhinoDeposit,
+      setModal: state.setModal,
+      setDirectDepositSession: state.setDirectDepositSession,
+      setRhinoDeposit: state.setRhinoDeposit,
+      resetDepositFlow: state.resetDepositFlow,
+      setDepositFromSolid: state.setDepositFromSolid,
+    })),
+  );
+  const rhinoAssets = useOfferedRhinoDepositAssets();
 
   const selectedToken = session.selectedToken ?? 'USDC';
   const selectedChainId = session.chainId;
@@ -89,6 +104,7 @@ export const useSavingsFundFlow = () => {
         deposit_type: 'savings_direct_deposit',
       });
 
+      setRhinoDeposit(undefined);
       setDirectDepositSession({
         selectedToken: token,
         chainId,
@@ -97,27 +113,48 @@ export const useSavingsFundFlow = () => {
       prepareSession({ chainId, token });
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
     },
-    [prepareSession, selectedToken, setDirectDepositSession, setModal],
+    [prepareSession, selectedToken, setDirectDepositSession, setModal, setRhinoDeposit],
+  );
+
+  /**
+   * A rhino.fi chain from under the network list. The address step shows the
+   * user's rhino.fi address for it, which fetches its own address; no
+   * direct-deposit session is minted.
+   */
+  const selectRhinoNetwork = useCallback(
+    (selection: RhinoDepositSelection) => {
+      setDirectDepositSession({ chainId: undefined, walletAddress: undefined });
+      setRhinoDeposit(selection);
+      setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
+    },
+    [setDirectDepositSession, setModal, setRhinoDeposit],
   );
 
   const selectToken = useCallback(
     (symbol: string) => {
+      setRhinoDeposit(undefined);
       setDirectDepositSession({
         selectedToken: symbol,
         chainId: undefined,
         walletAddress: undefined,
       });
 
-      // Tokens that exist on a single chain (FUSE) skip the one-row chain list.
+      // Tokens that exist on a single chain (FUSE) skip the one-row chain list —
+      // unless rhino.fi adds chains under it, which makes it a choice again.
       const networks = getSavingsFundNetworks(symbol);
-      if (networks.length === 1) {
+      const rhinoChains = getRhinoChainsForDestination(rhinoAssets, {
+        destinationType: 'PROTOCOL',
+        symbol,
+        vault: getSavingsFundToken(symbol).vaultToken,
+      });
+      if (networks.length === 1 && rhinoChains.length === 0) {
         selectNetwork(networks[0].chainId, symbol);
         return;
       }
 
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     },
-    [selectNetwork, setDirectDepositSession, setModal],
+    [rhinoAssets, selectNetwork, setDirectDepositSession, setModal, setRhinoDeposit],
   );
 
   /** Re-runs the address request for the network already chosen. */
@@ -155,10 +192,12 @@ export const useSavingsFundFlow = () => {
     selectedToken,
     selectedChainId,
     depositAddress,
+    rhinoDeposit,
     isPreparingSession,
     hasSessionError,
     selectToken,
     selectNetwork,
+    selectRhinoNetwork,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,

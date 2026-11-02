@@ -10,17 +10,25 @@ import { CARD_FUND_DESTINATION_TYPE } from '@/components/Card/CardFund/constants
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
+import { getRhinoChainIcon } from '@/components/DepositOption/RhinoDeposit/RhinoChainIcon';
+import RhinoDepositDetails from '@/components/DepositOption/RhinoDeposit/RhinoDepositDetails';
+import RhinoDepositStatus from '@/components/DepositOption/RhinoDeposit/RhinoDepositStatus';
+import { useRhinoAddressAnalytics } from '@/components/DepositOption/RhinoDeposit/useRhinoAddressAnalytics';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useRhinoDepositAddress } from '@/hooks/useRhinoDepositAddress';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
+import { track } from '@/lib/analytics';
 import { openHelpLink } from '@/lib/help/links';
-import { eclipseAddress } from '@/lib/utils';
+import { findRhinoRoute, formatDepositAddress, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
@@ -57,6 +65,10 @@ const INLINE_ICON_STYLE = { width: 16, height: 16, borderRadius: 8 };
  * what the minimum transfer is, and which chain the QR is labelled for. Sending
  * a currency the chosen chain does not list, or less than its minimum, is what
  * the copy under the QR is there to prevent.
+ *
+ * A rhino.fi chain (Tron, Solana, …) picked from the network list is the
+ * exception: the screen shows the user's rhino.fi address for it instead, which
+ * is not the Safe and, for Tron and Solana, not a 0x address at all.
  */
 const WalletDepositAddress = () => {
   // Chain and currency are both chosen on steps of their own, so the selection
@@ -75,9 +87,42 @@ const WalletDepositAddress = () => {
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
     [chainId],
   );
+
+  // A rhino.fi chain only counts while rhino.fi still offers this currency into
+  // the wallet there; otherwise the screen is the Safe on `chainId` as before.
+  const rhinoAssets = useOfferedRhinoDepositAssets();
+  const rhinoSelection = useMemo<RhinoDepositSelection | undefined>(
+    () =>
+      walletDeposit.rhinoChain
+        ? { chain: walletDeposit.rhinoChain, tokenSymbol: symbol, destinationType: 'WALLET' }
+        : undefined,
+    [walletDeposit.rhinoChain, symbol],
+  );
+  const rhino = useMemo(
+    () => (rhinoSelection ? findRhinoRoute(rhinoAssets, rhinoSelection) : undefined),
+    [rhinoAssets, rhinoSelection],
+  );
+  const activeRhinoSelection = rhino ? rhinoSelection : undefined;
+  const {
+    address: rhinoAddress,
+    isError: hasRhinoAddressError,
+    refetch: refetchRhinoAddress,
+  } = useRhinoDepositAddress(activeRhinoSelection);
+  const trackRhinoCopy = useRhinoAddressAnalytics(
+    activeRhinoSelection,
+    rhinoAddress?.depositAddress,
+  );
+
   // A Wirex cardholder's stablecoins get an address the pipeline mints and
   // watches; everything else gets the Safe, which is where it lands and stays.
-  const { address, isError: hasAddressError, isMinted } = useWalletDepositAddress(chainId, symbol);
+  const {
+    address: walletAddress,
+    isError: hasWalletAddressError,
+    isMinted,
+  } = useWalletDepositAddress(chainId, symbol);
+  const address = rhino ? rhinoAddress?.depositAddress : walletAddress;
+  const hasAddressError = rhino ? hasRhinoAddressError : hasWalletAddressError;
+  const qrLogo = rhino ? getRhinoChainIcon(rhino.chain.chain) : network?.icon;
   // Wirex cardholders and people with no card both land here, and only the
   // cardholders are charged — see `getDepositFeeRatePpm`.
   const { provider } = useCardProvider();
@@ -94,7 +139,8 @@ const WalletDepositAddress = () => {
   // EURC lands in the Safe on Base, where the card can only pay with it once it is turned on in
   // Main currency — said here, before the deposit, rather than by the first declined payment.
   const euroSpend = useEuroSpendEnablement();
-  const showsEuroSpendingNote = symbol === 'EURC' && euroSpend.shouldOffer;
+  const showsEuroSpendingNote =
+    (rhino ? rhino.route.receiveSymbol : symbol) === 'EURC' && euroSpend.shouldOffer;
   const router = useRouter();
   const setDepositModal = useDepositStore(state => state.setModal);
   const openMainCurrency = useCallback(() => {
@@ -105,7 +151,7 @@ const WalletDepositAddress = () => {
   // Only a minted address is watched, so only then is there anything to scan for.
   // The Safe is not registered with the pipeline; saying "scanning" over it would
   // be describing a poll that can never come back positive.
-  const isScanning = !!address && isMinted;
+  const isScanning = !!address && isMinted && !rhino;
   const { isDetected } = useDetectedDirectDeposit({
     enabled: isScanning,
     destinationType: CARD_FUND_DESTINATION_TYPE,
@@ -121,7 +167,8 @@ const WalletDepositAddress = () => {
     if (!address) return;
     await Clipboard.setStringAsync(address);
     setCopied(true);
-  }, [address]);
+    if (rhino) trackRhinoCopy();
+  }, [address, rhino, trackRhinoCopy]);
 
   // The list only offers chains carrying the current currency, so this should
   // never have to change it — resolved anyway rather than trusting that.
@@ -136,11 +183,30 @@ const WalletDepositAddress = () => {
     [setWalletDeposit, symbol, viewer],
   );
 
+  // The list only offers rhino.fi chains taking the current currency into the
+  // wallet, so the currency stays as it is.
+  const handleSelectRhinoNetwork = useCallback(
+    (chain: string) => {
+      const selected = rhinoAssets?.chains.find(item => item.chain === chain);
+      track(TRACKING_EVENTS.DEPOSIT_RHINO_NETWORK_SELECTED, {
+        deposit_method: 'rhino_deposit_address',
+        destination_type: 'WALLET',
+        rhino_chain: chain,
+        network_name: selected?.name,
+        token_symbol: symbol,
+      });
+      setWalletDeposit({ rhinoChain: chain });
+      setIsNetworkOpen(false);
+    },
+    [rhinoAssets, setWalletDeposit, symbol],
+  );
+
   return (
     <View className="gap-y-6">
       <WalletDepositSelectors
         chainId={chainId}
         symbol={symbol}
+        rhinoChain={rhino ? { chain: rhino.chain.chain, name: rhino.chain.name } : undefined}
         isNetworkOpen={isNetworkOpen}
         onToggleNetwork={() => setIsNetworkOpen(open => !open)}
       />
@@ -161,7 +227,20 @@ const WalletDepositAddress = () => {
             className="items-center justify-center overflow-hidden rounded-[20px]"
             style={{ width: qrSize, height: qrSize }}
           >
-            {hasAddressError ? (
+            {hasAddressError && rhino ? (
+              <View className="items-center gap-y-3 px-6">
+                <Text className="text-center text-sm text-white/70">
+                  Could not load the deposit address.
+                </Text>
+                <Button
+                  variant="secondary"
+                  className="h-10 rounded-full px-6"
+                  onPress={() => void refetchRhinoAddress()}
+                >
+                  <Text className="text-sm font-semibold">Try again</Text>
+                </Button>
+              </View>
+            ) : hasAddressError ? (
               <Text className="px-6 text-center text-sm text-white/70">
                 Could not load the deposit address. Close and try again.
               </Text>
@@ -174,7 +253,7 @@ const WalletDepositAddress = () => {
                 // Keeps the rounded corners clear of the finder patterns: a corner
                 // clipped into is a corner a scanner can fail to locate.
                 quietZone={QR_QUIET_ZONE}
-                logo={network?.icon as ImageSourcePropType}
+                logo={qrLogo as ImageSourcePropType | undefined}
                 logoSize={Math.round(qrSize * 0.154)}
                 logoBorderRadius={Math.round(qrSize * 0.077)}
                 logoBackgroundColor="transparent"
@@ -191,33 +270,50 @@ const WalletDepositAddress = () => {
           className="flex-row items-center justify-center"
           style={{ paddingHorizontal: CARD_PADDING, paddingVertical: CARD_PADDING * 0.75 }}
         >
+          {/* Shortened from both ends, whatever the format: a Tron or Solana
+              address has no 0x and is not 42 characters. */}
           <Text className="text-lg font-medium text-white">
-            {address ? eclipseAddress(address, 7, 5) : '—'}
+            {address ? formatDepositAddress(address, 7, 5) : '—'}
           </Text>
           {address ? (
             <CopyToClipboard
               text={address}
               className="h-8 w-8 bg-transparent web:hover:bg-transparent web:active:bg-transparent"
               iconClassName="text-white"
+              onCopy={rhino ? trackRhinoCopy : undefined}
             />
           ) : null}
         </View>
       </View>
 
       <View className="gap-y-3">
-        <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-          <Text className="text-base font-medium text-white">Send at least</Text>
-          <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
-          {/* "10 USDC", "0.005 WETH" and "0.00012 cbBTC" all read right, rounded up. */}
-          <Text className="text-base font-medium text-white">{`${formatWalletDepositMinimum(minimum)} ${symbol} on the`}</Text>
-          {network?.icon ? (
-            <Image source={network.icon} style={INLINE_ICON_STYLE} contentFit="cover" />
-          ) : null}
-          <Text className="text-base font-medium text-white">{`${network?.name ?? ''} chain to this address`}</Text>
-        </View>
-        <Text className="text-center text-sm text-white/50">
-          Deposits below the minimum will not be credited or refunded
-        </Text>
+        {rhino ? (
+          <RhinoDepositDetails
+            tokenSymbol={symbol}
+            chainName={rhino.chain.name}
+            destinationType="WALLET"
+            receiveSymbol={rhinoAddress?.receiveSymbol ?? rhino.route.receiveSymbol}
+            receiveChainId={rhinoAddress?.receiveChainId ?? rhino.route.receiveChainId}
+            minimumUsd={rhinoAddress?.minimumUsd ?? rhino.route.minimumUsd}
+            maximumUsd={rhinoAddress?.maximumUsd ?? rhino.route.maximumUsd}
+          />
+        ) : (
+          <>
+            <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+              <Text className="text-base font-medium text-white">Send at least</Text>
+              <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
+              {/* "10 USDC", "0.005 WETH" and "0.00012 cbBTC" all read right, rounded up. */}
+              <Text className="text-base font-medium text-white">{`${formatWalletDepositMinimum(minimum)} ${symbol} on the`}</Text>
+              {network?.icon ? (
+                <Image source={network.icon} style={INLINE_ICON_STYLE} contentFit="cover" />
+              ) : null}
+              <Text className="text-base font-medium text-white">{`${network?.name ?? ''} chain to this address`}</Text>
+            </View>
+            <Text className="text-center text-sm text-white/50">
+              Deposits below the minimum will not be credited or refunded
+            </Text>
+          </>
+        )}
         {showsEuroSpendingNote ? (
           <View className="flex-row flex-wrap items-center justify-center gap-x-1">
             <Text className="text-center text-sm text-white/70">
@@ -234,13 +330,16 @@ const WalletDepositAddress = () => {
             </Pressable>
           </View>
         ) : null}
-        <DepositFeeNotice
-          product="wallet"
-          provider={provider}
-          chainId={chainId}
-          symbol={symbol}
-          className="mt-2"
-        />
+        {/* rhino.fi payouts pay no Solid deposit fee. */}
+        {rhino ? null : (
+          <DepositFeeNotice
+            product="wallet"
+            provider={provider}
+            chainId={chainId}
+            symbol={symbol}
+            className="mt-2"
+          />
+        )}
         <Pressable
           className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
           onPress={() => openHelpLink(WALLET_DEPOSIT_LEARN_URL)}
@@ -249,6 +348,16 @@ const WalletDepositAddress = () => {
           <ChevronRight color="white" size={16} />
         </Pressable>
       </View>
+
+      {rhino ? (
+        <RhinoDepositStatus
+          enabled={!!address}
+          depositAddress={address}
+          chain={rhino.chain.chain}
+          chainName={rhino.chain.name}
+          addressType={rhinoAddress?.addressType ?? rhino.chain.addressType}
+        />
+      ) : null}
 
       {isScanning ? (
         <View className="flex-row items-center gap-x-2 self-center rounded-[18px] bg-[#333333] px-4 py-2">
@@ -275,7 +384,9 @@ const WalletDepositAddress = () => {
         <WalletDepositNetworkList
           chainId={chainId}
           symbol={symbol}
+          rhinoChain={rhino ? rhino.chain.chain : undefined}
           onSelect={handleSelectNetwork}
+          onSelectRhino={handleSelectRhinoNetwork}
           onDismiss={() => setIsNetworkOpen(false)}
         />
       ) : null}

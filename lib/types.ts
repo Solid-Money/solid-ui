@@ -138,6 +138,118 @@ export interface DepositAssetsResponse {
   pricesResolved: boolean;
 }
 
+/**
+ * Where a rhino.fi deposit is paid out: the same strings the direct-deposit
+ * session takes as `destinationType` (`PROTOCOL` is savings, `RAIN_CARD` the
+ * card), plus `WALLET` for the user's Safe.
+ */
+export type RhinoDestinationType = 'WALLET' | 'PROTOCOL' | 'RAIN_CARD';
+
+/** The address format a rhino.fi chain uses. Only `EVM` is a 0x address. */
+export type RhinoAddressType = 'EVM' | 'TRON' | 'SOL';
+
+/** What a token sent on a rhino.fi chain turns into at one destination. */
+export interface RhinoDepositRoute {
+  destinationType: RhinoDestinationType;
+  /** What lands: `USDC`, `USDT`, `ETH` or `EURC`. */
+  receiveSymbol: string;
+  /** 8453 (Base) or 1 (Ethereum). */
+  receiveChainId: number;
+  /** The savings vault it is deposited into. Set only for `PROTOCOL`. */
+  vault?: 'soUSD' | 'soETH' | 'soEURC';
+  minimumUsd: number;
+  maximumUsd: number;
+}
+
+export interface RhinoDepositToken {
+  /** The token the user sends: `USDC`, `USDT`, `ETH` or `EURC`. */
+  symbol: string;
+  /** Its contract on that chain, in the chain's own format (not always 0x). */
+  address: string;
+  routes: RhinoDepositRoute[];
+}
+
+export interface RhinoDepositChain {
+  /** rhino.fi's chain id, e.g. `TRON`, `SOLANA`, `OPTIMISM`. */
+  chain: string;
+  /** Display name, e.g. `Tron`. */
+  name: string;
+  addressType: RhinoAddressType;
+  tokens: RhinoDepositToken[];
+}
+
+/** `GET /deposit/rhino/assets` — the chains rhino.fi accepts deposits on. */
+export interface RhinoDepositAssetsResponse {
+  /** False when rhino.fi is not configured server-side: nothing rhino is offered. */
+  enabled: boolean;
+  chains: RhinoDepositChain[];
+}
+
+export interface RhinoDepositAddressRequest {
+  chain: string;
+  tokenSymbol: string;
+  destinationType: RhinoDestinationType;
+}
+
+/** `POST /deposit/rhino/address` — the user's rhino.fi address for a destination. */
+export interface RhinoDepositAddressResponse {
+  /** The address to send to. Tron (`T…`) and Solana (base58) are not 0x. */
+  depositAddress: string;
+  chain: string;
+  chainName: string;
+  addressType: RhinoAddressType;
+  tokenSymbol: string;
+  tokenAddress: string;
+  destinationType: RhinoDestinationType;
+  receiveSymbol: string;
+  receiveChainId: number;
+  vault?: string;
+  minimumUsd: number;
+  maximumUsd: number;
+}
+
+/**
+ * Where a rhino.fi deposit is. `EXECUTED` means the payout has been sent to the
+ * Solid destination; `REFUNDED` that a rejected deposit went back to the sender.
+ */
+export type RhinoDepositStatus =
+  | 'DETECTED'
+  | 'ACCEPTED'
+  | 'DELAYED'
+  | 'EXECUTED'
+  | 'REJECTED'
+  | 'REFUNDED';
+
+export interface RhinoDeposit {
+  id: string;
+  chain: string;
+  depositAddress: string;
+  txHash: string;
+  tokenSymbol: string;
+  amount: string;
+  amountUsd?: number;
+  status: RhinoDepositStatus;
+  /**
+   * Why rhino.fi rejected it: `UNDER_MIN`, `OVER_MAX`, `UNSUPPORTED_TOKEN`,
+   * `OPERATION_UNAVAILABLE`, `TERMINAL_PROCESSING_ISSUE`, `NO_ROUTE_FOUND`,
+   * `SDA_PAUSED` or `SETTLEMENT_REJECTED`.
+   */
+  rejectReason?: string;
+  payoutTxHash?: string;
+  /** Set once a rejected deposit has been sent back (`REFUNDED`). */
+  refundTxHash?: string;
+  destinationType: RhinoDestinationType;
+  receiveSymbol: string;
+  receiveChainId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `GET /deposit/rhino/deposits?since=` */
+export interface RhinoDepositsResponse {
+  deposits: RhinoDeposit[];
+}
+
 export interface CardDepositBonusConfig {
   isEnabled: boolean;
   percentage: number;

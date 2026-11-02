@@ -17,6 +17,7 @@ import {
   TransactionStatusModal,
 } from '@/lib/types';
 
+import type { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 // Type-only imports (erased at build → no thirdweb runtime cost on mobile).
 import type { Account, Wallet } from 'thirdweb/wallets';
 
@@ -95,6 +96,13 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
+   * A rhino.fi chain (e.g. `TRON`) picked from the network list, in place of
+   * `chainId`: the screen then shows the user's rhino.fi address for it rather
+   * than their Safe. Cleared whenever an EVM chain is chosen (see
+   * `setWalletDeposit`).
+   */
+  rhinoChain?: string;
+  /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
    * token", so the previous step alone cannot tell the two apart.
@@ -129,6 +137,12 @@ interface DepositState {
    * one flow and is cleared by `resetDepositFlow`.
    */
   savingsFundIntent: SavingsFundIntent;
+  /**
+   * The rhino.fi chain picked on the savings direct-deposit network step, whose
+   * address step then shows the rhino.fi address instead of the direct-deposit
+   * one. Not persisted, and cleared with the rest of the flow.
+   */
+  rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */
   upgradeTopUp?: { tier: RewardsTier; depositToSavings: boolean };
   /**
@@ -148,6 +162,7 @@ interface DepositState {
   setDepositSourceChosen: (v: boolean) => void;
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
+  setRhinoDeposit: (selection: RhinoDepositSelection | undefined) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -180,6 +195,7 @@ export const useDepositStore = create<DepositState>()(
       depositSourceChosen: false,
       savingsFundIntent: 'savings',
       upgradeTopUp: undefined,
+      rhinoDeposit: undefined,
       walletDeposit: {},
       externalWallet: {
         address: undefined,
@@ -193,6 +209,7 @@ export const useDepositStore = create<DepositState>()(
       setDepositSourceChosen: (v: boolean) => set({ depositSourceChosen: v }),
       setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
       setUpgradeTopUp: context => set({ upgradeTopUp: context }),
+      setRhinoDeposit: selection => set({ rhinoDeposit: selection }),
 
       setModal: modal => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -209,7 +226,17 @@ export const useDepositStore = create<DepositState>()(
       clearBankTransferData: () => set({ bankTransfer: {} }),
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
-      setWalletDeposit: data => set({ walletDeposit: { ...get().walletDeposit, ...data } }),
+      // Naming an EVM chain without a rhino.fi one leaves rhino.fi, so a caller
+      // that opens the address on a chain of its own (Main currency, AI API)
+      // never lands on a rhino.fi chain left over from an earlier visit.
+      setWalletDeposit: data =>
+        set({
+          walletDeposit: {
+            ...get().walletDeposit,
+            ...('chainId' in data && !('rhinoChain' in data) ? { rhinoChain: undefined } : {}),
+            ...data,
+          },
+        }),
       setSrcChainId: srcChainId => set({ srcChainId }),
       setPrincipalToken: principalToken => set({ principalToken }),
       setDirectDepositSession: data =>
@@ -232,6 +259,7 @@ export const useDepositStore = create<DepositState>()(
           depositSourceChosen: false,
           savingsFundIntent: 'savings',
           upgradeTopUp: undefined,
+          rhinoDeposit: undefined,
           walletDeposit: {},
         }),
     }),

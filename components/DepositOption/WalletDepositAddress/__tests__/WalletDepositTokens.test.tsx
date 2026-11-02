@@ -4,6 +4,8 @@ import { base, fuse } from 'viem/chains';
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 
+import type { RhinoDepositAssetsResponse } from '@/lib/types';
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 
@@ -29,13 +31,55 @@ jest.mock('@/hooks/useDepositTokensAccess', () => ({
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: (state: any) => unknown) => selector(mockDeposit),
 }));
+// rhino.fi's chains as /deposit/rhino/assets would offer them, when offered at all.
+jest.mock('@/hooks/useRhinoDepositAssets', () => ({
+  useOfferedRhinoDepositAssets: () => mockRhino.assets,
+}));
 
 const mockAccess = { isEnabled: true };
 
+const mockRhino: { assets: RhinoDepositAssetsResponse | undefined } = { assets: undefined };
+
 const mockDeposit = {
-  walletDeposit: {} as { chainId?: number; symbol?: string; isChangingToken?: boolean },
+  walletDeposit: {} as {
+    chainId?: number;
+    symbol?: string;
+    rhinoChain?: string;
+    isChangingToken?: boolean;
+  },
   setModal: jest.fn(),
   setWalletDeposit: jest.fn(),
+};
+
+const walletRoute = (symbol: string) => ({
+  destinationType: 'WALLET' as const,
+  receiveSymbol: symbol,
+  receiveChainId: base.id,
+  minimumUsd: 5,
+  maximumUsd: 100000,
+});
+
+const TRON_ASSETS: RhinoDepositAssetsResponse = {
+  enabled: true,
+  chains: [
+    {
+      chain: 'TRON',
+      name: 'Tron',
+      addressType: 'TRON',
+      tokens: [
+        {
+          symbol: 'USDT',
+          address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          routes: [walletRoute('USDT')],
+        },
+        {
+          symbol: 'USDC',
+          address: 'TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8',
+          routes: [walletRoute('USDC')],
+        },
+      ],
+    },
+  ],
 };
 
 const render = () => {
@@ -59,6 +103,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockDeposit.walletDeposit = {};
   mockAccess.isEnabled = true;
+  mockRhino.assets = undefined;
 });
 
 describe('WalletDepositTokens', () => {
@@ -153,6 +198,40 @@ describe('WalletDepositTokens', () => {
       chainId: base.id,
       isChangingToken: false,
     });
+  });
+
+  it('keeps a rhino.fi chain that takes the new token into the wallet', () => {
+    mockRhino.assets = TRON_ASSETS;
+    mockDeposit.walletDeposit = {
+      chainId: base.id,
+      symbol: 'USDT',
+      rhinoChain: 'TRON',
+      isChangingToken: true,
+    };
+    const root = render();
+    const usdc = root.root.find((node: any) => node.props.accessibilityLabel === 'USDC, USD Coin');
+    act(() => usdc.props.onPress());
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: 'USDC', rhinoChain: 'TRON' }),
+    );
+  });
+
+  it('leaves a rhino.fi chain that does not take the new token', () => {
+    mockRhino.assets = TRON_ASSETS;
+    mockDeposit.walletDeposit = {
+      chainId: base.id,
+      symbol: 'USDT',
+      rhinoChain: 'TRON',
+      isChangingToken: true,
+    };
+    const root = render();
+    const eurc = root.root.find((node: any) => node.props.accessibilityLabel === 'EURC, Euro Coin');
+    act(() => eurc.props.onPress());
+
+    const [selection] = mockDeposit.setWalletDeposit.mock.calls[0];
+    expect(selection).toMatchObject({ symbol: 'EURC', chainId: base.id });
+    expect(selection.rhinoChain).toBeUndefined();
   });
 
   it('ticks the current token only when coming back to change it', () => {

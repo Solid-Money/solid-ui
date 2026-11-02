@@ -14,6 +14,7 @@ import {
 } from '@/components/Card/CardFund/constants';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { UsdMethodList } from '@/components/DepositOption/DepositUsdOptions';
+import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
 import { OrchestraFlowContent } from '@/components/Orchestra/OrchestraFlow';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
@@ -33,6 +34,7 @@ import {
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
 import { getOrchestraBackTarget, getOrchestraTitle, isOrchestraModal } from '@/lib/orchestraFlow';
+import { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
@@ -99,6 +101,10 @@ export default function CardDirectDepositModalMobile({
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
+  // Set when a rhino.fi chain was picked: the address step shows its address instead.
+  const [rhinoSelection, setRhinoSelection] = useState<RhinoDepositSelection | undefined>(
+    undefined,
+  );
 
   const setDepositModal = useCardDepositStore(state => state.setModal);
   const setWalletModal = useDepositStore(state => state.setModal);
@@ -145,6 +151,7 @@ export default function CardDirectDepositModalMobile({
         setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
+        setRhinoSelection(undefined);
       }
     },
     [isControlled, onOpenChange],
@@ -257,6 +264,7 @@ export default function CardDirectDepositModalMobile({
       setSelectedToken(symbol);
       setSelectedChainId(undefined);
       setDepositAddress(undefined);
+      setRhinoSelection(undefined);
       goToStep('networks');
     },
     [goToStep],
@@ -277,12 +285,25 @@ export default function CardDirectDepositModalMobile({
         deposit_type: 'card_direct_deposit',
       });
 
+      setRhinoSelection(undefined);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
       prepareSession({ chainId, token: selectedToken });
       goToStep('address');
     },
     [goToStep, prepareSession, selectedToken],
+  );
+
+  // A rhino.fi chain from under the network list. Its address step fetches the
+  // user's rhino.fi address itself, so no direct-deposit session is minted.
+  const handleRhinoNetworkSelect = useCallback(
+    (selection: RhinoDepositSelection) => {
+      setSelectedChainId(undefined);
+      setDepositAddress(undefined);
+      setRhinoSelection(selection);
+      goToStep('address');
+    },
+    [goToStep],
   );
 
   // The webhook has seen the transfer — hand the user straight to its progress screen.
@@ -370,7 +391,23 @@ export default function CardDirectDepositModalMobile({
     }
 
     if (step === 'networks') {
-      return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
+      return (
+        <CardFundNetworks
+          symbol={selectedToken}
+          onSelect={handleNetworkSelect}
+          onSelectRhino={handleRhinoNetworkSelect}
+        />
+      );
+    }
+
+    if (step === 'address' && rhinoSelection) {
+      return (
+        <RhinoDepositAddress
+          selection={rhinoSelection}
+          onChangeNetwork={handleBack}
+          onDepositDetected={handleDepositDetected}
+        />
+      );
     }
 
     if (step === 'address') {
