@@ -159,6 +159,20 @@ export const AiApiAntseedCard = () => (
   </View>
 );
 
+/** What a screen reader says for one row: everything the row shows, discount included. */
+const modelRowLabel = (model: AiApiModel): string => {
+  const discount = aiApiModelDiscount(model);
+  return [
+    model.provider ? `${model.name}, ${model.provider}` : model.name,
+    `input ${formatAiApiTokenPrice(model.inputUsdPerMTok)}, output ${formatAiApiTokenPrice(
+      model.outputUsdPerMTok,
+    )} per million tokens`,
+    discount ? `${discount}% below the official price` : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
+};
+
 type Sort = 'most_used' | 'lowest_price';
 
 const SORT_LABELS: Record<Sort, string> = {
@@ -225,6 +239,7 @@ const ModelsSheetBody = ({
   onClose: () => void;
 }) => {
   const [query, setQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>('most_used');
   const inset = sheetBodyInset(presentation);
@@ -270,7 +285,14 @@ const ModelsSheetBody = ({
       </View>
 
       <View style={{ paddingHorizontal: inset }}>
-        <View className="flex-row items-center gap-2.5 rounded-[14px] bg-[#262626] px-3.5 py-[13px]">
+        {/* The field's own outline is off on web, so the box shows focus instead. Its
+            border is always there, transparent until then, so focusing doesn't shift it. */}
+        <View
+          className={cn(
+            'flex-row items-center gap-2.5 rounded-[14px] border bg-[#262626] px-3.5 py-3',
+            searchFocused ? 'border-white/40' : 'border-transparent',
+          )}
+        >
           <Search size={18} color="rgba(255,255,255,0.4)" strokeWidth={AI_API_ICON_STROKE} />
           <TextInput
             value={query}
@@ -281,6 +303,8 @@ const ModelsSheetBody = ({
             autoCorrect={false}
             returnKeyType="search"
             accessibilityLabel="Search models"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             className="flex-1 bg-transparent p-0 text-[15px] text-white web:focus:outline-none"
           />
         </View>
@@ -336,9 +360,7 @@ const ModelsSheetBody = ({
               key={model.id}
               className="h-10 flex-row items-center gap-3"
               accessible
-              accessibilityLabel={`${model.name}${model.provider ? `, ${model.provider}` : ''}: input ${formatAiApiTokenPrice(
-                model.inputUsdPerMTok,
-              )}, output ${formatAiApiTokenPrice(model.outputUsdPerMTok)} per million tokens`}
+              accessibilityLabel={modelRowLabel(model)}
             >
               <AiApiModelLogo model={model} />
               <ModelName model={model} showDiscount />
