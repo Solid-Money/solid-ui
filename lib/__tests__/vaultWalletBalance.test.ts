@@ -1,5 +1,6 @@
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
+import { STOCK_VAULT_TYPES } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 import { ADDRESSES, PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType, Vault, VaultType } from '@/lib/types';
@@ -194,13 +195,15 @@ describe('getLargestDepositSelection', () => {
 
 describe('the EUR vault (soEURC)', () => {
   // jest runs without EXPO_PUBLIC_ENVIRONMENT, i.e. as a QA/preview build.
-  it('is listed last on QA/preview builds, so persisted vault indices keep their vault', () => {
-    expect(VAULTS[VAULTS.length - 1].type).toBe(VaultType.EUR);
-    expect(VAULTS.slice(0, 3).map(vault => vault.type)).toEqual([
+  // The stock vaults were appended after it, which leaves every earlier index alone.
+  it('keeps its place on QA/preview builds, so persisted vault indices keep their vault', () => {
+    expect(VAULTS.slice(0, 4).map(vault => vault.type)).toEqual([
       VaultType.USDC,
       VaultType.FUSE,
       VaultType.ETH,
+      VaultType.EUR,
     ]);
+    expect(VAULTS.slice(4).map(vault => vault.type)).toEqual(STOCK_VAULT_TYPES);
     expect(vaultFor(VaultType.EUR)).toMatchObject({
       name: 'EUR',
       vaultToken: 'soEURC',
@@ -213,7 +216,7 @@ describe('the EUR vault (soEURC)', () => {
   });
 
   // Listed in production too, like the other vaults.
-  it('is listed last in production builds as well', () => {
+  it('keeps its place in production builds as well', () => {
     let vaults: Vault[] = [];
     jest.isolateModules(() => {
       jest.doMock('@/lib/config', () => ({
@@ -230,6 +233,7 @@ describe('the EUR vault (soEURC)', () => {
       VaultType.FUSE,
       VaultType.ETH,
       VaultType.EUR,
+      ...STOCK_VAULT_TYPES,
     ]);
   });
 

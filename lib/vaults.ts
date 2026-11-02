@@ -2,6 +2,7 @@ import { formatUnits } from 'viem';
 import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS, type BridgeToken, EURC_TOKENS } from '@/constants/bridge';
+import { getStockVault, getStockVaultByStockSymbol } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
@@ -69,7 +70,7 @@ export const getEarningTokenVault = (
   return vault ? { vault, index: VAULTS.indexOf(vault) } : undefined;
 };
 
-/** True when the address is a vault share token (soUSD / soFUSE / soETH / soEURC), i.e. a savings position. */
+/** True when the address is a vault share token (soUSD / soFUSE / soETH / soEURC / soAAPL…), i.e. a savings position. */
 export const isVaultShareToken = (contractAddress?: string): boolean => {
   const address = contractAddress?.toLowerCase();
   if (!address) return false;
@@ -121,17 +122,36 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
   if (vault?.depositConfig?.supportedTokens.includes(EURC_SYMBOL) && EURC_TOKENS[chainId]) {
     tokens.push(EURC_SYMBOL);
   }
+  // Likewise a stock vault's stock token, which only that vault takes, on Base.
+  const stock = getStockVault(vault?.type);
+  if (stock && chainId === base.id) tokens.push(stock.stockToken.symbol);
 
   return tokens.filter(symbol => config.supportedTokens.includes(symbol));
 };
 
+/** A stock vault's stock token on Base, in the shape the deposit form reads. */
+const getStockDepositToken = (chainId: number, symbol: string): BridgeToken | undefined => {
+  const stock = chainId === base.id ? getStockVaultByStockSymbol(symbol) : undefined;
+  return (
+    stock && {
+      name: stock.stockToken.symbol,
+      fullName: stock.stockToken.name,
+      address: stock.stockToken.address,
+      decimals: stock.stockToken.decimals,
+      icon: require('@/assets/images/stock-yield.svg'),
+      isPermit: false,
+    }
+  );
+};
+
 /**
- * The token a vault deposit sends: BRIDGE_TOKENS for everything but EURC, which
- * has its own table so that listing it for soEURC does not offer it anywhere else.
+ * The token a vault deposit sends: BRIDGE_TOKENS for everything but EURC and the
+ * stock tokens, which have their own tables so that listing one for its vault does
+ * not offer it anywhere else.
  */
 export const getVaultDepositToken = (chainId: number, symbol: string): BridgeToken | undefined =>
   BRIDGE_TOKENS[chainId]?.tokens?.[symbol] ??
-  (symbol === EURC_SYMBOL ? EURC_TOKENS[chainId] : undefined);
+  (symbol === EURC_SYMBOL ? EURC_TOKENS[chainId] : getStockDepositToken(chainId, symbol));
 
 /** The wallet-token fields `hasDepositableWalletBalance` reads. */
 type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 'balance'>;

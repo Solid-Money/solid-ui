@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hash, Hex } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
+import { getStockVaultByTicker } from '@/constants/stockVaults';
 import { getVaultKey } from '@/constants/withdraw';
+import { isStockVaultRow } from '@/graphql/queries/stockVaults';
 import { useListedTokens } from '@/hooks/useListedTokens';
 import useUser from '@/hooks/useUser';
 import { constructActivity } from '@/lib/activityEvents';
@@ -17,6 +19,7 @@ import { useActivityActions } from './useActivityActions';
 import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
 import { isBaseWithdrawRequest, useBaseWithdrawRequests } from './useBaseWithdrawRequests';
+import { useStockVaultTransactions } from './useStockVaultTransactions';
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -111,12 +114,19 @@ export function useActivity() {
     withdrawVaults.has('FUSE') ? user?.safeAddress : undefined,
     VaultType.FUSE,
   );
+  // All eight stock vaults share one subgraph, read once for every stock withdraw (and
+  // not at all in a build without it, where their queues are read instead).
+  const hasStockWithdraws = [...withdrawVaults].some(key => !!getStockVaultByTicker(key));
+  const { data: stockTransactions } = useStockVaultTransactions(
+    hasStockWithdraws ? user?.safeAddress : undefined,
+  );
   const listedTokens = useListedTokens();
 
   const withdraws = userTransactions?.withdraws;
   const eurWithdraws = eurTransactions?.withdraws;
   const ethWithdraws = ethTransactions?.withdraws;
   const fuseWithdraws = fuseTransactions?.withdraws;
+  const stockWithdraws = stockTransactions?.withdraws;
   const baseWithdrawRequests = useBaseWithdrawRequests(userEventsFromStore);
 
   // Fetch a page of activities directly from the API and push to Zustand
@@ -217,13 +227,13 @@ export function useActivity() {
         typeof activity.status === 'string',
     );
 
-    // Base withdraw requests are read from the Base queue itself: it has no
-    // subgraph. A request still in the queue - or not read yet - is PROCESSING.
-    // Once it left, the queue cannot say whether it was solved or cancelled, so
-    // a request the user cancelled in the app is CANCELLED and any other is
-    // SUCCESS. A request the solver cancels after its deadline has no cancel
-    // activity, so it shows as SUCCESS. The request id is attached so the
-    // activity screen can offer a cancel.
+    // Base withdraw requests are read from their Base queue itself - soUSD's, or
+    // a stock vault's: none has a subgraph. A request still in the queue - or not
+    // read yet - is PROCESSING. A stock vault's that left is SUCCESS or CANCELLED
+    // as its queue's events say. soUSD's are not read that far, so a request the
+    // user cancelled in the app is CANCELLED and any other is SUCCESS; a request
+    // the solver cancels after its deadline has no cancel activity, so it shows as
+    // SUCCESS. The request id is attached so the activity screen can offer a cancel.
     const cancelledRequestIds = new Set(
       userEvents
         .filter(
@@ -242,7 +252,8 @@ export function useActivity() {
       if (request.status === 'pending') {
         return { ...withRequestId, status: TransactionStatus.PROCESSING };
       }
-      return cancelledRequestIds.has(request.requestId.toLowerCase())
+      return request.status === 'cancelled' ||
+        cancelledRequestIds.has(request.requestId.toLowerCase())
         ? { ...withRequestId, status: TransactionStatus.CANCELLED }
         : withRequestId;
     });
@@ -258,8 +269,9 @@ export function useActivity() {
     // to reflect that the on-chain tx succeeded and the request is in the queue.
     //
     // Each withdraw is matched against its own vault's subgraph: soEURC, soETH and
-    // soFUSE against theirs, soUSD (or no vault) against the USD one. A soUSD request on Base is
-    // read from its queue above instead. A matched request carries its id, and a
+    // soFUSE against theirs, a stock vault's against its rows of the stocks subgraph,
+    // soUSD (or no vault) against the USD one. A soUSD request on Base, and a stock
+    // vault's in a build without the stocks subgraph, is read from its queue above instead. A matched request carries its id, and a
     // cancelled one reads as CANCELLED rather than staying PROCESSING.
     userEvents = userEvents.map(activity => {
       if (
@@ -271,8 +283,10 @@ export function useActivity() {
       }
 
       const vault = getVaultKey(activity.symbol);
-      const vaultWithdraws =
-        vault === 'EUR'
+      const stock = getStockVaultByTicker(vault ?? undefined);
+      const vaultWithdraws = stock
+        ? stockWithdraws?.filter(w => isStockVaultRow(w, stock.vault))
+        : vault === 'EUR'
           ? eurWithdraws
           : vault === 'ETH'
             ? ethWithdraws
@@ -353,6 +367,7 @@ export function useActivity() {
     eurWithdraws,
     ethWithdraws,
     fuseWithdraws,
+    stockWithdraws,
     listedTokens,
     baseWithdrawRequests,
   ]);

@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { isStockVaultType } from '@/constants/stockVaults';
 import { getAsset } from '@/lib/assets';
 import { Vault } from '@/lib/types';
 import { getVaultDepositToken } from '@/lib/vaults';
@@ -112,9 +113,16 @@ const EmptyDepositTokens = ({ vault }: EmptyDepositTokensProps) => {
           </Text>
         )}
       </View>
-      <Button variant="brand" className="mt-8 h-12 w-full rounded-xl" onPress={handleDepositPress}>
-        <Text className="text-base font-bold">Add funds</Text>
-      </Button>
+      {/* A stock token cannot be added through the app yet: nothing to offer here. */}
+      {isStockVaultType(vault.type) ? null : (
+        <Button
+          variant="brand"
+          className="mt-8 h-12 w-full rounded-xl"
+          onPress={handleDepositPress}
+        >
+          <Text className="text-base font-bold">Add funds</Text>
+        </Button>
+      )}
     </View>
   );
 };

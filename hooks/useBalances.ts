@@ -3,6 +3,11 @@ import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
+import {
+  getStockVaultByShareAddress,
+  getStockVaultByStockAddress,
+  type StockVault,
+} from '@/constants/stockVaults';
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
 import { isWalletDepositContract } from '@/constants/walletDepositTokens';
 import {
@@ -13,6 +18,7 @@ import {
 } from '@/lib/api';
 import { ADDRESSES, isDevFeatureEnabled } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
+import { fetchStockTokenPrices, fetchStockVaultRates } from '@/lib/stockVaults';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import {
   isSoETHToken,
@@ -161,9 +167,15 @@ const parsePrice = (v: unknown): number | undefined => {
  * soEURC is on this list too, for a stronger reason: it is held and shown in EUR
  * and has no USD quote at all (see `soEURCQuoteRate`), so no fallback may give it
  * one — a dollar price here would carry it into every USD sum built on quoteRate.
+ *
+ * So are the stock vault shares (soAAPL…), priced off their accountant rate and the
+ * stock's own price (see `priceStockShares`).
  */
 const isUnderlyingPricedShare = (contractAddress: string): boolean =>
-  isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress) || isSoEURCToken(contractAddress);
+  isSoFUSEToken(contractAddress) ||
+  isSoETHToken(contractAddress) ||
+  isSoEURCToken(contractAddress) ||
+  !!getStockVaultByShareAddress(contractAddress);
 
 /**
  * soEURC's `quoteRate`, which is a USD quote everywhere it is read: always 0.
@@ -179,10 +191,39 @@ const soEURCQuoteRate = 0;
 /**
  * Whether a Base token is kept although the curated token list does not name it.
  * soEURC is kept in every build, so whoever holds it can find and withdraw the
- * position before the backend adds the share to its list.
+ * position before the backend adds the share to its list. So are the stock vault
+ * shares, and the stock tokens they take, which the deposit form reads from here.
  */
 const isKeptUnlisted = (chainId: number, address: string) =>
-  chainId === BASE_CHAIN_ID && isSoEURCToken(address);
+  chainId === BASE_CHAIN_ID &&
+  (isSoEURCToken(address) ||
+    !!getStockVaultByShareAddress(address) ||
+    !!getStockVaultByStockAddress(address));
+
+/** The stock vault whose share this token is: on Base, by address. */
+const stockVaultOfShare = (token: TokenBalance): StockVault | undefined =>
+  token.chainId === BASE_CHAIN_ID ? getStockVaultByShareAddress(token.contractAddress) : undefined;
+
+/**
+ * Prices the stock vault shares among `tokens` in USD: the accountant's rate (stock
+ * tokens per share) × the stock token's price. Only the shares held are read. A
+ * share whose rate or price is missing stays at 0, never at a bare stock's price.
+ */
+const priceStockShares = async (tokens: TokenBalance[]): Promise<TokenBalance[]> => {
+  const held = [...new Set(tokens.map(stockVaultOfShare).filter(stock => !!stock))];
+  if (held.length === 0) return tokens;
+  const [rates, prices] = await Promise.allSettled([
+    fetchStockVaultRates(held),
+    fetchStockTokenPrices(held),
+  ]);
+  return tokens.map(token => {
+    const stock = stockVaultOfShare(token);
+    if (!stock) return token;
+    const rate = rates.status === PromiseStatus.FULFILLED ? rates.value[stock.type] : undefined;
+    const price = prices.status === PromiseStatus.FULFILLED ? prices.value[stock.type] : undefined;
+    return { ...token, quoteRate: rate && price ? rate * price : 0 };
+  });
+};
 
 /**
  * How long a chain's token list or a token's price may stand in for a read that failed.
@@ -404,9 +445,11 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     const isSoFUSE = isSoFUSEToken(address);
     const isSoETH = isSoETHToken(address);
     const isSoEURC = isSoEURCToken(address);
+    const isStockShare = chainId === BASE_CHAIN_ID && !!getStockVaultByShareAddress(address);
     // Vault shares are priced off their accountant rate, not off a market quote
     // for the share (Blockscout has none) or for the underlying asset. soEURC
-    // gets no USD quote at all — it is a EUR position.
+    // gets no USD quote at all — it is a EUR position — and a stock vault share
+    // gets its quote further down, once its rate and stock price are read.
     const quoteRate = isSoUSD
       ? chainId === BASE_CHAIN_ID
         ? soUSDBaseRateNum
@@ -417,9 +460,11 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
           ? soETHQuoteRateUSD
           : isSoEURC
             ? soEURCQuoteRate
-            : item.token.exchange_rate
-              ? parseFloat(item.token.exchange_rate)
-              : 0;
+            : isStockShare
+              ? 0
+              : item.token.exchange_rate
+                ? parseFloat(item.token.exchange_rate)
+                : 0;
     return {
       contractTickerSymbol: String(
         symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,
@@ -710,6 +755,12 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     ...bscTokens,
     ...optimismTokens,
   ];
+
+  try {
+    allTokens = await priceStockShares(allTokens);
+  } catch (e) {
+    console.warn('Stock vault share pricing failed:', e);
+  }
 
   // Fallback 1: Alchemy Prices by contract address. Alchemy's token balances
   // carry no exchange rate (only Blockscout's do), so every ERC-20 on an

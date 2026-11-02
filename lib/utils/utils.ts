@@ -6,6 +6,7 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex, zeroAddress } from 'viem';
 
 import { getUsdcAddress } from '@/constants/bridge';
+import { getStockVaultByShareAddress } from '@/constants/stockVaults';
 import { refreshToken, setAuthPreflight } from '@/lib/api';
 import {
   ADDRESSES,
@@ -454,15 +455,17 @@ export const isSoEURCToken = (contractAddress: string): boolean => {
 
 /**
  * Vault tokens excluded from the home WalletCard total (soUSD + soFUSE + soETH +
- * soEURC). The USD shares are counted by Savings instead, so including them would
- * count them twice; soEURC is held in EUR and never enters a USD total at all.
+ * soEURC + the stock vault shares). The USD shares are counted by Savings instead,
+ * so including them would count them twice; soEURC is held in EUR and never enters
+ * a USD total at all.
  */
 export const isWalletCardExcludedToken = (contractAddress: string): boolean => {
   return (
     isSoUSDToken(contractAddress) ||
     isSoFUSEToken(contractAddress) ||
     isSoETHToken(contractAddress) ||
-    isSoEURCToken(contractAddress)
+    isSoEURCToken(contractAddress) ||
+    !!getStockVaultByShareAddress(contractAddress)
   );
 };
 

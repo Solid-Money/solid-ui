@@ -2,6 +2,8 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
+import StockTickerIcon from '@/components/StockTickerIcon';
+import { getStockVault } from '@/constants/stockVaults';
 import { VaultType } from '@/lib/types';
 
 // The ETH and FUSE marks are drawn on a 40.77 × 40 canvas with their own 10% circle;
@@ -24,7 +26,10 @@ interface YieldIconProps {
   ringColor?: string;
 }
 
-/** USD Yield / ETH Yield / FUSE Yield / EUR Yield, and with `live` their share tokens. */
+/**
+ * USD Yield / ETH Yield / FUSE Yield / EUR Yield / a stock vault (its ticker), and with
+ * `live` their share tokens.
+ */
 export default function YieldIcon({
   vaultType,
   size = 40,
@@ -35,10 +40,13 @@ export default function YieldIcon({
   const dot = Math.max(Math.round(size * 0.24), 8);
   const ring = Math.max(Math.round(size * 0.05), 2);
   const glyph = vaultType === VaultType.EUR ? EUR_GLYPH : USD_GLYPH;
+  const stock = getStockVault(vaultType);
 
   return (
     <View style={{ width: size * CANVAS_RATIO, height: size }}>
-      {vaultType === VaultType.USDC || vaultType === VaultType.EUR ? (
+      {stock ? (
+        <StockTickerIcon ticker={stock.ticker} size={size} width={size * CANVAS_RATIO} />
+      ) : vaultType === VaultType.USDC || vaultType === VaultType.EUR ? (
         <View
           className="items-center justify-center rounded-full"
           style={{

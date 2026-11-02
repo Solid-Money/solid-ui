@@ -1,6 +1,7 @@
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
+import { isStockVaultType } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 import { useAPYs, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
@@ -115,6 +116,12 @@ export const useVaultInterestEarned = (vaultType: VaultType) => {
           ? isSummaryLoading
           : (!!activityAddress && isTimestampLoading) || isTransactionsLoading)));
   const interest = hasBalance ? Math.max(interestInVaultCurrency * price, 0) : 0;
+
+  // A stock vault has no deposit history or summary to work interest out from yet, and
+  // its asset is not priced here: it reports none rather than a figure in the wrong unit.
+  if (isStockVaultType(vault.type)) {
+    return { interest: 0, currency, interestUsd: 0, exchangeRate, isLoading: false };
+  }
 
   return {
     interest,

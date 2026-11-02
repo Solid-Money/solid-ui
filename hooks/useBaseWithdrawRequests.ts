@@ -4,7 +4,9 @@ import { Hex } from 'viem';
 import { base } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
+import { getStockVaultByShareSymbol, getStockVaultByTicker } from '@/constants/stockVaults';
 import { getVaultKey } from '@/constants/withdraw';
+import { hasInfoClientStocks } from '@/graphql/clients';
 import useUser from '@/hooks/useUser';
 import { isSoUsdBaseConfigured } from '@/lib/soUsdWithdraw';
 import { BaseWithdrawRequest, readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
@@ -18,13 +20,18 @@ const PENDING_REFETCH_MS = 60_000;
 /** Lets the many screens that mount useActivity share one read of a pending request. */
 const PENDING_STALE_MS = 30_000;
 
+/** soUSD's: an activity naming no vault is soUSD, as every withdraw was before vaults diverged. */
+const isSoUsdWithdraw = (activity: ActivityEvent) =>
+  (getVaultKey(activity.symbol) ?? 'USD') === 'USD';
+
 /**
- * A soUSD withdraw request made on the Base queue: its transaction confirmed,
- * so it is in the queue or has left it.
+ * A withdraw request made on a Base queue this reads: soUSD's, or a stock vault's
+ * own where this build has no stocks subgraph. Its transaction confirmed, so it is
+ * in the queue or has left it.
  *
- * soUSD only: soEURC withdraws on Base too, but through its own queue, and its
- * status comes from the EUR subgraph (see useActivity). An activity naming no
- * vault is soUSD, as every withdraw was before vaults diverged.
+ * Not soEURC's: it withdraws on Base too, through its own queue, but its status
+ * comes from the EUR subgraph (see useActivity) — as a stock vault's comes from the
+ * stocks subgraph once there is one.
  */
 export const isBaseWithdrawRequest = (
   activity: ActivityEvent,
@@ -33,9 +40,21 @@ export const isBaseWithdrawRequest = (
 } =>
   activity.type === TransactionType.WITHDRAW &&
   activity.chainId === base.id &&
-  (getVaultKey(activity.symbol) ?? 'USD') === 'USD' &&
+  (isSoUsdWithdraw(activity) ||
+    (!hasInfoClientStocks() && !!getStockVaultByShareSymbol(activity.symbol))) &&
   activity.status === TransactionStatus.SUCCESS &&
   !!activity.hash;
+
+/**
+ * Reads one request: on soUSD's queue, or on its stock vault's, where how a finished
+ * request ended is read from the queue's events too.
+ */
+const readRequest = (hash: Hex, ticker: string) => {
+  const stock = getStockVaultByTicker(ticker);
+  return stock
+    ? readBaseWithdrawRequest(hash, stock.boringQueue, { readOutcome: true })
+    : readBaseWithdrawRequest(hash);
+};
 
 /**
  * The on-chain status of every Base withdraw request among `activities`, keyed
@@ -48,17 +67,26 @@ export const isBaseWithdrawRequest = (
 export function useBaseWithdrawRequests(
   activities: ActivityEvent[] | undefined,
 ): Record<string, BaseWithdrawRequest> {
-  // Keyed on the joined hashes: the store hands over a new array on every
-  // activity change, and the list of Base requests rarely changes with it.
-  const hashKey = useMemo(() => {
-    if (!isSoUsdBaseConfigured || !activities) return '';
+  // Keyed on the joined hashes, each with its stock vault's ticker (none for
+  // soUSD): the store hands over a new array on every activity change, and the list
+  // of Base requests rarely changes with it. soUSD's requests only where this build
+  // has its Base queue; the stock vaults' queues are the same in every build.
+  const requestKey = useMemo(() => {
+    if (!activities) return '';
     const unique = new Set<string>();
     for (const activity of activities) {
-      if (activity && isBaseWithdrawRequest(activity)) unique.add(activity.hash.toLowerCase());
+      if (!activity || !isBaseWithdrawRequest(activity)) continue;
+      const ticker = getStockVaultByShareSymbol(activity.symbol)?.ticker ?? '';
+      if (!ticker && !isSoUsdBaseConfigured) continue;
+      unique.add(`${activity.hash.toLowerCase()}:${ticker}`);
     }
     return [...unique].sort().join(',');
   }, [activities]);
-  const hashes = useMemo(() => (hashKey ? hashKey.split(',') : []), [hashKey]);
+  const requests = useMemo(
+    () => (requestKey ? requestKey.split(',').map(entry => entry.split(':')) : []),
+    [requestKey],
+  );
+  const hashes = useMemo(() => requests.map(([hash]) => hash), [requests]);
 
   // Re-run only when a query's result changes or the set of requests does, so
   // the map keeps its identity between renders and useActivity's memo holds.
@@ -74,9 +102,9 @@ export function useBaseWithdrawRequests(
   );
 
   return useQueries({
-    queries: hashes.map(hash => ({
+    queries: requests.map(([hash, ticker]) => ({
       queryKey: [BASE_WITHDRAW_REQUEST, hash],
-      queryFn: () => readBaseWithdrawRequest(hash as Hex),
+      queryFn: () => readRequest(hash as Hex, ticker),
       staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
         query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
       refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
@@ -121,7 +149,8 @@ export function usePendingBaseWithdrawals(): {
     const withdrawals: PendingWithdrawal[] = [];
     const seen = new Set<string>();
     for (const activity of activities ?? []) {
-      if (!activity || !isBaseWithdrawRequest(activity)) continue;
+      // soUSD only: what a stock vault's request pays out is a stock, not USDC.
+      if (!activity || !isBaseWithdrawRequest(activity) || !isSoUsdWithdraw(activity)) continue;
       const hash = activity.hash.toLowerCase();
       if (seen.has(hash)) continue;
       seen.add(hash);

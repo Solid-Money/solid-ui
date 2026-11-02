@@ -37,6 +37,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
+import { getStockVaultByShareSymbol, getStockVaultByStockSymbol } from '@/constants/stockVaults';
 import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw, {
@@ -1037,10 +1038,14 @@ export default function ActivityDetail() {
     (isFuseVaultDepositSymbol(symbolLower) ||
       isFuseVaultDepositSymbol(metaInput) ||
       isFuseVaultDepositSymbol(metaOutput));
-  // soEURC deposits are a single teller call on Base, like soFUSE's on Fuse.
+  // soEURC and stock vault deposits are a single teller call on Base, like soFUSE's on Fuse.
   const isSoEurcOnBase =
     Number(chainId) === base.id &&
-    (symbolLower === 'eurc' || symbolLower === 'soeurc' || symbolLower === 'soeur');
+    (symbolLower === 'eurc' ||
+      symbolLower === 'soeurc' ||
+      symbolLower === 'soeur' ||
+      !!getStockVaultByStockSymbol(symbolLower) ||
+      !!getStockVaultByShareSymbol(symbolLower));
 
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),

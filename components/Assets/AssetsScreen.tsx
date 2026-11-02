@@ -18,6 +18,7 @@ import PageLayout from '@/components/PageLayout';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { getStockVault, isStockVaultType } from '@/constants/stockVaults';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
@@ -49,10 +50,14 @@ type HoldingList = { all: PortfolioAsset[]; shown: PortfolioAsset[]; small: Port
 /** "3,704.88 soUSD · 2 networks", or the underlying amount when no share balance is known. */
 const earnDetails = (asset: EarnAsset): string[] => {
   const details: string[] = [];
+  const stock = getStockVault(asset.vault.type);
   if (asset.shareAmount !== undefined && asset.vault.vaultToken)
     details.push(`${formatTokenAmount(asset.shareAmount)} ${asset.vault.vaultToken}`);
-  else if (asset.vault.type !== VaultType.USDC && asset.underlyingAmount !== undefined)
+  else if (!stock && asset.vault.type !== VaultType.USDC && asset.underlyingAmount !== undefined)
     details.push(`${formatTokenAmount(asset.underlyingAmount)} ${asset.vault.type.toUpperCase()}`);
+  // A stock position also reads in the stock it redeems for: "0.5 soAAPL · 0.51 AAPLc".
+  if (stock && asset.underlyingAmount !== undefined)
+    details.push(`${formatTokenAmount(asset.underlyingAmount)} ${stock.stockToken.symbol}`);
   if (asset.backsCredit) details.push('backs your credit');
   else if (asset.shareNetworkCount > 1) details.push(`${asset.shareNetworkCount} networks`);
   return details;
@@ -93,8 +98,12 @@ export function AssetsOverview({
   };
   const stable = holdings(portfolio.stableAssets, 'stable');
   const crypto = holdings(portfolio.cryptoAssets, 'crypto');
-  const earnAssets = portfolio.earnAssets.filter(
-    asset => asset.valueUsd === undefined || asset.valueUsd > 0,
+  // A vault that could not be valued still shows, as unknown — but a stock vault only when
+  // its shares are seen in the wallet, so a failed Base read does not list all eight.
+  const earnAssets = portfolio.earnAssets.filter(asset =>
+    asset.valueUsd === undefined
+      ? !isStockVaultType(asset.vault.type) || (asset.shareAmount ?? 0) > 0
+      : asset.valueUsd > 0,
   );
   const showLocked = (portfolio.lockedFuse ?? 0) > 0;
   // soEURC is held in euros, so it is its own row rather than one of the USD earnAssets.

@@ -1,17 +1,24 @@
+import { byStockVaultType, getStockVault, STOCK_VAULT_TYPES } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 import { Vault, VaultType } from '@/lib/types';
-import { getVaultCurrencySymbol } from '@/lib/vaultCurrency';
+import { getVaultCurrencySymbol, type UsdVaultType } from '@/lib/vaultCurrency';
 
 /**
- * Earn's USD-valued products in the order the app lists them: dollars first. EUR Yield
- * (soEURC) is held in euros and listed after them, apart from every dollar total.
+ * Earn's USD-valued products in the order the app lists them: dollars first, then the
+ * stock vaults. EUR Yield (soEURC) is held in euros and listed apart from every dollar
+ * total (see EarnScreen for where its row goes).
  */
-export const YIELD_PRODUCT_ORDER = [VaultType.USDC, VaultType.ETH, VaultType.FUSE] as const;
+export const YIELD_PRODUCT_ORDER: readonly UsdVaultType[] = [
+  VaultType.USDC,
+  VaultType.ETH,
+  VaultType.FUSE,
+  ...STOCK_VAULT_TYPES,
+];
 
 export const yieldVault = (type: VaultType): Vault =>
   VAULTS.find(vault => vault.type === type) ?? VAULTS[0];
 
-/** "USD Yield", "ETH Yield", "FUSE Yield", "EUR Yield". The share token is never the product's name. */
+/** "USD Yield", "ETH Yield", "FUSE Yield", "EUR Yield", "AAPL Yield". The share token is never the product's name. */
 export const yieldProductName = (type: VaultType) => yieldVault(type).vaultName ?? type;
 
 /** What a user puts in, for a product they have not funded yet. */
@@ -20,6 +27,7 @@ export const YIELD_DEPOSIT_ASSETS: Record<VaultType, string> = {
   [VaultType.ETH]: 'ETH',
   [VaultType.FUSE]: 'FUSE',
   [VaultType.EUR]: 'EURC',
+  ...byStockVaultType(stock => stock.stockToken.symbol),
 };
 
 /** What the deposit is worth in, for the no-funds headline: "On your dollars." */
@@ -28,6 +36,7 @@ export const YIELD_ASSET_NOUN: Record<VaultType, string> = {
   [VaultType.ETH]: 'ETH',
   [VaultType.FUSE]: 'FUSE',
   [VaultType.EUR]: 'euros',
+  ...byStockVaultType(stock => `${stock.ticker} shares`),
 };
 
 export const openYieldProduct = (type: VaultType) =>
@@ -38,7 +47,9 @@ export const formatShareRate = (type: VaultType, rate: number | undefined) => {
   if (rate === undefined || !Number.isFinite(rate) || rate <= 0) return undefined;
   const token = yieldVault(type).vaultToken;
   if (type === VaultType.USDC) return `1 ${token} = $${rate.toFixed(4)}`;
-  const underlying = type === VaultType.ETH ? 'ETH' : type === VaultType.EUR ? 'EURC' : 'FUSE';
+  const underlying =
+    getStockVault(type)?.stockToken.symbol ??
+    (type === VaultType.ETH ? 'ETH' : type === VaultType.EUR ? 'EURC' : 'FUSE');
   return `1 ${token} = ${rate.toFixed(4)} ${underlying}`;
 };
 

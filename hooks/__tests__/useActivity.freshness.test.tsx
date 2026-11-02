@@ -48,9 +48,16 @@ jest.mock('@/hooks/useActivityActions', () => ({ useActivityActions: () => ({}) 
 let mockListedTokens: ReadonlySet<string> | null = null;
 jest.mock('@/hooks/useListedTokens', () => ({ useListedTokens: () => mockListedTokens }));
 // Base withdraw requests, keyed by request tx hash, as the queue read reports them.
-let mockBaseRequests: Record<string, { requestId: string; status: 'pending' | 'finished' }> = {};
+let mockBaseRequests: Record<
+  string,
+  { requestId: string; status: 'pending' | 'finished' | 'solved' | 'cancelled' }
+> = {};
+// Whether this build has the stocks subgraph, and what it holds.
+let mockHasStockSubgraph = false;
+let mockStockWithdraws: (MockWithdraw & { vault: { id: string } })[] | undefined;
 jest.mock('@/hooks/useBaseWithdrawRequests', () => ({
-  // As the real one: soUSD only, since soEURC withdraws on Base through its own queue.
+  // As the real one: soUSD's, and a stock vault's without the stocks subgraph — never
+  // soEURC's, which withdraws on Base through its own queue.
   isBaseWithdrawRequest: (activity: {
     type: string;
     chainId?: number;
@@ -61,9 +68,16 @@ jest.mock('@/hooks/useBaseWithdrawRequests', () => ({
     activity.type === 'withdraw' &&
     activity.chainId === 8453 &&
     !['soeurc', 'soeur'].includes(activity.symbol?.toLowerCase() ?? '') &&
+    !(mockHasStockSubgraph && activity.symbol?.toLowerCase() === 'soaapl') &&
     activity.status === 'success' &&
     !!activity.hash,
   useBaseWithdrawRequests: () => mockBaseRequests,
+}));
+jest.mock('@/hooks/useStockVaultTransactions', () => ({
+  useStockVaultTransactions: (address: string | undefined) => ({
+    data:
+      address && mockHasStockSubgraph ? { deposits: [], withdraws: mockStockWithdraws } : undefined,
+  }),
 }));
 
 const withdrawal: ActivityEvent = {
@@ -92,6 +106,8 @@ describe('Activity withdrawal status freshness', () => {
     mockBaseRequests = {};
     mockEurWithdraws = undefined;
     mockEthWithdraws = undefined;
+    mockHasStockSubgraph = false;
+    mockStockWithdraws = undefined;
   });
   afterEach(() => {
     act(() => renderer.unmount());
@@ -326,6 +342,117 @@ describe('Activity withdrawal status freshness', () => {
         renderer = create(<Probe />);
       });
       expect(eurOf()?.status).toBe(TransactionStatus.CANCELLED);
+    });
+  });
+
+  describe('a stock vault withdrawal', () => {
+    // soAAPL's vault, which the stocks subgraph names on every row.
+    const SOAAPL_VAULT = '0xbfe0bf0097d9ab28928ecacda3e33366b36517cd';
+    const stockWithdrawal: ActivityEvent = {
+      ...withdrawal,
+      symbol: 'soAAPL',
+      hash: '0xaapl',
+      chainId: 8453,
+    };
+    const stockOf = () => results.at(-1)?.activities.find(a => a.clientTxId === 'withdrawal');
+
+    describe('without the stocks subgraph, read from its queue', () => {
+      it('is processing while queued, with its request id for a cancel', async () => {
+        useActivityStore.setState({ events: { account: [stockWithdrawal] } });
+        mockBaseRequests = { '0xaapl': { requestId: '0xreq', status: 'pending' } };
+        await act(async () => {
+          renderer = create(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.PROCESSING);
+        expect(stockOf()?.requestId).toBe('0xreq');
+      });
+
+      it('is a success once the queue says it was solved', async () => {
+        useActivityStore.setState({ events: { account: [stockWithdrawal] } });
+        mockBaseRequests = { '0xaapl': { requestId: '0xreq', status: 'solved' } };
+        await act(async () => {
+          renderer = create(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.SUCCESS);
+      });
+
+      // Without a cancel activity of the user's own: the queue's event is enough.
+      it('is cancelled once the queue says it was cancelled', async () => {
+        useActivityStore.setState({ events: { account: [stockWithdrawal] } });
+        mockBaseRequests = { '0xaapl': { requestId: '0xreq', status: 'cancelled' } };
+        await act(async () => {
+          renderer = create(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.CANCELLED);
+      });
+    });
+
+    describe('with the stocks subgraph', () => {
+      beforeEach(() => {
+        mockHasStockSubgraph = true;
+      });
+
+      it('resolves from its own vault rows, never the USD subgraph or the queue', async () => {
+        useActivityStore.setState({ events: { account: [stockWithdrawal] } });
+        mockWithdraws = [{ requestTxHash: '0xaapl', requestStatus: 'SOLVED' }];
+        mockBaseRequests = { '0xaapl': { requestId: '0xreq', status: 'solved' } };
+        // Another stock vault's row with the same hash does not count.
+        mockStockWithdraws = [
+          {
+            requestTxHash: '0xaapl',
+            requestStatus: 'SOLVED',
+            vault: { id: '0xother' },
+            requestId: '0x1',
+          },
+        ];
+        await act(async () => {
+          renderer = create(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.PROCESSING);
+
+        mockStockWithdraws = [
+          {
+            requestTxHash: '0xaapl',
+            requestStatus: 'PENDING',
+            vault: { id: SOAAPL_VAULT },
+            requestId: '0xreq',
+          },
+        ];
+        await act(async () => {
+          renderer.update(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.PROCESSING);
+        expect(stockOf()?.requestId).toBe('0xreq');
+
+        mockStockWithdraws = [
+          {
+            requestTxHash: '0xaapl',
+            requestStatus: 'SOLVED',
+            vault: { id: SOAAPL_VAULT },
+            requestId: '0xreq',
+          },
+        ];
+        await act(async () => {
+          renderer.update(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.SUCCESS);
+      });
+
+      it('is cancelled once the subgraph says so', async () => {
+        useActivityStore.setState({ events: { account: [stockWithdrawal] } });
+        mockStockWithdraws = [
+          {
+            requestTxHash: '0xaapl',
+            requestStatus: 'CANCELLED',
+            vault: { id: SOAAPL_VAULT },
+            requestId: '0xreq',
+          },
+        ];
+        await act(async () => {
+          renderer = create(<Probe />);
+        });
+        expect(stockOf()?.status).toBe(TransactionStatus.CANCELLED);
+      });
     });
   });
 });

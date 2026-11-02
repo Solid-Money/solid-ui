@@ -2,6 +2,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 
 jest.mock('@/lib/assets', () => ({ getAsset: (path: string) => ({ asset: path }) }));
 jest.mock('@/components/DefaultTokenIcon', () => 'DefaultTokenIcon');
+jest.mock('@/components/StockTickerIcon', () => 'StockTickerIcon');
 jest.mock('@/constants/gooddollar', () => ({ G_DOLLAR_LOGO_URI: 'g-dollar' }));
 
 describe('getTokenIcon', () => {
@@ -29,6 +30,22 @@ describe('getTokenIcon', () => {
       });
     }
     expect(getTokenIcon({ tokenSymbol: 'EURC' }).source).toEqual({ asset: 'images/eurc.png' });
+  });
+
+  // No company logos ship with the app: a stock vault's share and its stock token are drawn
+  // as their ticker, unless the token carries a logo of its own.
+  it('draws a stock vault share and its stock token as the ticker', () => {
+    for (const tokenSymbol of ['soAAPL', 'SOAAPL', 'AAPLc']) {
+      const icon = getTokenIcon({ tokenSymbol });
+      expect(icon.type).toBe('component');
+      expect((icon as { component: { props: { ticker: string } } }).component.props.ticker).toBe(
+        'AAPL',
+      );
+    }
+    expect(getTokenIcon({ tokenSymbol: 'GOOGLc', logoUrl: 'https://logo/googl.png' })).toEqual({
+      type: 'image',
+      source: { uri: 'https://logo/googl.png' },
+    });
   });
 
   it('keeps other coins as round logos', () => {

@@ -63,6 +63,10 @@ jest.mock('@/hooks/useNativePriceUsd', () => ({
 }));
 jest.mock('@/hooks/useAnalytics', () => ({
   useMaxAPY: () => ({ maxAPY: 4.5, isAPYsLoading: false }),
+  useMaxAPYs: () => ({}),
+}));
+jest.mock('@/hooks/useStockVaultHoldings', () => ({
+  useStockVaultHoldings: () => ({ data: undefined }),
 }));
 jest.mock('@/lib/utils', () => ({ hasCard: (status: any) => !!status?.active }));
 jest.mock('@/lib/refreshAccountQueries', () => ({ refreshAccountQueries: jest.fn() }));

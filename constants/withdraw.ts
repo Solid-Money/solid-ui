@@ -1,5 +1,15 @@
-/** Token symbols that can be withdrawn from vaults (soUSD/soUSDC, soFUSE, fUSDC, soETH, soEURC). */
-export const SOLID_TOKEN_SYMBOLS = [
+import {
+  byStockTicker,
+  getStockVaultByShareSymbol,
+  STOCK_VAULTS,
+  type StockTicker,
+} from '@/constants/stockVaults';
+
+/**
+ * Token symbols that can be withdrawn from vaults (soUSD/soUSDC, soFUSE, fUSDC, soETH,
+ * soEURC, and each stock vault's share: soAAPL, soNVDA…).
+ */
+export const SOLID_TOKEN_SYMBOLS: readonly string[] = [
   'sousd',
   'sousdc',
   'sofuse',
@@ -8,21 +18,21 @@ export const SOLID_TOKEN_SYMBOLS = [
   'soeurc',
   // The same share's on-chain symbol on the Base deployments from Oct 15 2026 on.
   'soeur',
-] as const;
-
-export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
+  ...STOCK_VAULTS.map(stock => stock.shareSymbol.toLowerCase()),
+];
 
 export function isSolidTokenSymbol(symbol: string | undefined): boolean {
   if (!symbol) return false;
-  return (SOLID_TOKEN_SYMBOLS as readonly string[]).includes(symbol.toLowerCase());
+  return SOLID_TOKEN_SYMBOLS.includes(symbol.toLowerCase());
 }
 
 /**
  * A savings "vault" groups the withdrawable tokens by their underlying asset,
  * independent of the network they sit on. soUSD and fUSDC both belong to the
- * USD vault; soFUSE, soETH and soEURC have their own vaults.
+ * USD vault; soFUSE, soETH, soEURC and each stock vault (keyed by its ticker,
+ * `AAPL`) have their own vaults.
  */
-export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR';
+export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR' | StockTicker;
 
 export interface VaultMeta {
   key: VaultKey;
@@ -37,7 +47,8 @@ export interface VaultMeta {
   /**
    * Whether reaching the destination requires bridging off Fuse first (a 2-step
    * flow): to Base or Ethereum for soUSD, Ethereum for soETH. soFUSE withdraws
-   * directly on Fuse and soEURC directly on Base, each in a single step.
+   * directly on Fuse, and soEURC and the stock vaults directly on Base, each in a
+   * single step.
    */
   requiresBridge: boolean;
 }
@@ -75,6 +86,14 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
     destinationNetwork: 'Base',
     requiresBridge: false,
   },
+  ...byStockTicker<VaultMeta>(stock => ({
+    key: stock.ticker,
+    displayName: stock.shareSymbol,
+    iconSymbol: stock.shareSymbol,
+    destinationSymbol: stock.stockToken.symbol,
+    destinationNetwork: 'Base',
+    requiresBridge: false,
+  })),
 };
 
 /** Maps a token symbol to the vault it belongs to (null if not a vault token). */
@@ -86,7 +105,7 @@ export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
   if (s === 'soeurc' || s === 'soeur') return 'EUR';
-  return null;
+  return getStockVaultByShareSymbol(s)?.ticker ?? null;
 }
 
 /**

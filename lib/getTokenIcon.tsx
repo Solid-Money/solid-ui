@@ -1,5 +1,7 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+import StockTickerIcon from '@/components/StockTickerIcon';
 import { G_DOLLAR_LOGO_URI } from '@/constants/gooddollar';
+import { getStockVaultByShareSymbol, getStockVaultByStockSymbol } from '@/constants/stockVaults';
 import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 
 import { AssetPath, getAsset } from './assets';
@@ -90,6 +92,16 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         token => token.symbol.toUpperCase() === tokenSymbol?.toUpperCase(),
       );
       if (depositToken) return { type: 'image', source: getAsset(depositToken.icon) };
+
+      // A stock vault's share (soAAPL) or stock token (AAPLc) without a logo of its own.
+      const stock =
+        getStockVaultByShareSymbol(tokenSymbol) ?? getStockVaultByStockSymbol(tokenSymbol);
+      if (stock) {
+        return {
+          type: 'component',
+          component: <StockTickerIcon size={size} ticker={stock.ticker} />,
+        };
+      }
 
       return {
         type: 'component',

@@ -13,6 +13,7 @@ let _infoClient: ReturnType<typeof createInfoClient> | null = null;
 let _infoClientFuse: ReturnType<typeof createInfoClient> | null = null;
 let _infoClientEth: ReturnType<typeof createInfoClient> | null = null;
 let _infoClientEur: ReturnType<typeof createInfoClient> | null = null;
+let _infoClientStocks: ReturnType<typeof createInfoClient> | null = null;
 let _algebraInfoClient: ReturnType<typeof createAlgebraInfoClient> | null = null;
 
 const createInfoClient = (uri?: string) =>
@@ -74,6 +75,23 @@ export const getInfoClientEur = () => {
     _infoClientEur = createInfoClient(uri);
   }
   return _infoClientEur;
+};
+
+/**
+ * Get the stock vaults' info graph Apollo client — one subgraph indexes all eight
+ * (soAAPL, soNVDA…), every row carrying its `vault` — or `null` when this build has
+ * none. Like the EUR getter it never falls back to `EXPO_PUBLIC_INFO_GRAPH`, and
+ * callers treat `null` as "no history available".
+ */
+export const hasInfoClientStocks = () => !!process.env.EXPO_PUBLIC_INFO_GRAPH_STOCKS;
+
+export const getInfoClientStocks = () => {
+  const uri = process.env.EXPO_PUBLIC_INFO_GRAPH_STOCKS;
+  if (!uri) return null;
+  if (!_infoClientStocks) {
+    _infoClientStocks = createInfoClient(uri);
+  }
+  return _infoClientStocks;
 };
 
 /**

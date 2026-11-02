@@ -1114,6 +1114,11 @@ export interface StatementDownload {
   mimeType: string;
 }
 
+/** Whether the stock vaults may be offered to this user. See useStockVaultsAccess. */
+export interface StockVaultsAccessResponse {
+  enabled: boolean;
+}
+
 /** Whether the new deposit tokens may be offered to this user. See useDepositTokensAccess. */
 export interface DepositTokensAccessResponse {
   enabled: boolean;
@@ -3185,7 +3190,13 @@ export interface APYs {
   thirtyDay: number;
 }
 
-export interface TotalAPYResponse {
+/**
+ * The stock vaults, keyed by their lowercase ticker like every other vault. 0 until a vault
+ * has a rate history, and absent on an API that does not know it yet: both read as "no APY".
+ */
+type StockVaultAPYs<T> = Partial<Record<StockVaultType, T | null>>;
+
+export interface TotalAPYResponse extends StockVaultAPYs<number> {
   usdc: number;
   fuse: number;
   eth: number;
@@ -3193,7 +3204,7 @@ export interface TotalAPYResponse {
   eur?: number | null;
 }
 
-export interface APYsByAsset {
+export interface APYsByAsset extends StockVaultAPYs<APYs> {
   usdc: APYs;
   fuse: APYs;
   eth: APYs;
@@ -3682,7 +3693,29 @@ export enum VaultType {
   ETH = 'eth',
   /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
   EUR = 'eur',
+  // The stock vaults on Base, one per Coinbase tokenized stock, valued in USD like the
+  // stock. Their values are the lowercase tickers the backend keys their APY by. See
+  // `constants/stockVaults`, which every per-vault detail of theirs comes from.
+  AAPL = 'aapl',
+  NVDA = 'nvda',
+  AMZN = 'amzn',
+  MSFT = 'msft',
+  META = 'meta',
+  TSLA = 'tsla',
+  GOOGL = 'googl',
+  SPCX = 'spcx',
 }
+
+/** A stock vault's type. */
+export type StockVaultType =
+  | VaultType.AAPL
+  | VaultType.NVDA
+  | VaultType.AMZN
+  | VaultType.MSFT
+  | VaultType.META
+  | VaultType.TSLA
+  | VaultType.GOOGL
+  | VaultType.SPCX;
 
 export interface SavingsDataQuality {
   balanceSource: 'on-chain' | 'cached' | 'fallback';

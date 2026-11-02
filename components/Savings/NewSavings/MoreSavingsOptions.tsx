@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
+import { isVaultOffered, useStockVaultsAccess } from '@/hooks/useStockVaultsAccess';
 import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
 
@@ -20,7 +21,10 @@ interface MoreSavingsOptionsProps {
  * APY pill + simulation above).
  */
 const MoreSavingsOptions = ({ selectedType, apyByType, onSelect }: MoreSavingsOptionsProps) => {
-  const others = SAVINGS_VAULTS.filter(vault => vault.type !== selectedType);
+  const { isEnabled: isStockVaultsEnabled } = useStockVaultsAccess();
+  const others = SAVINGS_VAULTS.filter(
+    vault => vault.type !== selectedType && isVaultOffered(vault.type, isStockVaultsEnabled),
+  );
   if (others.length === 0) return null;
 
   return (

@@ -6,6 +6,7 @@ import {
   SAVINGS_FUND_EURC,
   SAVINGS_FUND_STABLECOINS,
 } from '@/components/Savings/SavingsFund/constants';
+import { isStockVaultType } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 
 // constants.ts resolves token icons through the asset barrel; the group policy
@@ -38,8 +39,10 @@ describe('getSavingsFundTokenGroups', () => {
 
   // A vault whose share token nothing here mints would render the screen with
   // no tokens at all — only the "Other" group — and no way to deposit into it.
+  // Not the stock vaults: they take their stock token from the Solid wallet only, and their
+  // Deposit button opens the amount form rather than this screen (useVaultDepositEntry).
   it('offers at least one token for every live vault', () => {
-    for (const vault of VAULTS.filter(v => !v.isComingSoon)) {
+    for (const vault of VAULTS.filter(v => !v.isComingSoon && !isStockVaultType(v.type))) {
       const { stablecoins, crypto } = getSavingsFundTokenGroups('savings', vault.vaultToken);
 
       expect([...stablecoins, ...crypto].length).toBeGreaterThan(0);

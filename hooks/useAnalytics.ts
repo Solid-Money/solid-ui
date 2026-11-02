@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { explorerUrls, layerzero } from '@/constants/explorers';
+import { getStockVault, isStockVaultType } from '@/constants/stockVaults';
 import {
   getInfoClient,
   getInfoClientEth,
@@ -14,6 +16,7 @@ import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
 } from '@/graphql/generated/user-info';
+import { isStockVaultRow } from '@/graphql/queries/stockVaults';
 import {
   bridgeDepositTransactions,
   depositTransactions,
@@ -46,6 +49,8 @@ import {
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
+
+import { fetchStockVaultTransactions } from './useStockVaultTransactions';
 
 const ANALYTICS = 'analytics';
 const ApyToDays = {
@@ -100,7 +105,8 @@ export const useTotalAPY = (vault?: VaultType) => {
   return useQuery({
     queryKey: [ANALYTICS, 'totalAPY'],
     queryFn: fetchTotalAPY,
-    // `eur` is 0 until soEURC earns, and absent or null on older APIs: no APY.
+    // `eur` is 0 until soEURC earns, and absent or null on older APIs: no APY. The
+    // same for a stock vault until it has a rate history.
     select: data => data[vaultKey] ?? undefined,
   });
 };
@@ -154,6 +160,18 @@ export const userTransactionsQueryOptions = (
   queryKey: ['user-transactions', safeAddress?.toLowerCase(), vault],
   queryFn: async () => {
     if (!safeAddress) return undefined;
+    // The stock vaults share one subgraph: this vault's rows of it, or an empty history
+    // where this build has none — never the USD vault's.
+    const stock = getStockVault(vault);
+    if (stock) {
+      const data = await fetchStockVaultTransactions(safeAddress);
+      if (!data) return EMPTY_USER_TRANSACTIONS;
+      return {
+        deposits: data.deposits.filter(row => isStockVaultRow(row, stock.vault)),
+        withdraws: data.withdraws.filter(row => isStockVaultRow(row, stock.vault)),
+        bridges: [],
+      };
+    }
     const client =
       vault === VaultType.ETH
         ? getInfoClientEth()
@@ -578,6 +596,9 @@ export const useTVL = () => {
 export const vaultBreakdownQueryOptions = (vault?: string) => ({
   queryKey: [ANALYTICS, 'vaultBreakdown', vault ?? 'usdc'],
   queryFn: async () => {
+    // The vault manager reports no stock vault's strategies yet: none, rather than
+    // whatever it answers for a vault it does not know.
+    if (isStockVaultType(vault)) return [];
     const vaultBreakdown = await fetchVaultBreakdown(vault);
     return formatVaultBreakdown(vaultBreakdown);
   },
@@ -603,13 +624,16 @@ export const useAPYs = (vault?: VaultType) => {
   const vaultKey = getAnalyticsVaultKey(vault);
   return useQuery({
     ...apysQueryOptions(),
-    // `eur` is 0 until soEURC earns, and absent or null on older APIs: no APY.
+    // `eur` is 0 until soEURC earns, and absent or null on older APIs: no APY. A stock
+    // vault's key is absent until the API knows it, and 0 until it has a rate history.
     select: (data): APYs | undefined => data[vaultKey] ?? undefined,
   });
 };
 
-export const useMaxAPY = (vault?: VaultType) => {
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
+export type MaxAPY = { maxAPY: number; maxAPYDays: number; isAPYsLoading: boolean };
+
+/** The best of a vault's 7, 15 and 30-day APYs, 0 when it has none. */
+const maxAPYOf = (apys: APYs | undefined, isAPYsLoading: boolean): MaxAPY => {
   const thirtyDay = apys?.thirtyDay ?? 0;
   const fifteenDay = apys?.fifteenDay ?? 0;
   const sevenDay = apys?.sevenDay ?? 0;
@@ -630,6 +654,29 @@ export const useMaxAPY = (vault?: VaultType) => {
     maxAPYDays: best?.days ?? ApyToDays.thirtyDay,
     isAPYsLoading,
   };
+};
+
+export const useMaxAPY = (vault?: VaultType): MaxAPY => {
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
+  return maxAPYOf(apys, isAPYsLoading);
+};
+
+/**
+ * {@link useMaxAPY} for every vault at once, from the one APY read: for the screens
+ * that list the stock vaults, where a hook call per vault would not do.
+ */
+export const useMaxAPYs = (): Record<VaultType, MaxAPY> => {
+  const { data, isLoading } = useAPYsByAsset();
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        Object.values(VaultType).map(type => [
+          type,
+          maxAPYOf(data?.[type] ?? undefined, isLoading),
+        ]),
+      ) as Record<VaultType, MaxAPY>,
+    [data, isLoading],
+  );
 };
 
 export const formatVaultBreakdown = (vaultBreakdown: VaultBreakdown[]): VaultBreakdown[] => {
