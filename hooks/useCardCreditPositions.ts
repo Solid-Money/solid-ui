@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { type Address, erc20Abi, isAddressEqual } from 'viem';
+import {
+  type Address,
+  BaseError,
+  ContractFunctionRevertedError,
+  ContractFunctionZeroDataError,
+  erc20Abi,
+  isAddressEqual,
+} from 'viem';
 import { base, fuse } from 'viem/chains';
 
 import { isCardSpendV2Configured, SpendCohort } from '@/constants/cardSpendV2';
@@ -116,12 +123,38 @@ const valueAt = (amount: bigint, priceUsd: bigint, decimals: number): bigint =>
   (amount * priceUsd) / 10n ** BigInt(decimals);
 
 /**
+ * Throws the first multicall failure the chain did not answer — an RPC error or a timeout, as
+ * opposed to a revert or no contract at the address.
+ *
+ * With `allowFailure`, viem reports a failed RPC chunk as a `failure` per call, the same shape as
+ * a revert. Read as "no position", that cached a dropped read as a Safe with no line on Base and
+ * kept it until the query went stale.
+ */
+const throwUnansweredFailure = (
+  results: readonly { status: 'success' | 'failure'; error?: Error }[],
+) => {
+  const unanswered = results.find(
+    entry =>
+      entry.status === 'failure' &&
+      !(
+        entry.error instanceof BaseError &&
+        entry.error.walk(
+          cause =>
+            cause instanceof ContractFunctionRevertedError ||
+            cause instanceof ContractFunctionZeroDataError,
+        )
+      ),
+  );
+  if (unanswered) throw unanswered.error;
+};
+
+/**
  * One instance's credit position, or null when the Safe has none there.
  *
  * Null covers every way an instance can have nothing to say: a Safe not operated by v2 there
- * (the Base lens reverts outright for a Safe it has not registered), a lens paired with some
- * other module than the one the backend names, and a read that fails. None of them is worth
- * failing the sheet over — the other instance still has a position to show.
+ * (the Base lens reverts outright for a Safe it has not registered), and a lens paired with some
+ * other module than the one the backend names. A read the chain never answered throws instead,
+ * so the query retries it rather than caching it as a Safe with no line.
  *
  * The lens is read with the whole allowlist, so `debit.perToken` (loose balances) and
  * `credit.perCollateral` (escrowed) both cover every token; which of them count as collateral
@@ -153,6 +186,14 @@ const readCreditInstance = async (
         { ...module, functionName: 'healthFactor', args: [safeAddress] },
       ],
     });
+  throwUnansweredFailure([
+    pairedModule,
+    availability,
+    params,
+    totalDebtUsd,
+    borrowApyPerSecond,
+    healthFactor,
+  ]);
 
   if (
     pairedModule.status !== 'success' ||
@@ -185,6 +226,7 @@ const readCreditInstance = async (
       { address: token, abi: erc20Abi, functionName: 'symbol' } as const,
     ]),
   });
+  throwUnansweredFailure(details);
 
   const symbolOf = (token: Address): string | undefined => {
     const index = tokens.findIndex(candidate => isAddressEqual(candidate, token));
@@ -264,8 +306,8 @@ const readCreditInstance = async (
  * repay flow, so a Base repayment goes to exactly the module the position was read from.
  */
 export const useBaseCreditInstance = () => {
-  const { isEnabled: isSpendModeCohort } = useCardSpendModeAccess();
-  const { data: spendDeployments } = useCardSpendDeployments();
+  const { isEnabled: isSpendModeCohort, isLoading: isAccessLoading } = useCardSpendModeAccess();
+  const { data: spendDeployments, isLoading: isDeploymentsLoading } = useCardSpendDeployments();
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === base.id,
   );
@@ -276,7 +318,8 @@ export const useBaseCreditInstance = () => {
   const isLive =
     isSpendModeCohort && baseDeployment?.enabled === true && !!moduleAddress && !!lensAddress;
 
-  return { isLive, moduleAddress, lensAddress };
+  // `isLive` reads false until both gates answer; this says whether that false is final yet.
+  return { isLive, isLoading: isAccessLoading || isDeploymentsLoading, moduleAddress, lensAddress };
 };
 
 export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
@@ -306,16 +349,15 @@ export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
               ADDRESSES.fuse.cashModuleV2,
               ADDRESSES.fuse.spendLensV2,
               safeAddress!,
-            ).catch(() => null)
+            )
           : null,
-        readsBase
-          ? readCreditInstance(base.id, baseModule!, baseLens!, safeAddress!).catch(() => null)
-          : null,
+        readsBase ? readCreditInstance(base.id, baseModule!, baseLens!, safeAddress!) : null,
       ]);
       return { fuse: fusePosition, base: basePosition };
     },
     enabled: enabled && !!safeAddress && (readsFuse || readsBase),
-    retry: false,
+    // Only reads the chain never answered get here; a Safe with no position resolves to null.
+    retry: 2,
     staleTime: 15_000,
   });
 };

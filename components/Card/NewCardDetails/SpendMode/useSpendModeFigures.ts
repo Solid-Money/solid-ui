@@ -124,7 +124,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
   // Base's line, for a cardholder live there — soEUR and the crypto Base takes back it, and
   // the registration above reads Fuse alone. The same query the card pane and the picker read.
-  const { isLive: borrowsOnBase } = useBaseCreditInstance();
+  const { isLive: borrowsOnBase, isLoading: isBaseAccessLoading } = useBaseCreditInstance();
   const { data: creditPositions, isLoading: isBaseCreditLoading } = useCardCreditPositions({
     enabled: borrowsOnBase,
   });
@@ -208,7 +208,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       fullyPriced: position?.fullyPriced ?? true,
 
       // Base too, so the tile doesn't land on the Fuse figure and then jump to the whole line.
-      isLoading: isRegistrationLoading || isBalanceLoading || isBaseCreditLoading,
+      isLoading:
+        isRegistrationLoading || isBalanceLoading || isBaseAccessLoading || isBaseCreditLoading,
     };
   }, [
     mode,
@@ -220,6 +221,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     baseHeadroom,
     isRegistrationLoading,
     isBalanceLoading,
+    isBaseAccessLoading,
     isBaseCreditLoading,
     formatMicroUsd,
   ]);
