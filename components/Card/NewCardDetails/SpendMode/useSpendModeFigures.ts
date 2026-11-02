@@ -9,6 +9,7 @@ import {
   formatApy,
   healthFactorToNumber,
 } from '@/constants/cardSpendV2';
+import { useBaseCreditInstance, useCardCreditPositions } from '@/hooks/useCardCreditPositions';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
@@ -121,6 +122,13 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   } = useCardSpendRegistration();
 
   const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
+  // Base's line, for a cardholder live there — soEUR and the crypto Base takes back it, and
+  // the registration above reads Fuse alone. The same query the card pane and the picker read.
+  const { isLive: borrowsOnBase } = useBaseCreditInstance();
+  const { data: creditPositions, isLoading: isBaseCreditLoading } = useCardCreditPositions({
+    enabled: borrowsOnBase,
+  });
+  const baseHeadroom = creditPositions?.base?.creditHeadroomUsd ?? 0n;
   // Every figure here is counted in dollars; a euro main currency shows them in euros.
   const { formatMicroUsd } = useCardDisplayCurrency();
 
@@ -153,6 +161,10 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     // is still a position the cardholder owns and should be able to look at.
     const canBorrow = mode === 'credit' || mode === 'smart';
 
+    // What Credit can spend across both instances: the segments and the home tile. Fuse alone,
+    // a euro cardholder's line read as their few soUSD dollars beside a picker quoting the lot.
+    const spendableHeadroom = creditHeadroom + baseHeadroom;
+
     const cashLabel = formatMicroUsd(cashMicro);
     const availableLabel = formatMicroUsd(creditHeadroom);
 
@@ -179,12 +191,12 @@ export const useSpendModeFigures = (): SpendModeFigures => {
         // rather than shown a zero. "Funds", not a ticker — the balance above sums USDC,
         // USDT, soUSD and, once Base is enabled, EURC, so naming one would misdirect the rest.
         cash: cashMicro > 0n ? cashLabel : 'Add funds',
-        credit: availableLabel,
+        credit: formatMicroUsd(spendableHeadroom),
         // `max`, not a sum — and the same rule the authorize path applies. One transaction
         // takes exactly one path, so the most Smart can fund is the larger of the two; the
         // two figures also overlap heavily, both deriving from the same balance, so adding
         // them would quote money the Safe does not have.
-        smart: formatMicroUsd(cashMicro > creditHeadroom ? cashMicro : creditHeadroom),
+        smart: formatMicroUsd(cashMicro > spendableHeadroom ? cashMicro : spendableHeadroom),
       },
 
       hasPosition: debt > 0n,
@@ -195,7 +207,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       healthFactor: position ? healthFactorToNumber(position.healthFactorWad) : null,
       fullyPriced: position?.fullyPriced ?? true,
 
-      isLoading: isRegistrationLoading || isBalanceLoading,
+      // Base too, so the tile doesn't land on the Fuse figure and then jump to the whole line.
+      isLoading: isRegistrationLoading || isBalanceLoading || isBaseCreditLoading,
     };
   }, [
     mode,
@@ -204,8 +217,10 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     position,
     borrowApyPerSecond,
     cashBalanceUsd,
+    baseHeadroom,
     isRegistrationLoading,
     isBalanceLoading,
+    isBaseCreditLoading,
     formatMicroUsd,
   ]);
 };
