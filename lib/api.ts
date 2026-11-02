@@ -2514,19 +2514,24 @@ export const fetchCardCreditHistory = async (
   params: { limit?: number; before?: string } = {},
 ): Promise<CardCreditHistoryResponse> => {
   const jwt = getJWTToken();
-  const url = new URL('/accounts/v1/card-credit/history', EXPO_PUBLIC_FLASH_API_BASE_URL);
-  if (params.limit) url.searchParams.set('limit', String(params.limit));
-  if (params.before) url.searchParams.set('before', params.before);
+  // Not `new URL()`: the base is relative on web when the API is same-origin.
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.before) query.set('before', params.before);
+  const search = query.toString();
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-credit/history${search ? `?${search}` : ''}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
     },
-    credentials: 'include',
-  });
+  );
 
   if (!response.ok) throw response;
   return response.json();
