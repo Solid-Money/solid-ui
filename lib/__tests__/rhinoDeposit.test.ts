@@ -15,7 +15,6 @@ import {
   isSameDepositAddress,
   isValidRhinoDepositAddress,
   pickRhinoDeposit,
-  resolveRhinoTokenSymbol,
 } from '@/lib/rhinoDeposit';
 
 import type {
@@ -199,24 +198,6 @@ describe('getRhinoChainsForDestination', () => {
     expect(
       chainsOf(getRhinoChainsForDestination(withBitcoin, { destinationType: 'WALLET' })),
     ).not.toContain('BITCOIN');
-  });
-});
-
-describe('resolveRhinoTokenSymbol', () => {
-  const optimism = ASSETS.chains[1];
-
-  it('skips the token choice when one token qualifies', () => {
-    expect(resolveRhinoTokenSymbol(ASSETS.chains[0], { destinationType: 'RAIN_CARD' })).toBe(
-      'USDT',
-    );
-    expect(resolveRhinoTokenSymbol(optimism, { destinationType: 'WALLET', symbol: 'ETH' })).toBe(
-      'ETH',
-    );
-  });
-
-  it('asks when more than one does', () => {
-    // USDC and ETH both reach the card from Optimism; EURC does not.
-    expect(resolveRhinoTokenSymbol(optimism, { destinationType: 'RAIN_CARD' })).toBeUndefined();
   });
 });
 

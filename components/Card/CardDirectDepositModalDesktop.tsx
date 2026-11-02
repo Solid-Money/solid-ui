@@ -364,15 +364,6 @@ export default function CardDirectDepositModal({
 
   // A rhino.fi chain from under the network list. Its address step fetches the
   // user's rhino.fi address itself, so no direct-deposit session is minted.
-  const handleRhinoNetworkSelect = useCallback(
-    (selection: RhinoDepositSelection) => {
-      setSelectedChainId(undefined);
-      setDepositAddress(undefined);
-      setRhinoSelection(selection);
-      goToStep('address');
-    },
-    [goToStep],
-  );
 
   // Connected-wallet path only — always navigates to the send form.
   const handleWalletNetworkSelect = useCallback(
@@ -488,13 +479,7 @@ export default function CardDirectDepositModal({
     }
 
     if (step === 'networks') {
-      return (
-        <CardFundNetworks
-          symbol={selectedToken}
-          onSelect={handleDirectNetworkSelect}
-          onSelectRhino={handleRhinoNetworkSelect}
-        />
-      );
+      return <CardFundNetworks symbol={selectedToken} onSelect={handleDirectNetworkSelect} />;
     }
 
     if (step === 'address' && rhinoSelection) {

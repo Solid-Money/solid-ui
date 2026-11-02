@@ -131,18 +131,6 @@ export const getRhinoChainsForDestination = (
   );
 };
 
-/**
- * The token a chain row stands for: the only one that qualifies, or undefined
- * when there is more than one and the user has to choose.
- */
-export const resolveRhinoTokenSymbol = (
-  chain: RhinoDepositChain,
-  filter: RhinoRouteFilter,
-): string | undefined => {
-  const tokens = getRhinoTokensForDestination(chain, filter);
-  return tokens.length === 1 ? tokens[0].symbol : undefined;
-};
-
 /** The chain, token and route a selection resolves to, if it is still offered. */
 export const findRhinoRoute = (
   assets: RhinoDepositAssetsResponse | undefined,

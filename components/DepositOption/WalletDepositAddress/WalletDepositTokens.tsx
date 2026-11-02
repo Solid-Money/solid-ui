@@ -6,14 +6,11 @@ import { Check, ChevronRight, Search, X } from 'lucide-react-native';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
-import { findRhinoRoute } from '@/lib/rhinoDeposit';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
   getAllWalletDepositTokens,
-  getWalletDepositNetworksForToken,
   groupWalletDepositTokens,
   matchesWalletDepositSearch,
   resolveWalletDepositChain,
@@ -142,7 +139,6 @@ const WalletDepositTokens = () => {
   const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
   const viewer = useWalletDepositViewer();
-  const rhinoAssets = useOfferedRhinoDepositAssets();
   const tokens = useMemo(() => getAllWalletDepositTokens(viewer), [viewer]);
   const groups = useMemo(
     () =>
@@ -152,29 +148,9 @@ const WalletDepositTokens = () => {
 
   const handleSelect = (token: WalletDepositToken) => {
     Keyboard.dismiss();
-    // A "More networks" chain carries over when it takes the new currency into
-    // the wallet too, as an EVM chain does; otherwise the address goes back to
-    // one. If the list has that chain as a row for the new currency, it becomes
-    // the row, which uses rhino.fi on its own terms.
-    const kept = walletDeposit.rhinoChain
-      ? findRhinoRoute(rhinoAssets, {
-          chain: walletDeposit.rhinoChain,
-          tokenSymbol: token.symbol,
-          destinationType: 'WALLET',
-        })
-      : undefined;
-    const rowChainId = kept?.chain.chainId;
-    const isRow =
-      rowChainId !== undefined &&
-      getWalletDepositNetworksForToken(token.symbol, viewer).some(
-        network => network.chainId === rowChainId,
-      );
     setWalletDeposit({
       symbol: token.symbol,
-      chainId: isRow
-        ? rowChainId
-        : resolveWalletDepositChain(token.symbol, walletDeposit.chainId, viewer),
-      rhinoChain: kept && !isRow ? walletDeposit.rhinoChain : undefined,
+      chainId: resolveWalletDepositChain(token.symbol, walletDeposit.chainId, viewer),
       isChangingToken: false,
     });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
