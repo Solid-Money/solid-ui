@@ -1691,6 +1691,10 @@ export const ASSETS = {
     hash: '7663ac41',
   },
   'images/star.png': { module: require('@/assets/images/star.png'), hash: 'ed4389a9' },
+  'images/stock-yield.svg': {
+    module: require('@/assets/images/stock-yield.svg'),
+    hash: 'df363b56',
+  },
   'images/subscription-cashback/airfrance.svg': {
     module: require('@/assets/images/subscription-cashback/airfrance.svg'),
     hash: '6e83325c',

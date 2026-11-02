@@ -1,6 +1,8 @@
 import React from 'react';
 
+import { byStockVaultType } from '@/constants/stockVaults';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
+import { stockVaultHolding } from '@/lib/stockVaults';
 import { VaultType } from '@/lib/types';
 
 const { act, create } = jest.requireActual('react-test-renderer');
@@ -10,6 +12,8 @@ type Query = { data: number | undefined; isLoading: boolean; isError: boolean };
 let mockBalances: Record<string, Query>;
 let mockRates: Record<string, Query>;
 let mockPrice: any;
+// The stock vault positions, keyed by vault type, as useStockVaultHoldings reads them.
+let mockStocks: { data: Record<string, unknown> | undefined; isLoading: boolean; isError: boolean };
 let model: ReturnType<typeof useTotalSavingsUSD>;
 let root: any;
 jest.mock('@/hooks/useUser', () => ({
@@ -23,6 +27,22 @@ jest.mock('@/hooks/useVaultExchangeRate', () => ({
   useVaultExchangeRate: (name: string) => mockRates[name],
 }));
 jest.mock('@/hooks/useNativePriceUsd', () => ({ useNativePriceQuery: () => mockPrice }));
+jest.mock('@/hooks/useStockVaultHoldings', () => ({ useStockVaultHoldings: () => mockStocks }));
+// The real valuation, without the reads behind it.
+jest.mock('@/lib/stockVaults', () => {
+  // Jest factories resolve mocks before ES imports.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { savingsUsdValue } = require('@/lib/portfolio');
+  return {
+    stockVaultHolding: (shares: number, rate: number, priceUsd: number | undefined) => ({
+      shares,
+      rate,
+      priceUsd,
+      underlying: shares * rate,
+      valueUsd: savingsUsdValue(shares, rate, priceUsd ?? 0),
+    }),
+  };
+});
 function Probe() {
   const value = useTotalSavingsUSD();
   React.useEffect(() => {
@@ -42,6 +62,12 @@ beforeEach(() => {
     EUR: success(1),
   };
   mockPrice = success(2);
+  // None held: every stock vault read, at par, with nothing to price.
+  mockStocks = {
+    data: byStockVaultType(() => stockVaultHolding(0, 1, undefined)),
+    isLoading: false,
+    isError: false,
+  };
   act(() => {
     root = create(<Probe />);
   });
@@ -119,5 +145,42 @@ describe('the EUR vault (soEURC)', () => {
     act(() => root.update(<Probe />));
     expect(model.eurValue).toBe(40);
     expect(model.isEurError).toBe(true);
+  });
+});
+
+describe('the stock vaults', () => {
+  it('values a position as shares × rate × the stock price, in the USD total', () => {
+    // 2 soAAPL at 1.01 AAPLc each, AAPLc at $230.
+    mockStocks.data = { ...mockStocks.data, [VaultType.AAPL]: stockVaultHolding(2, 1.01, 230) };
+    act(() => root.update(<Probe />));
+
+    expect(model.valuesByVault?.[VaultType.AAPL]).toBeCloseTo(464.6);
+    expect(model.exactValuesByVault?.[VaultType.AAPL]).toBeCloseTo(464.6);
+    expect(model.valuesByVault?.[VaultType.NVDA]).toBe(0);
+    expect(model.data).toBeCloseTo(12 + 464.6);
+    expect(model.isError).toBe(false);
+  });
+
+  it('never values a held stock it has no price for', () => {
+    mockStocks.data = { ...mockStocks.data, [VaultType.TSLA]: stockVaultHolding(3, 1, undefined) };
+    act(() => root.update(<Probe />));
+
+    expect(model.exactValuesByVault?.[VaultType.TSLA]).toBeUndefined();
+    // The lenient total leaves it out rather than guessing.
+    expect(model.data).toBe(12);
+    expect(model.isError).toBe(true);
+  });
+
+  it('holds the totals while the stock positions load, and flags a failed read', () => {
+    mockStocks = { data: undefined, isLoading: true, isError: false };
+    act(() => root.update(<Probe />));
+    expect(model.isLoading).toBe(true);
+    expect(model.data).toBeUndefined();
+
+    mockStocks = { data: undefined, isLoading: false, isError: true };
+    act(() => root.update(<Probe />));
+    expect(model.exactValuesByVault?.[VaultType.AAPL]).toBeUndefined();
+    expect(model.data).toBe(12);
+    expect(model.isError).toBe(true);
   });
 });

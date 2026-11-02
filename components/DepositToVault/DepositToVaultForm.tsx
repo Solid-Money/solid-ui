@@ -24,6 +24,7 @@ import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { isStablecoinSymbol } from '@/constants/stablecoins';
+import { getStockVault } from '@/constants/stockVaults';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
@@ -33,6 +34,7 @@ import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidEth from '@/hooks/useDepositFromSolidEth';
 import useDepositFromSolidEur from '@/hooks/useDepositFromSolidEur';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
+import useDepositFromSolidStock from '@/hooks/useDepositFromSolidStock';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
@@ -330,6 +332,16 @@ function DepositToVaultForm() {
     vault.minimumAmount,
   );
 
+  // A stock vault (soAAPL…), or undefined for every other vault.
+  const stockVault = getStockVault(vault.type);
+  const {
+    balance: balanceSolidStock,
+    deposit: depositSolidStock,
+    depositStatus: depositStatusSolidStock,
+    hash: hashSolidStock,
+    error: errorSolidStock,
+  } = useDepositFromSolidStock(stockVault, vault.minimumAmount);
+
   const isFuseVault = vault.type === VaultType.FUSE;
   const isEthVault = vault.type === VaultType.ETH;
   const isEurVault = vault.type === VaultType.EUR;
@@ -337,17 +349,20 @@ function DepositToVaultForm() {
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForEur = isEurVault && depositFromSolid;
+  // A stock vault takes its stock token from the Solid wallet only: no connected wallet.
+  const useSolidForStock = !!stockVault;
   // The USD vault is the explicit case now rather than "anything else": an
   // unrecognised vault used to be deposited as USDC.
   const isUsdVault = vault.type === VaultType.USDC;
   const useSolidForUsdc = isUsdVault && depositFromSolid;
   // Exactly one of these holds whenever the deposit comes from the Solid
   // balance, which is also when the form has no external wallet to name.
-  const isDepositFromSolid = useSolidForFuse || useSolidForEth || useSolidForEur || useSolidForUsdc;
+  const isDepositFromSolid =
+    useSolidForFuse || useSolidForEth || useSolidForEur || useSolidForStock || useSolidForUsdc;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
-    if (!depositFromSolid || !normalizedSelection.chainId || !selectedTokenInfo.address)
+    if (!isDepositFromSolid || !normalizedSelection.chainId || !selectedTokenInfo.address)
       return null;
     return {
       contractTickerSymbol: selectedTokenInfo.name,
@@ -359,7 +374,7 @@ function DepositToVaultForm() {
       chainId: normalizedSelection.chainId,
       logoUrl: undefined,
     };
-  }, [depositFromSolid, normalizedSelection.chainId, selectedTokenInfo, isFuseVault, isEthVault]);
+  }, [isDepositFromSolid, normalizedSelection.chainId, selectedTokenInfo, isFuseVault, isEthVault]);
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
@@ -382,7 +397,9 @@ function DepositToVaultForm() {
           : balanceFuse
         : useSolidForUsdc
           ? balanceSolidUsdc
-          : balance;
+          : useSolidForStock
+            ? balanceSolidStock
+            : balance;
   const balanceDecimals = selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6);
   const depositFn = isEurVault
     ? useSolidForEur
@@ -398,7 +415,9 @@ function DepositToVaultForm() {
           : depositFuse
         : useSolidForUsdc
           ? depositSolidUsdc
-          : deposit;
+          : useSolidForStock
+            ? depositSolidStock
+            : deposit;
   const depositStatusForVault = isEurVault
     ? useSolidForEur
       ? depositStatusSolidEur
@@ -413,7 +432,9 @@ function DepositToVaultForm() {
           : depositStatusFuse
         : useSolidForUsdc
           ? depositStatusSolidUsdc
-          : depositStatus;
+          : useSolidForStock
+            ? depositStatusSolidStock
+            : depositStatus;
   const hashForVault = isEurVault
     ? useSolidForEur
       ? hashSolidEur
@@ -428,7 +449,9 @@ function DepositToVaultForm() {
           : hashFuse
         : useSolidForUsdc
           ? hashSolidUsdc
-          : hash;
+          : useSolidForStock
+            ? hashSolidStock
+            : hash;
   const errorForVault = isEurVault
     ? useSolidForEur
       ? errorSolidEur
@@ -443,7 +466,9 @@ function DepositToVaultForm() {
           : errorFuse
         : useSolidForUsdc
           ? errorSolidUsdc
-          : error;
+          : useSolidForStock
+            ? errorSolidStock
+            : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY, isAPYsLoading } = useMaxAPY(vault.type);
@@ -455,13 +480,15 @@ function DepositToVaultForm() {
     const balanceAmount = balanceForVault
       ? Number(formatUnits(balanceForVault, balanceDecimals))
       : 0;
-    const tokenLabel = isFuseVault
-      ? (selectedTokenInfo?.name ?? 'WFUSE')
-      : isEthVault
-        ? (selectedTokenInfo?.name ?? 'WETH')
-        : isEurVault
-          ? 'EURC'
-          : 'USDC';
+    const tokenLabel = stockVault
+      ? stockVault.stockToken.symbol
+      : isFuseVault
+        ? (selectedTokenInfo?.name ?? 'WFUSE')
+        : isEthVault
+          ? (selectedTokenInfo?.name ?? 'WETH')
+          : isEurVault
+            ? 'EURC'
+            : 'USDC';
     const maxAmount = balanceAmount;
 
     return z.object({
@@ -487,6 +514,7 @@ function DepositToVaultForm() {
     isFuseVault,
     isEthVault,
     isEurVault,
+    stockVault,
     isNativeFuse,
     selectedTokenInfo?.name,
     vault.minimumAmount,
@@ -568,9 +596,9 @@ function DepositToVaultForm() {
     isLoading: isPreviewDepositLoading,
     routingFee,
   } = usePreviewDeposit(
-    // The preview quotes a route into USDC, which a EURC deposit never takes:
-    // a zero amount keeps it from asking LI.FI for one.
-    isEurVault ? '0' : watchedAmount || '0',
+    // The preview quotes a route into USDC, which a EURC or stock deposit never
+    // takes: a zero amount keeps it from asking LI.FI for one.
+    isEurVault || stockVault ? '0' : watchedAmount || '0',
     selectedTokenInfo?.address,
     normalizedSelection.chainId,
   );
@@ -604,18 +632,22 @@ function DepositToVaultForm() {
 
     const explorerUrl = isFuseVault
       ? explorerUrls[fuse.id]?.blockscout
-      : isEurVault
+      : isEurVault || stockVault
         ? base.blockExplorers.default.url
         : explorerUrls[layerzero.id]?.layerzeroscan;
 
-    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : isEurVault ? 'EURC' : 'USDC';
-    const toastIcon = isFuseVault
-      ? 'images/fuse-4x.png'
-      : isEthVault
-        ? 'images/eth.png'
-        : isEurVault
-          ? 'images/eurc.png'
-          : 'images/usdc.png';
+    const toastToken =
+      stockVault?.stockToken.symbol ??
+      (isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : isEurVault ? 'EURC' : 'USDC');
+    const toastIcon = stockVault
+      ? 'images/stock-yield.svg'
+      : isFuseVault
+        ? 'images/fuse-4x.png'
+        : isEthVault
+          ? 'images/eth.png'
+          : isEurVault
+            ? 'images/eurc.png'
+            : 'images/usdc.png';
 
     Toast.show({
       type: 'success',
@@ -651,7 +683,7 @@ function DepositToVaultForm() {
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: data.amount,
         chain_id: srcChainId,
-        is_ethereum: !isFuseVault && !isEurVault && isEthereum,
+        is_ethereum: !isFuseVault && !isEurVault && !stockVault && isEthereum,
         is_sponsor: isSponsor,
         exchange_rate: vaultExchangeRate,
         ...attributionData,
@@ -674,7 +706,7 @@ function DepositToVaultForm() {
       track(TRACKING_EVENTS.DEPOSIT_FAILED, {
         amount: data.amount,
         chain_id: srcChainId,
-        is_ethereum: !isFuseVault && !isEurVault && isEthereum,
+        is_ethereum: !isFuseVault && !isEurVault && !stockVault && isEthereum,
         error: String(error),
         ...attributionData,
         attribution_channel: attributionChannel,
@@ -752,7 +784,7 @@ function DepositToVaultForm() {
                     />
                   )}
                 />
-                {depositFromSolid ? (
+                {isDepositFromSolid ? (
                   <WalletTokenButton
                     selectedToken={selectedWalletToken}
                     onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
@@ -836,8 +868,9 @@ function DepositToVaultForm() {
                     <Text className="text-lg font-semibold text-[#94F27F]">
                       {maxAPY ? (
                         `${maxAPY.toFixed(2)}%`
-                      ) : isEurVault && !isAPYsLoading ? (
-                        // EUR Yield's rate is 0% for now: shown, not a skeleton that never resolves.
+                      ) : (isEurVault || stockVault) && !isAPYsLoading ? (
+                        // EUR Yield's rate is 0% for now, and a stock vault's until it has a
+                        // rate history: shown, not a skeleton that never resolves.
                         '0.00%'
                       ) : (
                         <Skeleton className="h-7 w-20 bg-white/20" />

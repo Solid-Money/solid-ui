@@ -7,6 +7,7 @@ import {
   historicalApyQueryOptions,
   vaultBreakdownQueryOptions,
 } from '@/hooks/useAnalytics';
+import { isVaultOffered, useStockVaultsAccess } from '@/hooks/useStockVaultsAccess';
 import { LIVE_VAULTS } from '@/lib/vaults';
 
 /**
@@ -22,10 +23,12 @@ import { LIVE_VAULTS } from '@/lib/vaults';
  */
 export const useVaultDetailPrefetch = () => {
   const queryClient = useQueryClient();
+  const { isEnabled: isStockVaultsEnabled } = useStockVaultsAccess();
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       // The vaults Earn shows a tile for — a coming-soon vault has no detail screen to warm.
       for (const vault of LIVE_VAULTS) {
+        if (!isVaultOffered(vault.type, isStockVaultsEnabled)) continue;
         queryClient.prefetchQuery(
           historicalApyQueryOptions(DEFAULT_HISTORICAL_APY_DAYS, vault.type),
         );
@@ -34,5 +37,5 @@ export const useVaultDetailPrefetch = () => {
     });
 
     return () => task.cancel();
-  }, [queryClient]);
+  }, [queryClient, isStockVaultsEnabled]);
 };

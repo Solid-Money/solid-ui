@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { isStockVaultType } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { DepositModal, VaultType } from '@/lib/types';
@@ -25,12 +26,15 @@ import { useSavingStore } from '@/store/useSavingStore';
  *
  * Both pre-select the vault whose screen the button was pressed on; without it
  * the flow deposits into whichever vault was last chosen somewhere else.
+ *
+ * A stock vault always opens the amount form: it takes only its stock token from
+ * the Solid wallet, so there is no address to send new money to.
  */
 export const useVaultDepositEntry = (
   vaultType: VaultType,
 ): { modal: DepositModal; onBeforeOpen: () => void } => {
   const { provider } = useCardProvider();
-  const isDirectDeposit = usesDirectSavingsDeposit(provider);
+  const isDirectDeposit = usesDirectSavingsDeposit(provider) && !isStockVaultType(vaultType);
 
   const onBeforeOpen = useCallback(() => {
     const index = VAULTS.findIndex(vault => vault.type === vaultType);

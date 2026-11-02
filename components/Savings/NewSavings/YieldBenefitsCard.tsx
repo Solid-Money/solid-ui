@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { ArrowUp, Award, CreditCard, Euro, RefreshCw, TrendingUp } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
+import { byStockVaultType } from '@/constants/stockVaults';
 import { VaultType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -80,6 +81,22 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
     },
     NOTHING_TO_MANAGE,
   ],
+  // TODO(stock vaults): product to review this copy.
+  ...byStockVaultType<Benefit[]>(stock => [
+    {
+      key: 'exposure',
+      icon: TrendingUp,
+      title: `Keep your ${stock.ticker}`,
+      body: `Deposit ${stock.stockToken.symbol} on Base. ${stock.shareSymbol} tracks the stock, so you keep your exposure and earn on top of it.`,
+    },
+    {
+      key: 'withdraw',
+      icon: ArrowUp,
+      title: `Withdraw to ${stock.stockToken.symbol}`,
+      body: 'Withdrawals go through a queue and take up to about 3 days.',
+    },
+    NOTHING_TO_MANAGE,
+  ]),
 };
 
 /**

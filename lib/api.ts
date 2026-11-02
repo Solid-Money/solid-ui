@@ -13,6 +13,7 @@ import {
   BACKEND_PRICE_CHAIN_IDS,
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
+import { isStockVaultType } from '@/constants/stockVaults';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
 import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
@@ -146,6 +147,7 @@ import {
   SourceDepositInstructions,
   StatementDownload,
   StatementFormat,
+  StockVaultsAccessResponse,
   StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
@@ -4598,6 +4600,26 @@ export const getDepositTokensAccess = async (): Promise<DepositTokensAccessRespo
   return response.json();
 };
 
+/** Whether the stock vaults may be offered to this user — see useStockVaultsAccess. */
+export const getStockVaultsAccess = async (): Promise<StockVaultsAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/savings/stocks/access`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 /** Which whitelisted features this user has — see useHasFeature. */
 export const getFeatureAccess = async (): Promise<FeatureAccessResponse> => {
   const jwt = getJWTToken();
@@ -4930,6 +4952,9 @@ export const fetchHistoricalAPY = async (
   days: string = '30',
   vault?: VaultType,
 ): Promise<HistoricalAPYPoint[]> => {
+  // No stock vault has a rate history to chart yet: an empty chart, rather than the
+  // USD vault's history under its name.
+  if (isStockVaultType(vault)) return [];
   const params = new URLSearchParams({ days });
   // Every vault but the USD default names itself. soEURC used to fall to the
   // default and would have charted the USD vault's history as its own; the

@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { ChevronRight, Info } from 'lucide-react-native';
 
+import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import CountUp from '@/components/CountUp';
 import DepositOnItsWayRows from '@/components/Earn/DepositOnItsWayRows';
 import { EarnChip } from '@/components/Earn/EarnChips';
@@ -10,8 +11,10 @@ import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { byStockVaultType, getStockVault } from '@/constants/stockVaults';
+import { PendingWithdrawal } from '@/hooks/useBaseWithdrawRequests';
 import { type DepositOnItsWay, hasDepositMoving } from '@/lib/deposit/depositOnItsWay';
-import { yieldEstimate } from '@/lib/portfolio';
+import { formatTokenAmount, yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
 
@@ -37,6 +40,10 @@ const INTRO: Record<VaultType, string> = {
   [VaultType.FUSE]: 'On your FUSE. Interest is added all the time, and it counts toward your tier.',
   [VaultType.EUR]:
     'On your euros. Your EURC is held and shown in euros, and you can withdraw it whenever you want.',
+  ...byStockVaultType(
+    stock =>
+      `On your ${stock.ticker} shares. Deposit ${stock.stockToken.symbol} from your wallet: you keep your exposure to the stock, and earn on top of it.`,
+  ),
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (
@@ -84,11 +91,18 @@ export interface YieldProductViewProps {
   debtUsd: number | undefined;
   /** Native units per share, for the "1 soUSD = $1.0830" line. */
   exchangeRate: number | undefined;
+  /** A stock vault only: the stock tokens the balance redeems for, shown under it. */
+  underlyingAmount?: number;
   onOpenHelp: () => void;
   onOpenWallet?: () => void;
   onOpenCredit?: () => void;
   /** Deposits into this product that haven't reached it yet, one row each under the balance. */
   depositsOnItsWay?: DepositOnItsWay[];
+  /**
+   * This product's withdrawals waiting to be paid out. They have left the balance above, so
+   * the page says where they went — a full withdrawal would otherwise just read as no funds.
+   */
+  pendingWithdrawals?: PendingWithdrawal[];
 }
 
 /**
@@ -111,22 +125,33 @@ export default function YieldProductView({
   escrowedUsd,
   debtUsd,
   exchangeRate,
+  underlyingAmount,
   onOpenHelp,
   onOpenWallet,
   onOpenCredit,
   depositsOnItsWay = [],
+  pendingWithdrawals = [],
 }: YieldProductViewProps) {
   const name = yieldProductName(vaultType);
   // Nothing in it yet, but the first deposit is on its way: it takes Start earning's place.
   const isFirstDepositMoving = !isFunded && hasDepositMoving(depositsOnItsWay);
   const isEur = isEurVault(vaultType);
+  const stock = getStockVault(vaultType);
   const formatAmount = (value: number | undefined) => formatYieldAmount(value, vaultType);
-  // EUR Yield's rate is 0% for now, and shown as such rather than left blank.
-  const apyLabel = apy ? `${apy.toFixed(1)}%` : isEur ? '0.0%' : undefined;
+  // EUR Yield's rate is 0% for now, and so is a stock vault's until it has a rate history:
+  // shown as such rather than left blank.
+  const apyLabel = apy ? `${apy.toFixed(1)}%` : isEur || stock ? '0.0%' : undefined;
   // Per day once that reaches a cent, else per month, as on Assets: a small balance would
   // otherwise read "+$0.00 today".
   const rate = Math.max(apy ?? 0, 0) / 100;
   const estimate = yieldEstimate((balanceUsd * rate) / 365, (balanceUsd * rate) / 12);
+
+  const withdrawing =
+    pendingWithdrawals.length > 0 ? (
+      <View className="mx-4 overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+        <WithdrawingRow withdrawals={pendingWithdrawals} />
+      </View>
+    ) : null;
 
   const footer = (
     <Text className="mx-4 text-center text-[13px] leading-[18px] text-white/40">
@@ -169,6 +194,11 @@ export default function YieldProductView({
                 decimalSeparator: BALANCE_STYLE,
               }}
             />
+            {stock && underlyingAmount !== undefined ? (
+              <Text className="text-[15px] leading-5 text-white/60">
+                {formatTokenAmount(underlyingAmount)} {stock.stockToken.symbol}
+              </Text>
+            ) : null}
             {estimate ? (
               <View className="rounded-full bg-[#1C1C1C] px-[14px] py-[7px]">
                 <Text className="text-[16px] leading-5 text-[#94F27F]">
@@ -179,36 +209,40 @@ export default function YieldProductView({
           </View>
 
           <DepositOnItsWayRows deposits={depositsOnItsWay} className="mx-4" />
+          {withdrawing}
 
           <SavingsFundedActions vaultType={vaultType} />
 
-          <View className="mx-4 flex-row rounded-[20px] bg-[#1C1C1C] py-[18px]">
-            <View className="flex-1 px-5">
-              <Text className="text-[15px] leading-5 text-white/60">Interest earned</Text>
-              {isInterestLoading ? (
-                <Skeleton className="mt-2 h-7 w-24 rounded-md bg-white/10" />
-              ) : (
-                <Text className="mt-1 text-[24px] font-semibold leading-8 text-white">
-                  {formatAmount(interestUsd)}
+          {/* A stock vault has no deposit history to work its interest out from yet. */}
+          {stock ? null : (
+            <View className="mx-4 flex-row rounded-[20px] bg-[#1C1C1C] py-[18px]">
+              <View className="flex-1 px-5">
+                <Text className="text-[15px] leading-5 text-white/60">Interest earned</Text>
+                {isInterestLoading ? (
+                  <Skeleton className="mt-2 h-7 w-24 rounded-md bg-white/10" />
+                ) : (
+                  <Text className="mt-1 text-[24px] font-semibold leading-8 text-white">
+                    {formatAmount(interestUsd)}
+                  </Text>
+                )}
+                <Text className="mt-1 text-[14px] leading-5 text-white/50">Since you started</Text>
+              </View>
+              <View className="w-px bg-white/10" />
+              <View className="flex-1 px-5">
+                <Text className="text-[15px] leading-5 text-white/60">Past 30 days</Text>
+                {past30Usd === undefined ? (
+                  <Skeleton className="mt-2 h-7 w-20 rounded-md bg-white/10" />
+                ) : (
+                  <Text className="mt-1 text-[24px] font-semibold leading-8 text-[#94F27F]">
+                    +{formatAmount(past30Usd)}
+                  </Text>
+                )}
+                <Text className="mt-1 text-[14px] leading-5 text-white/50">
+                  Added to your balance
                 </Text>
-              )}
-              <Text className="mt-1 text-[14px] leading-5 text-white/50">Since you started</Text>
+              </View>
             </View>
-            <View className="w-px bg-white/10" />
-            <View className="flex-1 px-5">
-              <Text className="text-[15px] leading-5 text-white/60">Past 30 days</Text>
-              {past30Usd === undefined ? (
-                <Skeleton className="mt-2 h-7 w-20 rounded-md bg-white/10" />
-              ) : (
-                <Text className="mt-1 text-[24px] font-semibold leading-8 text-[#94F27F]">
-                  +{formatAmount(past30Usd)}
-                </Text>
-              )}
-              <Text className="mt-1 text-[14px] leading-5 text-white/50">
-                Added to your balance
-              </Text>
-            </View>
-          </View>
+          )}
 
           <VaultApyHistoryCard vaultType={vaultType} />
 
@@ -290,6 +324,7 @@ export default function YieldProductView({
 
           {/* Only a first deposit that didn't go through reaches here. */}
           <DepositOnItsWayRows deposits={depositsOnItsWay} className="mx-4" />
+          {withdrawing}
 
           <StartEarningButton vaultType={vaultType} />
 

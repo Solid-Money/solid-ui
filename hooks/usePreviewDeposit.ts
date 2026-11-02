@@ -4,6 +4,7 @@ import { base, fuse, mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { type StockVault } from '@/constants/stockVaults';
 import Accountant from '@/lib/abis/Accountant';
 import { getLifiQuote } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
@@ -125,6 +126,24 @@ export const fetchExchangeRateSoEurc = async (queryClient: QueryClient) => {
     ...readContractQueryOptions(config, {
       abi: Accountant,
       address: ADDRESSES.base.soEurcAccountant,
+      functionName: 'getRate',
+      chainId: base.id,
+    }),
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+  return exchangeRate;
+};
+
+/**
+ * A stock vault's share → its stock token (soAAPL → AAPLc), 8 decimals, from the
+ * vault's accountant on Base.
+ */
+export const fetchExchangeRateStockVault = async (queryClient: QueryClient, stock: StockVault) => {
+  const exchangeRate = await queryClient.fetchQuery({
+    ...readContractQueryOptions(config, {
+      abi: Accountant,
+      address: stock.accountant,
       functionName: 'getRate',
       chainId: base.id,
     }),

@@ -1,3 +1,4 @@
+import { STOCK_VAULT_TYPES } from '@/constants/stockVaults';
 import { VaultType } from '@/lib/types';
 import {
   formatCurrencyAmount,
@@ -12,7 +13,7 @@ describe('vault currency', () => {
   it('shows soEURC in euros and every other vault in dollars', () => {
     expect(getVaultCurrency(VaultType.EUR)).toBe('EUR');
     expect(getVaultCurrencySymbol(VaultType.EUR)).toBe('€');
-    for (const type of [VaultType.USDC, VaultType.FUSE, VaultType.ETH, undefined]) {
+    for (const type of [VaultType.USDC, VaultType.FUSE, VaultType.ETH, VaultType.AAPL, undefined]) {
       expect(getVaultCurrency(type)).toBe('USD');
       expect(getVaultCurrencySymbol(type)).toBe('$');
     }
@@ -21,8 +22,9 @@ describe('vault currency', () => {
   // The list every USD total is built from: soEURC must never be on it.
   it('never counts the EUR vault among the USD-valued vaults', () => {
     expect(USD_VAULT_TYPES).not.toContain(VaultType.EUR);
+    // The stock vaults are valued in USD like the stock, so they count.
     expect([...USD_VAULT_TYPES].sort()).toEqual(
-      [VaultType.USDC, VaultType.FUSE, VaultType.ETH].sort(),
+      [VaultType.USDC, VaultType.FUSE, VaultType.ETH, ...STOCK_VAULT_TYPES].sort(),
     );
     expect(isEurVault(VaultType.EUR)).toBe(true);
     expect(isEurVault(VaultType.USDC)).toBe(false);

@@ -14,6 +14,14 @@ describe('yield products', () => {
       'USD Yield',
       'ETH Yield',
       'FUSE Yield',
+      'AAPL Yield',
+      'NVDA Yield',
+      'AMZN Yield',
+      'MSFT Yield',
+      'META Yield',
+      'TSLA Yield',
+      'GOOGL Yield',
+      'SPCX Yield',
     ]);
   });
 
@@ -21,6 +29,7 @@ describe('yield products', () => {
     expect(formatShareRate(VaultType.USDC, 1.083021)).toBe('1 soUSD = $1.0830');
     expect(formatShareRate(VaultType.ETH, 1.0123)).toBe('1 soETH = 1.0123 ETH');
     expect(formatShareRate(VaultType.FUSE, 1.2)).toBe('1 soFUSE = 1.2000 FUSE');
+    expect(formatShareRate(VaultType.AAPL, 1.0042)).toBe('1 soAAPL = 1.0042 AAPLc');
   });
 
   it('shows no rate rather than a made-up one', () => {

@@ -1,3 +1,4 @@
+import { byStockVaultType } from '@/constants/stockVaults';
 import { Faq, VaultType } from '@/lib/types';
 
 /**
@@ -8,8 +9,8 @@ import { Faq, VaultType } from '@/lib/types';
  * didn't receive 1 soUSD per USDC. Each vault answers for itself here instead.
  *
  * Copy is product-owned (Monday 12943830277) and reproduced verbatim — edit it
- * there, not here. The EUR vault's copy is the exception: it was written with the
- * vault's launch and is not on that board yet.
+ * there, not here. The EUR vault's and the stock vaults' copy is the exception: it
+ * was written with the vaults' launch and is not on that board yet.
  */
 const VAULT_FAQS: Record<VaultType, Faq[]> = {
   [VaultType.USDC]: [
@@ -111,6 +112,24 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
         'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',
     },
   ],
+  ...byStockVaultType<Faq[]>(stock => [
+    {
+      question: `What is ${stock.shareSymbol}?`,
+      answer: `Your ${stock.ticker} savings. Deposit ${stock.stockToken.symbol}, ${stock.stockToken.name}'s tokenized stock on Base, and receive ${stock.shareSymbol}. Your ${stock.shareSymbol} count doesn't change, each one becomes worth more ${stock.stockToken.symbol} over time.`,
+    },
+    {
+      question: 'How do I deposit?',
+      answer: `Move ${stock.stockToken.symbol} you already hold in your Solid wallet. Only ${stock.stockToken.symbol} on Base is supported for ${stock.ticker} Yield.`,
+    },
+    {
+      question: 'What is it worth?',
+      answer: `Your balance is shown in dollars: the ${stock.stockToken.symbol} your ${stock.shareSymbol} is worth, at the stock's price. It moves with the stock.`,
+    },
+    {
+      question: 'How fast can I withdraw?',
+      answer: `Withdrawals go through a queue and take up to about 3 days. You receive ${stock.stockToken.symbol} on Base in your Solid wallet.`,
+    },
+  ]),
 };
 
 /** FAQ list for a vault, falling back to the USDC vault for an unknown type. */

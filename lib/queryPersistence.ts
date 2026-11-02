@@ -48,8 +48,8 @@ const STORAGE_KEY = 'home';
  */
 const PERSISTED_QUERIES: Record<string, (queryKey: QueryKey) => boolean> = {
   tokenBalances: () => true,
-  // Only the USD-number balances; the `*Wei` siblings hold bigints.
-  vault: queryKey => queryKey[1] === 'balance',
+  // Only the USD-number balances and stock vault holdings; the `*Wei` siblings hold bigints.
+  vault: queryKey => queryKey[1] === 'balance' || queryKey[1] === 'stockHoldings',
   vaultExchangeRate: () => true,
   fusePriceUsd: () => true,
   ethPriceUsd: () => true,

@@ -3,6 +3,11 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import {
+  STOCK_VAULT_MINIMUM_DEPOSIT,
+  STOCK_VAULTS,
+  type StockVault,
+} from '@/constants/stockVaults';
+import {
   ADDRESSES,
   EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
@@ -40,6 +45,32 @@ export const EUR_VAULT: Vault = {
   },
   vaultName: 'EUR Yield',
 };
+
+/**
+ * A stock vault (see `constants/stockVaults`) as the app lists it: "AAPL Yield",
+ * named for the asset it is held and earns in, like USD, ETH and EUR Yield.
+ *
+ * In every build's VAULTS, so shares held anywhere are recognised, valued and can be
+ * withdrawn. Who is OFFERED them is per user — see `useStockVaultsAccess`, which the
+ * Earn rows, savings vault lists, deposit picker and deep link check.
+ * They take the stock token on Base only, from the Solid wallet: no conversion, no
+ * external wallet, no deposit address.
+ */
+export const stockVaultListing = (stock: StockVault): Vault => ({
+  name: stock.ticker,
+  type: stock.type,
+  vaultToken: stock.shareSymbol,
+  icon: 'images/stock-yield.svg',
+  decimals: stock.shareDecimals,
+  minimumAmount: STOCK_VAULT_MINIMUM_DEPOSIT,
+  vaults: [{ address: stock.vault, chainId: base.id }],
+  depositConfig: {
+    methods: ['wallet'],
+    supportedChains: [base.id],
+    supportedTokens: [stock.stockToken.symbol],
+  },
+  vaultName: `${stock.ticker} Yield`,
+});
 
 export const VAULTS: Vault[] = [
   {
@@ -120,8 +151,9 @@ export const VAULTS: Vault[] = [
     },
     vaultName: 'ETH Yield',
   },
-  // Always last: `useSavingStore` persists the selected vault as an index into
+  // Append only: `useSavingStore` persists the selected vault as an index into
   // this list, so inserting a vault ahead of the others would move a returning
   // user's selection onto a different vault.
   EUR_VAULT,
+  ...STOCK_VAULTS.map(stockVaultListing),
 ];

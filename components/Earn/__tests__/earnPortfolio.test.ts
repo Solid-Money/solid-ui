@@ -12,6 +12,7 @@ import {
   weightedApy,
   yieldHoldings,
 } from '@/components/Earn/earnPortfolio';
+import { byStockVaultType, STOCK_VAULT_TYPES } from '@/constants/stockVaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { VaultType } from '@/lib/types';
 
@@ -27,6 +28,7 @@ describe('calculateEstimatedDailyEarnings', () => {
       [VaultType.ETH]: 7.3,
       [VaultType.FUSE]: 0,
       [VaultType.EUR]: undefined,
+      ...byStockVaultType(() => undefined),
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBeCloseTo(0.5, 8);
@@ -43,6 +45,7 @@ describe('calculateEstimatedDailyEarnings', () => {
       [VaultType.ETH]: -5,
       [VaultType.FUSE]: 0,
       [VaultType.EUR]: undefined,
+      ...byStockVaultType(() => undefined),
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBe(0);
@@ -56,6 +59,7 @@ describe('calculateEstimatedDailyEarnings', () => {
       [VaultType.ETH]: 0,
       [VaultType.FUSE]: 0,
       [VaultType.EUR]: 10,
+      ...byStockVaultType(() => undefined),
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBe(0);
@@ -129,11 +133,25 @@ describe('yieldHoldings', () => {
   ];
 
   it('lists every product in Earn order, with what it holds', () => {
-    expect(yieldHoldings(earnAssets, [])).toEqual([
+    const holdings = yieldHoldings(earnAssets, []);
+    expect(holdings.slice(0, 3)).toEqual([
       { type: VaultType.USDC, valueUsd: 2560, shareAmount: 2363.8, unreadUsd: 0, apy: 4.5 },
       { type: VaultType.ETH, valueUsd: 310, shareAmount: 0.0752, unreadUsd: 0, apy: 2.9 },
       { type: VaultType.FUSE, valueUsd: 0, shareAmount: 0, unreadUsd: 0, apy: undefined },
     ]);
+    // Then each stock vault, valued in dollars like the rest; none held here.
+    expect(holdings.slice(3).map(holding => holding.type)).toEqual(STOCK_VAULT_TYPES);
+    expect(holdings.slice(3).every(holding => holding.shareAmount === 0)).toBe(true);
+  });
+
+  it('carries a stock position in the stock it redeems for', () => {
+    const [aapl] = yieldHoldings(
+      [{ vault: { type: VaultType.AAPL }, valueUsd: 460, shareAmount: 2, underlyingAmount: 2.01 }],
+      [],
+    ).filter(holding => holding.type === VaultType.AAPL);
+    expect(aapl).toEqual(
+      expect.objectContaining({ valueUsd: 460, shareAmount: 2, underlyingAmount: 2.01 }),
+    );
   });
 
   // soEURC is held in EUR, and every holding here feeds a dollar total, so it is not one.

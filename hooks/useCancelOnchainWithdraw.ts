@@ -4,6 +4,7 @@ import { type Address, type Chain, TransactionReceipt, zeroAddress } from 'viem'
 import { base, mainnet } from 'viem/chains';
 import { encodeFunctionData } from 'viem/utils';
 
+import { byStockTicker } from '@/constants/stockVaults';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getVaultKey, VaultKey } from '@/constants/withdraw';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -36,7 +37,8 @@ type CancelWithdrawTarget = {
  * offers no Cancel button: the soFUSE queue does not make
  * `cancelOnChainWithdrawUsingRequestId` a public capability (read from its
  * RolesAuthority on 2026-10-14), so a cancel there can only revert. The soEURC
- * queues on Base, QA's and production's, both do (read 2026-10-15).
+ * queues on Base, QA's and production's, both do (read 2026-10-15), and so do the
+ * eight stock vault queues (read 2026-11-01).
  */
 const CANCEL_TARGETS: Record<Exclude<VaultKey, 'USD'>, CancelWithdrawTarget | undefined> = {
   ETH:
@@ -55,6 +57,12 @@ const CANCEL_TARGETS: Record<Exclude<VaultKey, 'USD'>, CancelWithdrawTarget | un
     shareSymbol: 'soEURC',
     shareAddress: ADDRESSES.base.soEurcVault,
   },
+  ...byStockTicker<CancelWithdrawTarget>(stock => ({
+    chain: base,
+    queue: stock.boringQueue,
+    shareSymbol: stock.shareSymbol,
+    shareAddress: stock.vault,
+  })),
 };
 
 /** soUSD's queue on the chain the request was queued on; Ethereum when it names none. */

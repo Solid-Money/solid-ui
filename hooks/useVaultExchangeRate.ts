@@ -1,16 +1,19 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { getStockVaultByTicker } from '@/constants/stockVaults';
 import {
   fetchExchangeRate,
   fetchExchangeRateSoEth,
   fetchExchangeRateSoEurc,
   fetchExchangeRatesoFuse,
+  fetchExchangeRateStockVault,
 } from '@/hooks/usePreviewDeposit';
 
 /**
  * The share → underlying rate for a vault, by vault name, in display units:
- * soUSD→USD for USDC, soFUSE→FUSE for FUSE, soETH→ETH for ETH and soEURC→EURC
- * for EUR (shown in euros, never converted to dollars).
+ * soUSD→USD for USDC, soFUSE→FUSE for FUSE, soETH→ETH for ETH, soEURC→EURC
+ * for EUR (shown in euros, never converted to dollars), and a stock vault's share
+ * → its stock token for its ticker (soAAPL→AAPLc for AAPL).
  *
  * An unknown name is an error rather than a 1:1 rate: a guessed 1 would value
  * another vault's shares at par without anyone noticing.
@@ -39,6 +42,12 @@ export const useVaultExchangeRate = (tokenName: string, enabled = true) => {
       if (tokenName === 'EUR') {
         const rate = await fetchExchangeRateSoEurc(queryClient);
         return Number(rate) / 10 ** 6; // soEURC → EURC (6 decimals), shown in EUR
+      }
+
+      const stock = getStockVaultByTicker(tokenName);
+      if (stock) {
+        const rate = await fetchExchangeRateStockVault(queryClient, stock);
+        return Number(rate) / 10 ** stock.shareDecimals; // soAAPL → AAPLc (8 decimals)
       }
 
       throw new Error(`No exchange rate source for vault "${tokenName}"`);

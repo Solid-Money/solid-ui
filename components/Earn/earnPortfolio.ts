@@ -1,3 +1,4 @@
+import { byStockVaultType } from '@/constants/stockVaults';
 import { type PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { USD_VAULT_TYPES } from '@/lib/vaultCurrency';
@@ -21,13 +22,15 @@ export const formatVaultApyLabel = (apy: number | undefined) =>
  * These are indicative rates, not measured ones — keep them in step with the
  * rates the vaults are actually expected to return.
  *
- * soEURC is 0% for now, and shown as 0%.
+ * soEURC is 0% for now, and shown as 0%. So is a stock vault until the API reports its
+ * rate: it has no indicative one.
  */
 export const FALLBACK_VAULT_APY: VaultApys = {
   [VaultType.USDC]: 4,
   [VaultType.ETH]: 2,
   [VaultType.FUSE]: 14,
   [VaultType.EUR]: 0,
+  ...byStockVaultType(() => 0),
 };
 
 /** The reported APY when there is one, otherwise the vault's indicative rate (if it has one). */
@@ -83,16 +86,18 @@ export const interestOverPastDays = (
 };
 
 /**
- * What the portfolio holds of one product (USD / ETH / FUSE Yield), wherever its shares are.
- * USD-valued products only: every holding feeds a dollar total, and EUR Yield (soEURC) is
- * held in euros, so Earn lists it apart.
+ * What the portfolio holds of one product (USD / ETH / FUSE Yield, a stock vault), wherever
+ * its shares are. USD-valued products only: every holding feeds a dollar total, and EUR
+ * Yield (soEURC) is held in euros, so Earn lists it apart.
  */
 export type YieldHolding = {
   type: (typeof YIELD_PRODUCT_ORDER)[number];
   /** Undefined when none of it can be valued. */
   valueUsd: number | undefined;
-  /** soUSD / soETH / soFUSE on every network, including shares backing the card. */
+  /** soUSD / soETH / soFUSE / soAAPL… on every network, including shares backing the card. */
   shareAmount: number;
+  /** What the shares redeem for in the product's own asset (ETH, FUSE, AAPLc…), when known. */
+  underlyingAmount?: number;
   /**
    * The part held as shares the savings reads don't cover: a production share seen from a
    * development build lands among the wallet's coins instead.
@@ -105,6 +110,7 @@ type EarnPart = {
   vault: { type: VaultType };
   valueUsd: number | undefined;
   shareAmount?: number;
+  underlyingAmount?: number;
   apy?: number;
 };
 type CashPart = Pick<PortfolioAsset, 'valueUsd' | 'balance' | 'tokens'>;
@@ -127,6 +133,7 @@ export const yieldHoldings = (earnAssets: EarnPart[], cashAssets: CashPart[]): Y
         ...shares.map(asset => asset.valueUsd),
       ]).total,
       shareAmount: (earn?.shareAmount ?? 0) + shares.reduce((sum, asset) => sum + asset.balance, 0),
+      underlyingAmount: earn?.underlyingAmount,
       unreadUsd: sumKnownValues(shares.map(asset => asset.valueUsd)).total ?? 0,
       apy: earn?.apy,
     };

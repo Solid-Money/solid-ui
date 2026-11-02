@@ -6,7 +6,9 @@ import { Check, ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
+import { byStockVaultType, isStockVaultType } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
+import { isVaultOffered, useStockVaultsAccess } from '@/hooks/useStockVaultsAccess';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { AssetPath, getAsset } from '@/lib/assets';
 import { Vault, VaultType } from '@/lib/types';
@@ -21,11 +23,14 @@ const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
   [VaultType.ETH]: 'images/eth-yield-4x.png',
   [VaultType.FUSE]: 'images/fuse-yield-4x.png',
   [VaultType.EUR]: 'images/eur-yield-4x.png',
+  ...byStockVaultType<AssetPath>(() => 'images/stock-yield.svg'),
 };
 const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
 
 const VaultSelectorDropdown = () => {
   const { vault: selectedVault } = useVaultDepositConfig();
+  const { isEnabled: isStockVaultsEnabled } = useStockVaultsAccess();
+  const depositFromSolid = useDepositStore(state => state.depositFromSolid);
   const { selectVaultForDeposit } = useSavingStore(
     useShallow(state => ({
       selectVaultForDeposit: state.selectVaultForDeposit,
@@ -148,6 +153,12 @@ const VaultSelectorDropdown = () => {
           >
             <View className="overflow-hidden rounded-2xl bg-card">
               {VAULTS.map((vault, index) => {
+                // Mapped over VAULTS rather than a filtered copy: the index is what
+                // selectVaultForDeposit stores, so it must stay the VAULTS index. A stock
+                // vault takes its stock token from the Solid wallet only, so it is not
+                // offered while depositing from a connected wallet.
+                if (!isVaultOffered(vault.type, isStockVaultsEnabled)) return null;
+                if (isStockVaultType(vault.type) && !depositFromSolid) return null;
                 const isSelected = vault.name === selectedVault.name;
                 const isComingSoon = !!vault.isComingSoon;
                 return (

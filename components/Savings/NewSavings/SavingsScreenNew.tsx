@@ -5,12 +5,15 @@ import { Href, router, useLocalSearchParams } from 'expo-router';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { interestOverPastDays } from '@/components/Earn/earnPortfolio';
 import PageLayout from '@/components/PageLayout';
+import { byStockVaultType, isStockVaultType } from '@/constants/stockVaults';
 import { VaultKey } from '@/constants/withdraw';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { useDepositsOnItsWay } from '@/hooks/useDepositsOnItsWay';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
+import { useStockVaultHoldings } from '@/hooks/useStockVaultHoldings';
+import { isVaultOffered, useStockVaultsAccess } from '@/hooks/useStockVaultsAccess';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
 import { coinAssetPath, sumKnownValues } from '@/lib/portfolio';
@@ -28,6 +31,7 @@ const VAULT_KEY_BY_TYPE: Record<VaultType, VaultKey> = {
   [VaultType.FUSE]: 'FUSE',
   [VaultType.ETH]: 'ETH',
   [VaultType.EUR]: 'EUR',
+  ...byStockVaultType<VaultKey>(stock => stock.ticker),
 };
 
 /**
@@ -40,7 +44,16 @@ export default function SavingsScreenNew() {
   const insets = useSafeAreaInsets();
 
   const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
-  const vaultType = isVaultType(vaultParam) ? vaultParam : VaultType.USDC;
+  const { isEnabled: isStockVaultsEnabled } = useStockVaultsAccess();
+  const { data: stockHoldings } = useStockVaultHoldings();
+  // A deep link to a vault this user is not offered opens USD Yield instead, unless they
+  // hold it: a position already held always has its page.
+  const vaultType =
+    isVaultType(vaultParam) &&
+    (isVaultOffered(vaultParam, isStockVaultsEnabled) ||
+      (isStockVaultType(vaultParam) && (stockHoldings?.[vaultParam]?.shares ?? 0) > 0))
+      ? vaultParam
+      : VaultType.USDC;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isCreditOpen, setIsCreditOpen] = useState(false);
 
@@ -162,12 +175,15 @@ export default function SavingsScreenNew() {
         escrowedUsd={usdPerShare === undefined ? undefined : escrowedShares * usdPerShare}
         debtUsd={portfolio.debt}
         exchangeRate={interest.exchangeRate}
+        underlyingAmount={asset?.underlyingAmount}
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenWallet={
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
         depositsOnItsWay={depositsOnItsWay}
+        // Only soUSD withdraws through the Base queue these are read from.
+        pendingWithdrawals={vaultType === VaultType.USDC ? portfolio.pendingWithdrawals : undefined}
       />
     </PageLayout>
   );

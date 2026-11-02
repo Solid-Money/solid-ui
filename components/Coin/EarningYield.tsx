@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import Ping from '@/components/Ping';
 import { Text } from '@/components/ui/text';
+import { getStockVaultByShareAddress } from '@/constants/stockVaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance, VaultType } from '@/lib/types';
@@ -33,6 +34,8 @@ const EarningYield = ({ token, className }: EarningYieldProps) => {
     if (isSoETHToken(token.contractAddress)) return VaultType.ETH;
     if (isSoEURCToken(token.contractAddress)) return VaultType.EUR;
     if (isSoUSDToken(token.contractAddress)) return VaultType.USDC;
+    const stock = getStockVaultByShareAddress(token.contractAddress);
+    if (stock) return stock.type;
     return undefined;
   }, [token?.contractAddress]);
 

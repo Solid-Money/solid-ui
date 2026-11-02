@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
+import { byStockVaultType } from '@/constants/stockVaults';
 import { VAULTS } from '@/constants/vaults';
 import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
+import { useStockVaultHoldings } from '@/hooks/useStockVaultHoldings';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
@@ -23,8 +25,9 @@ const eurVault = liveVault(VaultType.EUR);
 
 /**
  * Total redeemable savings in USD across the USD-valued vaults: soUSD + soFUSE +
- * soETH. USDC uses its soUSD→USD rate directly; FUSE and ETH multiply their
- * soToken→native rate by the native token's USD price.
+ * soETH + the stock vaults. USDC uses its soUSD→USD rate directly; FUSE and ETH
+ * multiply their soToken→native rate by the native token's USD price, and each stock
+ * vault its share→stock rate by the stock's USD price (see `useStockVaultHoldings`).
  *
  * soEURC is deliberately NOT in any of the USD figures — it is held and shown in
  * EUR, and converting it would need a live rate that can fail or go stale (see
@@ -72,6 +75,12 @@ export const useTotalSavingsUSD = (): {
   } = useVaultBalance(address, eurVault ?? usdcVault);
 
   const {
+    data: stockHoldings,
+    isLoading: isLoadingStocks,
+    isError: isErrorStocks,
+  } = useStockVaultHoldings();
+
+  const {
     data: exchangeRateUsdc,
     isLoading: isLoadingRateUsdc,
     isError: isErrorRateUsdc,
@@ -111,6 +120,7 @@ export const useTotalSavingsUSD = (): {
     isLoadingBalanceUsdc ||
     isLoadingBalanceFuse ||
     isLoadingBalanceEth ||
+    isLoadingStocks ||
     isLoadingRateUsdc ||
     (hasFuseBalance && (isLoadingRateFuse || isLoadingFusePrice)) ||
     (hasEthBalance && (isLoadingRateEth || isLoadingEthPrice));
@@ -128,6 +138,8 @@ export const useTotalSavingsUSD = (): {
         ? (balanceFuse ?? 0) * (exchangeRateFuse ?? 1) * fusePrice
         : 0,
       [VaultType.ETH]: hasEthBalance ? (balanceEth ?? 0) * (exchangeRateEth ?? 1) * ethPrice : 0,
+      // A stock is never valued 1:1 or at a guessed price: unpriced reads as 0 here.
+      ...byStockVaultType(stock => stockHoldings?.[stock.type]?.valueUsd ?? 0),
     };
   }, [
     isLoading,
@@ -141,6 +153,7 @@ export const useTotalSavingsUSD = (): {
     exchangeRateEth,
     fusePriceUsd,
     ethPriceUsd,
+    stockHoldings,
   ]);
 
   // Strict, per vault, for the Assets overview: a vault whose balance, rate or price is
@@ -157,12 +170,16 @@ export const useTotalSavingsUSD = (): {
       [VaultType.ETH]: isErrorBalanceEth
         ? undefined
         : savingsUsdValue(balanceEth, exchangeRateEth, Number(ethPriceUsd)),
+      ...byStockVaultType(stock =>
+        isErrorStocks ? undefined : stockHoldings?.[stock.type]?.valueUsd,
+      ),
     };
   }, [
     isLoading,
     isErrorBalanceUsdc,
     isErrorBalanceFuse,
     isErrorBalanceEth,
+    isErrorStocks,
     balanceUsdc,
     balanceFuse,
     balanceEth,
@@ -171,6 +188,7 @@ export const useTotalSavingsUSD = (): {
     exchangeRateEth,
     fusePriceUsd,
     ethPriceUsd,
+    stockHoldings,
   ]);
 
   // soEURC in EUR: shares × the soEURC→EURC rate, EURC read at par with the euro.
@@ -200,6 +218,7 @@ export const useTotalSavingsUSD = (): {
       isErrorBalanceUsdc ||
       isErrorBalanceFuse ||
       isErrorBalanceEth ||
+      isErrorStocks ||
       ((balanceUsdc ?? 0) > 0 && isErrorRateUsdc) ||
       (hasFuseBalance && (isErrorRateFuse || isErrorFusePrice)) ||
       (hasEthBalance && (isErrorRateEth || isErrorEthPrice)) ||

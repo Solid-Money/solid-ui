@@ -7,6 +7,7 @@ import SavingsFundedActions from '@/components/Savings/NewSavings/SavingsFundedA
 import StartEarningButton from '@/components/Savings/NewSavings/StartEarningButton';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { getStockVault } from '@/constants/stockVaults';
 import { type DepositOnItsWay, hasDepositMoving } from '@/lib/deposit/depositOnItsWay';
 import { formatTokenAmount } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
@@ -27,6 +28,8 @@ export type EarnProduct = {
   valueEur?: number;
   /** soUSD / soETH / soFUSE / soEURC held, for the line under the value. */
   shareAmount: number;
+  /** A stock vault only: the stock tokens its shares redeem for, shown instead of the shares. */
+  underlyingAmount?: number;
   /** FUSE locked for a tier: soFUSE in the lock, still earning FUSE Yield's rate. */
   lockedFuse?: number;
   /** USD Yield: dollars deposited that haven't reached it yet. */
@@ -84,6 +87,12 @@ const ProductRow = ({
   const funded = !isLoading && (value ?? 0) > 0;
   const locked = (product.lockedFuse ?? 0) > 0;
   const onItsWay = product.onItsWayUsd ?? 0;
+  // A stock position reads in the stock it is held in (AAPLc), not in its shares.
+  const stock = getStockVault(product.type);
+  const holding =
+    stock && product.underlyingAmount !== undefined
+      ? `${formatTokenAmount(product.underlyingAmount)} ${stock.stockToken.symbol}`
+      : `${formatTokenAmount(product.shareAmount)} ${token}`;
 
   return (
     <Pressable
@@ -100,7 +109,7 @@ const ProductRow = ({
         <ApyTag
           apy={product.apy}
           isLoading={product.isApyLoading}
-          emptyLabel={isEur ? '0.0% APY' : undefined}
+          emptyLabel={isEur || stock ? '0.0% APY' : undefined}
         />
       </View>
       {isLoading ? (
@@ -117,7 +126,7 @@ const ProductRow = ({
                 ? `+${formatYieldUsd(onItsWay)} on its way`
                 : locked
                   ? `${formatNumber(product.lockedFuse ?? 0, 0)} FUSE locked`
-                  : `${formatTokenAmount(product.shareAmount)} ${token}`}
+                  : holding}
             </Text>
           </View>
         </View>
