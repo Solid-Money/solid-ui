@@ -24,7 +24,8 @@ interface ReferralState {
   installReferrerChecked: boolean;
   _hasHydrated: boolean;
   setReferralCode: (code: string | null, source?: ReferralCodeSource) => void;
-  setInstallReferrerChecked: () => void;
+  /** `false` puts it back, so the next launch asks Play again. */
+  setInstallReferrerChecked: (checked?: boolean) => void;
   setHasHydrated: (state: boolean) => void;
   clearReferralCode: () => void;
   detectAndSaveReferralCode: () => string | null;
@@ -50,8 +51,8 @@ export const useReferralStore = create<ReferralState>()(
         }
       },
 
-      setInstallReferrerChecked: () => {
-        set({ installReferrerChecked: true });
+      setInstallReferrerChecked: (checked = true) => {
+        set({ installReferrerChecked: checked });
       },
 
       setHasHydrated: (state: boolean) => {
