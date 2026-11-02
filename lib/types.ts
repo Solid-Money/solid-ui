@@ -172,6 +172,11 @@ export interface RhinoDepositToken {
 export interface RhinoDepositChain {
   /** rhino.fi's chain id, e.g. `TRON`, `SOLANA`, `OPTIMISM`. */
   chain: string;
+  /**
+   * The EVM chain id, for EVM chains (ETHEREUM 1, OPTIMISM 10, BASE 8453, …).
+   * What matches a rhino.fi chain to a network row the app already lists.
+   */
+  chainId?: number;
   /** Display name, e.g. `Tron`. */
   name: string;
   addressType: RhinoAddressType;

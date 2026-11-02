@@ -2,6 +2,8 @@ import React from 'react';
 import { base } from 'viem/chains';
 
 import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 import type { RhinoDeposit, RhinoDepositAddressResponse } from '@/lib/types';
 
@@ -32,13 +34,15 @@ jest.mock('@/hooks/useRhinoDepositAssets', () => ({
   useOfferedRhinoDepositAssets: () => undefined,
 }));
 jest.mock('@/hooks/useRhinoDepositAddress', () => ({
-  useRhinoDepositAddress: () => mockAddress.current,
+  useRhinoDepositAddress: (selection: unknown, options: unknown) =>
+    mockUseAddress(selection, options),
 }));
 jest.mock('@/hooks/useRhinoDeposits', () => ({
   useRhinoDeposits: () => ({ deposit: mockDeposit.current }),
 }));
 
 const mockDetected = jest.fn((_params: unknown) => ({ isDetected: false }));
+const mockUseAddress = jest.fn((_selection: unknown, _options: unknown) => mockAddress.current);
 const mockAddress: {
   current: { address?: RhinoDepositAddressResponse; isError: boolean; refetch: jest.Mock };
 } = { current: { address: undefined, isError: false, refetch: jest.fn() } };
@@ -70,9 +74,11 @@ const SELECTION = {
 
 let root: any;
 
-const render = () => {
+const render = (props: Partial<React.ComponentProps<typeof RhinoDepositAddress>> = {}) => {
   act(() => {
-    root = create(<RhinoDepositAddress selection={SELECTION} onChangeNetwork={jest.fn()} />);
+    root = create(
+      <RhinoDepositAddress selection={SELECTION} onChangeNetwork={jest.fn()} {...props} />,
+    );
   });
   return root;
 };
@@ -140,6 +146,54 @@ describe('RhinoDepositAddress', () => {
       .find((node: any) => node.props.variant === 'secondary');
     act(() => retry.props.onPress());
     expect(mockAddress.current.refetch).toHaveBeenCalled();
+  });
+
+  describe('standing in for one of the flow’s own rows', () => {
+    const ROW = { ...SELECTION, chain: 'ETHEREUM', fallbackChainId: 1 };
+
+    it('falls back to the row’s own address when the request fails, without an error', () => {
+      mockAddress.current = { address: undefined, isError: true, refetch: jest.fn() };
+      const onFallback = jest.fn();
+      render({ selection: ROW, onFallback });
+
+      expect(onFallback).toHaveBeenCalledTimes(1);
+      expect(texts()).not.toContain('Could not load the deposit address.');
+      // Asked not to toast the failure: the user is about to get a working address.
+      expect(mockUseAddress).toHaveBeenCalledWith(ROW, { notifyOnError: false });
+      expect(track).toHaveBeenCalledWith(
+        TRACKING_EVENTS.DEPOSIT_RHINO_ADDRESS_FALLBACK,
+        expect.objectContaining({ rhino_chain: 'ETHEREUM', chain_id: 1 }),
+      );
+
+      // Re-rendering the same failure does not hand off twice.
+      act(() =>
+        root.update(
+          <RhinoDepositAddress
+            selection={ROW}
+            onChangeNetwork={jest.fn()}
+            onFallback={onFallback}
+          />,
+        ),
+      );
+      expect(onFallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fall back while the address is on its way or shown', () => {
+      const onFallback = jest.fn();
+      render({ selection: ROW, onFallback });
+      expect(onFallback).not.toHaveBeenCalled();
+    });
+
+    it('names the row as the app does', () => {
+      render({ selection: ROW, onFallback: jest.fn() });
+      expect(texts()).toContain('Send only USDT on Ethereum');
+    });
+  });
+
+  it('toasts the failure of a "More networks" chain, which has nothing to fall back to', () => {
+    mockAddress.current = { address: undefined, isError: true, refetch: jest.fn() };
+    render();
+    expect(mockUseAddress).toHaveBeenCalledWith(SELECTION, { notifyOnError: true });
   });
 
   it('explains a rejected deposit', () => {

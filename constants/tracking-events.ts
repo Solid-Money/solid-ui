@@ -135,6 +135,7 @@ export const TRACKING_EVENTS = {
   DEPOSIT_RHINO_ADDRESS_VIEWED: 'deposit_rhino_address_viewed',
   DEPOSIT_RHINO_ADDRESS_COPIED: 'deposit_rhino_address_copied',
   DEPOSIT_RHINO_ADDRESS_FAILED: 'deposit_rhino_address_failed',
+  DEPOSIT_RHINO_ADDRESS_FALLBACK: 'deposit_rhino_address_fallback',
 
   // Deposit Method: Credit Card (Method 3)
   DEPOSIT_CARD_WIDGET_LOADING: 'deposit_card_widget_loading',

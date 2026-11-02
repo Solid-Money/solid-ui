@@ -11,7 +11,8 @@ import {
   getSavingsFundToken,
   SAVINGS_FUND_ESTIMATED_TIME,
 } from '@/components/Savings/SavingsFund/constants';
-import { RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import { useRhinoRowChainIds } from '@/hooks/useRhinoDepositAssets';
+import { RHINO_NETWORK_CHIP, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -25,7 +26,13 @@ type SavingsFundNetworksProps = {
   loadingChainId?: number;
 };
 
-/** Step 2 of the savings funding flow — pick the chain to deposit `symbol` on. */
+/**
+ * Step 2 of the savings funding flow — pick the chain to deposit `symbol` on.
+ *
+ * A row rhino.fi serves into the same vault is marked "via rhino.fi": picking it
+ * shows the rhino.fi address (see `useSavingsFundFlow.selectNetwork`). Under the
+ * rows, the rhino.fi chains this list does not have.
+ */
 const SavingsFundNetworks = ({
   symbol,
   onSelect,
@@ -33,6 +40,12 @@ const SavingsFundNetworks = ({
   loadingChainId,
 }: SavingsFundNetworksProps) => {
   const networks = useMemo(() => getSavingsFundNetworks(symbol), [symbol]);
+  const rowChainIds = useMemo(() => networks.map(network => network.chainId), [networks]);
+  const vault = getSavingsFundToken(symbol).vaultToken;
+  const rhinoRows = useRhinoRowChainIds(
+    { destinationType: 'PROTOCOL', symbol, vault },
+    rowChainIds,
+  );
 
   return (
     <View className="gap-y-8">
@@ -42,7 +55,11 @@ const SavingsFundNetworks = ({
             key={network.chainId}
             icon={<Image source={network.icon} style={NETWORK_ICON_STYLE} contentFit="cover" />}
             title={network.name}
-            chips={[SAVINGS_FUND_ESTIMATED_TIME]}
+            chips={
+              rhinoRows.has(network.chainId)
+                ? [SAVINGS_FUND_ESTIMATED_TIME, RHINO_NETWORK_CHIP]
+                : [SAVINGS_FUND_ESTIMATED_TIME]
+            }
             chipsPosition="inline"
             onPress={() => onSelect(network.chainId)}
             disabled={
@@ -58,7 +75,8 @@ const SavingsFundNetworks = ({
         <RhinoNetworkGroup
           destinationType="PROTOCOL"
           symbol={symbol}
-          vault={getSavingsFundToken(symbol).vaultToken}
+          vault={vault}
+          excludeChainIds={rowChainIds}
           onSelect={onSelectRhino}
           disabled={!!loadingChainId}
         />

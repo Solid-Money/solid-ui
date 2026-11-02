@@ -1,6 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { base } from 'viem/chains';
+import { base, mainnet, optimism } from 'viem/chains';
 
 import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
 import { getRhinoDepositAssets } from '@/lib/api';
@@ -53,6 +53,7 @@ const ASSETS: RhinoDepositAssetsResponse = {
     },
     {
       chain: 'OPTIMISM',
+      chainId: optimism.id,
       name: 'Optimism',
       addressType: 'EVM',
       tokens: [
@@ -93,7 +94,9 @@ let root: any;
 
 const mount = async (props: Partial<React.ComponentProps<typeof RhinoNetworkGroup>> = {}) => {
   const onSelect = jest.fn();
-  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client?.clear();
+  // No garbage-collection timer, which would hold jest open for five minutes.
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   await act(async () => {
     root = create(
       <QueryClientProvider client={client}>
@@ -137,6 +140,15 @@ describe('RhinoNetworkGroup', () => {
     await act(async () => root.unmount());
     await mount({ destinationType: 'PROTOCOL', symbol: 'ETH', vault: 'soUSD' });
     expect(rows()).toHaveLength(0);
+  });
+
+  it('leaves out the chains the flow already has as rows, keeping the rest', async () => {
+    await mount({ destinationType: 'RAIN_CARD', excludeChainIds: [mainnet.id, optimism.id] });
+    expect(titles()).toEqual(['Tron']);
+
+    await act(async () => root.unmount());
+    await mount({ destinationType: 'RAIN_CARD', excludeChainIds: [mainnet.id] });
+    expect(titles()).toEqual(['Tron', 'Optimism']);
   });
 
   it('shows nothing outside the rollout, without asking for the list', async () => {

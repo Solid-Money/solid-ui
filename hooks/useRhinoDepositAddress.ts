@@ -31,11 +31,15 @@ const describeError = (error: unknown): string => {
  * address for Tron, say) counts as a failure: showing it would invite a
  * transfer nothing can receive.
  *
- * A failure is toasted once, with the reason when the backend gave one (400:
- * not offered, 412: no wallet yet, 503: rhino.fi unavailable), and the screen
- * offers a retry.
+ * A failure is tracked, and toasted once with the reason when the backend gave
+ * one (400: not offered, 412: no wallet yet, 503: rhino.fi unavailable) — unless
+ * `notifyOnError` is off, for a screen that falls back to its own address
+ * rather than showing the failure.
  */
-export const useRhinoDepositAddress = (selection: RhinoDepositSelection | undefined) => {
+export const useRhinoDepositAddress = (
+  selection: RhinoDepositSelection | undefined,
+  { notifyOnError = true }: { notifyOnError?: boolean } = {},
+) => {
   const { user } = useUser();
   const chain = selection?.chain;
   const tokenSymbol = selection?.tokenSymbol;
@@ -78,7 +82,10 @@ export const useRhinoDepositAddress = (selection: RhinoDepositSelection | undefi
       selected_token: tokenSymbol,
       destination_type: destinationType,
       error: describeError(error),
+      falls_back: !notifyOnError,
     });
+
+    if (!notifyOnError) return;
 
     void showErrorToast(error, {
       action: 'deposit',
@@ -91,7 +98,7 @@ export const useRhinoDepositAddress = (selection: RhinoDepositSelection | undefi
         destination: destinationType,
       },
     });
-  }, [error, errorUpdatedAt, chain, tokenSymbol, destinationType]);
+  }, [error, errorUpdatedAt, chain, tokenSymbol, destinationType, notifyOnError]);
 
   return {
     address: query.data,
