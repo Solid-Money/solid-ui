@@ -8,6 +8,7 @@ import {
   KeyRound,
   Percent,
   Plus,
+  Tag,
   Terminal,
   Wallet,
 } from 'lucide-react-native';
@@ -220,6 +221,7 @@ const AiApiDashboard = ({
   onNewKey,
   onOpenSetup,
   onOpenHowItWorks,
+  onOpenModels,
   onAddFunds,
 }: {
   overview: AiApiOverview;
@@ -229,6 +231,8 @@ const AiApiDashboard = ({
   onNewKey: () => void;
   onOpenSetup: () => void;
   onOpenHowItWorks: () => void;
+  /** Every model the key can call, with its price. */
+  onOpenModels: () => void;
   onAddFunds: () => void;
 }) => {
   const { month, daily, keys, topModels, billing } = overview;
@@ -365,6 +369,8 @@ const AiApiDashboard = ({
 
       <AiApiGroup>
         <AiApiRow icon={<Terminal {...ICON} />} title="Set up an agent" onPress={onOpenSetup} />
+        <AiApiDivider />
+        <AiApiRow icon={<Tag {...ICON} />} title="Models & prices" onPress={onOpenModels} />
         <AiApiDivider />
         <AiApiRow icon={<Info {...ICON} />} title="How it works" onPress={onOpenHowItWorks} />
       </AiApiGroup>

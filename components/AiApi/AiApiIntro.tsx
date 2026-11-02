@@ -16,7 +16,10 @@ import {
   formatAiApiUsd,
 } from './aiApiFormat';
 import AiApiHeroOrbit from './AiApiHeroOrbit';
+import { AiApiAntseedCard, AiApiMostUsedModels } from './AiApiModels';
 import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiInfoRow } from './AiApiPrimitives';
+
+import type { AiApiModel } from '@/lib/types/ai-api';
 
 interface Agent {
   label: string;
@@ -110,7 +113,8 @@ const AiApiIntro = ({
   cashbackTier,
   cashbackMonthlyCapUsd,
   settlementDays,
-  modelCount,
+  models,
+  onOpenModels,
   ctaLabel = 'Get API key',
   onCta,
   isCtaLoading,
@@ -121,13 +125,17 @@ const AiApiIntro = ({
   /** That tier's monthly AI cashback cap, USD. 0 means no cap. */
   cashbackMonthlyCapUsd: number;
   settlementDays: number;
-  modelCount: number;
+  /** The models a key can call, most used first. */
+  models: AiApiModel[];
+  /** Opens every model with its prices. */
+  onOpenModels: () => void;
   ctaLabel?: string;
   onCta?: () => void;
   isCtaLoading?: boolean;
 }) => {
   const rate = formatAiApiRate(cashbackRate);
   const cashbackUsd = EXAMPLE_SPEND_USD * cashbackRate;
+  const modelCount = models.length;
 
   return (
     <View className="w-full gap-5 px-4">
@@ -169,6 +177,8 @@ const AiApiIntro = ({
           ))}
         </ScrollView>
       </View>
+
+      <AiApiMostUsedModels models={models} onSeeAll={onOpenModels} />
 
       <View className="gap-[18px] rounded-twice bg-card px-4 py-[18px]">
         <Text className="text-[16px] font-semibold text-white">How it works</Text>
@@ -217,13 +227,14 @@ const AiApiIntro = ({
         />
       </View>
 
+      <AiApiAntseedCard />
+
       <Text className="text-[12px] leading-[17px] text-white/45">
         Your {cashbackTier} tier gets {rate} back
         {cashbackMonthlyCapUsd > 0
           ? `, up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
           : ''}
-        . Cashback is credited {settlementDays} days after each charge, into USD Yield. Powered by
-        Antseed.
+        . Cashback is credited {settlementDays} days after each charge, into USD Yield.
       </Text>
 
       {onCta ? (

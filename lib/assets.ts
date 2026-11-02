@@ -200,6 +200,10 @@ export const ASSETS = {
     module: require('@/assets/images/ai-api/agent-opencode.svg'),
     hash: 'a5e54299',
   },
+  'images/ai-api/antseed-ant.svg': {
+    module: require('@/assets/images/ai-api/antseed-ant.svg'),
+    hash: 'c907f826',
+  },
   'images/ai-api/model-claude.svg': {
     module: require('@/assets/images/ai-api/model-claude.svg'),
     hash: 'd0b1efce',

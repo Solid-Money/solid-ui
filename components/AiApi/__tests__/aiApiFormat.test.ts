@@ -1,13 +1,16 @@
 import {
   aiApiLimitProgress,
+  aiApiModelDiscount,
   formatAiApiCashback,
   formatAiApiDay,
+  formatAiApiDiscount,
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiLongDate,
   formatAiApiPaidFrom,
   formatAiApiRate,
   formatAiApiShortDate,
+  formatAiApiTokenPrice,
   formatAiApiTokens,
   formatAiApiUsd,
   maskAiApiKey,
@@ -96,5 +99,46 @@ describe('formatAiApiPaidFrom', () => {
 
   it('falls back to the Wallet when the list could not be read', () => {
     expect(formatAiApiPaidFrom([])).toBe('Your Wallet');
+  });
+});
+
+describe('model prices', () => {
+  it('shows a cheap model in fractions of a cent, and dollars in cents', () => {
+    expect(formatAiApiTokenPrice(2.4)).toBe('$2.40');
+    expect(formatAiApiTokenPrice(15)).toBe('$15.00');
+    expect(formatAiApiTokenPrice(0.095)).toBe('$0.095');
+    expect(formatAiApiTokenPrice(0.0012)).toBe('$0.0012');
+    expect(formatAiApiTokenPrice(0.17634)).toBe('$0.18');
+    expect(formatAiApiTokenPrice(0)).toBe('$0');
+  });
+
+  const opus = {
+    inputUsdPerMTok: 0.4,
+    outputUsdPerMTok: 2.4,
+    officialInputUsdPerMTok: 15,
+    officialOutputUsdPerMTok: 75,
+  };
+
+  it('badges the smaller of the input and output discounts, rounded down', () => {
+    // Input saves 97.3%, output 96.8%: the badge says 96%.
+    expect(aiApiModelDiscount(opus)).toBe(96);
+    expect(formatAiApiDiscount(96)).toBe('\u221296%');
+  });
+
+  it('never reads a float just under a whole percent as one less', () => {
+    expect(
+      aiApiModelDiscount({
+        ...opus,
+        inputUsdPerMTok: 0.9,
+        officialInputUsdPerMTok: 15,
+        outputUsdPerMTok: 4.5,
+      }),
+    ).toBe(94);
+  });
+
+  it('shows no badge without a list price, or when ours is not below it', () => {
+    expect(aiApiModelDiscount({ ...opus, officialInputUsdPerMTok: null })).toBeNull();
+    expect(aiApiModelDiscount({ ...opus, officialOutputUsdPerMTok: 0 })).toBeNull();
+    expect(aiApiModelDiscount({ ...opus, outputUsdPerMTok: 80 })).toBeNull();
   });
 });
