@@ -22,6 +22,7 @@ import {
   isWalletCardExcludedToken,
 } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
+import { selectIsRealtimeLive, useRealtimeStore } from '@/store/useRealtimeStore';
 
 import { makeNativePriceFetcher } from './useNativePriceUsd';
 import useUser from './useUser';
@@ -1000,25 +1001,45 @@ export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
 });
 
 /**
- * The realtime socket handles live updates (lib/realtime refreshes
- * ['tokenBalances'] on every balance event); polling is the fallback for missed
- * events or a dropped socket. The price lookups inside a refresh are cached for
- * a minute, so this interval doesn't drive Prices API usage.
+ * How often the balances are re-read on a timer.
+ *
+ * Every refresh is one `alchemy_getTokenBalances` plus contract reads on each
+ * of the six Alchemy chains, paid for in compute units on the app's key, so
+ * this timer is what the app's share of the Alchemy bill scales with: it runs
+ * for as long as the app is open. Polling is only the safety net. The realtime
+ * socket refreshes ['tokenBalances'] on every balance event (see lib/realtime),
+ * and a send, deposit or pull-to-refresh refreshes them directly. So while the
+ * socket is up the timer only has to catch what no event announces. When it is
+ * down, polling is the only way balances move by themselves, so it runs faster.
  */
-const BALANCES_POLL_INTERVAL_MS = 5_000;
+export const BALANCES_POLL_MS = 15_000;
+export const BALANCES_LIVE_POLL_MS = 60_000;
+
+/**
+ * Balances read within this long are served from the cache when another
+ * screen mounts or the app comes back to the foreground, so moving between
+ * screens doesn't re-read six chains each time. Events, sends and
+ * pull-to-refresh invalidate the query, so they still read the chain at once.
+ */
+const BALANCES_STALE_MS = 15_000;
+
+const balancesObserverOptions = {
+  retry: 3, // retry up to 3 times on failure
+  retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+};
 
 export const useBalances = (): BalanceData => {
   const { user } = useUser();
 
+  // No refetchInterval here: React Query runs one timer per observer, and a
+  // dozen components read balances, so polling from each of them re-read every
+  // chain once per mounted component. The one timer is useBalancesPolling.
   const { data, isLoading, isRefetching, error, refetch } = useQuery({
     ...tokenBalancesQueryOptions(user?.safeAddress),
-    staleTime: 5_000,
-    retry: 3, // retry up to 3 times on failure
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    ...balancesObserverOptions,
+    staleTime: BALANCES_STALE_MS,
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    refetchInterval: BALANCES_POLL_INTERVAL_MS,
-    refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
   return {
@@ -1030,4 +1051,25 @@ export const useBalances = (): BalanceData => {
     refresh: refetch,
     retry: refetch,
   };
+};
+
+/**
+ * The one timer that re-reads the signed-in user's balances. Mounted once, in
+ * the protected layout, so there is a single poll per interval however many
+ * components show a balance. It reads the same query as useBalances and
+ * renders nothing itself.
+ */
+export const useBalancesPolling = (): void => {
+  const { user } = useUser();
+  const isRealtimeLive = useRealtimeStore(selectIsRealtimeLive);
+
+  useQuery({
+    ...tokenBalancesQueryOptions(user?.safeAddress),
+    ...balancesObserverOptions,
+    refetchInterval: isRealtimeLive ? BALANCES_LIVE_POLL_MS : BALANCES_POLL_MS,
+    refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
+    // Keeps the cache warm for the screens that read it; the layout itself
+    // never re-renders on a poll.
+    notifyOnChangeProps: [],
+  });
 };

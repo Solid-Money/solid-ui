@@ -27,7 +27,7 @@ import RewardsUpgradeFeedback from '@/components/Rewards/RewardsUpgradeFeedback'
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
-import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
+import { tokenBalancesQueryOptions, useBalancesPolling } from '@/hooks/useBalances';
 import { useSyncNativeHelp } from '@/hooks/useHelp';
 import { useNotificationPermissionReminder } from '@/hooks/useNotificationPermissionReminder';
 import { detectPasskeyBlock, passkeyNotSupportedHref } from '@/hooks/usePasskey';
@@ -147,6 +147,9 @@ export default function ProtectedLayout() {
   // Live activity, balance and card transaction updates for the signed-in user,
   // over one Socket.IO connection (see lib/realtime/realtimeClient).
   useRealtime(!!user);
+  // The one balance poll for every screen, slowed while the socket above is
+  // live. Screens read the cache it keeps warm instead of each polling.
+  useBalancesPolling();
   // Help center links open natively for users who have the in-house help center.
   useSyncNativeHelp();
   // Finishes a tier lock that was sent but never confirmed — the receipt wait
