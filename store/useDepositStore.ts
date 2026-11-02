@@ -96,14 +96,6 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
-   * A "More networks" rhino.fi chain (e.g. `TRON`) picked from the network list,
-   * in place of `chainId`: the screen then shows the user's rhino.fi address for
-   * it rather than their Safe. Cleared whenever an EVM chain is chosen (see
-   * `setWalletDeposit`). A row of the list never sets it: whether a row uses
-   * rhino.fi follows from the row itself (`getWalletRhinoSelection`).
-   */
-  rhinoChain?: string;
-  /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
    * token", so the previous step alone cannot tell the two apart.
@@ -235,7 +227,6 @@ export const useDepositStore = create<DepositState>()(
         set({
           walletDeposit: {
             ...get().walletDeposit,
-            ...('chainId' in data && !('rhinoChain' in data) ? { rhinoChain: undefined } : {}),
             ...data,
           },
         }),

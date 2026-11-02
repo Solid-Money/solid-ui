@@ -245,15 +245,6 @@ export default function WirexCardFundModal({
 
   // A rhino.fi chain from under the network list. Its address step fetches the
   // user's rhino.fi address itself, so no direct-deposit session is minted.
-  const handleRhinoNetworkSelect = useCallback(
-    (selection: RhinoDepositSelection) => {
-      setSelectedChainId(undefined);
-      setDepositAddress(undefined);
-      setRhinoSelection(selection);
-      goToStep('address');
-    },
-    [goToStep],
-  );
 
   // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
   // buy-crypto steps now replace this modal's content without closing its shell.
@@ -394,13 +385,7 @@ export default function WirexCardFundModal({
     }
 
     if (step === 'networks') {
-      return (
-        <CardFundNetworks
-          symbol={selectedToken}
-          onSelect={handleNetworkSelect}
-          onSelectRhino={handleRhinoNetworkSelect}
-        />
-      );
+      return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
     }
 
     if (step === 'moveHoldings') {

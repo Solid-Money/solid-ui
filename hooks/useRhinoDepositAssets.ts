@@ -2,13 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useDepositTokensAccess } from '@/hooks/useDepositTokensAccess';
 import { getRhinoDepositAssets } from '@/lib/api';
-import {
-  findRhinoRouteForRow,
-  getRhinoChainsForDestination,
-  isRhinoDepositOffered,
-  RhinoRouteFilter,
-  RhinoRowFilter,
-} from '@/lib/rhinoDeposit';
+import { findRhinoRouteForRow, isRhinoDepositOffered, RhinoRowFilter } from '@/lib/rhinoDeposit';
 
 import type { RhinoDepositAssetsResponse } from '@/lib/types';
 
@@ -43,17 +37,6 @@ export const useOfferedRhinoDepositAssets = (): RhinoDepositAssetsResponse | und
   const { isEnabled: hasAccess } = useDepositTokensAccess();
   const { data } = useRhinoDepositAssets(hasAccess);
   return isRhinoDepositOffered(hasAccess, data) ? data : undefined;
-};
-
-/**
- * The rhino.fi chains a deposit screen lists under its own networks: those with
- * a route to its destination (for the chosen token and vault, when there is
- * one), less the chains it already lists as rows (`excludeChainIds`). Empty
- * whenever rhino.fi is not offered.
- */
-export const useRhinoDepositChains = (filter: RhinoRouteFilter) => {
-  const assets = useOfferedRhinoDepositAssets();
-  return { assets, chains: getRhinoChainsForDestination(assets, filter) };
 };
 
 /**

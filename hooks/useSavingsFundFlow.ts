@@ -12,11 +12,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
-import {
-  getRhinoChainsForDestination,
-  getRhinoSelectionForRow,
-  RhinoDepositSelection,
-} from '@/lib/rhinoDeposit';
+import { getRhinoSelectionForRow } from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -163,20 +159,6 @@ export const useSavingsFundFlow = () => {
     startDirectSession(chainId, rhinoDeposit.tokenSymbol);
   }, [rhinoDeposit, startDirectSession]);
 
-  /**
-   * A rhino.fi chain from under the network list. The address step shows the
-   * user's rhino.fi address for it, which fetches its own address; no
-   * direct-deposit session is minted.
-   */
-  const selectRhinoNetwork = useCallback(
-    (selection: RhinoDepositSelection) => {
-      setDirectDepositSession({ chainId: undefined, walletAddress: undefined });
-      setRhinoDeposit(selection);
-      setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
-    },
-    [setDirectDepositSession, setModal, setRhinoDeposit],
-  );
-
   const selectToken = useCallback(
     (symbol: string) => {
       setRhinoDeposit(undefined);
@@ -186,24 +168,17 @@ export const useSavingsFundFlow = () => {
         walletAddress: undefined,
       });
 
-      // Tokens that exist on a single chain (FUSE) skip the one-row chain list —
-      // unless rhino.fi adds chains the list does not have, which makes it a
-      // choice again.
+      // Tokens that exist on a single chain (FUSE, EURC) skip the one-row
+      // chain list.
       const networks = getSavingsFundNetworks(symbol);
-      const rhinoChains = getRhinoChainsForDestination(rhinoAssets, {
-        destinationType: 'PROTOCOL',
-        symbol,
-        vault: getSavingsFundToken(symbol).vaultToken,
-        excludeChainIds: networks.map(network => network.chainId),
-      });
-      if (networks.length === 1 && rhinoChains.length === 0) {
+      if (networks.length === 1) {
         selectNetwork(networks[0].chainId, symbol);
         return;
       }
 
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     },
-    [rhinoAssets, selectNetwork, setDirectDepositSession, setModal, setRhinoDeposit],
+    [selectNetwork, setDirectDepositSession, setModal, setRhinoDeposit],
   );
 
   /** Re-runs the address request for the network already chosen. */
@@ -246,7 +221,6 @@ export const useSavingsFundFlow = () => {
     hasSessionError,
     selectToken,
     selectNetwork,
-    selectRhinoNetwork,
     fallBackFromRhino,
     retryPrepareSession,
     moveFromWallet,
