@@ -125,10 +125,10 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   // Base's line, for a cardholder live there — soEUR and the crypto Base takes back it, and
   // the registration above reads Fuse alone. The same query the card pane and the picker read.
   const { isLive: borrowsOnBase, isLoading: isBaseAccessLoading } = useBaseCreditInstance();
-  const { data: creditPositions, isLoading: isBaseCreditLoading } = useCardCreditPositions({
-    enabled: borrowsOnBase,
-  });
-  const baseHeadroom = creditPositions?.base?.creditHeadroomUsd ?? 0n;
+  const { base: baseCredit } = useCardCreditPositions({ enabled: borrowsOnBase });
+  const baseHeadroom = baseCredit.data?.creditHeadroomUsd ?? 0n;
+  // Pending and not idle, not `isLoading`: a read paused offline has no answer either.
+  const isBaseCreditLoading = baseCredit.isPending && baseCredit.fetchStatus !== 'idle';
   // Every figure here is counted in dollars; a euro main currency shows them in euros.
   const { formatMicroUsd } = useCardDisplayCurrency();
 

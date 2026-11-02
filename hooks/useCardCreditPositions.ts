@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   type Address,
   BaseError,
+  ContractFunctionExecutionError,
   ContractFunctionRevertedError,
   ContractFunctionZeroDataError,
   erc20Abi,
@@ -129,6 +131,9 @@ const valueAt = (amount: bigint, priceUsd: bigint, decimals: number): bigint =>
  * With `allowFailure`, viem reports a failed RPC chunk as a `failure` per call, the same shape as
  * a revert. Read as "no position", that cached a dropped read as a Safe with no line on Base and
  * kept it until the query went stale.
+ *
+ * A failed chunk carries the `aggregate3` call's error, never the call's own. It is unanswered
+ * whatever it wraps: viem reads a node's internal error (-32603) as a revert.
  */
 const throwUnansweredFailure = (
   results: readonly { status: 'success' | 'failure'; error?: Error }[],
@@ -138,6 +143,10 @@ const throwUnansweredFailure = (
       entry.status === 'failure' &&
       !(
         entry.error instanceof BaseError &&
+        !(
+          entry.error instanceof ContractFunctionExecutionError &&
+          entry.error.functionName === 'aggregate3'
+        ) &&
         entry.error.walk(
           cause =>
             cause instanceof ContractFunctionRevertedError ||
@@ -322,6 +331,30 @@ export const useBaseCreditInstance = () => {
   return { isLive, isLoading: isAccessLoading || isDeploymentsLoading, moduleAddress, lensAddress };
 };
 
+/**
+ * One query per instance, so a read that fails on one chain never discards the other's answer.
+ */
+const creditInstanceQuery = (
+  chainId: number,
+  moduleAddress: Address | undefined,
+  lensAddress: Address | undefined,
+  safeAddress: Address | undefined,
+  enabled: boolean,
+) => ({
+  queryKey: [
+    CARD_SPEND_REGISTRATION_QUERY_KEY,
+    'credit-positions',
+    chainId,
+    safeAddress,
+    moduleAddress,
+  ],
+  queryFn: () => readCreditInstance(chainId, moduleAddress!, lensAddress!, safeAddress!),
+  enabled: enabled && !!safeAddress && !!moduleAddress && !!lensAddress,
+  // Only reads the chain never answered get here; a Safe with no position resolves to null.
+  retry: 2,
+  staleTime: 15_000,
+});
+
 export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
   const { user } = useUser();
   const safeAddress = user?.safeAddress as Address | undefined;
@@ -333,33 +366,28 @@ export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
   } = useBaseCreditInstance();
   const readsFuse = isCardSpendV2Configured();
 
-  return useQuery<CardCreditPositions>({
-    queryKey: [
-      CARD_SPEND_REGISTRATION_QUERY_KEY,
-      'credit-positions',
+  const fuseQuery = useQuery(
+    creditInstanceQuery(
+      fuse.id,
+      ADDRESSES.fuse.cashModuleV2,
+      ADDRESSES.fuse.spendLensV2,
       safeAddress,
-      readsFuse,
-      readsBase ? baseModule : null,
-    ],
-    queryFn: async () => {
-      const [fusePosition, basePosition] = await Promise.all([
-        readsFuse
-          ? readCreditInstance(
-              fuse.id,
-              ADDRESSES.fuse.cashModuleV2,
-              ADDRESSES.fuse.spendLensV2,
-              safeAddress!,
-            )
-          : null,
-        readsBase ? readCreditInstance(base.id, baseModule!, baseLens!, safeAddress!) : null,
-      ]);
-      return { fuse: fusePosition, base: basePosition };
-    },
-    enabled: enabled && !!safeAddress && (readsFuse || readsBase),
-    // Only reads the chain never answered get here; a Safe with no position resolves to null.
-    retry: 2,
-    staleTime: 15_000,
-  });
+      enabled && readsFuse,
+    ),
+  );
+  const baseQuery = useQuery(
+    creditInstanceQuery(base.id, baseModule, baseLens, safeAddress, enabled && readsBase),
+  );
+
+  const data = useMemo<CardCreditPositions>(
+    () => ({
+      fuse: readsFuse ? (fuseQuery.data ?? null) : null,
+      base: readsBase ? (baseQuery.data ?? null) : null,
+    }),
+    [readsFuse, readsBase, fuseQuery.data, baseQuery.data],
+  );
+
+  return { data, base: baseQuery };
 };
 
 export default useCardCreditPositions;
