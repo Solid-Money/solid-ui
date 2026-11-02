@@ -45,6 +45,27 @@ jest.mock('@/hooks/useDetectedDirectDeposit', () => ({
     return { isDetected: false };
   },
 }));
+jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+// No rhino.fi chain is selected in these cases: the screen is the Safe / minted address.
+jest.mock('@/hooks/useRhinoDepositAssets', () => ({
+  useOfferedRhinoDepositAssets: () => undefined,
+}));
+jest.mock('@/hooks/useRhinoDepositAddress', () => ({
+  useRhinoDepositAddress: () => ({ address: undefined, isError: false, refetch: jest.fn() }),
+}));
+jest.mock('@/components/DepositOption/RhinoDeposit/useRhinoAddressAnalytics', () => ({
+  useRhinoAddressAnalytics: () => jest.fn(),
+}));
+jest.mock('@/components/DepositOption/RhinoDeposit/RhinoDepositStatus', () => 'RhinoDepositStatus');
+jest.mock(
+  '@/components/DepositOption/RhinoDeposit/RhinoDepositDetails',
+  () => 'RhinoDepositDetails',
+);
+jest.mock('@/components/DepositOption/RhinoDeposit/RhinoChainIcon', () => ({
+  __esModule: true,
+  default: 'RhinoChainIcon',
+  getRhinoChainIcon: () => undefined,
+}));
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: (state: any) => unknown) => selector(mockDeposit),
 }));

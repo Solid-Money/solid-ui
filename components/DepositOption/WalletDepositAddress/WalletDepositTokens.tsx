@@ -6,6 +6,8 @@ import { Check, ChevronRight, Search, X } from 'lucide-react-native';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
+import { findRhinoRoute } from '@/lib/rhinoDeposit';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -139,6 +141,7 @@ const WalletDepositTokens = () => {
   const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
   const viewer = useWalletDepositViewer();
+  const rhinoAssets = useOfferedRhinoDepositAssets();
   const tokens = useMemo(() => getAllWalletDepositTokens(viewer), [viewer]);
   const groups = useMemo(
     () =>
@@ -148,9 +151,19 @@ const WalletDepositTokens = () => {
 
   const handleSelect = (token: WalletDepositToken) => {
     Keyboard.dismiss();
+    // A rhino.fi chain carries over when it takes the new currency into the
+    // wallet too, as an EVM chain does; otherwise the address goes back to one.
+    const keepsRhinoChain =
+      !!walletDeposit.rhinoChain &&
+      !!findRhinoRoute(rhinoAssets, {
+        chain: walletDeposit.rhinoChain,
+        tokenSymbol: token.symbol,
+        destinationType: 'WALLET',
+      });
     setWalletDeposit({
       symbol: token.symbol,
       chainId: resolveWalletDepositChain(token.symbol, walletDeposit.chainId, viewer),
+      rhinoChain: keepsRhinoChain ? walletDeposit.rhinoChain : undefined,
       isChangingToken: false,
     });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);

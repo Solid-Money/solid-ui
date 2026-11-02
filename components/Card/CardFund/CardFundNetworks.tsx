@@ -5,9 +5,12 @@ import { Image } from 'expo-image';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import {
+  CARD_FUND_DESTINATION_TYPE,
   CARD_FUND_ESTIMATED_TIME,
   getCardFundNetworks,
 } from '@/components/Card/CardFund/constants';
+import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
+import { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -15,16 +18,23 @@ type CardFundNetworksProps = {
   /** Stablecoin chosen on the previous step — scopes the chain list. */
   symbol: string;
   onSelect: (chainId: number) => void;
+  /** A rhino.fi chain from the group under the list. Omit to leave it out. */
+  onSelectRhino?: (selection: RhinoDepositSelection) => void;
   /** Chain whose session is currently being created. */
   loadingChainId?: number;
 };
 
 /** Step 2 of the card funding flow — pick the chain to deposit `symbol` on. */
-const CardFundNetworks = ({ symbol, onSelect, loadingChainId }: CardFundNetworksProps) => {
+const CardFundNetworks = ({
+  symbol,
+  onSelect,
+  onSelectRhino,
+  loadingChainId,
+}: CardFundNetworksProps) => {
   const networks = useMemo(() => getCardFundNetworks(symbol), [symbol]);
 
   return (
-    <View>
+    <View className="gap-y-8">
       <CardFundGroup>
         {networks.map(network => (
           <CardFundRow
@@ -41,6 +51,16 @@ const CardFundNetworks = ({ symbol, onSelect, loadingChainId }: CardFundNetworks
           />
         ))}
       </CardFundGroup>
+
+      {/* rhino.fi chains taking this stablecoin to the card, when offered. */}
+      {onSelectRhino ? (
+        <RhinoNetworkGroup
+          destinationType={CARD_FUND_DESTINATION_TYPE}
+          symbol={symbol}
+          onSelect={onSelectRhino}
+          disabled={!!loadingChainId}
+        />
+      ) : null}
     </View>
   );
 };
