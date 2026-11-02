@@ -44,8 +44,8 @@ type RhinoDepositAddressProps = {
    * For an address standing in for one of the flow's own rows
    * (`selection.fallbackChainId`): called once if the rhino.fi address cannot be
    * had, for any reason, so the host shows that row's own address instead. No
-   * error is shown in that case. Omit it for a "More networks" chain, which has
-   * nothing to fall back to and offers a retry.
+   * error is shown in that case. Omitted, a failure is toasted and the screen
+   * offers a retry.
    */
   onFallback?: () => void;
 };

@@ -96,14 +96,6 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
-   * A "More networks" rhino.fi chain (e.g. `TRON`) picked from the network list,
-   * in place of `chainId`: the screen then shows the user's rhino.fi address for
-   * it rather than their Safe. Cleared whenever an EVM chain is chosen (see
-   * `setWalletDeposit`). A row of the list never sets it: whether a row uses
-   * rhino.fi follows from the row itself (`getWalletRhinoSelection`).
-   */
-  rhinoChain?: string;
-  /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
    * token", so the previous step alone cannot tell the two apart.
@@ -140,9 +132,9 @@ interface DepositState {
   savingsFundIntent: SavingsFundIntent;
   /**
    * The rhino.fi address the savings direct-deposit address step shows instead
-   * of the direct-deposit one: for a row rhino.fi serves (with
-   * `fallbackChainId`, so a failure falls back to that row's session), or a
-   * "More networks" chain. Not persisted, and cleared with the rest of the flow.
+   * of the direct-deposit one, for a row rhino.fi serves (`fallbackChainId` is
+   * that row, so a failure falls back to its session). Not persisted, and
+   * cleared with the rest of the flow.
    */
   rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */
@@ -228,17 +220,7 @@ export const useDepositStore = create<DepositState>()(
       clearBankTransferData: () => set({ bankTransfer: {} }),
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
-      // Naming an EVM chain without a rhino.fi one leaves rhino.fi, so a caller
-      // that opens the address on a chain of its own (Main currency, AI API)
-      // never lands on a rhino.fi chain left over from an earlier visit.
-      setWalletDeposit: data =>
-        set({
-          walletDeposit: {
-            ...get().walletDeposit,
-            ...('chainId' in data && !('rhinoChain' in data) ? { rhinoChain: undefined } : {}),
-            ...data,
-          },
-        }),
+      setWalletDeposit: data => set({ walletDeposit: { ...get().walletDeposit, ...data } }),
       setSrcChainId: srcChainId => set({ srcChainId }),
       setPrincipalToken: principalToken => set({ principalToken }),
       setDirectDepositSession: data =>

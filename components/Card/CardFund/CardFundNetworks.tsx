@@ -9,9 +9,8 @@ import {
   CARD_FUND_ESTIMATED_TIME,
   getCardFundNetworks,
 } from '@/components/Card/CardFund/constants';
-import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
 import { useRhinoRowChainIds } from '@/hooks/useRhinoDepositAssets';
-import { RHINO_NETWORK_CHIP, RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -19,35 +18,28 @@ type CardFundNetworksProps = {
   /** Stablecoin chosen on the previous step — scopes the chain list. */
   symbol: string;
   /**
-   * One of the list's own rows. A host that passes `onSelectRhino` shows the
-   * rhino.fi address for a row rhino.fi serves (marked "via rhino.fi").
+   * One of the list's own rows. Every host shows the rhino.fi address for a row
+   * rhino.fi serves (marked "via rhino.fi"), and the row's own otherwise.
    */
   onSelect: (chainId: number) => void;
-  /**
-   * A chain from "More networks", the rhino.fi chains this list does not have.
-   * Omit to leave rhino.fi out entirely.
-   */
-  onSelectRhino?: (selection: RhinoDepositSelection) => void;
   /** Chain whose session is currently being created. */
   loadingChainId?: number;
 };
 
-/** Step 2 of the card funding flow — pick the chain to deposit `symbol` on. */
-const CardFundNetworks = ({
-  symbol,
-  onSelect,
-  onSelectRhino,
-  loadingChainId,
-}: CardFundNetworksProps) => {
+/**
+ * Step 2 of the card funding flow — pick the chain to deposit `symbol` on. Only
+ * the list's own chains are offered: rhino.fi adds none of its own.
+ */
+const CardFundNetworks = ({ symbol, onSelect, loadingChainId }: CardFundNetworksProps) => {
   const networks = useMemo(() => getCardFundNetworks(symbol), [symbol]);
   const rowChainIds = useMemo(() => networks.map(network => network.chainId), [networks]);
   const rhinoRows = useRhinoRowChainIds(
     { destinationType: CARD_FUND_DESTINATION_TYPE, symbol },
-    onSelectRhino ? rowChainIds : [],
+    rowChainIds,
   );
 
   return (
-    <View className="gap-y-8">
+    <View>
       <CardFundGroup>
         {networks.map(network => (
           <CardFundRow
@@ -68,17 +60,6 @@ const CardFundNetworks = ({
           />
         ))}
       </CardFundGroup>
-
-      {/* rhino.fi chains taking this stablecoin to the card, when offered. */}
-      {onSelectRhino ? (
-        <RhinoNetworkGroup
-          destinationType={CARD_FUND_DESTINATION_TYPE}
-          symbol={symbol}
-          excludeChainIds={rowChainIds}
-          onSelect={onSelectRhino}
-          disabled={!!loadingChainId}
-        />
-      ) : null}
     </View>
   );
 };

@@ -190,7 +190,7 @@ describe('RhinoDepositAddress', () => {
     });
   });
 
-  it('toasts the failure of a "More networks" chain, which has nothing to fall back to', () => {
+  it('toasts the failure of a selection with no row to fall back to', () => {
     mockAddress.current = { address: undefined, isError: true, refetch: jest.fn() };
     render();
     expect(mockUseAddress).toHaveBeenCalledWith(SELECTION, { notifyOnError: true });

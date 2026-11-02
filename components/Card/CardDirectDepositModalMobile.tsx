@@ -317,18 +317,6 @@ export default function CardDirectDepositModalMobile({
     prepareSession({ chainId, token: selectedToken });
   }, [prepareSession, rhinoSelection, selectedToken]);
 
-  // A rhino.fi chain from under the network list. Its address step fetches the
-  // user's rhino.fi address itself, so no direct-deposit session is minted.
-  const handleRhinoNetworkSelect = useCallback(
-    (selection: RhinoDepositSelection) => {
-      setSelectedChainId(undefined);
-      setDepositAddress(undefined);
-      setRhinoSelection(selection);
-      goToStep('address');
-    },
-    [goToStep],
-  );
-
   // The webhook has seen the transfer — hand the user straight to its progress screen.
   const handleDepositDetected = useCallback(
     (clientTxId: string) => {
@@ -414,13 +402,7 @@ export default function CardDirectDepositModalMobile({
     }
 
     if (step === 'networks') {
-      return (
-        <CardFundNetworks
-          symbol={selectedToken}
-          onSelect={handleNetworkSelect}
-          onSelectRhino={handleRhinoNetworkSelect}
-        />
-      );
+      return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
     }
 
     if (step === 'address' && rhinoSelection) {

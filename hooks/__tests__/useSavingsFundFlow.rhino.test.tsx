@@ -160,7 +160,7 @@ describe('useSavingsFundFlow, rhino.fi first', () => {
     expect(mockCreateSession).toHaveBeenCalledWith(mainnet.id, 'USDC', 'PROTOCOL');
   });
 
-  it('has nothing to fall back to for a "More networks" chain', async () => {
+  it('has nothing to fall back to for a selection without a row', async () => {
     mockStore.rhinoDeposit = { chain: 'TRON', tokenSymbol: 'USDT', destinationType: 'PROTOCOL' };
     mount();
     act(() => flow().fallBackFromRhino());

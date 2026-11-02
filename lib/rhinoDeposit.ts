@@ -15,12 +15,11 @@ import type {
  * rhino.fi Smart Deposit Addresses: rhino.fi first, our own pipeline as the
  * fallback.
  *
- * - A network row the app already lists (Ethereum, Arbitrum, …) uses rhino.fi
- *   when rhino.fi has a route from that chain (matched by `chainId`) for the
- *   screen's destination, token and vault. If it has none, or the address
- *   request fails, the row is what it was: the direct-deposit session or Safe.
- * - Chains the app does not list (Tron, Solana, Optimism, …) are offered under
- *   the row list, as "More networks".
+ * A network row the app already lists (Ethereum, Arbitrum, …) uses rhino.fi
+ * when rhino.fi has a route from that chain (matched by `chainId`) for the
+ * screen's destination, token and vault. If it has none, or the address request
+ * fails, the row is what it was: the direct-deposit session or Safe. rhino.fi
+ * adds no chains of its own: each network shows once, from the app's own list.
  *
  * The menu is the app's own asset lists: rhino.fi only ever carries a token the
  * screen already offers (see `RHINO_DEPOSIT_SYMBOLS`).
@@ -53,8 +52,8 @@ export type RhinoDepositSelection = {
   vault?: string;
   /**
    * The network row this address stands in for (an EVM chain the app lists
-   * itself). Set, a failed request falls back to that row's own address; unset
-   * (a "More networks" chain), there is nothing to fall back to.
+   * itself): a failed request falls back to that row's own address. Unset,
+   * there is nothing to fall back to.
    */
   fallbackChainId?: number;
 };
@@ -129,18 +128,6 @@ export const getRhinoChainsForDestination = (
           !filter.excludeChainIds?.includes(chain.chainId))) &&
       getRhinoTokensForDestination(chain, filter).length > 0,
   );
-};
-
-/**
- * The token a chain row stands for: the only one that qualifies, or undefined
- * when there is more than one and the user has to choose.
- */
-export const resolveRhinoTokenSymbol = (
-  chain: RhinoDepositChain,
-  filter: RhinoRouteFilter,
-): string | undefined => {
-  const tokens = getRhinoTokensForDestination(chain, filter);
-  return tokens.length === 1 ? tokens[0].symbol : undefined;
 };
 
 /** The chain, token and route a selection resolves to, if it is still offered. */
