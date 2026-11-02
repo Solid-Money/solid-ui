@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ImageSourcePropType, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -9,6 +9,7 @@ import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { getBridgeChain } from '@/constants/bridge';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useRhinoDepositAddress } from '@/hooks/useRhinoDepositAddress';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
@@ -23,7 +24,7 @@ import { DetectedDirectDepositResponse } from '@/lib/types';
 import RhinoChainIcon, { getRhinoChainIcon } from './RhinoChainIcon';
 import RhinoDepositDetails from './RhinoDepositDetails';
 import RhinoDepositStatus from './RhinoDepositStatus';
-import { useRhinoAddressAnalytics } from './useRhinoAddressAnalytics';
+import { trackRhinoFallback, useRhinoAddressAnalytics } from './useRhinoAddressAnalytics';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
@@ -39,6 +40,14 @@ type RhinoDepositAddressProps = {
    * closes and hands the user to the deposit's activity.
    */
   onDepositDetected?: (clientTxId: string) => void;
+  /**
+   * For an address standing in for one of the flow's own rows
+   * (`selection.fallbackChainId`): called once if the rhino.fi address cannot be
+   * had, for any reason, so the host shows that row's own address instead. No
+   * error is shown in that case. Omit it for a "More networks" chain, which has
+   * nothing to fall back to and offers a retry.
+   */
+  onFallback?: () => void;
 };
 
 /**
@@ -53,19 +62,37 @@ const RhinoDepositAddress = ({
   selection,
   onChangeNetwork,
   onDepositDetected,
+  onFallback,
 }: RhinoDepositAddressProps) => {
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
 
   const assets = useOfferedRhinoDepositAssets();
   const offered = useMemo(() => findRhinoRoute(assets, selection), [assets, selection]);
-  const { address, isError, refetch } = useRhinoDepositAddress(selection);
+  const { address, isError, refetch } = useRhinoDepositAddress(selection, {
+    notifyOnError: !onFallback,
+  });
 
   const depositAddress = address?.depositAddress;
-  const chainName = address?.chainName ?? offered?.chain.name ?? selection.chain;
+  const chainId = offered?.chain.chainId ?? selection.fallbackChainId;
+  // A row the app lists itself keeps the name it has there ("Polygon", not
+  // rhino.fi's own), so the screen reads as the row that was tapped.
+  const rowChain =
+    selection.fallbackChainId !== undefined ? getBridgeChain(selection.fallbackChainId) : undefined;
+  const chainName = rowChain?.name ?? address?.chainName ?? offered?.chain.name ?? selection.chain;
   const addressType = address?.addressType ?? offered?.chain.addressType;
-  const chainIcon = getRhinoChainIcon(selection.chain);
+  const chainIcon = getRhinoChainIcon(selection.chain, chainId);
   const trackCopy = useRhinoAddressAnalytics(selection, depositAddress);
+
+  // rhino.fi first, our own address as the fallback: the host swaps this screen
+  // for the row's own as soon as the request fails.
+  const hasFallenBackRef = useRef(false);
+  useEffect(() => {
+    if (!isError || !onFallback || hasFallenBackRef.current) return;
+    hasFallenBackRef.current = true;
+    trackRhinoFallback(selection);
+    onFallback();
+  }, [isError, onFallback, selection]);
 
   // rhino.fi pays out to the same savings / card destination a direct transfer
   // goes to, where the regular pipeline credits it. Its detection is what hands
@@ -136,7 +163,7 @@ const RhinoDepositAddress = ({
                   }
                 : {})}
             />
-          ) : isError ? (
+          ) : isError && !onFallback ? (
             <View className="items-center gap-y-3 px-6">
               <Text className="text-center text-sm text-white/70">
                 Could not load the deposit address.
@@ -177,7 +204,12 @@ const RhinoDepositAddress = ({
       <CardFundGroup>
         <CardFundRow
           icon={
-            <RhinoChainIcon chain={selection.chain} name={chainName} size={NETWORK_ICON_SIZE} />
+            <RhinoChainIcon
+              chain={selection.chain}
+              chainId={chainId}
+              name={chainName}
+              size={NETWORK_ICON_SIZE}
+            />
           }
           title={chainName}
           chips={[RHINO_NETWORK_CHIP]}

@@ -15,6 +15,7 @@ import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
+  getWalletRhinoSelection,
 } from './constants';
 import { useWalletDepositViewer } from './useWalletDepositViewer';
 
@@ -86,8 +87,8 @@ const Pill = ({
 type WalletDepositSelectorsProps = {
   chainId: number;
   symbol: string;
-  /** The rhino.fi chain showing instead of `chainId`, when one is. */
-  rhinoChain?: { chain: string; name: string };
+  /** The "More networks" rhino.fi chain showing instead of `chainId`, when one is. */
+  rhinoChain?: { chain: string; chainId?: number; name: string };
   isNetworkOpen: boolean;
   onToggleNetwork: () => void;
 };
@@ -131,7 +132,12 @@ const WalletDepositSelectors = ({
         icon={network?.icon}
         iconElement={
           rhinoChain ? (
-            <RhinoChainIcon chain={rhinoChain.chain} name={rhinoChain.name} size={20} />
+            <RhinoChainIcon
+              chain={rhinoChain.chain}
+              chainId={rhinoChain.chainId}
+              name={rhinoChain.name}
+              size={20}
+            />
           ) : undefined
         }
         label={rhinoChain?.name ?? network?.name ?? '—'}
@@ -146,7 +152,7 @@ const WalletDepositSelectors = ({
 type WalletDepositNetworkListProps = {
   chainId: number;
   symbol: string;
-  /** The rhino.fi chain selected instead of `chainId`, if any. */
+  /** The "More networks" rhino.fi chain selected instead of `chainId`, if any. */
   rhinoChain?: string;
   onSelect: (chainId: number) => void;
   /** A rhino.fi chain from under the list. Omit to leave them out. */
@@ -163,8 +169,10 @@ type WalletDepositNetworkListProps = {
  * `zIndex` does not carry from a nested child over a later sibling.
  *
  * It offers only the chains carrying the chosen currency, so changing network
- * can never quietly change the currency with it. Under them, when rhino.fi is
- * offered, the rhino.fi chains that take the currency into the wallet.
+ * can never quietly change the currency with it. A row rhino.fi serves under
+ * the wallet rule is marked "via rhino.fi" (see `getWalletRhinoSelection`).
+ * Under the rows, when rhino.fi is offered, the chains the list does not have
+ * that rhino.fi takes the currency into the wallet from.
  */
 export const WalletDepositNetworkList = ({
   chainId,
@@ -179,8 +187,14 @@ export const WalletDepositNetworkList = ({
     () => getWalletDepositNetworksForToken(symbol, viewer),
     [symbol, viewer],
   );
-  const { chains: rhinoChains } = useRhinoDepositChains({ destinationType: 'WALLET', symbol });
+  const { assets: rhinoAssets, chains: rhinoChains } = useRhinoDepositChains({
+    destinationType: 'WALLET',
+    symbol,
+    excludeChainIds: networks.map(network => network.chainId),
+  });
   const offeredRhinoChains = onSelectRhino ? rhinoChains : [];
+  const isRhinoRow = (rowChainId: number) =>
+    !!onSelectRhino && !!getWalletRhinoSelection(rhinoAssets, rowChainId, symbol, viewer.provider);
 
   const rows = (
     <>
@@ -195,6 +209,9 @@ export const WalletDepositNetworkList = ({
         >
           <Image source={item.icon} style={ROW_ICON_STYLE} contentFit="cover" />
           <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
+          {isRhinoRow(item.chainId) ? (
+            <Text className="text-sm text-white/50">{RHINO_NETWORK_CHIP}</Text>
+          ) : null}
           {item.chainId === chainId && !rhinoChain ? <Check size={18} color="#94F27F" /> : null}
         </Pressable>
       ))}
@@ -204,7 +221,12 @@ export const WalletDepositNetworkList = ({
           onPress={() => onSelectRhino?.(item.chain)}
           className="flex-row items-center gap-x-3 border-t border-white/[0.06] px-[18px] py-3 web:transition-colors web:hover:bg-card-hover"
         >
-          <RhinoChainIcon chain={item.chain} name={item.name} size={ROW_ICON_STYLE.width} />
+          <RhinoChainIcon
+            chain={item.chain}
+            chainId={item.chainId}
+            name={item.name}
+            size={ROW_ICON_STYLE.width}
+          />
           <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
           <Text className="text-sm text-white/50">{RHINO_NETWORK_CHIP}</Text>
           {item.chain === rhinoChain ? <Check size={18} color="#94F27F" /> : null}

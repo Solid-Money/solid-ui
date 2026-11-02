@@ -9,6 +9,7 @@ import {
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  getWalletRhinoSelection,
   groupWalletDepositTokens,
   matchesWalletDepositSearch,
   offersWalletDepositEurc,
@@ -19,7 +20,7 @@ import {
 } from '@/components/DepositOption/WalletDepositAddress/constants';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { isWalletDepositContract, WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
-import { CardProvider, DepositAsset } from '@/lib/types';
+import { CardProvider, DepositAsset, RhinoDepositAssetsResponse } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
 // which chains and currencies are offered and what each pairing's floor is.
@@ -624,5 +625,98 @@ describe('isWalletDepositContract', () => {
   it('names no native coin, which has no contract', () => {
     expect(isWalletDepositContract(mainnet.id, 'native')).toBe(false);
     expect(isWalletDepositContract(mainnet.id, undefined)).toBe(false);
+  });
+});
+
+describe('getWalletRhinoSelection', () => {
+  const walletRoute = (symbol: string) => ({
+    destinationType: 'WALLET' as const,
+    receiveSymbol: symbol,
+    receiveChainId: base.id,
+    minimumUsd: 5,
+    maximumUsd: 100000,
+  });
+  const tokens = (...symbols: string[]) =>
+    symbols.map(symbol => ({
+      symbol,
+      address: '0x0000000000000000000000000000000000000001',
+      routes: [walletRoute(symbol)],
+    }));
+  const ASSETS: RhinoDepositAssetsResponse = {
+    enabled: true,
+    chains: [
+      {
+        chain: 'ETHEREUM',
+        chainId: mainnet.id,
+        name: 'Ethereum',
+        addressType: 'EVM',
+        tokens: tokens('USDC', 'USDT', 'ETH', 'EURC', 'WETH'),
+      },
+      {
+        chain: 'ARBITRUM',
+        chainId: arbitrum.id,
+        name: 'Arbitrum One',
+        addressType: 'EVM',
+        tokens: tokens('USDC', 'USDT', 'ETH'),
+      },
+      // Neither is something the backend lists for the wallet; here to show
+      // both rows stay as they are whatever it says.
+      {
+        chain: 'BASE',
+        chainId: base.id,
+        name: 'Base',
+        addressType: 'EVM',
+        tokens: tokens('USDC'),
+      },
+      {
+        chain: 'FUSE',
+        chainId: fuse.id,
+        name: 'Fuse',
+        addressType: 'EVM',
+        tokens: tokens('USDC'),
+      },
+    ],
+  };
+
+  it('sends USDC, USDT, ETH and EURC off Base through rhino.fi, to the Safe on Base', () => {
+    ['USDC', 'USDT', 'ETH', 'EURC'].forEach(symbol =>
+      expect(getWalletRhinoSelection(ASSETS, mainnet.id, symbol, null)).toEqual({
+        chain: 'ETHEREUM',
+        tokenSymbol: symbol,
+        destinationType: 'WALLET',
+        fallbackChainId: mainnet.id,
+      }),
+    );
+    expect(getWalletRhinoSelection(ASSETS, arbitrum.id, 'USDT', CardProvider.RAIN)?.chain).toBe(
+      'ARBITRUM',
+    );
+  });
+
+  it('leaves Base and Fuse rows, and every other token, as they are', () => {
+    expect(getWalletRhinoSelection(ASSETS, base.id, 'USDC', null)).toBeUndefined();
+    expect(getWalletRhinoSelection(ASSETS, fuse.id, 'USDC', null)).toBeUndefined();
+    expect(getWalletRhinoSelection(ASSETS, mainnet.id, 'WETH', null)).toBeUndefined();
+    expect(getWalletRhinoSelection(ASSETS, mainnet.id, 'cbBTC', null)).toBeUndefined();
+  });
+
+  it('leaves a row rhino.fi has no route from as it is', () => {
+    expect(getWalletRhinoSelection(ASSETS, polygon.id, 'USDC', null)).toBeUndefined();
+    expect(getWalletRhinoSelection(ASSETS, arbitrum.id, 'EURC', null)).toBeUndefined();
+  });
+
+  // Their minted address delivers to the Safe their card spends from.
+  it('keeps a Wirex cardholder’s minted stablecoin address, but not their ETH', () => {
+    expect(getWalletRhinoSelection(ASSETS, mainnet.id, 'USDC', CardProvider.WIREX)).toBeUndefined();
+    expect(getWalletRhinoSelection(ASSETS, mainnet.id, 'EURC', CardProvider.WIREX)).toBeUndefined();
+    expect(getWalletRhinoSelection(ASSETS, mainnet.id, 'ETH', CardProvider.WIREX)?.chain).toBe(
+      'ETHEREUM',
+    );
+  });
+
+  it('changes nothing while rhino.fi is not offered', () => {
+    expect(getWalletRhinoSelection(undefined, mainnet.id, 'USDC', null)).toBeUndefined();
+    expect(
+      getWalletRhinoSelection({ ...ASSETS, enabled: false }, mainnet.id, 'USDC', null),
+    ).toBeUndefined();
   });
 });

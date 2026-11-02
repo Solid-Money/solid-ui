@@ -1,5 +1,5 @@
 import React from 'react';
-import { arbitrum, base, optimism } from 'viem/chains';
+import { arbitrum, base, fuse, mainnet, optimism } from 'viem/chains';
 
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -221,6 +221,47 @@ describe('WalletDepositTokens', () => {
 
     const [selection] = mockDeposit.setWalletDeposit.mock.calls[0];
     expect(selection).toMatchObject({ symbol: 'WBTC' });
+    expect(selection.rhinoChain).toBeUndefined();
+  });
+
+  // Picked under "More networks" for EURC, whose only row is Base; USDC has an
+  // Ethereum row of its own, which then uses rhino.fi on its own terms.
+  it('turns a kept rhino.fi chain into its row when the list has one for the new token', () => {
+    mockRhino.assets = {
+      enabled: true,
+      chains: [
+        {
+          chain: 'ETHEREUM',
+          chainId: mainnet.id,
+          name: 'Ethereum',
+          addressType: 'EVM',
+          tokens: [
+            {
+              symbol: 'EURC',
+              address: '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c',
+              routes: [walletRoute('EURC')],
+            },
+            {
+              symbol: 'USDC',
+              address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+              routes: [walletRoute('USDC')],
+            },
+          ],
+        },
+      ],
+    };
+    mockDeposit.walletDeposit = {
+      chainId: base.id,
+      symbol: 'EURC',
+      rhinoChain: 'ETHEREUM',
+      isChangingToken: true,
+    };
+    const root = render();
+    const usdc = root.root.find((node: any) => node.props.accessibilityLabel === 'USDC, USD Coin');
+    act(() => usdc.props.onPress());
+
+    const [selection] = mockDeposit.setWalletDeposit.mock.calls[0];
+    expect(selection).toMatchObject({ symbol: 'USDC', chainId: mainnet.id });
     expect(selection.rhinoChain).toBeUndefined();
   });
 

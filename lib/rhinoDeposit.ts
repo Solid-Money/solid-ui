@@ -1,4 +1,4 @@
-import { base, mainnet } from 'viem/chains';
+import { base, fuse, mainnet } from 'viem/chains';
 
 import type {
   RhinoAddressType,
@@ -12,9 +12,18 @@ import type {
 } from '@/lib/types';
 
 /**
- * rhino.fi Smart Deposit Addresses: what the deposit screens offer on the
- * chains our own pipeline does not watch (Tron, Solana, Optimism, …), and how
- * they describe it.
+ * rhino.fi Smart Deposit Addresses: rhino.fi first, our own pipeline as the
+ * fallback.
+ *
+ * - A network row the app already lists (Ethereum, Arbitrum, …) uses rhino.fi
+ *   when rhino.fi has a route from that chain (matched by `chainId`) for the
+ *   screen's destination, token and vault. If it has none, or the address
+ *   request fails, the row is what it was: the direct-deposit session or Safe.
+ * - Chains the app does not list (Tron, Solana, Optimism, …) are offered under
+ *   the row list, as "More networks".
+ *
+ * The menu is the app's own asset lists: rhino.fi only ever carries a token the
+ * screen already offers (see `RHINO_DEPOSIT_SYMBOLS`).
  *
  * A leaf module with no asset or React imports, so the rules are unit testable.
  * The backend decides every route; this only filters and words what
@@ -24,6 +33,16 @@ import type {
 /** The chip on a rhino.fi chain's row, setting it apart from the chains we watch ourselves. */
 export const RHINO_NETWORK_CHIP = 'via rhino.fi';
 
+/**
+ * The tokens rhino.fi is used for: those of the app's own deposit tokens it
+ * carries. Anything else rhino.fi lists (USDe, PYUSD, …) is never offered — the
+ * app's asset lists are the menu.
+ */
+export const RHINO_DEPOSIT_SYMBOLS: ReadonlySet<string> = new Set(['USDC', 'USDT', 'ETH', 'EURC']);
+
+/** Chains our own pipeline keeps, whatever rhino.fi offers there. */
+const OWN_PIPELINE_CHAIN_IDS: ReadonlySet<number> = new Set([fuse.id]);
+
 /** One rhino.fi deposit address the user has asked to see. */
 export type RhinoDepositSelection = {
   /** rhino.fi chain id, e.g. `TRON`. */
@@ -32,6 +51,12 @@ export type RhinoDepositSelection = {
   destinationType: RhinoDestinationType;
   /** The savings vault the screen promises, for `PROTOCOL`. */
   vault?: string;
+  /**
+   * The network row this address stands in for (an EVM chain the app lists
+   * itself). Set, a failed request falls back to that row's own address; unset
+   * (a "More networks" chain), there is nothing to fall back to.
+   */
+  fallbackChainId?: number;
 };
 
 /** Which routes a screen can use: its destination, and optionally its token and vault. */
@@ -44,6 +69,11 @@ export type RhinoRouteFilter = {
    * vault is left out, so the screen never promises soUSD and delivers soETH.
    */
   vault?: string;
+  /**
+   * Chains the screen already lists as rows of its own. Left out, so a chain
+   * never shows twice (they use rhino.fi through their own row instead).
+   */
+  excludeChainIds?: readonly number[];
 };
 
 const KNOWN_ADDRESS_TYPES: ReadonlySet<string> = new Set<RhinoAddressType>(['EVM', 'TRON', 'SOL']);
@@ -76,14 +106,15 @@ export const getRhinoTokensForDestination = (
 ): RhinoDepositToken[] =>
   chain.tokens.filter(
     token =>
+      RHINO_DEPOSIT_SYMBOLS.has(token.symbol) &&
       (filter.symbol === undefined || token.symbol === filter.symbol) &&
       token.routes.some(route => routeMatches(route, filter)),
   );
 
 /**
- * The rhino.fi chains to list for a destination: those with at least one token
- * that pays out there (the chosen token, when there is one). Empty when
- * rhino.fi is off.
+ * The rhino.fi chains with at least one token paying out to this destination
+ * (the chosen token, when there is one), less those in `excludeChainIds` and
+ * those our own pipeline keeps (Fuse). Empty when rhino.fi is off.
  */
 export const getRhinoChainsForDestination = (
   assets: RhinoDepositAssetsResponse | undefined,
@@ -93,6 +124,9 @@ export const getRhinoChainsForDestination = (
   return assets.chains.filter(
     chain =>
       isKnownRhinoAddressType(chain.addressType) &&
+      (chain.chainId === undefined ||
+        (!OWN_PIPELINE_CHAIN_IDS.has(chain.chainId) &&
+          !filter.excludeChainIds?.includes(chain.chainId))) &&
       getRhinoTokensForDestination(chain, filter).length > 0,
   );
 };
@@ -125,6 +159,73 @@ export const findRhinoRoute = (
   const token = chain && getRhinoTokensForDestination(chain, filter)[0];
   const route = token?.routes.find(item => routeMatches(item, filter));
   return chain && token && route ? { chain, token, route } : undefined;
+};
+
+/** An existing network row, as the rhino.fi matching needs it. */
+export type RhinoRowFilter = {
+  /** The row's EVM chain id. */
+  chainId: number;
+  destinationType: RhinoDestinationType;
+  symbol: string;
+  vault?: string;
+};
+
+/**
+ * Whether a wallet row may go through rhino.fi at all: the user's rule is that
+ * a wallet deposit of USDC, USDT, ETH or EURC arrives in the Safe on Base. So
+ * only those tokens, and never a Base row — what is sent there already lands
+ * there, and stays exactly as it is today.
+ */
+const isRhinoWalletRow = ({ chainId, symbol }: RhinoRowFilter): boolean =>
+  chainId !== base.id && RHINO_DEPOSIT_SYMBOLS.has(symbol);
+
+/**
+ * The rhino.fi route an existing network row should use instead of our own
+ * address, matched on `chainId`: undefined when rhino.fi has no route from that
+ * chain for the destination, token and vault (the backend never offers one
+ * where the deposit chain is the payout chain), and always for Fuse.
+ */
+export const findRhinoRouteForRow = (
+  assets: RhinoDepositAssetsResponse | undefined,
+  row: RhinoRowFilter,
+): { chain: RhinoDepositChain; token: RhinoDepositToken; route: RhinoDepositRoute } | undefined => {
+  if (row.destinationType === 'WALLET' && !isRhinoWalletRow(row)) return undefined;
+
+  const chain = getRhinoChainsForDestination(assets, {
+    destinationType: row.destinationType,
+    symbol: row.symbol,
+    vault: row.vault,
+  }).find(item => item.chainId === row.chainId);
+
+  return chain
+    ? findRhinoRoute(assets, {
+        chain: chain.chain,
+        tokenSymbol: row.symbol,
+        destinationType: row.destinationType,
+        vault: row.vault,
+      })
+    : undefined;
+};
+
+/**
+ * The rhino.fi address to show for an existing row, or undefined to keep the
+ * row's own. The selection remembers the row, so a failed request can fall back
+ * to it.
+ */
+export const getRhinoSelectionForRow = (
+  assets: RhinoDepositAssetsResponse | undefined,
+  row: RhinoRowFilter,
+): RhinoDepositSelection | undefined => {
+  const found = findRhinoRouteForRow(assets, row);
+  return found
+    ? {
+        chain: found.chain.chain,
+        tokenSymbol: row.symbol,
+        destinationType: row.destinationType,
+        ...(row.vault !== undefined ? { vault: row.vault } : {}),
+        fallbackChainId: row.chainId,
+      }
+    : undefined;
 };
 
 const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;

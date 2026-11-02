@@ -1,12 +1,13 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useDepositTokensAccess } from '@/hooks/useDepositTokensAccess';
 import { getRhinoDepositAssets } from '@/lib/api';
 import {
+  findRhinoRouteForRow,
   getRhinoChainsForDestination,
   isRhinoDepositOffered,
   RhinoRouteFilter,
+  RhinoRowFilter,
 } from '@/lib/rhinoDeposit';
 
 import type { RhinoDepositAssetsResponse } from '@/lib/types';
@@ -47,13 +48,26 @@ export const useOfferedRhinoDepositAssets = (): RhinoDepositAssetsResponse | und
 /**
  * The rhino.fi chains a deposit screen lists under its own networks: those with
  * a route to its destination (for the chosen token and vault, when there is
- * one). Empty whenever rhino.fi is not offered.
+ * one), less the chains it already lists as rows (`excludeChainIds`). Empty
+ * whenever rhino.fi is not offered.
  */
-export const useRhinoDepositChains = ({ destinationType, symbol, vault }: RhinoRouteFilter) => {
+export const useRhinoDepositChains = (filter: RhinoRouteFilter) => {
   const assets = useOfferedRhinoDepositAssets();
-  const chains = useMemo(
-    () => getRhinoChainsForDestination(assets, { destinationType, symbol, vault }),
-    [assets, destinationType, symbol, vault],
+  return { assets, chains: getRhinoChainsForDestination(assets, filter) };
+};
+
+/**
+ * Which of a screen's own network rows go through rhino.fi when picked, for the
+ * "via rhino.fi" hint on them. Empty whenever rhino.fi is not offered.
+ */
+export const useRhinoRowChainIds = (
+  { destinationType, symbol, vault }: Omit<RhinoRowFilter, 'chainId'>,
+  chainIds: readonly number[],
+): ReadonlySet<number> => {
+  const assets = useOfferedRhinoDepositAssets();
+  return new Set(
+    chainIds.filter(
+      chainId => !!findRhinoRouteForRow(assets, { chainId, destinationType, symbol, vault }),
+    ),
   );
-  return { assets, chains };
 };

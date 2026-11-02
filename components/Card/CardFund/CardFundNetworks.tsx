@@ -10,15 +10,23 @@ import {
   getCardFundNetworks,
 } from '@/components/Card/CardFund/constants';
 import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
-import { RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import { useRhinoRowChainIds } from '@/hooks/useRhinoDepositAssets';
+import { RHINO_NETWORK_CHIP, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
 type CardFundNetworksProps = {
   /** Stablecoin chosen on the previous step — scopes the chain list. */
   symbol: string;
+  /**
+   * One of the list's own rows. A host that passes `onSelectRhino` shows the
+   * rhino.fi address for a row rhino.fi serves (marked "via rhino.fi").
+   */
   onSelect: (chainId: number) => void;
-  /** A rhino.fi chain from the group under the list. Omit to leave it out. */
+  /**
+   * A chain from "More networks", the rhino.fi chains this list does not have.
+   * Omit to leave rhino.fi out entirely.
+   */
   onSelectRhino?: (selection: RhinoDepositSelection) => void;
   /** Chain whose session is currently being created. */
   loadingChainId?: number;
@@ -32,6 +40,11 @@ const CardFundNetworks = ({
   loadingChainId,
 }: CardFundNetworksProps) => {
   const networks = useMemo(() => getCardFundNetworks(symbol), [symbol]);
+  const rowChainIds = useMemo(() => networks.map(network => network.chainId), [networks]);
+  const rhinoRows = useRhinoRowChainIds(
+    { destinationType: CARD_FUND_DESTINATION_TYPE, symbol },
+    onSelectRhino ? rowChainIds : [],
+  );
 
   return (
     <View className="gap-y-8">
@@ -41,7 +54,11 @@ const CardFundNetworks = ({
             key={network.chainId}
             icon={<Image source={network.icon} style={NETWORK_ICON_STYLE} contentFit="cover" />}
             title={network.name}
-            chips={[CARD_FUND_ESTIMATED_TIME]}
+            chips={
+              rhinoRows.has(network.chainId)
+                ? [CARD_FUND_ESTIMATED_TIME, RHINO_NETWORK_CHIP]
+                : [CARD_FUND_ESTIMATED_TIME]
+            }
             chipsPosition="inline"
             onPress={() => onSelect(network.chainId)}
             disabled={
@@ -57,6 +74,7 @@ const CardFundNetworks = ({
         <RhinoNetworkGroup
           destinationType={CARD_FUND_DESTINATION_TYPE}
           symbol={symbol}
+          excludeChainIds={rowChainIds}
           onSelect={onSelectRhino}
           disabled={!!loadingChainId}
         />
