@@ -222,8 +222,8 @@ const AiApiIntro = ({
         {cashbackMonthlyCapUsd > 0
           ? `, up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
           : ''}
-        . Cashback is credited {settlementDays} days after each charge, into USD Yield. Keys are
-        issued through AntSeed, an open market for AI models.
+        . Cashback is credited {settlementDays} days after each charge, into USD Yield. Powered by
+        Antseed.
       </Text>
 
       {onCta ? (
