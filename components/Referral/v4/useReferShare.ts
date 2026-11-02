@@ -32,13 +32,15 @@ export function useReferShare({
 
   const link = useMemo(() => (code ? buildInviteLink(code) : ''), [code]);
   const linkLabel = useMemo(() => inviteLinkLabel(link), [link]);
-  const message = useMemo(
+  // The invitation without the link, for channels that take the link apart.
+  const pitch = useMemo(
     () =>
       friendCreditUsd
-        ? `Join me on Solid and get ${formatUsdWhole(friendCreditUsd)} to spend with your card: ${link}`
-        : `Join me on Solid: ${link}`,
-    [friendCreditUsd, link],
+        ? `Join me on Solid and get ${formatUsdWhole(friendCreditUsd)} to spend with your card`
+        : 'Join me on Solid',
+    [friendCreditUsd],
   );
+  const message = useMemo(() => `${pitch}: ${link}`, [pitch, link]);
 
   useEffect(() => {
     if (!isCopied) return;
@@ -106,8 +108,9 @@ export function useReferShare({
 
   const shareTelegram = useCallback(async () => {
     if (!link) return;
+    // Telegram puts `url` in the draft itself, so the text leaves the link out.
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(
-      message,
+      pitch,
     )}`;
     try {
       if (Platform.OS === 'web') {
@@ -119,7 +122,7 @@ export function useReferShare({
     } catch (error) {
       console.error('Failed to open Telegram:', error);
     }
-  }, [link, message, trackShared]);
+  }, [link, pitch, trackShared]);
 
   return {
     link,
