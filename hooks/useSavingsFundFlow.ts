@@ -12,7 +12,11 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
-import { getRhinoChainsForDestination, RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import {
+  getRhinoChainsForDestination,
+  getRhinoSelectionForRow,
+  RhinoDepositSelection,
+} from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -94,16 +98,9 @@ export const useSavingsFundFlow = () => {
     },
   });
 
-  const selectNetwork = useCallback(
-    (chainId: number, symbol?: string) => {
-      const token = symbol ?? selectedToken;
-
-      track(TRACKING_EVENTS.NETWORK_SELECTED, {
-        chain_id: chainId,
-        token_symbol: token,
-        deposit_type: 'savings_direct_deposit',
-      });
-
+  /** The row's own address: a direct-deposit session on that chain. */
+  const startDirectSession = useCallback(
+    (chainId: number, token: string) => {
       setRhinoDeposit(undefined);
       setDirectDepositSession({
         selectedToken: token,
@@ -111,10 +108,60 @@ export const useSavingsFundFlow = () => {
         walletAddress: undefined,
       });
       prepareSession({ chainId, token });
+    },
+    [prepareSession, setDirectDepositSession, setRhinoDeposit],
+  );
+
+  /**
+   * One of the list's own rows. rhino.fi first: when it has a route from this
+   * chain into the vault the token funds, the address step shows the rhino.fi
+   * address (and falls back to the session if that fails). Otherwise, as
+   * before, a direct-deposit session is minted.
+   */
+  const selectNetwork = useCallback(
+    (chainId: number, symbol?: string) => {
+      const token = symbol ?? selectedToken;
+      const rhino = getRhinoSelectionForRow(rhinoAssets, {
+        chainId,
+        destinationType: 'PROTOCOL',
+        symbol: token,
+        vault: getSavingsFundToken(token).vaultToken,
+      });
+
+      track(TRACKING_EVENTS.NETWORK_SELECTED, {
+        chain_id: chainId,
+        token_symbol: token,
+        deposit_type: 'savings_direct_deposit',
+        via_rhino: !!rhino,
+      });
+
+      if (rhino) {
+        setDirectDepositSession({ selectedToken: token, chainId, walletAddress: undefined });
+        setRhinoDeposit(rhino);
+      } else {
+        startDirectSession(chainId, token);
+      }
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
     },
-    [prepareSession, selectedToken, setDirectDepositSession, setModal, setRhinoDeposit],
+    [
+      rhinoAssets,
+      selectedToken,
+      setDirectDepositSession,
+      setModal,
+      setRhinoDeposit,
+      startDirectSession,
+    ],
   );
+
+  /**
+   * The rhino.fi address for a row could not be had: show the row's own
+   * direct-deposit address instead, on the same step.
+   */
+  const fallBackFromRhino = useCallback(() => {
+    const chainId = rhinoDeposit?.fallbackChainId;
+    if (!rhinoDeposit || chainId === undefined) return;
+    startDirectSession(chainId, rhinoDeposit.tokenSymbol);
+  }, [rhinoDeposit, startDirectSession]);
 
   /**
    * A rhino.fi chain from under the network list. The address step shows the
@@ -140,12 +187,14 @@ export const useSavingsFundFlow = () => {
       });
 
       // Tokens that exist on a single chain (FUSE) skip the one-row chain list —
-      // unless rhino.fi adds chains under it, which makes it a choice again.
+      // unless rhino.fi adds chains the list does not have, which makes it a
+      // choice again.
       const networks = getSavingsFundNetworks(symbol);
       const rhinoChains = getRhinoChainsForDestination(rhinoAssets, {
         destinationType: 'PROTOCOL',
         symbol,
         vault: getSavingsFundToken(symbol).vaultToken,
+        excludeChainIds: networks.map(network => network.chainId),
       });
       if (networks.length === 1 && rhinoChains.length === 0) {
         selectNetwork(networks[0].chainId, symbol);
@@ -198,6 +247,7 @@ export const useSavingsFundFlow = () => {
     selectToken,
     selectNetwork,
     selectRhinoNetwork,
+    fallBackFromRhino,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,

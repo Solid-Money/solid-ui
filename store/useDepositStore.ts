@@ -96,10 +96,11 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
-   * A rhino.fi chain (e.g. `TRON`) picked from the network list, in place of
-   * `chainId`: the screen then shows the user's rhino.fi address for it rather
-   * than their Safe. Cleared whenever an EVM chain is chosen (see
-   * `setWalletDeposit`).
+   * A "More networks" rhino.fi chain (e.g. `TRON`) picked from the network list,
+   * in place of `chainId`: the screen then shows the user's rhino.fi address for
+   * it rather than their Safe. Cleared whenever an EVM chain is chosen (see
+   * `setWalletDeposit`). A row of the list never sets it: whether a row uses
+   * rhino.fi follows from the row itself (`getWalletRhinoSelection`).
    */
   rhinoChain?: string;
   /**
@@ -138,9 +139,10 @@ interface DepositState {
    */
   savingsFundIntent: SavingsFundIntent;
   /**
-   * The rhino.fi chain picked on the savings direct-deposit network step, whose
-   * address step then shows the rhino.fi address instead of the direct-deposit
-   * one. Not persisted, and cleared with the rest of the flow.
+   * The rhino.fi address the savings direct-deposit address step shows instead
+   * of the direct-deposit one: for a row rhino.fi serves (with
+   * `fallbackChainId`, so a failure falls back to that row's session), or a
+   * "More networks" chain. Not persisted, and cleared with the rest of the flow.
    */
   rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */

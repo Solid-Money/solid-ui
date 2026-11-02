@@ -13,7 +13,10 @@ import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { getRhinoChainIcon } from '@/components/DepositOption/RhinoDeposit/RhinoChainIcon';
 import RhinoDepositDetails from '@/components/DepositOption/RhinoDeposit/RhinoDepositDetails';
 import RhinoDepositStatus from '@/components/DepositOption/RhinoDeposit/RhinoDepositStatus';
-import { useRhinoAddressAnalytics } from '@/components/DepositOption/RhinoDeposit/useRhinoAddressAnalytics';
+import {
+  trackRhinoFallback,
+  useRhinoAddressAnalytics,
+} from '@/components/DepositOption/RhinoDeposit/useRhinoAddressAnalytics';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -37,6 +40,7 @@ import {
   getDefaultWalletDepositSelection,
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
+  getWalletRhinoSelection,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
@@ -67,9 +71,14 @@ const INLINE_ICON_STYLE = { width: 16, height: 16, borderRadius: 8 };
  * a currency the chosen chain does not list, or less than its minimum, is what
  * the copy under the QR is there to prevent.
  *
- * A rhino.fi chain (Tron, Solana, …) picked from the network list is the
- * exception: the screen shows the user's rhino.fi address for it instead, which
- * is not the Safe and, for Tron and Solana, not a 0x address at all.
+ * rhino.fi is the exception, in two ways, and the address it shows is not the
+ * Safe (for Tron and Solana, not a 0x address at all):
+ *
+ * - A row's USDC, USDT, ETH or EURC sent on a chain other than Base gets the
+ *   user's rhino.fi address, which pays into the Safe on Base (see
+ *   `getWalletRhinoSelection`). If that address cannot be had, the row falls
+ *   back to what it shows today.
+ * - A chain the list does not have (Tron, Solana, …), picked under the rows.
  */
 const WalletDepositAddress = () => {
   // Chain and currency are both chosen on steps of their own, so the selection
@@ -89,30 +98,50 @@ const WalletDepositAddress = () => {
     [chainId],
   );
 
-  // A rhino.fi chain only counts while rhino.fi still offers this currency into
-  // the wallet there; otherwise the screen is the Safe on `chainId` as before.
+  // Wirex cardholders and people with no card both land here, and only the
+  // cardholders are charged — see `getDepositFeeRatePpm`.
+  const { provider } = useCardProvider();
+
+  // rhino.fi only counts while it still offers this currency into the wallet
+  // there; otherwise the screen is the Safe on `chainId` as before. A "More
+  // networks" chain is picked explicitly (`rhinoChain`); a row of the list uses
+  // rhino.fi by the wallet rule, until its address request fails once.
   const rhinoAssets = useOfferedRhinoDepositAssets();
-  const rhinoSelection = useMemo<RhinoDepositSelection | undefined>(
-    () =>
-      walletDeposit.rhinoChain
-        ? { chain: walletDeposit.rhinoChain, tokenSymbol: symbol, destinationType: 'WALLET' }
-        : undefined,
-    [walletDeposit.rhinoChain, symbol],
-  );
+  const rowKey = `${chainId}:${symbol}`;
+  const [rhinoFallbackRow, setRhinoFallbackRow] = useState<string | undefined>(undefined);
+  const rhinoSelection = useMemo<RhinoDepositSelection | undefined>(() => {
+    if (walletDeposit.rhinoChain) {
+      return { chain: walletDeposit.rhinoChain, tokenSymbol: symbol, destinationType: 'WALLET' };
+    }
+    return rhinoFallbackRow === rowKey
+      ? undefined
+      : getWalletRhinoSelection(rhinoAssets, chainId, symbol, provider);
+  }, [walletDeposit.rhinoChain, symbol, rhinoFallbackRow, rowKey, rhinoAssets, chainId, provider]);
   const rhino = useMemo(
     () => (rhinoSelection ? findRhinoRoute(rhinoAssets, rhinoSelection) : undefined),
     [rhinoAssets, rhinoSelection],
   );
   const activeRhinoSelection = rhino ? rhinoSelection : undefined;
+  // For a row, rhino.fi stands in for the row's own address.
+  const isRhinoRow = activeRhinoSelection?.fallbackChainId !== undefined;
+  // A "More networks" chain is one the list does not have, drawn as rhino.fi names it.
+  const rhinoOnlyChain = rhino && !isRhinoRow ? rhino.chain : undefined;
   const {
     address: rhinoAddress,
     isError: hasRhinoAddressError,
     refetch: refetchRhinoAddress,
-  } = useRhinoDepositAddress(activeRhinoSelection);
+  } = useRhinoDepositAddress(activeRhinoSelection, { notifyOnError: !isRhinoRow });
   const trackRhinoCopy = useRhinoAddressAnalytics(
     activeRhinoSelection,
     rhinoAddress?.depositAddress,
   );
+
+  // A row's rhino.fi address could not be had: the row shows what it does today.
+  useEffect(() => {
+    if (!isRhinoRow || !hasRhinoAddressError || !activeRhinoSelection) return;
+    trackRhinoFallback(activeRhinoSelection);
+    setRhinoFallbackRow(rowKey);
+  }, [activeRhinoSelection, hasRhinoAddressError, isRhinoRow, rowKey]);
 
   // Stablecoins get an address the pipeline mints and watches; ETH and FUSE get
   // the Safe, which is where they land and stay.
@@ -122,11 +151,13 @@ const WalletDepositAddress = () => {
     isMinted,
   } = useWalletDepositAddress(chainId, symbol);
   const address = rhino ? rhinoAddress?.depositAddress : walletAddress;
-  const hasAddressError = rhino ? hasRhinoAddressError : hasWalletAddressError;
-  const qrLogo = rhino ? getRhinoChainIcon(rhino.chain.chain) : network?.icon;
-  // Wirex cardholders and people with no card both land here, and only the
-  // cardholders are charged — see `getDepositFeeRatePpm`.
-  const { provider } = useCardProvider();
+  // A row's failure is not shown: the effect above falls back to the row's own.
+  const hasAddressError = rhino ? hasRhinoAddressError && !isRhinoRow : hasWalletAddressError;
+  const qrLogo = rhinoOnlyChain
+    ? getRhinoChainIcon(rhinoOnlyChain.chain, rhinoOnlyChain.chainId)
+    : network?.icon;
+  // A row keeps the name it has in the list ("Polygon", not rhino.fi's own).
+  const rhinoChainName = isRhinoRow ? (network?.name ?? rhino?.chain.name) : rhino?.chain.name;
   const viewer = useWalletDepositViewer();
   const tokenIcon = getWalletDepositTokenIcon(symbol);
   // The pipeline's own floor when it has answered, the committed estimate until
@@ -219,7 +250,15 @@ const WalletDepositAddress = () => {
       <WalletDepositSelectors
         chainId={chainId}
         symbol={symbol}
-        rhinoChain={rhino ? { chain: rhino.chain.chain, name: rhino.chain.name } : undefined}
+        rhinoChain={
+          rhinoOnlyChain
+            ? {
+                chain: rhinoOnlyChain.chain,
+                chainId: rhinoOnlyChain.chainId,
+                name: rhinoOnlyChain.name,
+              }
+            : undefined
+        }
         isNetworkOpen={isNetworkOpen}
         onToggleNetwork={() => setIsNetworkOpen(open => !open)}
       />
@@ -240,7 +279,7 @@ const WalletDepositAddress = () => {
             className="items-center justify-center overflow-hidden rounded-[20px]"
             style={{ width: qrSize, height: qrSize }}
           >
-            {hasAddressError && rhino ? (
+            {hasAddressError && rhinoOnlyChain ? (
               <View className="items-center gap-y-3 px-6">
                 <Text className="text-center text-sm text-white/70">
                   Could not load the deposit address.
@@ -303,7 +342,7 @@ const WalletDepositAddress = () => {
         {rhino ? (
           <RhinoDepositDetails
             tokenSymbol={symbol}
-            chainName={rhino.chain.name}
+            chainName={rhinoChainName ?? rhino.chain.name}
             destinationType="WALLET"
             receiveSymbol={rhinoAddress?.receiveSymbol ?? rhino.route.receiveSymbol}
             receiveChainId={rhinoAddress?.receiveChainId ?? rhino.route.receiveChainId}
@@ -367,7 +406,7 @@ const WalletDepositAddress = () => {
           enabled={!!address}
           depositAddress={address}
           chain={rhino.chain.chain}
-          chainName={rhino.chain.name}
+          chainName={rhinoChainName ?? rhino.chain.name}
           addressType={rhinoAddress?.addressType ?? rhino.chain.addressType}
         />
       ) : null}
@@ -397,7 +436,7 @@ const WalletDepositAddress = () => {
         <WalletDepositNetworkList
           chainId={chainId}
           symbol={symbol}
-          rhinoChain={rhino ? rhino.chain.chain : undefined}
+          rhinoChain={rhinoOnlyChain?.chain}
           onSelect={handleSelectNetwork}
           onSelectRhino={handleSelectRhinoNetwork}
           onDismiss={() => setIsNetworkOpen(false)}

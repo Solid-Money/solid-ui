@@ -12,7 +12,8 @@ import {
 } from '@/constants/walletDepositTokens';
 import { getAsset } from '@/lib/assets';
 import { isDevFeatureEnabled } from '@/lib/config';
-import { CardProvider, DepositAsset } from '@/lib/types';
+import { getRhinoSelectionForRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import { CardProvider, DepositAsset, RhinoDepositAssetsResponse } from '@/lib/types';
 
 export type WalletDepositNetwork = {
   chainId: number;
@@ -165,6 +166,31 @@ export const usesDirectDepositAddress = (
   symbol: string,
   provider: WalletDepositProvider,
 ): boolean => provider === CardProvider.WIREX && DIRECT_DEPOSIT_SYMBOLS.has(symbol);
+
+/**
+ * The rhino.fi address a wallet row shows instead of the Safe, or undefined to
+ * keep what the row shows today.
+ *
+ * The rule is the user's: a wallet deposit of USDC, USDT, ETH or EURC sent on a
+ * chain other than Base arrives in the Safe on Base, which rhino.fi's `WALLET`
+ * route does. So it applies only to those four tokens, never on Base or Fuse,
+ * and only where rhino.fi has a route from that chain (see
+ * `getRhinoSelectionForRow`). Every other token stays on the chain it was sent
+ * on, as today.
+ *
+ * Nor for a pairing the pipeline mints an address for (a Wirex cardholder's
+ * stablecoins, see {@link usesDirectDepositAddress}): that address delivers to
+ * the Safe their card spends from, which is not the one on Base.
+ */
+export const getWalletRhinoSelection = (
+  assets: RhinoDepositAssetsResponse | undefined,
+  chainId: number,
+  symbol: string,
+  provider: WalletDepositProvider,
+): RhinoDepositSelection | undefined =>
+  usesDirectDepositAddress(symbol, provider)
+    ? undefined
+    : getRhinoSelectionForRow(assets, { chainId, destinationType: 'WALLET', symbol });
 
 /**
  * Whether the pipeline can mint an address on a chain: the bridge sources, the

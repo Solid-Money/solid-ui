@@ -27,14 +27,20 @@ type RhinoNetworkGroupProps = {
   symbol?: string;
   /** The savings vault being funded, for `PROTOCOL`. */
   vault?: string;
+  /**
+   * The chains the flow already lists as rows for this token. They are left
+   * out here: picking their own row already uses rhino.fi where it can.
+   */
+  excludeChainIds?: readonly number[];
   onSelect: (selection: RhinoDepositSelection) => void;
   disabled?: boolean;
 };
 
 /**
- * The rhino.fi chains, listed under a funding flow's own networks: those with a
- * route to this destination (for the chosen token, when there is one). Renders
- * nothing when rhino.fi is not offered to this user or has no such chain.
+ * "More networks": the rhino.fi chains a funding flow does not list itself,
+ * with a route to this destination (for the chosen token, when there is one).
+ * Renders nothing when rhino.fi is not offered to this user or has no such
+ * chain.
  *
  * A chain taking more than one qualifying token opens a token choice under its
  * row; with one, the row selects it straight away.
@@ -43,10 +49,11 @@ const RhinoNetworkGroup = ({
   destinationType,
   symbol,
   vault,
+  excludeChainIds,
   onSelect,
   disabled,
 }: RhinoNetworkGroupProps) => {
-  const filter = { destinationType, symbol, vault };
+  const filter = { destinationType, symbol, vault, excludeChainIds };
   const { chains } = useRhinoDepositChains(filter);
   const [choosingChain, setChoosingChain] = useState<string | undefined>(undefined);
 
@@ -82,7 +89,14 @@ const RhinoNetworkGroup = ({
       {chains.flatMap(chain => [
         <CardFundRow
           key={chain.chain}
-          icon={<RhinoChainIcon chain={chain.chain} name={chain.name} size={ICON_SIZE} />}
+          icon={
+            <RhinoChainIcon
+              chain={chain.chain}
+              chainId={chain.chainId}
+              name={chain.name}
+              size={ICON_SIZE}
+            />
+          }
           title={chain.name}
           chips={[RHINO_NETWORK_CHIP]}
           chipsPosition="inline"
