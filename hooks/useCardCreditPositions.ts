@@ -1,5 +1,14 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { type Address, erc20Abi, isAddressEqual } from 'viem';
+import {
+  type Address,
+  BaseError,
+  ContractFunctionExecutionError,
+  ContractFunctionRevertedError,
+  ContractFunctionZeroDataError,
+  erc20Abi,
+  isAddressEqual,
+} from 'viem';
 import { base, fuse } from 'viem/chains';
 
 import { isCardSpendV2Configured, SpendCohort } from '@/constants/cardSpendV2';
@@ -116,12 +125,45 @@ const valueAt = (amount: bigint, priceUsd: bigint, decimals: number): bigint =>
   (amount * priceUsd) / 10n ** BigInt(decimals);
 
 /**
+ * Throws the first multicall failure the chain did not answer — an RPC error or a timeout, as
+ * opposed to a revert or no contract at the address.
+ *
+ * With `allowFailure`, viem reports a failed RPC chunk as a `failure` per call, the same shape as
+ * a revert. Read as "no position", that cached a dropped read as a Safe with no line on Base and
+ * kept it until the query went stale.
+ *
+ * A failed chunk carries the `aggregate3` call's error, never the call's own. It is unanswered
+ * whatever it wraps: viem reads a node's internal error (-32603) as a revert.
+ */
+const throwUnansweredFailure = (
+  results: readonly { status: 'success' | 'failure'; error?: Error }[],
+) => {
+  const unanswered = results.find(
+    entry =>
+      entry.status === 'failure' &&
+      !(
+        entry.error instanceof BaseError &&
+        !(
+          entry.error instanceof ContractFunctionExecutionError &&
+          entry.error.functionName === 'aggregate3'
+        ) &&
+        entry.error.walk(
+          cause =>
+            cause instanceof ContractFunctionRevertedError ||
+            cause instanceof ContractFunctionZeroDataError,
+        )
+      ),
+  );
+  if (unanswered) throw unanswered.error;
+};
+
+/**
  * One instance's credit position, or null when the Safe has none there.
  *
  * Null covers every way an instance can have nothing to say: a Safe not operated by v2 there
- * (the Base lens reverts outright for a Safe it has not registered), a lens paired with some
- * other module than the one the backend names, and a read that fails. None of them is worth
- * failing the sheet over — the other instance still has a position to show.
+ * (the Base lens reverts outright for a Safe it has not registered), and a lens paired with some
+ * other module than the one the backend names. A read the chain never answered throws instead,
+ * so the query retries it rather than caching it as a Safe with no line.
  *
  * The lens is read with the whole allowlist, so `debit.perToken` (loose balances) and
  * `credit.perCollateral` (escrowed) both cover every token; which of them count as collateral
@@ -153,6 +195,14 @@ const readCreditInstance = async (
         { ...module, functionName: 'healthFactor', args: [safeAddress] },
       ],
     });
+  throwUnansweredFailure([
+    pairedModule,
+    availability,
+    params,
+    totalDebtUsd,
+    borrowApyPerSecond,
+    healthFactor,
+  ]);
 
   if (
     pairedModule.status !== 'success' ||
@@ -185,6 +235,7 @@ const readCreditInstance = async (
       { address: token, abi: erc20Abi, functionName: 'symbol' } as const,
     ]),
   });
+  throwUnansweredFailure(details);
 
   const symbolOf = (token: Address): string | undefined => {
     const index = tokens.findIndex(candidate => isAddressEqual(candidate, token));
@@ -264,8 +315,8 @@ const readCreditInstance = async (
  * repay flow, so a Base repayment goes to exactly the module the position was read from.
  */
 export const useBaseCreditInstance = () => {
-  const { isEnabled: isSpendModeCohort } = useCardSpendModeAccess();
-  const { data: spendDeployments } = useCardSpendDeployments();
+  const { isEnabled: isSpendModeCohort, isLoading: isAccessLoading } = useCardSpendModeAccess();
+  const { data: spendDeployments, isLoading: isDeploymentsLoading } = useCardSpendDeployments();
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === base.id,
   );
@@ -276,8 +327,33 @@ export const useBaseCreditInstance = () => {
   const isLive =
     isSpendModeCohort && baseDeployment?.enabled === true && !!moduleAddress && !!lensAddress;
 
-  return { isLive, moduleAddress, lensAddress };
+  // `isLive` reads false until both gates answer; this says whether that false is final yet.
+  return { isLive, isLoading: isAccessLoading || isDeploymentsLoading, moduleAddress, lensAddress };
 };
+
+/**
+ * One query per instance, so a read that fails on one chain never discards the other's answer.
+ */
+const creditInstanceQuery = (
+  chainId: number,
+  moduleAddress: Address | undefined,
+  lensAddress: Address | undefined,
+  safeAddress: Address | undefined,
+  enabled: boolean,
+) => ({
+  queryKey: [
+    CARD_SPEND_REGISTRATION_QUERY_KEY,
+    'credit-positions',
+    chainId,
+    safeAddress,
+    moduleAddress,
+  ],
+  queryFn: () => readCreditInstance(chainId, moduleAddress!, lensAddress!, safeAddress!),
+  enabled: enabled && !!safeAddress && !!moduleAddress && !!lensAddress,
+  // Only reads the chain never answered get here; a Safe with no position resolves to null.
+  retry: 2,
+  staleTime: 15_000,
+});
 
 export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
   const { user } = useUser();
@@ -290,34 +366,28 @@ export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
   } = useBaseCreditInstance();
   const readsFuse = isCardSpendV2Configured();
 
-  return useQuery<CardCreditPositions>({
-    queryKey: [
-      CARD_SPEND_REGISTRATION_QUERY_KEY,
-      'credit-positions',
+  const fuseQuery = useQuery(
+    creditInstanceQuery(
+      fuse.id,
+      ADDRESSES.fuse.cashModuleV2,
+      ADDRESSES.fuse.spendLensV2,
       safeAddress,
-      readsFuse,
-      readsBase ? baseModule : null,
-    ],
-    queryFn: async () => {
-      const [fusePosition, basePosition] = await Promise.all([
-        readsFuse
-          ? readCreditInstance(
-              fuse.id,
-              ADDRESSES.fuse.cashModuleV2,
-              ADDRESSES.fuse.spendLensV2,
-              safeAddress!,
-            ).catch(() => null)
-          : null,
-        readsBase
-          ? readCreditInstance(base.id, baseModule!, baseLens!, safeAddress!).catch(() => null)
-          : null,
-      ]);
-      return { fuse: fusePosition, base: basePosition };
-    },
-    enabled: enabled && !!safeAddress && (readsFuse || readsBase),
-    retry: false,
-    staleTime: 15_000,
-  });
+      enabled && readsFuse,
+    ),
+  );
+  const baseQuery = useQuery(
+    creditInstanceQuery(base.id, baseModule, baseLens, safeAddress, enabled && readsBase),
+  );
+
+  const data = useMemo<CardCreditPositions>(
+    () => ({
+      fuse: readsFuse ? (fuseQuery.data ?? null) : null,
+      base: readsBase ? (baseQuery.data ?? null) : null,
+    }),
+    [readsFuse, readsBase, fuseQuery.data, baseQuery.data],
+  );
+
+  return { data, base: baseQuery };
 };
 
 export default useCardCreditPositions;
