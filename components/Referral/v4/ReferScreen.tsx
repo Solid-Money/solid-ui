@@ -69,7 +69,9 @@ const RewardTile = ({ kind, label, value, caption, earnedUsd, onPress }: TilePro
   <Pressable
     onPress={() => onPress(kind)}
     accessibilityRole="button"
-    accessibilityLabel={`${label}: ${value} ${caption}`}
+    accessibilityLabel={`${label}: ${value} ${caption}${
+      earnedUsd !== null ? `, earned ${formatUsdCents(earnedUsd)}` : ''
+    }`}
     className="flex-1 gap-[14px] overflow-hidden rounded-[22px] bg-card p-[14px] active:opacity-80 web:hover:bg-card-hover"
   >
     <RewardIcon kind={kind} size={32} />

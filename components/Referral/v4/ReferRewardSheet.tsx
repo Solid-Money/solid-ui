@@ -8,6 +8,7 @@ import {
   formatUsdShort,
   formatUsdWhole,
   friendName,
+  pausedNote,
   payoutWeekdayName,
   payoutWeekdayPlural,
   REVERSED_ROW_TEXT,
@@ -103,38 +104,28 @@ export const rewardCopy = (
 
 const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`;
 
-/**
- * When and how each reward is paid, from the live terms (Figma "Payout rules"):
- * a bonus waits `holdDays` from when it is earned and is credited at the next
- * weekly run; spend share goes out at every run, in soFUSE. An upgrade by FUSE
- * lock is earned once the FUSE has been locked `lockHoldDays`, and then waits
- * the same hold.
- */
-export const rewardRules = (kind: ReferRewardKind, summary: ReferralV4Summary): ReferRule[] => {
-  const { terms } = summary;
+/** When this kind is paid, while payouts run. */
+const timingRules = (kind: ReferRewardKind, terms: ReferralV4Summary['terms']): ReferRule[] => {
   const weekday = payoutWeekdayName(terms);
   const hold = Math.max(0, terms.holdDays || 0);
   const held = hold > 0 ? `Unlocks ${days(hold)} later, paid on ${weekday}` : `Paid on ${weekday}`;
 
   switch (kind) {
-    case 'spendShare':
-      return [{ icon: 'clock', text: `Paid every ${weekday} in soFUSE` }];
-    case 'welcome': {
-      const limit = summary.bonusLimit;
+    case 'spendShare': {
+      const minimum = terms.spendShare.minWeeklyPayoutUsd ?? 0;
       return [
-        { icon: 'clock', text: held },
-        ...(limit
+        { icon: 'clock', text: `Paid every ${weekday} in soFUSE` },
+        ...(minimum > 0
           ? [
               {
-                icon: 'friends' as const,
-                text: `${limit.used} of ${limit.limit} welcome ${
-                  limit.limit === 1 ? 'bonus' : 'bonuses'
-                } used`,
+                icon: 'clock' as const,
+                text: `A week under ${formatUsdShort(minimum)} is paid with the next one`,
               },
             ]
           : []),
       ];
     }
+    case 'welcome':
     case 'bigSpender':
       return [{ icon: 'clock', text: held }];
     case 'upgrade': {
@@ -151,12 +142,39 @@ export const rewardRules = (kind: ReferRewardKind, summary: ReferralV4Summary): 
           icon: 'clock',
           text:
             hold > 0
-              ? `FUSE lock: paid ${days(hold)} after ${days(lock)} locked`
-              : `FUSE lock: paid after ${days(lock)} locked`,
+              ? `FUSE lock: unlocks ${days(hold)} after ${days(lock)} locked, paid on ${weekday}`
+              : `FUSE lock: paid on ${weekday} after ${days(lock)} locked`,
         },
       ];
     }
   }
+};
+
+/**
+ * When and how each reward is paid, from the live terms (Figma "Payout rules"):
+ * a bonus waits `holdDays` from when it is earned and is credited at the next
+ * weekly run; spend share goes out at every run, in soFUSE, a week below the
+ * minimum carried to the next. An upgrade by FUSE lock is earned once the FUSE
+ * has been locked `lockHoldDays`, and then waits the same hold. While payouts
+ * are paused nothing is paid, so no payday is promised.
+ */
+export const rewardRules = (kind: ReferRewardKind, summary: ReferralV4Summary): ReferRule[] => {
+  const { terms } = summary;
+  const paused = pausedNote(terms);
+  const limit = kind === 'welcome' ? summary.bonusLimit : null;
+  return [
+    ...(paused ? [{ icon: 'clock' as const, text: paused }] : timingRules(kind, terms)),
+    ...(limit
+      ? [
+          {
+            icon: 'friends' as const,
+            text: `${limit.used} of ${limit.limit} welcome ${
+              limit.limit === 1 ? 'bonus' : 'bonuses'
+            } used`,
+          },
+        ]
+      : []),
+  ];
 };
 
 const BOOST_STEP: Partial<Record<ReferRewardKind, 'welcome' | 'big_spender' | 'upgrade'>> = {
