@@ -127,13 +127,24 @@ export const useAllowAiApiCharges = () => {
       // the chain either way. Enabling a module twice reverts the whole batch
       // (GS102), and skipping it signs a mandate no charge can use, so an
       // unread Safe stops here rather than guess.
-      const alreadyEnabled = await publicClient(chain.id)
-        .readContract({
-          address: user.safeAddress as Address,
-          abi: Safe_ABI,
-          functionName: 'isModuleEnabled',
-          args: [moduleAddress as Address],
-        })
+      //
+      // A Wallet used only on other chains so far has no Safe on this one yet,
+      // and asking it anything fails. The batch below deploys it (the smart
+      // account adds the factory call), and a Safe that doesn't exist has no
+      // modules, so the answer is "not enabled".
+      const client = publicClient(chain.id);
+      const alreadyEnabled = await client
+        .getCode({ address: user.safeAddress as Address })
+        .then(code =>
+          !code || code === '0x'
+            ? false
+            : client.readContract({
+                address: user.safeAddress as Address,
+                abi: Safe_ABI,
+                functionName: 'isModuleEnabled',
+                args: [moduleAddress as Address],
+              }),
+        )
         .catch(() => {
           throw new Error('Couldn’t check your wallet. Please try again.');
         });
@@ -145,6 +156,15 @@ export const useAllowAiApiCharges = () => {
       }
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
+
+      // The batch runs as the Safe this passkey derives, which on a chain it
+      // isn't deployed on yet is also the one the batch deploys. Charges are
+      // only ever taken from the account's own Safe, so a different one would
+      // get a mandate nobody bills, and the account's Safe none.
+      if (smartAccountClient.account?.address.toLowerCase() !== user.safeAddress.toLowerCase()) {
+        throw new Error('Couldn’t set up AI API billing for this wallet. Please contact support.');
+      }
+
       const result = await executeTransactions(
         smartAccountClient,
         [
