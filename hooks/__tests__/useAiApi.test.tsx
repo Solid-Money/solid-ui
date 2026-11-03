@@ -11,8 +11,7 @@ const { act, create } = jest.requireActual('react-test-renderer');
 const SAFE = '0xefca7E3C3E10F4523aE4D0203e6A98B9776F0291';
 const MODULE = '0xFfadC8fD07743043fc751024e781f126Ddd20315';
 
-let mockAccountAddress: string = SAFE;
-const mockSafeAA = jest.fn(async () => ({ account: { address: mockAccountAddress } }));
+const mockSafeAA = jest.fn(async () => ({ account: { address: SAFE } }));
 
 jest.mock('react-native-toast-message', () => ({ show: jest.fn() }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
@@ -64,7 +63,6 @@ const allow = () =>
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  mockAccountAddress = SAFE;
   jest.mocked(publicClient).mockReturnValue({ getCode, readContract } as any);
   execute.mockResolvedValue({ transactionHash: '0xhash' } as any);
   jest.mocked(confirmAiApiBilling).mockResolvedValue({} as any);
@@ -117,17 +115,6 @@ it('stops when the Safe can’t be read', async () => {
 
   await act(async () => {
     await expect(allow()).rejects.toThrow('Couldn’t check your wallet. Please try again.');
-  });
-
-  expect(execute).not.toHaveBeenCalled();
-});
-
-it('refuses to sign for a Safe that is not the account’s own', async () => {
-  getCode.mockResolvedValue('0x');
-  mockAccountAddress = '0x0000000000000000000000000000000000000001';
-
-  await act(async () => {
-    await expect(allow()).rejects.toThrow('Couldn’t set up AI API billing for this wallet.');
   });
 
   expect(execute).not.toHaveBeenCalled();

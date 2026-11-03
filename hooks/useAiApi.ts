@@ -156,15 +156,6 @@ export const useAllowAiApiCharges = () => {
       }
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
-
-      // The batch runs as the Safe this passkey derives, which on a chain it
-      // isn't deployed on yet is also the one the batch deploys. Charges are
-      // only ever taken from the account's own Safe, so a different one would
-      // get a mandate nobody bills, and the account's Safe none.
-      if (smartAccountClient.account?.address.toLowerCase() !== user.safeAddress.toLowerCase()) {
-        throw new Error('Couldn’t set up AI API billing for this wallet. Please contact support.');
-      }
-
       const result = await executeTransactions(
         smartAccountClient,
         [
