@@ -39,10 +39,8 @@ jest.mock('@/components/Swap/flow/SwapFlow', () => ({
     'open_on_its_way',
   ],
 }));
-jest.mock('@/constants/swapChains', () => ({
-  get NEW_SWAP_FLOW() {
-    return mockNewFlow;
-  },
+jest.mock('@/hooks/swap/useNewSwapFlow', () => ({
+  useNewSwapFlow: () => mockNewFlow,
 }));
 jest.mock('@/hooks/useGeoCompliance', () => ({
   __esModule: true,

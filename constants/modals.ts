@@ -426,7 +426,7 @@ export const SWAP_MODAL = {
     name: 'open_lifi_status',
     number: 2,
   },
-  // The new swap flow (behind NEW_SWAP_FLOW): form, pickers, review, outcome.
+  // The new swap flow (behind useNewSwapFlow): form, pickers, review, outcome.
   OPEN_PAY_PICKER: {
     name: 'open_pay_picker',
     number: 2,

@@ -20,9 +20,9 @@ import SwapParams from '@/components/Swap/SwapParams';
 import TransactionStatus from '@/components/TransactionStatus';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { NEW_SWAP_FLOW } from '@/constants/swapChains';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { LifiSwapInfoProvider } from '@/hooks/swap/useLifiSwapInfo';
+import { useNewSwapFlow } from '@/hooks/swap/useNewSwapFlow';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -69,11 +69,12 @@ const SwapModalProvider = () => {
   );
 
   const isLifiSwap = useIsLifiSwap();
+  const newSwapFlow = useNewSwapFlow();
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isLifiStatus = currentModal.name === SWAP_MODAL.OPEN_LIFI_STATUS.name;
   const isBuyFuse = currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name;
   const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
-  const isNewFlow = NEW_SWAP_FLOW && SWAP_FLOW_STATES.includes(currentModal.name);
+  const isNewFlow = newSwapFlow && SWAP_FLOW_STATES.includes(currentModal.name);
   const isFlowSubScreen =
     isNewFlow &&
     [SWAP_MODAL.OPEN_PAY_PICKER.name, SWAP_MODAL.OPEN_GET_PICKER.name].includes(currentModal.name);
