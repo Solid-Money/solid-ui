@@ -43,6 +43,44 @@ export const formatAiApiTokens = (tokens: number): string => {
   return `${whole.format(value)} tokens`;
 };
 
+/**
+ * A per-million-token price: `$2.40`, `$0.095`, `$0.0003`. Cheap models are
+ * priced in fractions of a cent, so small prices keep two significant digits
+ * rather than rounding to `$0.00`.
+ */
+export const formatAiApiTokenPrice = (usdPerMTok: number): string => {
+  const value = Math.max(0, usdPerMTok || 0);
+  if (value === 0) return '$0';
+  if (value >= 1) return `$${value.toFixed(2)}`;
+  return `$${Number(value.toPrecision(2))}`;
+};
+
+/**
+ * How far below the model maker's list price ours is, as a whole percent:
+ * the smaller of the input and output discounts, rounded down, so the badge
+ * never claims more than either price gives. Null when there is no list
+ * price to compare with, or nothing is saved.
+ */
+export const aiApiModelDiscount = (model: {
+  inputUsdPerMTok: number;
+  outputUsdPerMTok: number;
+  officialInputUsdPerMTok: number | null;
+  officialOutputUsdPerMTok: number | null;
+}): number | null => {
+  const { officialInputUsdPerMTok: officialIn, officialOutputUsdPerMTok: officialOut } = model;
+  if (!officialIn || !officialOut || officialIn <= 0 || officialOut <= 0) return null;
+  const discount = Math.min(
+    1 - model.inputUsdPerMTok / officialIn,
+    1 - model.outputUsdPerMTok / officialOut,
+  );
+  // The epsilon keeps a float like 0.9399999 from reading as 93%.
+  const percent = Math.floor(discount * 100 + 1e-9);
+  return percent > 0 ? percent : null;
+};
+
+/** `−94%`, with a true minus sign. */
+export const formatAiApiDiscount = (percent: number): string => `\u2212${percent}%`;
+
 /** `Nov 1` — when limits reset and cashback lands. Dates are UTC days. */
 export const formatAiApiShortDate = (iso: string | Date): string =>
   shortDate.format(typeof iso === 'string' ? new Date(iso) : iso);

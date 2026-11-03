@@ -55,6 +55,22 @@ export interface AiApiBilling {
   walletShort: boolean;
 }
 
+/** One model on the price list. Prices are USD per million tokens. */
+export interface AiApiModel {
+  id: string;
+  name: string;
+  /** Who makes it: "Anthropic". */
+  provider: string | null;
+  /** Its logo, uploaded from the admin dashboard; null shows its initial. */
+  logoUrl: string | null;
+  /** What Solid charges. */
+  inputUsdPerMTok: number;
+  outputUsdPerMTok: number;
+  /** The model maker's own list price; null when we don't show a discount. */
+  officialInputUsdPerMTok: number | null;
+  officialOutputUsdPerMTok: number | null;
+}
+
 export interface AiApiOverview {
   available: boolean;
   /** The user's tier's AI cashback: 0.5 is 50%. */
@@ -70,7 +86,9 @@ export interface AiApiOverview {
   limitOptionsUsd: number[];
   maxMonthlyLimitUsd: number;
   maxKeys: number;
-  models: { id: string; name: string }[];
+  /** The models a key can call, most used across all users first. */
+  models: AiApiModel[];
+  /** The model the setup guide suggests. */
   defaultModel: string | null;
   month: {
     key: string;
