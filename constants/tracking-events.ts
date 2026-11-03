@@ -452,8 +452,8 @@ export const TRACKING_EVENTS = {
   CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
   CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
   // The "Not enough to pay" card on a declined receipt. Viewed carries the fix it led with
-  // (turn_on_euro | swap | add_funds) and whether the balance already covers the payment;
-  // pressed carries which button was tapped. Together with the decline push's open they make
+  // (turn_on_euro | turn_on_base | swap | add_funds) and whether the balance already covers
+  // the payment; pressed carries which button was tapped. Together with the decline push's open they make
   // "declined → fixed" a funnel instead of a guess.
   CARD_DECLINE_FIX_VIEWED: 'card_decline_fix_viewed',
   CARD_DECLINE_FIX_PRESSED: 'card_decline_fix_pressed',

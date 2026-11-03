@@ -90,6 +90,68 @@ export const cardSpendableAssetsFor = (
   return [...CARD_SPENDABLE_ASSETS, ...baseSpendableAssets(addresses)];
 };
 
+/** One holding on Base that the Base instance spends, for a cardholder who has not turned it on. */
+export interface UnreachableBaseHolding {
+  /** Contract address, lower-cased. */
+  address: string;
+  symbol: string;
+  /** In the token's own units. */
+  amount: number;
+  valueUSD: number;
+  /** Pays euro purchases only — EURC and soEUR. See `CardSpendableAsset.qualifier`. */
+  euroOnly: boolean;
+}
+
+/**
+ * Every holding on Base the card would spend once the Base instance is on, richest first.
+ *
+ * Matched on the instance's allowlist as the backend serves it (`spendTokens`), not on a list in
+ * this build, so a token the backend adds to Base is picked up here without a release — the
+ * allowlist is served whether or not this user has enabled Base. A token this build cannot name
+ * keeps the ticker the balances indexer gave it, and is never treated as euro-only: naming it
+ * wrongly is cosmetic, leaving it out would be the silent under-report this file warns about.
+ *
+ * Unpriced holdings are left out, because there is no figure to say about them. Whether Base is
+ * already on is the caller's question (`useEuroSpendEnablement().shouldOffer`), as for
+ * {@link baseEurcHeld}.
+ */
+export const unreachableBaseHoldings = (
+  tokens: TokenBalance[] | undefined,
+  deployments: CardSpendDeployment[] | undefined,
+): UnreachableBaseHolding[] => {
+  const allowlist = (
+    deployments?.find(deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId)
+      ?.spendTokens ?? []
+  ).map(address => address.toLowerCase());
+  if (!allowlist.length) return [];
+
+  const named = new Map(
+    baseSpendableAssets(allowlist).map(asset => [asset.addresses?.[0], asset] as const),
+  );
+
+  return (tokens ?? [])
+    .flatMap((token): UnreachableBaseHolding[] => {
+      if (token.chainId !== BASE_SPEND_DEPLOYMENT.chainId) return [];
+      const address = token.contractAddress?.toLowerCase() ?? '';
+      if (!allowlist.includes(address)) return [];
+
+      const valueUSD = tokenValueUSD(token);
+      if (valueUSD <= 0) return [];
+
+      const asset = named.get(address);
+      return [
+        {
+          address,
+          symbol: asset?.symbol ?? token.contractTickerSymbol ?? 'tokens',
+          amount: Number(token.balance ?? 0) / 10 ** token.contractDecimals,
+          valueUSD,
+          euroOnly: Boolean(asset?.qualifier),
+        },
+      ];
+    })
+    .sort((a, b) => b.valueUSD - a.valueUSD);
+};
+
 /**
  * EURC held on Base, in euros — the balance euro spending lets the card draw on.
  *

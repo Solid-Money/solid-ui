@@ -193,6 +193,70 @@ describe('chooseDeclineFix', () => {
       }),
     ).toBe('add_funds');
   });
+
+  /** The Oct 2026 case: declined nine times with 37 USDC on Base and Base never turned on. */
+  it('turns on Base when the dollars there cover the whole payment', () => {
+    expect(
+      chooseDeclineFix({
+        payment: { amount: 19.57, currency: 'EUR' },
+        merchantCurrency: 'EUR',
+        unusableEurc: 0,
+        unreachableBaseUsd: 37.61,
+        paymentUsd: 22.53,
+        swapValueUsd: 37.61,
+        shortfallUsd: 22.53,
+      }),
+    ).toBe('turn_on_base');
+  });
+
+  it('pays any shop, not only a euro one', () => {
+    expect(
+      chooseDeclineFix({
+        payment: { amount: 40, currency: 'USD' },
+        merchantCurrency: 'BRL',
+        unusableEurc: 0,
+        unreachableBaseUsd: 50,
+        paymentUsd: 40,
+      }),
+    ).toBe('turn_on_base');
+  });
+
+  it('does not, when Base falls short of the payment — it would decline again', () => {
+    expect(
+      chooseDeclineFix({
+        payment: euroPayment,
+        merchantCurrency: 'EUR',
+        unusableEurc: 0,
+        unreachableBaseUsd: 15,
+        paymentUsd: 21.4,
+        swapValueUsd: 1_200,
+        shortfallUsd: 21.4,
+      }),
+    ).toBe('swap');
+  });
+
+  it('does not, before the payment has a dollar figure', () => {
+    expect(
+      chooseDeclineFix({
+        payment: euroPayment,
+        merchantCurrency: 'EUR',
+        unusableEurc: 0,
+        unreachableBaseUsd: 500,
+      }),
+    ).toBe('add_funds');
+  });
+
+  it('leaves EURC that covers a euro payment to euro spending', () => {
+    expect(
+      chooseDeclineFix({
+        payment: euroPayment,
+        merchantCurrency: 'EUR',
+        unusableEurc: 229.79,
+        unreachableBaseUsd: 500,
+        paymentUsd: 21.4,
+      }),
+    ).toBe('turn_on_euro');
+  });
 });
 
 describe('euro main currency', () => {

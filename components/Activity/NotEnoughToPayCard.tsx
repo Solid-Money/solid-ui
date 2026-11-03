@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
@@ -13,8 +13,11 @@ import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardSpendable } from '@/hooks/useCardSpendable';
+import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { track } from '@/lib/analytics';
+import { showErrorToast } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
@@ -76,6 +79,8 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     refetchInterval: covered ? false : UNCOVERED_POLL_MS,
   });
   const { eurc } = useUnusableEurc();
+  const unreachableBase = useUnreachableBaseBalance();
+  const baseSpend = useEuroSpendEnablement();
   const router = useRouter();
   const { swappable } = useMovableHoldings();
 
@@ -100,6 +105,8 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     payment,
     merchantCurrency: transaction.currency,
     unusableEurc: eurc,
+    unreachableBaseUsd: unreachableBase.usd,
+    paymentUsd: comparable ? comparable.payment * rateToUsd : undefined,
     swapValueUsd: holding?.valueUSD,
     shortfallUsd: shortfall !== undefined ? shortfall * rateToUsd : undefined,
   });
@@ -140,6 +147,17 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     trackPress('turn_on_euro');
     router.push(path.CARD_MAIN_CURRENCY);
   }, [router, trackPress]);
+
+  // Turned on right here: one passkey prompt, and the live balance above picks it up on its next
+  // read, which swaps the buttons for "Ask the shop to try again".
+  const turnOnBase = useCallback(async () => {
+    trackPress('turn_on_base');
+    try {
+      await baseSpend.enableAsync('declined_receipt');
+    } catch (error) {
+      void showErrorToast(error, { action: 'card_settings' });
+    }
+  }, [baseSpend, trackPress]);
 
   const swapUsd = (target ?? 0) * rateToUsd;
   const swapInput = holding ? swapAmountFor(swapUsd, holding) : undefined;
@@ -221,6 +239,29 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
                 onPress={openAddFunds}
               >
                 <Text className="text-[16px] font-semibold text-white">Add funds instead</Text>
+              </Pressable>
+            </>
+          ) : fix === 'turn_on_base' ? (
+            <>
+              <Text className="text-[13px] text-white/70">
+                {`Your ${formatCardCurrency(Math.floor(unreachableBase.usd / rateToUsd), currency, {
+                  trimWhole: true,
+                })} on Base can't be used by your card until you turn it on.`}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: baseSpend.isEnabling, busy: baseSpend.isEnabling }}
+                className={PRIMARY_BUTTON}
+                disabled={baseSpend.isEnabling}
+                onPress={() => void turnOnBase()}
+              >
+                {baseSpend.isEnabling ? (
+                  <ActivityIndicator color="#000000" />
+                ) : (
+                  <Text className="text-[16px] font-semibold text-black">
+                    Let your card use your Base balance
+                  </Text>
+                )}
               </Pressable>
             </>
           ) : fix === 'turn_on_euro' ? (
