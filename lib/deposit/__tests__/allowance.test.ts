@@ -1,6 +1,6 @@
 import { decodeFunctionData, erc20Abi, maxUint256 } from 'viem';
 
-import { buildDepositApproval } from '@/lib/deposit/allowance';
+import { buildDepositApprovals } from '@/lib/deposit/allowance';
 import { getTokenAllowance } from '@/lib/utils/contract';
 
 jest.mock('@/lib/utils/contract', () => ({
@@ -21,7 +21,7 @@ const approvedAmount = (data: `0x${string}`): bigint => {
 };
 
 const build = (amount: bigint) =>
-  buildDepositApproval({
+  buildDepositApprovals({
     tokenAddress: TOKEN,
     owner: OWNER,
     spender: SPENDER,
@@ -29,17 +29,21 @@ const build = (amount: bigint) =>
     chainId: 8453,
   });
 
-describe('buildDepositApproval', () => {
+const approvedAmounts = async (amount: bigint) =>
+  (await build(amount)).map(call => approvedAmount(call.data));
+
+describe('buildDepositApprovals', () => {
   beforeEach(() => mockedGetTokenAllowance.mockReset());
 
   it('approves just the amount when nothing is approved yet', async () => {
     mockedGetTokenAllowance.mockResolvedValue(0n);
 
-    const call = await build(6_000_000n);
+    const calls = await build(6_000_000n);
 
-    expect(call.to).toBe(TOKEN);
-    expect(call.value).toBe(0n);
-    expect(approvedAmount(call.data)).toBe(6_000_000n);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].to).toBe(TOKEN);
+    expect(calls[0].value).toBe(0n);
+    expect(approvedAmount(calls[0].data)).toBe(6_000_000n);
   });
 
   it('adds to an allowance a pending deposit is still waiting on', async () => {
@@ -48,24 +52,29 @@ describe('buildDepositApproval', () => {
     // could never settle. 0.13 lets both pulls take their own share.
     mockedGetTokenAllowance.mockResolvedValue(20_000n);
 
-    const call = await build(110_000n);
+    expect((await approvedAmounts(110_000n)).at(-1)).toBe(130_000n);
+  });
 
-    expect(approvedAmount(call.data)).toBe(130_000n);
+  it('clears a standing allowance to zero before raising it', async () => {
+    // USDT on Ethereum reverts an approve from one non-zero allowance to
+    // another: a deposit left unpulled made every later USDT deposit fail.
+    mockedGetTokenAllowance.mockResolvedValue(8_713_875_920n);
+
+    const calls = await build(8_713_875_920n);
+
+    expect(calls.every(call => call.to === TOKEN && call.value === 0n)).toBe(true);
+    expect(calls.map(call => approvedAmount(call.data))).toEqual([0n, 17_427_751_840n]);
   });
 
   it('falls back to the bare amount when the allowance read fails', async () => {
     mockedGetTokenAllowance.mockRejectedValue(new Error('rpc down'));
 
-    const call = await build(6_000_000n);
-
-    expect(approvedAmount(call.data)).toBe(6_000_000n);
+    expect(await approvedAmounts(6_000_000n)).toEqual([6_000_000n]);
   });
 
   it('saturates instead of overflowing an existing unlimited approval', async () => {
     mockedGetTokenAllowance.mockResolvedValue(maxUint256);
 
-    const call = await build(1n);
-
-    expect(approvedAmount(call.data)).toBe(maxUint256);
+    expect(await approvedAmounts(1n)).toEqual([0n, maxUint256]);
   });
 });

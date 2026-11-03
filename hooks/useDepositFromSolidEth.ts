@@ -6,7 +6,7 @@ import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { createDeposit } from '@/lib/api';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
-import { buildDepositApproval } from '@/lib/deposit/allowance';
+import { buildDepositApprovals } from '@/lib/deposit/allowance';
 import {
   captureDepositError,
   depositBreadcrumb,
@@ -150,7 +150,7 @@ const useDepositFromSolidEth = (
       // Build transactions: for native ETH, wrap first then approve WETH;
       // for WETH, just approve.
       const approvalToken = isNativeEth ? ADDRESSES.ethereum.weth : tokenAddress;
-      const approveTransaction = await buildDepositApproval({
+      const approveTransactions = await buildDepositApprovals({
         tokenAddress: approvalToken,
         owner: safeAddress,
         spender,
@@ -166,9 +166,9 @@ const useDepositFromSolidEth = (
               data: encodeFunctionData({ abi: WETH_ABI, functionName: 'deposit' }),
               value: amountWei,
             },
-            approveTransaction,
+            ...approveTransactions,
           ]
-        : [approveTransaction];
+        : approveTransactions;
 
       // Create activity for tracking
       trackingId = await createEvent(amount, spender, token);
