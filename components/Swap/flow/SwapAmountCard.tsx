@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 import { ChevronDown, Wallet } from 'lucide-react-native';
 
@@ -18,8 +18,11 @@ type SwapAmountCardProps = {
   onMax?: () => void;
   /** Raw typed amount, or the formatted quote on "You get". */
   value: string;
-  /** Present on "You pay" only; "You get" is read-only. */
-  onChangeText?: (text: string) => void;
+  /**
+   * Present on "You pay" only; "You get" is read-only. `replacedAll` is set when
+   * the edit replaced the whole amount (typed or pasted over a full selection).
+   */
+  onChangeText?: (text: string, replacedAll: boolean) => void;
   /** Shown in place of the amount while it loads: "Getting price…". */
   pendingLabel?: string;
   usd?: number;
@@ -42,6 +45,21 @@ const SwapAmountCard = ({
   onPickAsset,
 }: SwapAmountCardProps) => {
   const name = asset ? assetDisplayName(asset) : 'Select';
+  const shown = groupAmountInput(value);
+  // The selection before an edit, so typing over a fully selected amount reads
+  // as a new amount rather than an edit of the old one's grouping.
+  const selection = useRef<{ start: number; end: number } | undefined>(undefined);
+  const handleChangeText = useCallback(
+    (text: string) => {
+      const before = selection.current;
+      selection.current = undefined;
+      onChangeText?.(
+        text,
+        !!before && shown.length > 0 && before.start === 0 && before.end === shown.length,
+      );
+    },
+    [onChangeText, shown],
+  );
   return (
     <View className="gap-4">
       <View className="flex-row items-center justify-between gap-2 px-1">
@@ -69,8 +87,11 @@ const SwapAmountCard = ({
             </Text>
           ) : onChangeText ? (
             <TextInput
-              value={groupAmountInput(value)}
-              onChangeText={onChangeText}
+              value={shown}
+              onChangeText={handleChangeText}
+              onSelectionChange={event => {
+                selection.current = event.nativeEvent.selection;
+              }}
               placeholder="0"
               placeholderTextColor="rgba(255,255,255,0.3)"
               keyboardType="decimal-pad"

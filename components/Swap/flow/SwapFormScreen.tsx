@@ -42,13 +42,14 @@ const SwapFormScreen: React.FC = () => {
   const fromName = fromAsset ? assetDisplayName(fromAsset) : '';
   const toName = toAsset ? assetDisplayName(toAsset) : '';
 
-  // The field shows the amount with thousands commas; read them back as such.
+  // The field shows the amount with thousands commas; read them back as such,
+  // unless the edit replaced the whole amount and none of them are left.
   const handleChangeText = useCallback(
-    (text: string) =>
+    (text: string, replacedAll = false) =>
       onUserInput(
         SwapField.INPUT,
         sanitizeAmountInput(
-          ungroupAmountInput(text, groupAmountInput(typedValue)),
+          ungroupAmountInput(text, replacedAll ? '' : groupAmountInput(typedValue)),
           fromAsset?.decimals,
         ),
       ),

@@ -171,3 +171,27 @@ it('reads the thousands commas it shows as grouping, not as a point', () => {
   act(() => input.props.onChangeText('18,43'));
   expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '18.43');
 });
+
+it('reads an amount typed over the whole field as new, commas and all', () => {
+  mockModel = model({ typedValue: '1000' });
+  mount();
+  const input = root.root.find((node: any) => node.props.keyboardType === 'decimal-pad');
+  const select = (start: number, end: number) =>
+    act(() => input.props.onSelectionChange({ nativeEvent: { selection: { start, end } } }));
+
+  // All of "1,000" selected and replaced: the comma is the new amount's point.
+  select(0, 5);
+  act(() => input.props.onChangeText('1,23'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '1.23');
+
+  // Only "000" selected and replaced: the comma is still the old grouping.
+  select(2, 5);
+  act(() => input.props.onChangeText('1,23'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '123');
+
+  // A selection counts for one edit only.
+  select(0, 5);
+  act(() => input.props.onChangeText('1,23'));
+  act(() => input.props.onChangeText('1,0000'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '10000');
+});
