@@ -56,7 +56,11 @@ const useDepositFromSolidUsdc = (
   const safeAddress = user?.safeAddress as Address | undefined;
   const isCard = category === DepositCategory.CARD;
   const targetChainId = isCard ? base.id : mainnet.id;
-  const isTargetChain = srcChainId === targetChainId;
+  // Only USDC is deposited directly on the target chain. The direct deposit
+  // carries no token and the backend pulls USDC, so any other token (USDT on
+  // Ethereum) goes through the bridge deposit, which is told the token -
+  // otherwise its approval is never pulled and the deposit times out.
+  const isTargetChain = srcChainId === targetChainId && token === 'USDC';
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
