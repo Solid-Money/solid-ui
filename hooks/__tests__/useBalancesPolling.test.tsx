@@ -186,6 +186,18 @@ describe('balance polling', () => {
     expect(refreshes()).toBe(8);
   });
 
+  it('speeds up as soon as the socket goes down', async () => {
+    useRealtimeStore.getState().setStatus('connected');
+    mounted = await mount();
+
+    await act(async () => {
+      useRealtimeStore.getState().setStatus('unavailable');
+    });
+    await pollFor(4, BALANCES_POLL_MS);
+
+    expect(refreshes()).toBe(4);
+  });
+
   it('slows down as soon as the socket comes up', async () => {
     useRealtimeStore.getState().setStatus('unavailable');
     mounted = await mount();

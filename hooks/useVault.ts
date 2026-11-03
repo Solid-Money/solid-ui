@@ -148,6 +148,9 @@ export const useVaultBalance = (safeAddress: Address, vault?: Vault) => {
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
     refetchInterval,
+    // A change while the app was in the background has no event to announce
+    // it, and the poll is slow now: re-read on return, as balances do.
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -184,5 +187,8 @@ export const useTotalVaultBalance = (safeAddress: Address) => {
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
     refetchInterval,
+    // A change while the app was in the background has no event to announce
+    // it, and the poll is slow now: re-read on return, as balances do.
+    refetchOnWindowFocus: true,
   });
 };
