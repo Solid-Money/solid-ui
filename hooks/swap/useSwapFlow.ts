@@ -20,6 +20,7 @@ import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
 import { lifiPriceImpact, sumFeesUsd } from '@/lib/utils/swap/lifi';
 import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/prices';
+import { grossForSwapAmount } from '@/lib/utils/swapFee';
 import {
   DerivedSwapInfoProvider,
   SwapReceipt,
@@ -217,7 +218,7 @@ function useLifiFlowModel(): SwapFlowModel {
 
 function useFuseFlowModel(): SwapFlowModel {
   const derived = useDerivedSwapInfo();
-  const { tierName } = useSwapFeeRate();
+  const { tierName, rate: feeRate } = useSwapFeeRate();
   const { isExpertMode } = useUserState();
   const { typedValue, independentField, inputId, outputId } = useSwapState(
     useShallow(state => ({
@@ -365,9 +366,14 @@ function useFuseFlowModel(): SwapFlowModel {
     fromBalance,
     maxValue: maxOf(fromAsset, fromBalance),
     typedValue,
+    // Exact out bills the fee on top of the route's input; what you pay has it
+    // carved out, so it has to cover both.
     quotedFromAmount:
       independentField === SwapField.OUTPUT && trade && !isQuoting
-        ? trade.inputAmount.toExact()
+        ? formatUnits(
+            grossForSwapAmount(BigInt(trade.inputAmount.quotient.toString()), feeRate),
+            trade.inputAmount.currency.decimals,
+          )
         : undefined,
     toAmount,
     fromUsd: usdAt(typed, fromAsset),
