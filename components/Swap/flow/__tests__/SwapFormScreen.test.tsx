@@ -172,6 +172,19 @@ it('reads the thousands commas it shows as grouping, not as a point', () => {
   expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '18.43');
 });
 
+it('trims an amount to the decimals of the coin now being paid', () => {
+  // Typed for an 18-decimal coin, then switched to a 6-decimal one.
+  mockModel = model({ typedValue: '1.1234567' });
+  mount();
+  expect(mockUserInput).toHaveBeenCalledWith('INPUT', '1.123456');
+});
+
+it('leaves an amount alone when it fits the coin', () => {
+  mockModel = model({ typedValue: '1.10' });
+  mount();
+  expect(mockUserInput).not.toHaveBeenCalled();
+});
+
 it('reads an amount typed over the whole field as new, commas and all', () => {
   mockModel = model({ typedValue: '1000' });
   mount();

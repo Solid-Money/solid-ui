@@ -55,6 +55,13 @@ const SwapFormScreen: React.FC = () => {
       ),
     [onUserInput, typedValue, fromAsset?.decimals],
   );
+  // A coin with fewer decimals can't carry what was typed for the last one: trim
+  // the amount as typing it now would, so what shows is what gets quoted.
+  useEffect(() => {
+    if (!typedValue || !fromAsset) return;
+    const fitted = sanitizeAmountInput(typedValue, fromAsset.decimals);
+    if (fitted !== typedValue) onUserInput(SwapField.INPUT, fitted);
+  }, [typedValue, fromAsset, onUserInput]);
   const handleMax = useCallback(() => {
     if (model.maxValue) onUserInput(SwapField.INPUT, model.maxValue);
   }, [model.maxValue, onUserInput]);
