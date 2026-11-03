@@ -147,6 +147,27 @@ it('keeps the cross-chain status watcher mounted while the modal is closed', () 
   act(() => root.unmount());
 });
 
+it('keeps the form a swap opened with until the modal closes', () => {
+  mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+  const root = render();
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(1);
+
+  // The whitelist answers while the swap is open: the old form stays.
+  mockNewFlow = true;
+  act(() => root.update(<SwapModalProvider />));
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(1);
+  expect(root.root.findAllByType('SwapFlow')).toHaveLength(0);
+
+  // Closed and opened again: the new flow.
+  mockCurrentModal = SWAP_MODAL.CLOSE;
+  act(() => root.update(<SwapModalProvider />));
+  mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+  act(() => root.update(<SwapModalProvider />));
+  expect(root.root.findAllByType('SwapFlow')).toHaveLength(1);
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(0);
+  act(() => root.unmount());
+});
+
 describe('with the new swap flow', () => {
   beforeEach(() => {
     mockNewFlow = true;

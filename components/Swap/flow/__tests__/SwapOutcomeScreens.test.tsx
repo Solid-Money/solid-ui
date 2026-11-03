@@ -5,7 +5,7 @@ import { SwapOnItsWayScreen } from '@/components/Swap/flow/SwapOutcomeScreens';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 
-jest.mock('lucide-react-native', () => ({ ArrowUpRight: 'ArrowUpRight', Check: 'Check' }));
+jest.mock('lucide-react-native', () => ({ ArrowUpRight: 'ArrowUpRight', Check: 'Check', X: 'X' }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
@@ -19,7 +19,9 @@ jest.mock('@/constants/chains', () => ({ CHAIN_NAMES: { 1: 'Ethereum', 122: 'Fus
 jest.mock('@/lib/api/cross-chain-send', () => ({ fetchCrossChainSend: jest.fn() }));
 jest.mock('@/lib/utils', () => ({ withRefreshToken: (fn: () => unknown) => fn() }));
 jest.mock('@/lib/wagmi', () => ({ getChain: () => undefined }));
-jest.mock('@/store/lifiSwapStore', () => ({ useLifiSwapStore: () => undefined }));
+jest.mock('@/store/lifiSwapStore', () => ({
+  useLifiSwapStore: (selector: any) => selector({ swaps: { 'send-1': mockTracked } }),
+}));
 jest.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: mockSend }) }));
 jest.mock('@/store/swapStore', () => ({
   useSwapState: (selector: any) =>
@@ -34,6 +36,7 @@ jest.mock('@/store/swapStore', () => ({
 }));
 
 let mockSend: any;
+let mockTracked: any;
 const USDC_FUSE = { chainId: 122, address: '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9' };
 const mockReceipt = {
   kind: 'bridging',
@@ -68,6 +71,7 @@ const steps = () => root.root.findByType('StepTracker').props.steps;
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
+  mockTracked = undefined;
 });
 afterEach(() => act(() => root.unmount()));
 
@@ -93,8 +97,32 @@ it('shows Swapped with what landed once the send is delivered', () => {
   expect(rows.find((row: any) => row.key === 'got').value).toBe('9.99 USDC');
 });
 
-it('shows why a send failed', () => {
+it('shows why a send failed, and stops saying it is on its way', () => {
   mockSend = { status: 'failed', failureReason: 'Stargate refunded the send.' };
   mount();
   expect(steps()[1]).toMatchObject({ tone: 'failed', subtitle: 'Stargate refunded the send.' });
+  expect(text()).toContain('Swap didn’t go through');
+  expect(text()).not.toContain('Swap on its way');
+  expect(text()).not.toContain('We’ll let you know when it arrives');
+  expect(root.root.findAllByType('X')).toHaveLength(1);
+});
+
+it('falls back on the quoted amount when the delivered amount is unreadable', () => {
+  mockSend = { status: 'delivered', etaMinutes: 5, amountReceivedLD: 'n/a' };
+  mount();
+  expect(text().replace(/\s+/g, ' ')).toContain('10 USDC is in your wallet');
+});
+
+it('says a LI.FI swap didn’t go through when LI.FI reports it failed', () => {
+  const { bridge } = mockReceipt;
+  delete (mockReceipt as any).bridge;
+  try {
+    mockTracked = { status: 'FAILED' };
+    mount();
+    expect(steps()[1]).toMatchObject({ key: 'converting', tone: 'failed' });
+    expect(text()).toContain('Swap didn’t go through');
+    expect(text()).not.toContain('We’ll let you know when it arrives');
+  } finally {
+    (mockReceipt as any).bridge = bridge;
+  }
 });

@@ -15,7 +15,12 @@ import { assetDisplayName } from '@/lib/swapAssets';
 import { swapErrorButtonLabel } from '@/lib/swapErrors';
 import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 import { SwapField } from '@/lib/types/swap-field';
-import { formatSwapAmount, sanitizeAmountInput } from '@/lib/utils/swap/format';
+import {
+  formatSwapAmount,
+  groupAmountInput,
+  sanitizeAmountInput,
+  ungroupAmountInput,
+} from '@/lib/utils/swap/format';
 import { useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 
 /** Errors the button can fix by opening the "You get" picker. */
@@ -37,9 +42,17 @@ const SwapFormScreen: React.FC = () => {
   const fromName = fromAsset ? assetDisplayName(fromAsset) : '';
   const toName = toAsset ? assetDisplayName(toAsset) : '';
 
+  // The field shows the amount with thousands commas; read them back as such.
   const handleChangeText = useCallback(
-    (text: string) => onUserInput(SwapField.INPUT, sanitizeAmountInput(text, fromAsset?.decimals)),
-    [onUserInput, fromAsset?.decimals],
+    (text: string) =>
+      onUserInput(
+        SwapField.INPUT,
+        sanitizeAmountInput(
+          ungroupAmountInput(text, groupAmountInput(typedValue)),
+          fromAsset?.decimals,
+        ),
+      ),
+    [onUserInput, typedValue, fromAsset?.decimals],
   );
   const handleMax = useCallback(() => {
     if (model.maxValue) onUserInput(SwapField.INPUT, model.maxValue);

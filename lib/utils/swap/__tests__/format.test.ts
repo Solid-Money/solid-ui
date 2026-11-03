@@ -3,6 +3,7 @@ import {
   formatSwapUsd,
   groupAmountInput,
   sanitizeAmountInput,
+  ungroupAmountInput,
 } from '@/lib/utils/swap/format';
 
 describe('swap number formatting', () => {
@@ -45,5 +46,19 @@ describe('swap number formatting', () => {
     expect(groupAmountInput('1234567.5')).toBe('1,234,567.5');
     expect(groupAmountInput('1000.')).toBe('1,000.');
     expect(groupAmountInput('12')).toBe('12');
+  });
+
+  it.each([
+    ['1,0000', '1,000', '10000'],
+    ['1,00', '1,000', '100'],
+    ['1,000.5', '1,000.', '1000.5'],
+    ['1,000,', '1,000', '1000.'],
+    ['12,', '12', '12.'],
+    ['1,,000', '1,000', '1.000'],
+    ['1,000.5,', '1,000.5', '1000.5'],
+    ['1,234,567', '', '1234567'],
+    ['18,43', '', '18,43'],
+  ])('reads %p, typed over %p, as %p', (text, shown, expected) => {
+    expect(ungroupAmountInput(text, shown)).toBe(expected);
   });
 });

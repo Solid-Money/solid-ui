@@ -155,3 +155,16 @@ it('keeps only what can be typed into an amount', () => {
   act(() => input.props.onChangeText('1,5x'));
   expect(mockUserInput).toHaveBeenCalledWith('INPUT', '1.5');
 });
+
+it('reads the thousands commas it shows as grouping, not as a point', () => {
+  mockModel = model({ typedValue: '1000' });
+  mount();
+  const input = root.root.find((node: any) => node.props.keyboardType === 'decimal-pad');
+  expect(input.props.value).toBe('1,000');
+  act(() => input.props.onChangeText('1,0000'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '10000');
+  act(() => input.props.onChangeText('1,00'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '100');
+  act(() => input.props.onChangeText('1,000,'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '1000.');
+});

@@ -3,7 +3,7 @@ import { Linking, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday } from 'date-fns';
-import { ArrowUpRight, Check } from 'lucide-react-native';
+import { ArrowUpRight, Check, X } from 'lucide-react-native';
 import { formatUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -42,17 +42,30 @@ const useCloseSwap = () => {
   }, [resetForm, setModal, setReceipt]);
 };
 
-const OutcomeIcon = ({ kind }: { kind: 'done' | 'moving' }) => (
-  <View className="h-[120px] w-[120px] items-center justify-center rounded-full border border-[rgba(148,242,127,0.2)] bg-[rgba(148,242,127,0.08)]">
-    <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-[rgba(148,242,127,0.27)]">
-      {kind === 'done' ? (
-        <Check size={30} color={BRAND} strokeWidth={3} />
-      ) : (
-        <ArrowUpRight size={30} color={BRAND} strokeWidth={2.5} />
-      )}
+const OutcomeIcon = ({ kind }: { kind: 'done' | 'moving' | 'failed' }) =>
+  kind === 'failed' ? (
+    <View className="h-[120px] w-[120px] items-center justify-center rounded-full border border-[rgba(248,113,113,0.2)] bg-[rgba(248,113,113,0.08)]">
+      <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-[rgba(248,113,113,0.27)]">
+        <X size={30} color="#f87171" strokeWidth={3} />
+      </View>
     </View>
-  </View>
-);
+  ) : (
+    <View className="h-[120px] w-[120px] items-center justify-center rounded-full border border-[rgba(148,242,127,0.2)] bg-[rgba(148,242,127,0.08)]">
+      <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-[rgba(148,242,127,0.27)]">
+        {kind === 'done' ? (
+          <Check size={30} color={BRAND} strokeWidth={3} />
+        ) : (
+          <ArrowUpRight size={30} color={BRAND} strokeWidth={2.5} />
+        )}
+      </View>
+    </View>
+  );
+
+/** The line under a tracker: a failed swap promises no arrival. */
+const trackerFootnote = (failed: boolean) =>
+  failed
+    ? 'You can close this screen. If your coins aren’t back in your wallet soon, contact support.'
+    : 'You can close this screen. We’ll let you know when it arrives.';
 
 /** Screen 5 of the swap: it's done, the coin is in the wallet, and it can go straight on to Send. */
 export const SwapSwappedScreen: React.FC = () => {
@@ -152,6 +165,7 @@ const LifiOnItsWay: React.FC = () => {
     receipt?.clientTxId ? state.swaps[receipt.clientTxId] : undefined,
   );
   const close = useCloseSwap();
+  const failed = tracked?.status === 'FAILED' || tracked?.status === 'INVALID';
 
   const steps = useMemo((): TrackerStep[] => {
     if (!receipt) return [];
@@ -159,7 +173,6 @@ const LifiOnItsWay: React.FC = () => {
     const toChain = CHAIN_NAMES[receipt.toChainId] ?? 'the other network';
     const status = tracked?.status;
     const done = status === 'DONE';
-    const failed = status === 'FAILED' || status === 'INVALID';
     const sentLink = tracked?.explorerLink ?? `https://scan.li.fi/tx/${receipt.transactionHash}`;
     const minutes = Math.max(1, Math.round((tracked?.etaSeconds ?? 120) / 60));
 
@@ -218,7 +231,7 @@ const LifiOnItsWay: React.FC = () => {
             subtitleTone: 'muted',
           },
     ];
-  }, [receipt, tracked]);
+  }, [receipt, tracked, failed]);
 
   if (!receipt) return null;
   // Landed whole: the same "Swapped" as a swap on one network, with what arrived.
@@ -232,9 +245,13 @@ const LifiOnItsWay: React.FC = () => {
     <View className="flex-1 justify-between gap-8 pt-6">
       <View className="gap-6">
         <View className="items-center gap-3">
-          <OutcomeIcon kind="moving" />
+          <OutcomeIcon kind={failed ? 'failed' : 'moving'} />
           <Text className="text-center text-2xl font-semibold text-white">
-            {tracked?.status === 'DONE' ? 'Swap arrived' : 'Swap on its way'}
+            {failed
+              ? 'Swap didn’t go through'
+              : tracked?.status === 'DONE'
+                ? 'Swap arrived'
+                : 'Swap on its way'}
           </Text>
           <Text className="text-center text-base text-white/70">
             {formatSwapAmount(receipt.fromAmount)} {receipt.fromName} →{' '}
@@ -242,9 +259,7 @@ const LifiOnItsWay: React.FC = () => {
           </Text>
         </View>
         <StepTracker steps={steps} />
-        <Text className="text-center text-sm text-white/60">
-          You can close this screen. We’ll let you know when it arrives.
-        </Text>
+        <Text className="text-center text-sm text-white/60">{trackerFootnote(failed)}</Text>
       </View>
 
       <Button variant="secondary" className="h-12 rounded-full" size="lg" onPress={close}>
@@ -345,7 +360,12 @@ const BridgeOnItsWay = ({
   }, [send, receipt, delivered, failed, status, fromChain, toChain]);
 
   if (delivered && send) {
-    const arrived = Number(formatUnits(BigInt(send.amountReceivedLD), bridge.sentDecimals));
+    // What landed, when the tracker says; otherwise the amount that was quoted.
+    const received = send.amountReceivedLD;
+    const arrived =
+      typeof received === 'string' && /^\d+$/.test(received)
+        ? Number(formatUnits(BigInt(received), bridge.sentDecimals))
+        : 0;
     return <SwappedView receipt={arrived > 0 ? { ...receipt, toAmount: arrived } : receipt} />;
   }
 
@@ -353,18 +373,16 @@ const BridgeOnItsWay = ({
     <View className="flex-1 justify-between gap-8 pt-6">
       <View className="gap-6">
         <View className="items-center gap-3">
-          <OutcomeIcon kind={delivered ? 'done' : 'moving'} />
+          <OutcomeIcon kind={failed ? 'failed' : 'moving'} />
           <Text className="text-center text-2xl font-semibold text-white">
-            {delivered ? 'Swap arrived' : 'Swap on its way'}
+            {failed ? 'Swap didn’t go through' : 'Swap on its way'}
           </Text>
           <Text className="text-center text-base text-white/70">
             {`${formatSwapAmount(receipt.fromAmount)} ${receipt.fromName} → ${formatSwapAmount(receipt.toAmount)} ${receipt.toName} on ${toChain}`}
           </Text>
         </View>
         <StepTracker steps={steps} />
-        <Text className="text-center text-sm text-white/60">
-          You can close this screen. We’ll let you know when it arrives.
-        </Text>
+        <Text className="text-center text-sm text-white/60">{trackerFootnote(failed)}</Text>
       </View>
 
       <Button variant="secondary" className="h-12 rounded-full" size="lg" onPress={close}>

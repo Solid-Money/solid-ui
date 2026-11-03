@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -69,11 +69,19 @@ const SwapModalProvider = () => {
   );
 
   const isLifiSwap = useIsLifiSwap();
-  const newSwapFlow = useNewSwapFlow();
+  const liveNewSwapFlow = useNewSwapFlow();
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isLifiStatus = currentModal.name === SWAP_MODAL.OPEN_LIFI_STATUS.name;
   const isBuyFuse = currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name;
   const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
+  // Which form a swap uses is settled when the modal opens and kept until it
+  // closes, so a whitelist answer arriving mid-swap doesn't replace the form
+  // (and its guard against a second submission) under the user.
+  const [openedOnNewFlow, setOpenedOnNewFlow] = useState<boolean | null>(null);
+  if (isClose ? openedOnNewFlow !== null : openedOnNewFlow === null) {
+    setOpenedOnNewFlow(isClose ? null : liveNewSwapFlow);
+  }
+  const newSwapFlow = openedOnNewFlow ?? liveNewSwapFlow;
   const isNewFlow = newSwapFlow && SWAP_FLOW_STATES.includes(currentModal.name);
   const isFlowSubScreen =
     isNewFlow &&

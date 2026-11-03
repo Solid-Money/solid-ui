@@ -172,9 +172,10 @@ function useLifiSwapInfoState(): LifiSwapInfo {
   const quoteError = useMemo(() => {
     if (!quoteErrorCode) return undefined;
     // The backend sends the pair's minimum with AMOUNT_TOO_LOW, in base units.
+    // Anything else in that field is ignored: the copy then names no minimum.
     const minRaw = error instanceof LifiSwapApiError ? error.details.minFromAmount : undefined;
     const minAmount =
-      typeof minRaw === 'string' && fromAsset
+      typeof minRaw === 'string' && /^\d+$/.test(minRaw) && fromAsset
         ? formatSwapAmount(Number(formatUnits(BigInt(minRaw), fromAsset.decimals)))
         : undefined;
     return swapErrorCopy(quoteErrorCode, {

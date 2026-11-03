@@ -12,9 +12,10 @@ const DESTINATIONS_STALE_MS = 5 * 60_000;
 
 /**
  * What the "You pay" asset can be swapped into, as `chainId:address` keys, for
- * the "You get" picker. Null while it loads, when it fails, or when the backend
- * couldn't check routes: the picker then offers the whole swap list and the
- * quote has the last word, rather than showing nothing.
+ * the "You get" picker. Null while it loads, when it fails, when the backend
+ * couldn't check routes, or when the answer has no list: the picker then offers
+ * the whole swap list and the quote has the last word, rather than showing
+ * nothing.
  *
  * Not asked for a Fuse coin: it only swaps on Fuse, where Algebra reaches
  * every coin whatever LI.FI's map says.
@@ -32,7 +33,7 @@ export function useSwapDestinations(from: SwapAsset | undefined): ReadonlySet<st
     retry: 1,
   });
 
-  if (!data || !data.routesChecked) return null;
+  if (!data?.routesChecked || !Array.isArray(data.destinations)) return null;
   return new Set(
     data.destinations.map(token =>
       swapAssetKey({ chainId: token.chainId, address: token.address as SwapAsset['address'] }),
