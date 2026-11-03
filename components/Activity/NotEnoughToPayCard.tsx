@@ -74,8 +74,12 @@ interface NotEnoughToPayCardProps {
 const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   const [isFundOpen, setIsFundOpen] = useState(false);
   const [covered, setCovered] = useState(false);
+  // Base was just turned on from this receipt. Held locally because the fix is worked out again
+  // from what Base still cannot reach — nothing, once it is on — while the balance above is still
+  // the one read before, which would flash Swap or Add funds at a cardholder who is done.
+  const [turnedOnBase, setTurnedOnBase] = useState(false);
 
-  const { data: spendable } = useCardSpendable({
+  const { data: spendable, refetch: refetchSpendable } = useCardSpendable({
     refetchInterval: covered ? false : UNCOVERED_POLL_MS,
   });
   const { eurc } = useUnusableEurc();
@@ -148,16 +152,18 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     router.push(path.CARD_MAIN_CURRENCY);
   }, [router, trackPress]);
 
-  // Turned on right here: one passkey prompt, and the live balance above picks it up on its next
-  // read, which swaps the buttons for "Ask the shop to try again".
+  // Turned on right here: one passkey prompt, then the balance is re-read at once rather than on
+  // the next poll. Tracked on the press, while `fix` is still the one the cardholder tapped.
   const turnOnBase = useCallback(async () => {
     trackPress('turn_on_base');
     try {
-      await baseSpend.enableAsync('declined_receipt');
+      if (!(await baseSpend.enableAsync('declined_receipt'))) return;
+      setTurnedOnBase(true);
+      void refetchSpendable();
     } catch (error) {
       void showErrorToast(error, { action: 'card_settings' });
     }
-  }, [baseSpend, trackPress]);
+  }, [baseSpend, refetchSpendable, trackPress]);
 
   const swapUsd = (target ?? 0) * rateToUsd;
   const swapInput = holding ? swapAmountFor(swapUsd, holding) : undefined;
@@ -198,6 +204,11 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
       {isCovered && available ? (
         <Text className="text-center text-[14px] text-white/60">
           {`You now have ${formatCardCurrency(available.amount, available.currency)} available. Ask the shop to try again.`}
+        </Text>
+      ) : turnedOnBase ? (
+        // Until the re-read lands. Base was only offered because it covers the whole payment.
+        <Text className="text-center text-[14px] text-white/60">
+          Your card can now use your Base balance. Ask the shop to try again.
         </Text>
       ) : (
         <>
