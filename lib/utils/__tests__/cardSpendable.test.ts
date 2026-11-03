@@ -12,6 +12,7 @@ import {
   baseEurcHeld,
   cardSpendableAssetsFor,
   sumCardSpendableUSD,
+  unreachableBaseHoldings,
 } from '@/lib/utils/cardSpendable';
 
 const SOUSD = ADDRESSES.fuse.vault;
@@ -314,6 +315,90 @@ describe('cardSpendableAssetsFor', () => {
 
     it('is zero before the balances load', () => {
       expect(baseEurcHeld(undefined, [baseDeployment({ enabled: false })])).toBe(0);
+    });
+  });
+
+  /** What the "Use your Base balance" banner and the declined receipt's Base fix add up. */
+  describe('unreachableBaseHoldings', () => {
+    const BASE_USDC = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+    const BASE_CBBTC = '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf';
+    /** On no list in this build: a token the backend allowlists after it shipped. */
+    const BASE_FUTURE = '0x00000000000000000000000000000000000000f0';
+
+    const onBase = (contractAddress: string, overrides: Partial<TokenBalance> = {}): TokenBalance =>
+      token({
+        contractTickerSymbol: 'TKN',
+        contractAddress,
+        balance: '37606313',
+        contractDecimals: 6,
+        quoteRate: 1,
+        chainId: base.id,
+        ...overrides,
+      });
+
+    const deployments = [
+      baseDeployment({
+        enabled: false,
+        spendTokens: [BASE_USDC, BASE_EURC.toLowerCase(), BASE_CBBTC, BASE_FUTURE],
+      }),
+    ];
+
+    it('finds USDC on Base the card cannot reach yet', () => {
+      expect(
+        unreachableBaseHoldings([onBase(BASE_USDC, { contractTickerSymbol: 'USDC' })], deployments),
+      ).toEqual([
+        {
+          address: BASE_USDC,
+          symbol: 'USDC',
+          amount: 37.606313,
+          valueUSD: 37.606313,
+          euroOnly: false,
+        },
+      ]);
+    });
+
+    it('follows the backend allowlist, so a token added later counts under its own ticker', () => {
+      const [holding] = unreachableBaseHoldings(
+        [onBase(BASE_FUTURE, { contractTickerSymbol: 'NEW', quoteRate: 2 })],
+        deployments,
+      );
+
+      expect(holding).toMatchObject({ symbol: 'NEW', valueUSD: 75.212626, euroOnly: false });
+    });
+
+    it('marks EURC as euro-only', () => {
+      expect(unreachableBaseHoldings([eurc()], deployments)).toEqual([
+        expect.objectContaining({ symbol: 'EURC', euroOnly: true }),
+      ]);
+    });
+
+    it('ignores tokens off the allowlist, off Base, or unpriced', () => {
+      expect(
+        unreachableBaseHoldings(
+          [
+            onBase('0x0000000000000000000000000000000000000002'),
+            onBase(BASE_USDC, { chainId: fuse.id }),
+            onBase(BASE_CBBTC, { quoteRate: 0 }),
+          ],
+          deployments,
+        ),
+      ).toEqual([]);
+    });
+
+    it('lists the richest holding first', () => {
+      const holdings = unreachableBaseHoldings(
+        [onBase(BASE_USDC), onBase(BASE_CBBTC, { balance: '1000000', quoteRate: 69_000 })],
+        deployments,
+      );
+
+      expect(holdings.map(holding => holding.address)).toEqual([BASE_CBBTC, BASE_USDC]);
+    });
+
+    it('is empty when the backend serves no Base allowlist', () => {
+      expect(
+        unreachableBaseHoldings([onBase(BASE_USDC)], [baseDeployment({ spendTokens: [] })]),
+      ).toEqual([]);
+      expect(unreachableBaseHoldings([onBase(BASE_USDC)], undefined)).toEqual([]);
     });
   });
 });

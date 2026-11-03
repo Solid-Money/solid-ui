@@ -3,6 +3,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { useWalletEligibility } from '@/hooks/useWalletEligibility';
 import { CardProvider } from '@/lib/types';
@@ -59,6 +60,7 @@ export function useHomePrompt({
   const isWirexCardholder = hasCard && provider === CardProvider.WIREX;
   const declinedPayment = useDeclinedPaymentPrompt(isWirexCardholder);
   const { eurc } = useUnusableEurc();
+  const unreachableBase = useUnreachableBaseBalance();
 
   const key = resolveHomePromptStep({
     hasCard,
@@ -74,6 +76,8 @@ export function useHomePrompt({
     eligibility,
     hasUncoveredDecline: isWirexCardholder && !!declinedPayment,
     holdsUnusableEurc: EURO_SPENDING_PROMPT_ENABLED && isWirexCardholder && eurc > 0,
+    // Not behind the euro flag: that held back euro copy, and this banner says nothing about euros.
+    holdsUnreachableBase: isWirexCardholder && unreachableBase.usd > 0,
   });
 
   if (!key || isHomePromptSnoozed(dismissedAt, key)) return null;

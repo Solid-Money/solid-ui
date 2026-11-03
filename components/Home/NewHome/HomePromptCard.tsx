@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import { scheduleOnRN } from 'react-native-worklets';
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
@@ -27,10 +28,14 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { DeclinedPaymentPrompt, useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { track } from '@/lib/analytics';
+import { showErrorToast } from '@/lib/errors';
 import { CardProvider } from '@/lib/types';
 import { formatCardCurrency } from '@/lib/utils/cardCurrency';
+import { UnreachableBaseHolding } from '@/lib/utils/cardSpendable';
 import {
   DismissibleHomePromptKey,
   HomePromptKey,
@@ -68,14 +73,25 @@ interface PromptContent {
    * along; this banner just never let anyone reach it.
    *
    * `href` is a redirect, which is what every banner but one does. `onPress` is
-   * for "Turn on euro spending", whose flow is a single signature with nothing to
+   * for "Use your Base balance", whose flow is a single signature with nothing to
    * navigate to; `busy` shows it in flight.
    */
   cta?: { label: string; href?: Href; onPress?: () => void; busy?: boolean };
 }
 
-/** The banners whose copy never changes. The two Wirex steps carry figures — see `wirexContent`. */
-type StaticPromptKey = Exclude<HomePromptKey, 'cashback' | 'card-declined' | 'euro-spending'>;
+/** The banners whose copy never changes. The Wirex steps carry figures — see `wirexContent`. */
+type WirexPromptKey = 'card-declined' | 'euro-spending' | 'base-spending';
+type StaticPromptKey = Exclude<HomePromptKey, 'cashback' | WirexPromptKey>;
+
+const isWirexPromptKey = (key: HomePromptKey): key is WirexPromptKey =>
+  key === 'card-declined' || key === 'euro-spending' || key === 'base-spending';
+
+/** "USDC", "USDC and cbBTC", "USDC, cbBTC and more" — what the Base balance is held in. */
+const holdingNames = (holdings: UnreachableBaseHolding[]): string => {
+  const symbols = holdings.map(holding => holding.symbol);
+  if (symbols.length <= 2) return symbols.join(' and ');
+  return `${symbols.slice(0, 2).join(', ')} and more`;
+};
 
 // Figma 28856:9574 / 25141:7265 — on ✕ the banner fades out and lifts 18pt before it goes:
 // opacity over 420ms ease-out, the lift over 460ms on the same quint curve the card hero uses.
@@ -209,13 +225,20 @@ const WIREX_ONBOARDING_CONTENT: Partial<Record<StaticPromptKey, PromptContent>> 
  * in, which renders nothing rather than a banner with blanks in it.
  */
 function wirexContent(
-  key: 'card-declined' | 'euro-spending',
+  key: WirexPromptKey,
   {
     declined,
     eurc,
+    base,
   }: {
     declined: DeclinedPaymentPrompt | null;
     eurc: number;
+    base: {
+      holdings: UnreachableBaseHolding[];
+      usd: number;
+      onTurnOn: () => void;
+      isTurningOn: boolean;
+    };
   },
 ): PromptContent | undefined {
   if (key === 'card-declined') {
@@ -231,6 +254,19 @@ function wirexContent(
       icon: <CardDeclined />,
       // The receipt is where the fix is — the right one of Add funds, Swap or Turn on.
       cta: { label: 'Fix it', href: cardTransactionDetailPath(transactionId) },
+    };
+  }
+
+  if (key === 'base-spending') {
+    if (base.usd <= 0) return undefined;
+    // The euro banner's layout, for every other token the Base instance spends. Turned on right
+    // here rather than on Main currency: nothing about it is a currency choice. Rounded down, as
+    // the EURC figure is: it is what the card would reach.
+    return {
+      title: 'Use your Base balance',
+      description: `Your ${formatCardCurrency(Math.floor(base.usd * 100) / 100, 'USD')} in ${holdingNames(base.holdings)} on Base can't be used by your card yet.`,
+      icon: <FundDollar />,
+      cta: { label: 'Turn on', onPress: base.onTurnOn, busy: base.isTurningOn },
     };
   }
 
@@ -278,6 +314,23 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
     promptKey === 'card-declined' && provider === CardProvider.WIREX,
   );
   const { eurc } = useUnusableEurc();
+  const unreachableBase = useUnreachableBaseBalance();
+  const baseSpend = useEuroSpendEnablement();
+
+  // One passkey prompt, then the banner goes by itself: the enablement refetches the deployments,
+  // which empties `unreachableBase` and moves the ladder on.
+  const turnOnBase = async () => {
+    try {
+      if (!(await baseSpend.enableAsync('home_banner'))) return;
+      Toast.show({
+        type: 'success',
+        text1: 'Your card can now use your Base balance',
+        props: { badgeText: '' },
+      });
+    } catch (error) {
+      void showErrorToast(error, { action: 'card_settings' });
+    }
+  };
 
   const opacity = useSharedValue(1);
   const lift = useSharedValue(0);
@@ -300,11 +353,17 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
   // A Wirex applicant without a card reads the onboarding's own words; Rain and every cardholder
   // read today's. `/cards/status` names the issuer from the first Sumsub session on.
   const isWirexApplicant = cardStatus?.provider === CardProvider.WIREX;
-  const content =
-    promptKey === 'card-declined' || promptKey === 'euro-spending'
-      ? wirexContent(promptKey, { declined, eurc })
-      : ((isWirexApplicant ? WIREX_ONBOARDING_CONTENT[promptKey] : undefined) ??
-        CONTENT[promptKey]);
+  const content = isWirexPromptKey(promptKey)
+    ? wirexContent(promptKey, {
+        declined,
+        eurc,
+        base: {
+          ...unreachableBase,
+          onTurnOn: () => void turnOnBase(),
+          isTurningOn: baseSpend.isEnabling,
+        },
+      })
+    : ((isWirexApplicant ? WIREX_ONBOARDING_CONTENT[promptKey] : undefined) ?? CONTENT[promptKey]);
   if (!content) return null;
 
   const { title, description, icon, cta } = content;
