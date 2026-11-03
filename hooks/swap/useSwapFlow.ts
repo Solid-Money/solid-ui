@@ -219,9 +219,10 @@ function useFuseFlowModel(): SwapFlowModel {
   const derived = useDerivedSwapInfo();
   const { tierName } = useSwapFeeRate();
   const { isExpertMode } = useUserState();
-  const { typedValue, inputId, outputId } = useSwapState(
+  const { typedValue, independentField, inputId, outputId } = useSwapState(
     useShallow(state => ({
       typedValue: state.typedValue,
+      independentField: state.independentField,
       inputId: state[SwapField.INPUT].currencyId,
       outputId: state[SwapField.OUTPUT].currencyId,
     })),
@@ -364,6 +365,10 @@ function useFuseFlowModel(): SwapFlowModel {
     fromBalance,
     maxValue: maxOf(fromAsset, fromBalance),
     typedValue,
+    quotedFromAmount:
+      independentField === SwapField.OUTPUT && trade && !isQuoting
+        ? trade.inputAmount.toExact()
+        : undefined,
     toAmount,
     fromUsd: usdAt(typed, fromAsset),
     toUsd: usdAt(toAmount, toAsset),

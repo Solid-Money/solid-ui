@@ -30,10 +30,12 @@ jest.mock('@/lib/utils', () => ({
 jest.mock('@/hooks/swap/useSwapFlow', () => ({ useSwapFlow: () => mockModel }));
 jest.mock('@/store/swapStore', () => ({
   useSwapActionHandlers: () => ({ onSwitchTokens: jest.fn(), onUserInput: mockUserInput }),
-  useSwapState: (selector: any) => selector({ actions: { setModal: mockSetModal } }),
+  useSwapState: (selector: any) =>
+    selector({ independentField: mockIndependentField, actions: { setModal: mockSetModal } }),
 }));
 
 const mockSetModal = jest.fn();
+let mockIndependentField = 'INPUT';
 const mockUserInput = jest.fn();
 const USD_YIELD = {
   chainId: 122,
@@ -170,6 +172,41 @@ it('reads the thousands commas it shows as grouping, not as a point', () => {
   // Select all and paste a decimal-comma amount.
   act(() => input.props.onChangeText('18,43'));
   expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '18.43');
+});
+
+describe('with an amount typed into "You get" on the old form', () => {
+  afterEach(() => {
+    mockIndependentField = 'INPUT';
+  });
+
+  it('shows no pay amount and holds the button while it is priced', () => {
+    mockIndependentField = 'OUTPUT';
+    mockModel = model({ typedValue: '10', isQuoting: true, toAmount: undefined });
+    mount();
+    expect(text()).toContain('Getting price…');
+    expect(button().props.disabled).toBe(true);
+    expect(mockUserInput).not.toHaveBeenCalled();
+  });
+
+  it('turns it into what you pay at its price, without trimming it as a pay amount', () => {
+    mockIndependentField = 'OUTPUT';
+    mockModel = model({
+      typedValue: '10.1234567',
+      quotedFromAmount: '9.287',
+      toAmount: 10.1234567,
+    });
+    mount();
+    expect(mockUserInput).toHaveBeenCalledTimes(1);
+    expect(mockUserInput).toHaveBeenCalledWith('INPUT', '9.287');
+    expect(button().props.disabled).toBe(true);
+  });
+
+  it('drops it where nothing prices it', () => {
+    mockIndependentField = 'OUTPUT';
+    mockModel = model({ route: 'lifi', typedValue: '10', toAmount: undefined });
+    mount();
+    expect(mockUserInput).toHaveBeenCalledWith('INPUT', '');
+  });
 });
 
 it('trims an amount to the decimals of the coin now being paid', () => {

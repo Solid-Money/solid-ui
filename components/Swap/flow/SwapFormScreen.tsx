@@ -36,7 +36,12 @@ const balanceOf = (asset: SwapAsset | undefined): number | undefined =>
 const SwapFormScreen: React.FC = () => {
   const model = useSwapFlow();
   const { onSwitchTokens, onUserInput } = useSwapActionHandlers();
-  const { setModal } = useSwapState(useShallow(state => ({ setModal: state.actions.setModal })));
+  const { setModal, independentField } = useSwapState(
+    useShallow(state => ({
+      setModal: state.actions.setModal,
+      independentField: state.independentField,
+    })),
+  );
   const { fromAsset, toAsset, typedValue, error, isQuoting } = model;
 
   const fromName = fromAsset ? assetDisplayName(fromAsset) : '';
@@ -55,13 +60,21 @@ const SwapFormScreen: React.FC = () => {
       ),
     [onUserInput, typedValue, fromAsset?.decimals],
   );
+  // This form takes what you pay. An amount typed into "You get" (the old form,
+  // still shown for wrap and migration pairs, allows that) becomes what you pay
+  // at its price once priced, or goes where nothing prices it.
+  const typedIntoGet = independentField === SwapField.OUTPUT;
+  useEffect(() => {
+    if (!typedIntoGet || isQuoting) return;
+    onUserInput(SwapField.INPUT, model.quotedFromAmount ?? '');
+  }, [typedIntoGet, isQuoting, model.quotedFromAmount, onUserInput]);
   // A coin with fewer decimals can't carry what was typed for the last one: trim
   // the amount as typing it now would, so what shows is what gets quoted.
   useEffect(() => {
-    if (!typedValue || !fromAsset) return;
+    if (typedIntoGet || !typedValue || !fromAsset) return;
     const fitted = sanitizeAmountInput(typedValue, fromAsset.decimals);
     if (fitted !== typedValue) onUserInput(SwapField.INPUT, fitted);
-  }, [typedValue, fromAsset, onUserInput]);
+  }, [typedIntoGet, typedValue, fromAsset, onUserInput]);
   const handleMax = useCallback(() => {
     if (model.maxValue) onUserInput(SwapField.INPUT, model.maxValue);
   }, [model.maxValue, onUserInput]);
@@ -108,7 +121,7 @@ const SwapFormScreen: React.FC = () => {
 
   const button = (() => {
     if (!typedValue) return { label: 'Enter an amount', disabled: true };
-    if (isQuoting) return { label: 'Getting price…', disabled: true };
+    if (isQuoting || typedIntoGet) return { label: 'Getting price…', disabled: true };
     if (error && PICK_ANOTHER.has(error.code)) {
       return { label: 'Pick another coin', disabled: false, onPress: () => openPicker('get') };
     }
@@ -132,9 +145,10 @@ const SwapFormScreen: React.FC = () => {
             fromBalance !== undefined ? `${formatSwapAmount(fromBalance)} ${fromName}` : undefined
           }
           onMax={model.maxValue && typedValue !== model.maxValue ? handleMax : undefined}
-          value={typedValue}
+          value={typedIntoGet ? '' : typedValue}
           onChangeText={handleChangeText}
-          usd={typedValue ? model.fromUsd : undefined}
+          pendingLabel={typedIntoGet && typedValue ? 'Getting price…' : undefined}
+          usd={typedValue && !typedIntoGet ? model.fromUsd : undefined}
           invalid={notEnough}
           onPickAsset={() => openPicker('pay')}
         />

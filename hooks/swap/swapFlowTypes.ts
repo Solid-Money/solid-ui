@@ -35,6 +35,12 @@ export interface SwapFlowModel {
   /** The whole balance as typed text; gas is sponsored, so all of it can go. */
   maxValue: string | undefined;
   typedValue: string;
+  /**
+   * What "You pay" comes to when the amount was typed into "You get", which the
+   * old form (still shown for wrap and migration pairs) allows. Only Fuse prices
+   * that; undefined otherwise, and until priced.
+   */
+  quotedFromAmount?: string;
   /** Human units of what arrives; undefined until priced. */
   toAmount: number | undefined;
   fromUsd: number | undefined;
