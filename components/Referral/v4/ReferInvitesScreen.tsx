@@ -20,7 +20,13 @@ import {
 import { cn } from '@/lib/utils';
 
 import ReferShareFooter from './ReferShareFooter';
-import { FriendAvatar, ReferDivider, ReferHeader, ReferList } from './ReferV4Primitives';
+import {
+  FriendAvatar,
+  ReferDivider,
+  ReferHeader,
+  ReferList,
+  ReferStats,
+} from './ReferV4Primitives';
 
 import type { ReferralV4FriendRow, ReferralV4Terms } from '@/lib/types';
 
@@ -136,21 +142,14 @@ export default function ReferInvitesScreen() {
             ) : null}
           </View>
 
-          <View className="flex-row gap-3 overflow-hidden rounded-[20px] bg-card px-[18px] py-[14px]">
-            <View className="flex-1 gap-0.5">
-              <Text className="text-[13px] text-white/50">This month</Text>
-              <Text className="text-[16px] font-semibold text-white">
-                {formatUsdCents(totals.thisMonthUsd)}
-              </Text>
-            </View>
-            <View className="flex-1 gap-0.5">
-              <Text className="text-[13px] text-white/50">Next payout</Text>
-              {/* No date while payouts are switched off: there is no next one yet. */}
-              <Text className="text-[16px] font-semibold text-white">
-                {terms.paused ? 'Paused' : formatPayoutDay(totals.nextPayoutAt) || '—'}
-              </Text>
-            </View>
-          </View>
+          {/* Figma 30305:14274. No date while payouts are switched off: there is no next one yet. */}
+          <ReferStats
+            left={{ label: 'This month', value: formatUsdCents(totals.thisMonthUsd) }}
+            right={{
+              label: 'Next payout',
+              value: terms.paused ? 'Paused' : formatPayoutDay(totals.nextPayoutAt) || '—',
+            }}
+          />
 
           {friendCount > 0 ? (
             <ReferList>

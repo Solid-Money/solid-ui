@@ -20,6 +20,8 @@ import {
   ReferAmountChip,
   ReferDivider,
   type ReferRewardKind,
+  type ReferRule,
+  ReferRules,
   ReferTermsLink,
   RewardIcon,
 } from './ReferV4Primitives';
@@ -52,13 +54,14 @@ export const rewardCopy = (
 ): { chip: string; description: string } => {
   switch (kind) {
     case 'spendShare':
+      // When it is paid is the rules card's to say.
       return {
         chip: `${formatRate(terms.spendShare.rate)} of spend`,
         description: `Get ${formatRate(
           terms.spendShare.rate,
-        )} of everything your friend spends with their card. Paid every ${payoutWeekdayName(
-          terms,
-        )}, up to ${formatUsdWhole(terms.spendShare.capPerFriendUsd)} per friend.`,
+        )} of everything your friend spends with their card, up to ${formatUsdWhole(
+          terms.spendShare.capPerFriendUsd,
+        )} per friend.`,
       };
     case 'welcome': {
       const { referrerUsd, friendUsd, spendTargetUsd, merchantTarget, windowDays } = terms.welcome;
@@ -95,6 +98,64 @@ export const rewardCopy = (
           terms.upgrade.ultraUsd,
         )} when they get Ultra.`,
       };
+  }
+};
+
+const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`;
+
+/**
+ * When and how each reward is paid, from the live terms (Figma "Payout rules"):
+ * a bonus waits `holdDays` from when it is earned and is credited at the next
+ * weekly run; spend share goes out at every run, in soFUSE. An upgrade by FUSE
+ * lock is earned once the FUSE has been locked `lockHoldDays`, and then waits
+ * the same hold.
+ */
+export const rewardRules = (kind: ReferRewardKind, summary: ReferralV4Summary): ReferRule[] => {
+  const { terms } = summary;
+  const weekday = payoutWeekdayName(terms);
+  const hold = Math.max(0, terms.holdDays || 0);
+  const held = hold > 0 ? `Unlocks ${days(hold)} later, paid on ${weekday}` : `Paid on ${weekday}`;
+
+  switch (kind) {
+    case 'spendShare':
+      return [{ icon: 'clock', text: `Paid every ${weekday} in soFUSE` }];
+    case 'welcome': {
+      const limit = summary.bonusLimit;
+      return [
+        { icon: 'clock', text: held },
+        ...(limit
+          ? [
+              {
+                icon: 'friends' as const,
+                text: `${limit.used} of ${limit.limit} welcome ${
+                  limit.limit === 1 ? 'bonus' : 'bonuses'
+                } used`,
+              },
+            ]
+          : []),
+      ];
+    }
+    case 'bigSpender':
+      return [{ icon: 'clock', text: held }];
+    case 'upgrade': {
+      const lock = Math.max(0, terms.upgrade.lockHoldDays || 0);
+      return [
+        {
+          icon: 'clock',
+          text:
+            hold > 0
+              ? `Subscription: paid ${days(hold)} later, on ${weekday}`
+              : `Subscription: paid on ${weekday}`,
+        },
+        {
+          icon: 'clock',
+          text:
+            hold > 0
+              ? `FUSE lock: paid ${days(hold)} after ${days(lock)} locked`
+              : `FUSE lock: paid after ${days(lock)} locked`,
+        },
+      ];
+    }
   }
 };
 
@@ -186,13 +247,15 @@ interface ReferRewardSheetProps {
 }
 
 /**
- * One reward explained (Figma 29591:13291 / 13396 / 13499 / 13602), with the
- * friends who have earned it for the user (29602:13259) or the empty state.
+ * One reward explained (Figma 30200:16102 / 16248 / 16399 / 16543): what it
+ * pays, when it is paid, and the friends who have earned it for the user
+ * (30200:17013) or the empty state.
  */
 const ReferRewardSheet = ({ kind, onClose, summary }: ReferRewardSheetProps) => {
   // The last kind stays rendered while the sheet animates closed.
   const shown: ReferRewardKind = kind ?? 'welcome';
   const { chip, description } = rewardCopy(shown, summary.terms);
+  const rules = rewardRules(shown, summary);
   const boost = boostLine(shown, summary.terms);
   const rows = friendRows(shown, summary);
   const visible = rows.slice(0, MAX_FRIEND_ROWS);
@@ -248,6 +311,9 @@ const ReferRewardSheet = ({ kind, onClose, summary }: ReferRewardSheetProps) => 
       <Text className="mt-3 text-center text-[15px] leading-[21px] text-white/60">
         {description}
       </Text>
+      <View className="mt-4 w-full">
+        <ReferRules rules={rules} />
+      </View>
       <View className="mt-[22px] w-full">{list}</View>
       <View className="mt-4">
         <ReferTermsLink />
