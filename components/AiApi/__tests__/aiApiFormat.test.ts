@@ -5,6 +5,7 @@ import {
   aiApiModelTag,
   aiApiSharedTierRate,
   formatAiApiCashback,
+  formatAiApiCashbackNote,
   formatAiApiCount,
   formatAiApiDay,
   formatAiApiDiscount,
@@ -192,6 +193,37 @@ describe('cashback copy', () => {
     expect(aiApiSharedTierRate(tiers)).toBe(0.5);
     expect(aiApiSharedTierRate([tiers[0], { ...tiers[1], rate: 0.6 }])).toBeNull();
     expect(aiApiSharedTierRate([])).toBeNull();
+  });
+
+  it('names every tier’s cap in the sheet note when every tier shares the rate', () => {
+    expect(
+      formatAiApiCashbackNote({
+        cashbackRate: 0.5,
+        cashbackTiers: tiers,
+        cashbackMonthlyCapUsd: 50,
+      }),
+    ).toBe(
+      'You get 50% back on every model, up to $50 a month on Core, $100 on Prime and $200 on Ultra.',
+    );
+  });
+
+  it('falls back to the user’s own cap when tier rates differ, or none are sent', () => {
+    const differing = [{ ...tiers[0], rate: 0.3 }, ...tiers.slice(1)];
+    const own = 'You get 50% back on every model, up to $200 a month.';
+    expect(
+      formatAiApiCashbackNote({
+        cashbackRate: 0.5,
+        cashbackTiers: differing,
+        cashbackMonthlyCapUsd: 200,
+      }),
+    ).toBe(own);
+    expect(
+      formatAiApiCashbackNote({ cashbackRate: 0.5, cashbackTiers: [], cashbackMonthlyCapUsd: 200 }),
+    ).toBe(own);
+    expect(formatAiApiCashbackNote({ cashbackRate: 0.5, cashbackMonthlyCapUsd: 200 })).toBe(own);
+    expect(formatAiApiCashbackNote({ cashbackRate: 0.5, cashbackMonthlyCapUsd: 0 })).toBe(
+      'You get 50% back on every model.',
+    );
   });
 
   it('spells out small counts to open a sentence', () => {

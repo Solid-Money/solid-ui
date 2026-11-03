@@ -15,10 +15,8 @@ import {
   aiApiModelDiscount,
   aiApiModelIsFree,
   aiApiModelTag,
+  formatAiApiCashbackNote,
   formatAiApiCount,
-  formatAiApiLimit,
-  formatAiApiRate,
-  formatAiApiTierCaps,
   formatAiApiTokenPrice,
 } from './aiApiFormat';
 import AiApiModelLogo from './AiApiModelLogo';
@@ -243,28 +241,6 @@ const ModelPriceCard = ({ model }: { model: AiApiModel }) => {
   );
 };
 
-/**
- * `You get 50% back on every model, up to $50 a month on Core, $100 on Prime
- * and $200 on Ultra.` Without every tier's terms (an older backend), the
- * user's own cap stands in.
- */
-const cashbackNote = ({
-  cashbackRate,
-  cashbackTiers,
-  cashbackMonthlyCapUsd,
-}: {
-  cashbackRate: number;
-  cashbackTiers?: AiApiCashbackTier[];
-  cashbackMonthlyCapUsd: number;
-}): string => {
-  const caps = cashbackTiers
-    ? formatAiApiTierCaps(cashbackTiers)
-    : cashbackMonthlyCapUsd > 0
-      ? `up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
-      : null;
-  return `You get ${formatAiApiRate(cashbackRate)} back on every model${caps ? `, ${caps}` : ''}.`;
-};
-
 const ModelsSheetBody = ({
   models,
   cashbackRate,
@@ -316,7 +292,7 @@ const ModelsSheetBody = ({
         <View className="flex-row items-start gap-2.5 rounded-[14px] bg-[rgba(148,242,127,0.1)] px-3.5 py-3">
           <Percent size={18} color={AI_API_BRAND} strokeWidth={AI_API_ICON_STROKE} />
           <Text className="flex-1 text-[14px] leading-[19px] text-brand">
-            {cashbackNote({ cashbackRate, cashbackTiers, cashbackMonthlyCapUsd })}
+            {formatAiApiCashbackNote({ cashbackRate, cashbackTiers, cashbackMonthlyCapUsd })}
           </Text>
         </View>
       </View>

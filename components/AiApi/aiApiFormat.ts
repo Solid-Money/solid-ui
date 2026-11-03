@@ -127,6 +127,31 @@ export const formatAiApiTierCaps = (
 export const aiApiSharedTierRate = (tiers: readonly { rate: number }[]): number | null =>
   tiers.length > 0 && tiers.every(tier => tier.rate === tiers[0].rate) ? tiers[0].rate : null;
 
+/**
+ * The price sheet's note: `You get 50% back on every model, up to $50 a month
+ * on Core, $100 on Prime and $200 on Ultra.` Every tier's cap follows the
+ * user's rate only when every tier shares it, as the intro's footnote does.
+ * Otherwise, or without every tier's terms (an older backend), the user's own
+ * cap stands in.
+ */
+export const formatAiApiCashbackNote = ({
+  cashbackRate,
+  cashbackTiers,
+  cashbackMonthlyCapUsd,
+}: {
+  cashbackRate: number;
+  cashbackTiers?: readonly { tier: string; rate: number; monthlyCapUsd: number }[];
+  cashbackMonthlyCapUsd: number;
+}): string => {
+  const caps =
+    cashbackTiers && aiApiSharedTierRate(cashbackTiers) !== null
+      ? formatAiApiTierCaps(cashbackTiers)
+      : cashbackMonthlyCapUsd > 0
+        ? `up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
+        : null;
+  return `You get ${formatAiApiRate(cashbackRate)} back on every model${caps ? `, ${caps}` : ''}.`;
+};
+
 /** `Nov 1` — when limits reset and cashback lands. Dates are UTC days. */
 export const formatAiApiShortDate = (iso: string | Date): string =>
   shortDate.format(typeof iso === 'string' ? new Date(iso) : iso);
