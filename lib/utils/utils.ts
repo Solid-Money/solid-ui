@@ -13,6 +13,7 @@ import {
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
 } from '@/lib/config';
+import { readAccountSuspended } from '@/lib/errors/accountSuspended';
 import { AuthTokens, CardProvider, CardResponse, RainContractResponseDto, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -162,6 +163,24 @@ export const setIsLoggingOut = (value: boolean) => {
 
 export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
+};
+
+// Called instead of the logout handler when the backend says the account is
+// suspended, so the user is told why rather than that their session expired.
+let globalSuspendedHandler: (() => void) | null = null;
+
+export const setGlobalSuspendedHandler = (handler: () => void) => {
+  globalSuspendedHandler = handler;
+};
+
+/**
+ * Sign out and say the account is suspended. Falls back to the plain logout
+ * when no suspended handler is registered (a test, or before the app mounts).
+ */
+const endSuspendedSession = () => {
+  if (isLoggingOut) return;
+  if (globalSuspendedHandler) globalSuspendedHandler();
+  else globalLogoutHandler?.();
 };
 
 export const isHTTPError = (error: any, status: number) => {
@@ -332,6 +351,15 @@ export const withRefreshToken = async <T>(
       throw error;
     }
 
+    // Suspended by an admin: the token is genuine, so refreshing it cannot help.
+    // End the session and say why, instead of letting every screen fail on its own.
+    if (isHTTPError(error, 403) || isHTTPError(error?.response, 403)) {
+      if (await readAccountSuspended(error)) {
+        endSuspendedSession();
+        throw error;
+      }
+    }
+
     if (!isHTTPError(error, 401)) {
       console.error(error);
       throw error;
@@ -345,6 +373,10 @@ export const withRefreshToken = async <T>(
     try {
       await refreshSessionTokens();
     } catch (refreshTokenError) {
+      if (await readAccountSuspended(refreshTokenError)) {
+        endSuspendedSession();
+        throw refreshTokenError;
+      }
       if (onError) {
         onError();
       } else if (

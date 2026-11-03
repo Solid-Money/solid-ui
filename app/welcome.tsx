@@ -17,6 +17,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { ACCOUNT_SUSPENDED_MESSAGE, ACCOUNT_SUSPENDED_TITLE } from '@/lib/errors/accountSuspended';
 import { eclipseUsername } from '@/lib/utils/utils';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -71,6 +72,18 @@ function WelcomeScreen() {
         type: 'error',
         text1: 'Session expired',
         text2: 'Due to inactivity. Please login again.',
+        props: {
+          badgeText: '',
+        },
+      });
+    } else if (session === 'suspended') {
+      // Not "sign in again": an admin suspended the account, and signing in is
+      // refused until support lifts it.
+      Toast.show({
+        type: 'error',
+        text1: ACCOUNT_SUSPENDED_TITLE,
+        text2: ACCOUNT_SUSPENDED_MESSAGE,
+        visibilityTime: 10_000,
         props: {
           badgeText: '',
         },

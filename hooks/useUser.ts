@@ -44,6 +44,7 @@ import {
   mergeCredentialIds,
   parseStampHeaderValueCredentialId,
   setGlobalLogoutHandler,
+  setGlobalSuspendedHandler,
   setIsLoggingOut,
   withRefreshToken,
 } from '@/lib/utils';
@@ -751,52 +752,60 @@ const useUser = (): UseUserReturn => {
     router.replace(path.ONBOARDING);
   }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
-  const handleSessionExpired = useCallback(() => {
-    // Nobody signed in, so there is no session to have expired. Requests made
-    // without one still come back 401 and land here, and the redirect below
-    // used to pull a signed-out visitor off whatever page they were on, about
-    // a second after it loaded: the "open Solid in your browser" screen (so
-    // in-app browsers went on to sign up and failed at the passkey step),
-    // account recovery, or a signup link.
-    if (!useUserStore.getState().users.some(existingUser => existingUser.selected)) return;
+  /**
+   * End the session the server refused. `reason` decides only what the welcome
+   * screen says: an expired session can be signed back into, a suspended
+   * account cannot until support lifts it.
+   */
+  const handleSessionEnded = useCallback(
+    (reason: 'expired' | 'suspended') => {
+      // Nobody signed in, so there is no session to have expired. Requests made
+      // without one still come back 401 and land here, and the redirect below
+      // used to pull a signed-out visitor off whatever page they were on, about
+      // a second after it loaded: the "open Solid in your browser" screen (so
+      // in-app browsers went on to sign up and failed at the passkey step),
+      // account recovery, or a signup link.
+      if (!useUserStore.getState().users.some(existingUser => existingUser.selected)) return;
 
-    // Suppress re-entrant logout handling: clearing the cache below can make
-    // still-mounted screens refetch, and those requests would 401 on the now
-    // dead session and call this handler again. The flag is reset on next login.
-    setIsLoggingOut(true);
+      // Suppress re-entrant logout handling: clearing the cache below can make
+      // still-mounted screens refetch, and those requests would 401 on the now
+      // dead session and call this handler again. The flag is reset on next login.
+      setIsLoggingOut(true);
 
-    clearBalance();
-    // Clear tokens for the selected user before unselecting
-    if (user) {
-      updateUser({ ...user, tokens: undefined, selected: false });
-    }
-    unselectUser();
-    clearKycLinkId();
-    // Purge cached queries so a re-login (possibly as a different user) starts
-    // from a clean cache instead of the expired session's data.
-    queryClient.clear();
-    usePointsStore.getState().reset();
-    useStoreReviewStore.getState().reset();
-    intercom?.shutdown();
-    intercom?.boot();
-    const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
+      clearBalance();
+      // Clear tokens for the selected user before unselecting
+      if (user) {
+        updateUser({ ...user, tokens: undefined, selected: false });
+      }
+      unselectUser();
+      clearKycLinkId();
+      // Purge cached queries so a re-login (possibly as a different user) starts
+      // from a clean cache instead of the expired session's data.
+      queryClient.clear();
+      usePointsStore.getState().reset();
+      useStoreReviewStore.getState().reset();
+      intercom?.shutdown();
+      intercom?.boot();
+      const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
 
-    if (hasPasskeyUsers) {
-      router.replace({ pathname: '/welcome', params: { session: 'expired' } });
-    } else {
-      router.replace(path.ONBOARDING);
-    }
-  }, [
-    clearBalance,
-    unselectUser,
-    updateUser,
-    clearKycLinkId,
-    intercom,
-    user,
-    users,
-    router,
-    queryClient,
-  ]);
+      if (hasPasskeyUsers) {
+        router.replace({ pathname: '/welcome', params: { session: reason } });
+      } else {
+        router.replace(path.ONBOARDING);
+      }
+    },
+    [
+      clearBalance,
+      unselectUser,
+      updateUser,
+      clearKycLinkId,
+      intercom,
+      user,
+      users,
+      router,
+      queryClient,
+    ],
+  );
 
   const handleDeleteAccount = useCallback(async () => {
     try {
@@ -822,8 +831,9 @@ const useUser = (): UseUserReturn => {
   }, [users, removeUsers, clearKycLinkId, queryClient, router]);
 
   useEffect(() => {
-    setGlobalLogoutHandler(handleSessionExpired);
-  }, [handleSessionExpired]);
+    setGlobalLogoutHandler(() => handleSessionEnded('expired'));
+    setGlobalSuspendedHandler(() => handleSessionEnded('suspended'));
+  }, [handleSessionEnded]);
 
   return {
     user,
