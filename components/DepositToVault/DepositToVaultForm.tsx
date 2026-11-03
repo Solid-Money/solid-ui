@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
+import { getBridgeTokenDecimals } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { isStablecoinSymbol } from '@/constants/stablecoins';
@@ -36,6 +37,7 @@ import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import useUser from '@/hooks/useUser';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
@@ -82,6 +84,7 @@ function DepositToVaultForm() {
     principalToken,
     depositFromSolid,
     depositSourceChosen,
+    externalWalletAddress,
     setPrincipalToken,
     setSrcChainId,
     setDepositSourceChosen,
@@ -93,11 +96,13 @@ function DepositToVaultForm() {
       principalToken: state.principalToken,
       depositFromSolid: state.depositFromSolid,
       depositSourceChosen: state.depositSourceChosen,
+      externalWalletAddress: state.externalWallet.address,
       setPrincipalToken: state.setPrincipalToken,
       setSrcChainId: state.setSrcChainId,
       setDepositSourceChosen: state.setDepositSourceChosen,
     })),
   );
+  const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
@@ -566,6 +571,7 @@ function DepositToVaultForm() {
   const {
     amountOut: previewAmountOut,
     isLoading: isPreviewDepositLoading,
+    isQuoteUnavailable,
     routingFee,
   } = usePreviewDeposit(
     // The preview quotes a route into USDC, which a EURC deposit never takes:
@@ -573,6 +579,11 @@ function DepositToVaultForm() {
     isEurVault ? '0' : watchedAmount || '0',
     selectedTokenInfo?.address,
     normalizedSelection.chainId,
+    // LI.FI simulates the route from the wallet the deposit comes from.
+    depositFromSolid ? user?.safeAddress : externalWalletAddress,
+    normalizedSelection.chainId
+      ? getBridgeTokenDecimals(normalizedSelection.chainId, selectedTokenInfo.name)
+      : undefined,
   );
 
   // Use vault's accountant rate for display; amountOut from preview (USDC + LiFi) or vault rate (e.g. FUSE)
@@ -583,6 +594,8 @@ function DepositToVaultForm() {
   const isAmountOutLoading =
     vault.name === 'USDC' ? isPreviewDepositLoading : vaultExchangeRate === undefined;
   const displayRate = vault.name === 'USDC' ? vaultExchangeRate : vaultExchangeRate;
+  // With no route quoted there is no amount to show, and 0 reads as a real one.
+  const showNoQuote = vault.name === 'USDC' && isQuoteUnavailable;
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -795,6 +808,8 @@ function DepositToVaultForm() {
                       <Text className="text-lg font-semibold">
                         {isAmountOutLoading ? (
                           <Skeleton className="h-7 w-20 bg-white/20" />
+                        ) : showNoQuote ? (
+                          '—'
                         ) : isScreenMedium ? (
                           compactNumberFormat(amountOut || 0)
                         ) : (
@@ -823,9 +838,11 @@ function DepositToVaultForm() {
                       <Skeleton className="h-7 w-20 bg-white/20" />
                     ) : (
                       <Text className="text-lg font-semibold">
-                        {vault.name === 'USDC'
-                          ? `$${formatNumber(routingFee)}`
-                          : `${getVaultCurrencySymbol(vault.type)}0`}
+                        {showNoQuote
+                          ? '—'
+                          : vault.name === 'USDC'
+                            ? `$${formatNumber(routingFee)}`
+                            : `${getVaultCurrencySymbol(vault.type)}0`}
                       </Text>
                     )}
                   </View>
