@@ -9,7 +9,7 @@ export type ApproveCall = {
 };
 
 /**
- * Build the ERC-20 approval that lets the backend pull a deposit out of the
+ * Build the ERC-20 approvals that let the backend pull a deposit out of the
  * Solid wallet.
  *
  * It approves `current allowance + amount` rather than the bare amount, because
@@ -19,8 +19,13 @@ export type ApproveCall = {
  * it, and the first deposit could then never be settled - it retried against a
  * zero allowance until it died. Adding keeps concurrent deposits independent
  * while still leaving no standing allowance once each pull has taken its share.
+ *
+ * When an allowance is already standing, it is cleared to zero first, in the
+ * same batch. USDT on Ethereum reverts any `approve` that moves an allowance
+ * from one non-zero value to another, so without the reset every deposit made
+ * while an earlier one was unpulled failed in simulation.
  */
-export const buildDepositApproval = async ({
+export const buildDepositApprovals = async ({
   tokenAddress,
   owner,
   spender,
@@ -32,7 +37,7 @@ export const buildDepositApproval = async ({
   spender: Address;
   amount: bigint;
   chainId: number;
-}): Promise<ApproveCall> => {
+}): Promise<ApproveCall[]> => {
   let current = 0n;
   try {
     current = await getTokenAllowance(tokenAddress, owner, spender, chainId);
@@ -45,13 +50,15 @@ export const buildDepositApproval = async ({
   // otherwise overflow uint256 and revert.
   const total = current > maxUint256 - amount ? maxUint256 : current + amount;
 
-  return {
+  const approve = (value: bigint): ApproveCall => ({
     to: tokenAddress,
     data: encodeFunctionData({
       abi: erc20Abi,
       functionName: 'approve',
-      args: [spender, total],
+      args: [spender, value],
     }),
     value: 0n,
-  };
+  });
+
+  return current > 0n ? [approve(0n), approve(total)] : [approve(total)];
 };

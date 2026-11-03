@@ -8,7 +8,7 @@ import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
-import { buildDepositApproval } from '@/lib/deposit/allowance';
+import { buildDepositApprovals } from '@/lib/deposit/allowance';
 import {
   captureDepositError,
   depositBreadcrumb,
@@ -164,7 +164,7 @@ const useDepositFromSolidUsdc = (
             ? base
             : ({ id: srcChainId } as any);
       const smartAccountClient = await safeAA(chain, user!.suborgId, user!.signWith);
-      const approveTransaction = await buildDepositApproval({
+      const approveTransactions = await buildDepositApprovals({
         tokenAddress,
         owner: safeAddress,
         spender,
@@ -177,7 +177,7 @@ const useDepositFromSolidUsdc = (
 
       const result = await executeTransactions(
         smartAccountClient,
-        [approveTransaction],
+        approveTransactions,
         'Approve failed',
         chain,
         userOpHash => {
