@@ -128,7 +128,8 @@ export interface CrossChainSendQuote {
   nativeFee: string;
   /** nativeFee plus headroom; the paymaster reverts above it. */
   maxNativeFee: string;
-  fuseUsdPrice: number;
+  /** USD per FUSE on a send from Fuse; absent on a send from Ethereum, Base or BNB Chain. */
+  fuseUsdPrice?: number;
   /** Route credit at quote time. */
   maxAmountLD: string;
   etaMinutes: number;
