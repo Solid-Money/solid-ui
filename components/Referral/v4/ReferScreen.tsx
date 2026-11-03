@@ -30,11 +30,13 @@ import ReferRewardSheet from './ReferRewardSheet';
 import ReferShareFooter from './ReferShareFooter';
 import {
   FriendAvatar,
+  ReferDivider,
   ReferHeader,
   ReferIcon,
   ReferNote,
   ReferProgressBar,
   type ReferRewardKind,
+  ReferStats,
   RewardIcon,
 } from './ReferV4Primitives';
 
@@ -59,52 +61,43 @@ interface TileProps {
   onPress: (kind: ReferRewardKind) => void;
 }
 
-/** One of the four reward tiles (Figma "Reward / …"). Tapping opens its sheet. */
+/**
+ * One of the four reward tiles (Figma "Reward / …", 30200:16043): the icon on
+ * its own row, then what it is and what it pays. Tapping opens its sheet.
+ */
 const RewardTile = ({ kind, label, value, caption, earnedUsd, onPress }: TileProps) => (
   <Pressable
     onPress={() => onPress(kind)}
     accessibilityRole="button"
-    accessibilityLabel={`${label}: ${value} ${caption}`}
-    className="flex-1 gap-3 overflow-hidden rounded-[22px] bg-card p-4 active:opacity-80 web:hover:bg-card-hover"
+    accessibilityLabel={`${label}: ${value} ${caption}${
+      earnedUsd !== null ? `, earned ${formatUsdCents(earnedUsd)}` : ''
+    }`}
+    className="flex-1 gap-[14px] overflow-hidden rounded-[22px] bg-card p-[14px] active:opacity-80 web:hover:bg-card-hover"
   >
-    <View className="flex-row items-center gap-1.5">
-      <RewardIcon kind={kind} size={20} />
-      <Text className="flex-1 text-[12px] font-medium text-white/70" numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
+    <RewardIcon kind={kind} size={32} />
     <View className="gap-0.5">
+      <Text className="text-[14px] text-white/70">{label}</Text>
       <Text className="text-[20px] font-semibold leading-[24px] text-white">{value}</Text>
       <Text className="text-[12px] leading-[16px] text-white/50">{caption}</Text>
+      {earnedUsd !== null ? (
+        <Text
+          className={cn(
+            'mt-2 text-[12px] font-medium',
+            earnedUsd > 0 ? 'text-brand' : 'text-white/40',
+          )}
+        >
+          Earned {formatUsdCents(earnedUsd)}
+        </Text>
+      ) : null}
     </View>
-    {earnedUsd !== null ? (
-      <Text
-        className={cn('text-[12px] font-medium', earnedUsd > 0 ? 'text-brand' : 'text-white/40')}
-      >
-        Earned {formatUsdCents(earnedUsd)}
-      </Text>
-    ) : null}
   </Pressable>
 );
 
 /** This month and lifetime, side by side. */
-const TotalsCard = ({ summary }: { summary: ReferralV4Summary }) => (
-  <View className="flex-row items-center overflow-hidden rounded-[20px] bg-card p-4">
-    <View className="flex-1 items-center gap-0.5">
-      <Text className="text-center text-[13px] text-white/50">This month</Text>
-      <Text className="text-center text-[16px] font-semibold text-white">
-        {formatUsdCents(summary.totals.thisMonthUsd)}
-      </Text>
-    </View>
-    <View className="h-8 w-px bg-white/[0.08]" />
-    <View className="flex-1 items-center gap-0.5">
-      <Text className="text-center text-[13px] text-white/50">Total</Text>
-      <Text className="text-center text-[16px] font-semibold text-white">
-        {formatUsdCents(summary.totals.earnedUsd)}
-      </Text>
-    </View>
-  </View>
-);
+const totalsStats = (summary: ReferralV4Summary) => ({
+  left: { label: 'This month', value: formatUsdCents(summary.totals.thisMonthUsd) },
+  right: { label: 'Total', value: formatUsdCents(summary.totals.earnedUsd) },
+});
 
 /** The way into "Your invites": the first three friends' initials, stacked. */
 const InvitesRow = ({ summary }: { summary: ReferralV4Summary }) => {
@@ -115,7 +108,7 @@ const InvitesRow = ({ summary }: { summary: ReferralV4Summary }) => {
       onPress={() => router.push(path.REFER_INVITES)}
       accessibilityRole="button"
       accessibilityLabel={`Your invites: ${invited} friends, ${earning} earning`}
-      className="flex-row items-center gap-3 overflow-hidden rounded-[20px] bg-card px-4 py-[14px] active:opacity-80 web:hover:bg-card-hover"
+      className="flex-row items-center gap-3 px-4 py-[14px] active:opacity-80 web:hover:bg-card-hover"
     >
       <View className="flex-row">
         {summary.friends.slice(0, 3).map((friend, index) => (
@@ -176,8 +169,31 @@ const AsFriendCard = ({ summary }: { summary: ReferralV4Summary }) => {
 };
 
 /**
- * Refer & Earn, referral program v4 (Figma 29591:13199 without invites,
- * 29601:13223 with). Only reachable while the program is live: anything else —
+ * What the user has earned, first: this month and in total on its own card
+ * (Figma 30229:14240), and once they have invites, the way into them on the
+ * same card under a hairline (30305:14266).
+ */
+const EarningsCard = ({
+  summary,
+  hasInvites,
+}: {
+  summary: ReferralV4Summary;
+  hasInvites: boolean;
+}) => {
+  const stats = totalsStats(summary);
+  if (!hasInvites) return <ReferStats {...stats} />;
+  return (
+    <View className="overflow-hidden rounded-[20px] bg-card">
+      <ReferStats {...stats} bare />
+      <ReferDivider />
+      <InvitesRow summary={summary} />
+    </View>
+  );
+};
+
+/**
+ * Refer & Earn, referral program v4 (Figma 30200:15988 without invites,
+ * 30200:16698 with). Only reachable while the program is live: anything else —
  * the program switched off, the summary failing — goes back to today's
  * referral popup, so a backend that is not there yet changes nothing.
  */
@@ -224,7 +240,7 @@ export default function ReferScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
           {hasInvites ? (
@@ -251,7 +267,14 @@ export default function ReferScreen() {
 
           <AsFriendCard summary={summary} />
 
-          <View className="gap-3 px-4 pt-7">
+          <View className={cn('gap-3 px-4', hasInvites ? 'pt-5' : 'pt-7')}>
+            <EarningsCard summary={summary} hasInvites={hasInvites} />
+            {closed ? <ReferNote>{closed}</ReferNote> : null}
+            {paused ? <ReferNote>{paused}</ReferNote> : null}
+            {debt ? <ReferNote>{debt}</ReferNote> : null}
+
+            {/* The design's gap before "How you earn": 8 more without invites, 4 with. */}
+            <View className={hasInvites ? 'h-1' : 'h-2'} />
             <View className="flex-row items-center gap-1 px-1">
               <Text className="flex-1 text-[14px] font-medium text-white/50">How you earn</Text>
               <Pressable
@@ -304,20 +327,14 @@ export default function ReferScreen() {
               <RewardTile
                 kind="upgrade"
                 label="Upgrade bonus"
-                value={`${formatUsdWhole(terms.upgrade.primeUsd)}–${formatUsdWhole(
-                  terms.upgrade.ultraUsd,
+                value={`Up to ${formatUsdWhole(
+                  Math.max(terms.upgrade.primeUsd, terms.upgrade.ultraUsd),
                 )}`}
                 caption="for Prime or Ultra"
                 earnedUsd={earned(rewards.upgrade.earnedUsd)}
                 onPress={openReward}
               />
             </View>
-
-            <TotalsCard summary={summary} />
-            {closed ? <ReferNote>{closed}</ReferNote> : null}
-            {paused ? <ReferNote>{paused}</ReferNote> : null}
-            {debt ? <ReferNote>{debt}</ReferNote> : null}
-            {hasInvites ? <InvitesRow summary={summary} /> : null}
           </View>
         </ScrollView>
 
