@@ -167,4 +167,7 @@ it('reads the thousands commas it shows as grouping, not as a point', () => {
   expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '100');
   act(() => input.props.onChangeText('1,000,'));
   expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '1000.');
+  // Select all and paste a decimal-comma amount.
+  act(() => input.props.onChangeText('18,43'));
+  expect(mockUserInput).toHaveBeenLastCalledWith('INPUT', '18.43');
 });
