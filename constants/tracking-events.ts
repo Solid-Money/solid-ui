@@ -25,7 +25,12 @@ export const TRACKING_EVENTS = {
   WITHDRAW_TRANSACTION_ERROR: 'withdraw_transaction_error',
 
   // Transaction Flow Events - Swap
+  /** With `entry_point`: where the swap was opened from (home, coin_page, ...). */
   SWAP_MODAL_VIEWED: 'swap_modal_viewed',
+  /** A price came back for the pair and amount on screen. Once per distinct quote. */
+  SWAP_PRICE_SHOWN: 'swap_price_shown',
+  /** No price for the pair and amount on screen, with `error_code` from lib/swapErrors. */
+  SWAP_PRICE_FAILED: 'swap_price_failed',
   SWAP_AMOUNT_ENTRY_STARTED: 'swap_amount_entry_started',
   SWAP_TOKEN_SELECTOR_OPENED: 'swap_token_selector_opened',
   SWAP_MODAL_ABANDONED: 'swap_modal_abandoned',

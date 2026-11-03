@@ -99,6 +99,7 @@ const DashboardHeaderButtons = ({
 
       {!hideSwap && (
         <SwapModal
+          entryPoint="dashboard"
           trigger={
             <Button
               variant="secondary"

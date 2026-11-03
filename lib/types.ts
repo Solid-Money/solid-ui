@@ -1079,7 +1079,7 @@ export interface WirexThreeDsDecisionResponse {
  * Features held back from the public. The server's whitelist decides who has
  * them — see useHasFeature.
  */
-export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout' | 'supportChat';
+export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout' | 'supportChat' | 'swap';
 
 /** `GET /accounts/v1/feature-access`. */
 export interface FeatureAccessResponse {

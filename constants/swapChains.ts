@@ -1,6 +1,8 @@
 import { Address, zeroAddress } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
+import { USDC_STARGATE, USDT_STARGATE, WRAPPED_FUSE } from '@/constants/addresses';
+import { ADDRESSES } from '@/lib/config';
 import { SwapAsset } from '@/lib/types/lifi-swap';
 
 /**
@@ -41,9 +43,132 @@ function native(chainId: number, symbol: string, name: string): SwapAsset {
   };
 }
 
+/** Networks that swap with each other: Fuse, Ethereum, Base and BNB Chain. */
+const OPEN_SWAP_NETWORKS: ReadonlySet<number> = new Set([fuse.id, mainnet.id, base.id, bsc.id]);
+
+/**
+ * Whether a coin on `fromChainId` swaps for one on `toChainId`. Fuse to Fuse
+ * is Algebra. Ethereum, Base and BNB Chain swap among themselves through
+ * LI.FI, with every bridge fee taken from the coin sent: the backend denies the
+ * bridges that charge one on top. Fuse to or from any of the three goes
+ * through LI.FI too, over Stargate, which charges its fee in the sending
+ * network's native coin; the sending network's BridgePaymaster makes that call
+ * and pays the fee (`LifiSwapQuote.sponsorship`). USDC or USDT moving as
+ * itself takes Solid's bridge instead (`solidBridgeRoute`). Arbitrum and
+ * Polygon stay out.
+ */
+export const isSwapPairOpen = (fromChainId: number, toChainId: number) =>
+  OPEN_SWAP_NETWORKS.has(fromChainId) && OPEN_SWAP_NETWORKS.has(toChainId);
+
 /** Fuse to Fuse stays on Algebra; anything touching another chain goes through LI.FI. */
 export const isLifiRoute = (inputChainId: number, outputChainId: number) =>
   inputChainId !== fuse.id || outputChainId !== fuse.id;
 
 export const swapAssetKey = (asset: Pick<SwapAsset, 'chainId' | 'address'>) =>
   `${asset.chainId}:${asset.address.toLowerCase()}`;
+
+/** The pickers' sections. Euro coins are stablecoins too. */
+export type SwapAssetCategory = 'stablecoins' | 'earn' | 'crypto';
+
+export interface SwapListing {
+  chainId: number;
+  address: Address;
+  /** The row it joins: "USDC" on every network, "USD Yield" for soUSD. */
+  name: string;
+  category: SwapAssetCategory;
+}
+
+const listed = (
+  chainId: number,
+  address: Address,
+  name: string,
+  category: SwapAssetCategory,
+): SwapListing => ({ chainId, address, name, category });
+
+/**
+ * The swap list: exactly what the new pickers offer, in the order "You get"
+ * lists them. By contract rather than symbol, since the catalogue also carries
+ * look-alikes that aren't swapped here: Fuse's deprecated bridged USDC and USDT,
+ * FUSE bridged to other networks, soUSD and soETH outside Fuse. The catalogue
+ * still supplies names, decimals and logos, and has to list each ERC-20 for the
+ * backend to quote it.
+ */
+export const SWAP_LIST: readonly SwapListing[] = [
+  // Dollars on all four networks, euros where Circle issues EURC.
+  listed(fuse.id, USDC_STARGATE, 'USDC', 'stablecoins'),
+  listed(base.id, '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 'USDC', 'stablecoins'),
+  listed(mainnet.id, ADDRESSES.ethereum.usdc, 'USDC', 'stablecoins'),
+  listed(bsc.id, '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', 'USDC', 'stablecoins'),
+  listed(fuse.id, USDT_STARGATE, 'USDT', 'stablecoins'),
+  listed(base.id, '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', 'USDT', 'stablecoins'),
+  listed(mainnet.id, ADDRESSES.ethereum.usdt, 'USDT', 'stablecoins'),
+  listed(bsc.id, '0x55d398326f99059fF775485246999027B3197955', 'USDT', 'stablecoins'),
+  listed(base.id, '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42', 'EURC', 'stablecoins'),
+  listed(mainnet.id, '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c', 'EURC', 'stablecoins'),
+  // Crypto: FUSE and WFUSE at home, the rest on Base only. FUSE to WFUSE and
+  // back is the old wrap screen; any other Fuse coin reaches WFUSE on Algebra.
+  listed(fuse.id, zeroAddress, 'FUSE', 'crypto'),
+  listed(fuse.id, WRAPPED_FUSE, 'WFUSE', 'crypto'),
+  listed(base.id, zeroAddress, 'ETH', 'crypto'),
+  listed(base.id, '0x4200000000000000000000000000000000000006', 'WETH', 'crypto'),
+  listed(base.id, '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', 'cbBTC', 'crypto'),
+  listed(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', 'WBTC', 'crypto'),
+  listed(base.id, '0x63706e401c06ac8513145b7687A14804d17f814b', 'AAVE', 'crypto'),
+  listed(base.id, '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', 'ENA', 'crypto'),
+  listed(base.id, '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82', 'SOL', 'crypto'),
+  listed(base.id, '0xc3De830EA07524a0761646a6a4e4be0e114a3C83', 'UNI', 'crypto'),
+  // Earn: the Fuse vaults, whose share tokens differ between builds.
+  listed(fuse.id, ADDRESSES.fuse.vault, 'USD Yield', 'earn'),
+  listed(fuse.id, ADDRESSES.fuse.fuseVault, 'FUSE Yield', 'earn'),
+];
+
+const SWAP_LISTINGS = new Map(SWAP_LIST.map(listing => [swapAssetKey(listing), listing]));
+
+/** The swap list's entry for a coin; undefined when it isn't on the list. */
+export const swapListing = (asset: { chainId: number; address: string }) =>
+  SWAP_LISTINGS.get(`${asset.chainId}:${asset.address.toLowerCase()}`);
+
+/** A coin Solid's own bridge carries. */
+export type SolidBridgeToken = 'USDC' | 'USDT';
+
+type CoinRef = { chainId: number; address: string };
+
+const sameCoin = (a: CoinRef, b: CoinRef) =>
+  a.chainId === b.chainId && a.address.toLowerCase() === b.address.toLowerCase();
+
+/**
+ * What Solid's bridge moves, by network: Stargate pools whose fee the sending
+ * network's BridgePaymaster fronts and takes back in the coin itself
+ * (solid-backend cross-chain-send.constants.ts). Base has no USDT pool.
+ */
+const SOLID_BRIDGE_COINS: readonly (CoinRef & { token: SolidBridgeToken })[] = [
+  { chainId: fuse.id, address: USDC_STARGATE, token: 'USDC' },
+  { chainId: fuse.id, address: USDT_STARGATE, token: 'USDT' },
+  { chainId: base.id, address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', token: 'USDC' },
+  { chainId: mainnet.id, address: ADDRESSES.ethereum.usdc, token: 'USDC' },
+  { chainId: mainnet.id, address: ADDRESSES.ethereum.usdt, token: 'USDT' },
+  { chainId: bsc.id, address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', token: 'USDC' },
+  { chainId: bsc.id, address: '0x55d398326f99059fF775485246999027B3197955', token: 'USDT' },
+];
+
+export interface SolidBridgeRoute {
+  token: SolidBridgeToken;
+  srcChainId: number;
+  dstChainId: number;
+}
+
+/**
+ * USDC or USDT moving as itself between Fuse and Ethereum, Base or BNB Chain:
+ * a cross-chain send from the user's Safe to itself rather than a LI.FI swap.
+ * LI.FI won't build USDC from Ethereum to Fuse below about $60; Stargate has
+ * no minimum, and the send takes its fee from the coin. Any other pair across
+ * those networks stays on LI.FI.
+ */
+export function solidBridgeRoute(from: CoinRef, to: CoinRef): SolidBridgeRoute | undefined {
+  if ((from.chainId === fuse.id) === (to.chainId === fuse.id)) return undefined;
+  if (!isSwapPairOpen(from.chainId, to.chainId)) return undefined;
+  const sent = SOLID_BRIDGE_COINS.find(coin => sameCoin(coin, from));
+  const landed = SOLID_BRIDGE_COINS.find(coin => sameCoin(coin, to));
+  if (!sent || !landed || sent.token !== landed.token) return undefined;
+  return { token: sent.token, srcChainId: from.chainId, dstChainId: to.chainId };
+}
