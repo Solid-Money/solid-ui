@@ -120,6 +120,7 @@ export default function AiApiScreen() {
         <AiApiIntro
           cashbackRate={overview.cashbackRate}
           cashbackTier={overview.cashbackTier}
+          cashbackTiers={overview.cashbackTiers}
           cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
           settlementDays={overview.cashbackSettlementDays}
           models={overview.models}
@@ -187,6 +188,8 @@ export default function AiApiScreen() {
               onOpenChange={setIsModelsOpen}
               models={overview.models}
               cashbackRate={overview.cashbackRate}
+              cashbackTiers={overview.cashbackTiers}
+              cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
             />
             <LazyDepositOptionModal trigger={null} />
           </>

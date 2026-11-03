@@ -1,7 +1,11 @@
 import {
   aiApiLimitProgress,
   aiApiModelDiscount,
+  aiApiModelIsFree,
+  aiApiModelTag,
+  aiApiSharedTierRate,
   formatAiApiCashback,
+  formatAiApiCount,
   formatAiApiDay,
   formatAiApiDiscount,
   formatAiApiLastUsed,
@@ -10,6 +14,7 @@ import {
   formatAiApiPaidFrom,
   formatAiApiRate,
   formatAiApiShortDate,
+  formatAiApiTierCaps,
   formatAiApiTokenPrice,
   formatAiApiTokens,
   formatAiApiUsd,
@@ -103,13 +108,22 @@ describe('formatAiApiPaidFrom', () => {
 });
 
 describe('model prices', () => {
-  it('shows a cheap model in fractions of a cent, and dollars in cents', () => {
-    expect(formatAiApiTokenPrice(2.4)).toBe('$2.40');
-    expect(formatAiApiTokenPrice(15)).toBe('$15.00');
-    expect(formatAiApiTokenPrice(0.095)).toBe('$0.095');
-    expect(formatAiApiTokenPrice(0.0012)).toBe('$0.0012');
-    expect(formatAiApiTokenPrice(0.17634)).toBe('$0.18');
-    expect(formatAiApiTokenPrice(0)).toBe('$0');
+  it.each([
+    // Figma's price sheet, priced from the dashboard's live launch list.
+    [1.14, '$1.14'],
+    [0.38, '$0.38'],
+    [0.266, '$0.27'],
+    [0.2166, '$0.22'],
+    [0.0722, '$0.072'],
+    [0.003612, '$0.004'],
+    [0.00784, '$0.008'],
+    [0.007288, '$0.007'],
+    [15, '$15.00'],
+    [0.0996, '$0.10'],
+    [0.0003, '<$0.001'],
+    [0, 'Free'],
+  ])('writes %p per 1M tokens as %p', (price, shown) => {
+    expect(formatAiApiTokenPrice(price)).toBe(shown);
   });
 
   const opus = {
@@ -119,26 +133,70 @@ describe('model prices', () => {
     officialOutputUsdPerMTok: 75,
   };
 
-  it('badges the smaller of the input and output discounts, rounded down', () => {
-    // Input saves 97.3%, output 96.8%: the badge says 96%.
-    expect(aiApiModelDiscount(opus)).toBe(96);
-    expect(formatAiApiDiscount(96)).toBe('\u221296%');
+  it('measures the saving on three input tokens to one output token, rounded down', () => {
+    // Ours blends to $0.90, the official price to $30: 97% less.
+    expect(aiApiModelDiscount(opus)).toBe(97);
+    expect(formatAiApiDiscount(97)).toBe('\u221297%');
+    // Input weighs three times as much as output: the same $3.60 more costs
+    // 9 points on input but 3 on output.
+    expect(aiApiModelDiscount({ ...opus, inputUsdPerMTok: 4 })).toBe(88);
+    expect(aiApiModelDiscount({ ...opus, outputUsdPerMTok: 6 })).toBe(94);
   });
 
   it('never reads a float just under a whole percent as one less', () => {
-    expect(
-      aiApiModelDiscount({
-        ...opus,
-        inputUsdPerMTok: 0.9,
-        officialInputUsdPerMTok: 15,
-        outputUsdPerMTok: 4.5,
-      }),
-    ).toBe(94);
+    expect(aiApiModelDiscount({ ...opus, inputUsdPerMTok: 0.9, outputUsdPerMTok: 4.5 })).toBe(94);
   });
 
-  it('shows no badge without a list price, or when ours is not below it', () => {
+  it('shows no saving without a list price, or when ours is not below it', () => {
     expect(aiApiModelDiscount({ ...opus, officialInputUsdPerMTok: null })).toBeNull();
     expect(aiApiModelDiscount({ ...opus, officialOutputUsdPerMTok: 0 })).toBeNull();
-    expect(aiApiModelDiscount({ ...opus, outputUsdPerMTok: 80 })).toBeNull();
+    expect(aiApiModelDiscount({ ...opus, inputUsdPerMTok: 20, outputUsdPerMTok: 80 })).toBeNull();
+  });
+
+  it('tags a model we charge nothing for as free, list price or not', () => {
+    const free = { ...opus, inputUsdPerMTok: 0, outputUsdPerMTok: 0, cachedInputUsdPerMTok: 0 };
+    expect(aiApiModelIsFree(free)).toBe(true);
+    expect(aiApiModelTag(free)).toBe('Free');
+    expect(aiApiModelTag({ ...free, officialInputUsdPerMTok: null })).toBe('Free');
+    expect(aiApiModelIsFree({ ...free, cachedInputUsdPerMTok: 0.01 })).toBe(false);
+  });
+
+  it('tags a priced model with its saving, and nothing without a list price', () => {
+    expect(aiApiModelTag(opus)).toBe('\u221297%');
+    expect(aiApiModelTag({ ...opus, officialOutputUsdPerMTok: null })).toBeNull();
+  });
+});
+
+describe('cashback copy', () => {
+  const tiers = [
+    { tier: 'Core', rate: 0.5, monthlyCapUsd: 50 },
+    { tier: 'Prime', rate: 0.5, monthlyCapUsd: 100 },
+    { tier: 'Ultra', rate: 0.5, monthlyCapUsd: 200 },
+  ];
+
+  it('names every tier\u2019s cap, the way the footnote reads', () => {
+    expect(formatAiApiTierCaps(tiers)).toBe(
+      'up to $50 a month on Core, $100 on Prime and $200 on Ultra',
+    );
+    expect(formatAiApiTierCaps(tiers.slice(2))).toBe('up to $200 a month on Ultra');
+  });
+
+  it('leaves out a tier without a cap, and says nothing when none has one', () => {
+    expect(formatAiApiTierCaps([tiers[0], { ...tiers[2], monthlyCapUsd: 0 }])).toBe(
+      'up to $50 a month on Core',
+    );
+    expect(formatAiApiTierCaps([])).toBeNull();
+  });
+
+  it('finds the rate every tier shares, and none when they differ', () => {
+    expect(aiApiSharedTierRate(tiers)).toBe(0.5);
+    expect(aiApiSharedTierRate([tiers[0], { ...tiers[1], rate: 0.6 }])).toBeNull();
+    expect(aiApiSharedTierRate([])).toBeNull();
+  });
+
+  it('spells out small counts to open a sentence', () => {
+    expect(formatAiApiCount(6)).toBe('Six');
+    expect(formatAiApiCount(1)).toBe('One');
+    expect(formatAiApiCount(12)).toBe('12');
   });
 });
