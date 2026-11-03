@@ -74,9 +74,10 @@ interface NotEnoughToPayCardProps {
 const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   const [isFundOpen, setIsFundOpen] = useState(false);
   const [covered, setCovered] = useState(false);
-  // Base was just turned on from this receipt. Held locally because the fix is worked out again
-  // from what Base still cannot reach — nothing, once it is on — while the balance above is still
-  // the one read before, which would flash Swap or Add funds at a cardholder who is done.
+  // Base was just turned on from this receipt and the balance is being re-read. Held for that read
+  // only: the fix is worked out again from what Base still cannot reach — nothing, once it is on —
+  // while the balance above is still the one read before, which would flash Swap or Add funds at a
+  // cardholder who is done. Once the read lands, the receipt says what that balance says.
   const [turnedOnBase, setTurnedOnBase] = useState(false);
 
   const { data: spendable, refetch: refetchSpendable } = useCardSpendable({
@@ -159,7 +160,11 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     try {
       if (!(await baseSpend.enableAsync('declined_receipt'))) return;
       setTurnedOnBase(true);
-      void refetchSpendable();
+      try {
+        await refetchSpendable();
+      } finally {
+        setTurnedOnBase(false);
+      }
     } catch (error) {
       void showErrorToast(error, { action: 'card_settings' });
     }
@@ -206,9 +211,9 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
           {`You now have ${formatCardCurrency(available.amount, available.currency)} available. Ask the shop to try again.`}
         </Text>
       ) : turnedOnBase ? (
-        // Until the re-read lands. Base was only offered because it covers the whole payment.
+        // Only while the re-read is in flight; still short after it, and the fixes come back.
         <Text className="text-center text-[14px] text-white/60">
-          Your card can now use your Base balance. Ask the shop to try again.
+          Your card can now use your Base balance. Checking your balance…
         </Text>
       ) : (
         <>
