@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 
+import CardCreditSheet from '@/components/CardCredit/CardCreditSheet';
 import PageLayout from '@/components/PageLayout';
 import ReferralHeroAnimation from '@/components/Referral/ReferralHeroAnimation';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardCredit } from '@/hooks/useCardCredit';
 import { useReferralV4Summary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
@@ -25,7 +27,7 @@ import {
 } from '@/lib/referral/referralV4';
 import { cn } from '@/lib/utils';
 
-import ReferHowItWorksSheet from './ReferHowItWorksSheet';
+import ReferAllRewardsSheet from './ReferAllRewardsSheet';
 import ReferRewardSheet from './ReferRewardSheet';
 import ReferShareFooter from './ReferShareFooter';
 import {
@@ -201,7 +203,11 @@ export default function ReferScreen() {
   const { user } = useUser();
   const { data: summary, isLoading } = useReferralV4Summary();
   const [rewardSheet, setRewardSheet] = useState<ReferRewardKind | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAllRewardsOpen, setIsAllRewardsOpen] = useState(false);
+  const [isCardCreditOpen, setIsCardCreditOpen] = useState(false);
+  // Read once "How you earn" opens, the only way to the sheet that shows it,
+  // so it is usually in by the time that sheet opens.
+  const { data: cardCredit } = useCardCredit({ enabled: isAllRewardsOpen || isCardCreditOpen });
   const hasTrackedView = useRef(false);
 
   const isLive = isReferralV4Live(summary);
@@ -216,6 +222,20 @@ export default function ReferScreen() {
   const openReward = useCallback((kind: ReferRewardKind) => {
     setRewardSheet(kind);
     track(TRACKING_EVENTS.REFERRAL_REWARD_SHEET_OPENED, { reward: kind });
+  }, []);
+
+  // "How you earn" hands over to the sheet a row opens: it closes as that one opens.
+  const openRewardFromList = useCallback(
+    (kind: ReferRewardKind) => {
+      setIsAllRewardsOpen(false);
+      openReward(kind);
+    },
+    [openReward],
+  );
+
+  const openCardCreditFromList = useCallback(() => {
+    setIsAllRewardsOpen(false);
+    setIsCardCreditOpen(true);
   }, []);
 
   const goBack = useCallback(() => {
@@ -278,13 +298,13 @@ export default function ReferScreen() {
             <View className="flex-row items-center gap-1 px-1">
               <Text className="flex-1 text-[14px] font-medium text-white/50">How you earn</Text>
               <Pressable
-                onPress={() => setIsDetailsOpen(true)}
+                onPress={() => setIsAllRewardsOpen(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Terms"
+                accessibilityLabel="View all rewards"
                 hitSlop={8}
                 className="flex-row items-center gap-1 active:opacity-70 web:hover:opacity-80"
               >
-                <Text className="text-[14px] font-medium text-white/50">Terms</Text>
+                <Text className="text-[14px] font-medium text-white/50">View all</Text>
                 <ReferIcon asset="images/referral-v4/chevron.svg" size={14} />
               </Pressable>
             </View>
@@ -348,11 +368,19 @@ export default function ReferScreen() {
         ) : null}
       </View>
 
+      {/* Before the sheets its rows open, so its close runs before their open. */}
+      <ReferAllRewardsSheet
+        isOpen={isAllRewardsOpen}
+        onOpenChange={setIsAllRewardsOpen}
+        terms={terms}
+        onOpenReward={openRewardFromList}
+        onOpenCardCredit={openCardCreditFromList}
+      />
       <ReferRewardSheet kind={rewardSheet} onClose={() => setRewardSheet(null)} summary={summary} />
-      <ReferHowItWorksSheet
-        isOpen={isDetailsOpen}
-        onOpenChange={setIsDetailsOpen}
-        summary={summary}
+      <CardCreditSheet
+        isOpen={isCardCreditOpen}
+        onOpenChange={setIsCardCreditOpen}
+        credit={cardCredit}
       />
     </PageLayout>
   );
