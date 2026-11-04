@@ -25,19 +25,26 @@ const RULES = [
 interface CardCreditSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  credit: CardCreditSummary;
+  /** Absent while it loads, or when it could not be read. */
+  credit?: CardCreditSummary;
 }
 
 /**
  * What card credit is (Figma 29602:13791): how much is left, where it came
  * from, and the four rules that make it different from the balance. Opened
  * from the Home pill, which only shows while there is credit, and from the
- * referral program's "How you earn" sheet, where the user may have none yet:
- * then it explains that bonuses are paid this way rather than showing $0.
+ * referral program's "How you earn" sheet, where the user may have none to
+ * spend: then it explains that bonuses are paid this way rather than showing
+ * $0. That is also what it says while the credit is unknown, which is true
+ * whatever the balance turns out to be.
  */
 const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps) => {
-  const source = cardCreditSourceLine(credit.sources);
-  const hasCredit = credit.availableUsd > 0 || credit.pendingUsd > 0;
+  const source = cardCreditSourceLine(credit?.sources);
+  const availableUsd = credit?.availableUsd ?? 0;
+  const pendingUsd = credit?.pendingUsd ?? 0;
+  // Held credit is not there to spend: a purchase holding all of it is no
+  // reason for a $0.00 chip.
+  const hasCredit = availableUsd > 0;
 
   return (
     <ReferSheet isOpen={isOpen} onOpenChange={onOpenChange} contentKey="card-credit">
@@ -47,7 +54,7 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
       </Text>
       {hasCredit ? (
         <View className="mt-[10px]">
-          <ReferAmountChip label={formatUsdCents(credit.availableUsd)} />
+          <ReferAmountChip label={formatUsdCents(availableUsd)} />
         </View>
       ) : null}
       <Text className="mt-3 text-center text-[15px] leading-[21px] text-white/60">
@@ -55,9 +62,9 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
           ? `${source ? `${source} ` : ''}Spend it with your Solid card.`
           : 'Your referral bonuses are paid as card credit, to spend with your Solid card.'}
       </Text>
-      {credit.pendingUsd > 0 ? (
+      {pendingUsd > 0 ? (
         <Text className="mt-1 text-center text-[13px] text-white/40">
-          {formatUsdCents(credit.pendingUsd)} held for a pending purchase
+          {formatUsdCents(pendingUsd)} held for a pending purchase
         </Text>
       ) : null}
 

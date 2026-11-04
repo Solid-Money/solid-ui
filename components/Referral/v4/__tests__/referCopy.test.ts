@@ -80,7 +80,7 @@ describe('How you earn (View all)', () => {
       {
         kind: 'welcome',
         title: 'Welcome bonus',
-        subtitle: 'after $200 in 21 days',
+        subtitle: 'after $200 at 4+ shops in 21 days',
         value: '$15',
       },
       {
