@@ -15,6 +15,8 @@ interface ReferSheetProps {
   onOpenChange: (open: boolean) => void;
   /** Distinguishes this sheet in `ResponsiveModal`'s bookkeeping on desktop. */
   contentKey: string;
+  /** Shown left of the close control, for a sheet that heads itself that way. */
+  title?: string;
   children: ReactNode;
 }
 
@@ -26,7 +28,7 @@ interface ReferSheetProps {
  * The app's sheet keeps its own surface and corner radius where Figma's
  * differ — the contract asks for the existing sheet styling to win.
  */
-const ReferSheet = ({ isOpen, onOpenChange, contentKey, children }: ReferSheetProps) => (
+const ReferSheet = ({ isOpen, onOpenChange, contentKey, title, children }: ReferSheetProps) => (
   <CardBottomSheet
     isOpen={isOpen}
     onOpenChange={onOpenChange}
@@ -44,7 +46,7 @@ const ReferSheet = ({ isOpen, onOpenChange, contentKey, children }: ReferSheetPr
           paddingHorizontal: presentation === 'modal' ? 0 : SHEET_SIDES,
         }}
       >
-        <ReferSheetClose onPress={() => onOpenChange(false)} />
+        <ReferSheetClose onPress={() => onOpenChange(false)} title={title} />
         {children}
       </View>
     )}

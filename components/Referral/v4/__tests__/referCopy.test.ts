@@ -1,4 +1,4 @@
-import { howItWorksRules } from '@/components/Referral/v4/ReferHowItWorksSheet';
+import { allRewardsRows } from '@/components/Referral/v4/ReferAllRewardsSheet';
 import { rewardCopy, rewardRules } from '@/components/Referral/v4/ReferRewardSheet';
 
 import type { ReferralV4Summary, ReferralV4Terms } from '@/lib/types';
@@ -68,37 +68,34 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-describe('How it works', () => {
-  it('words every rule from the terms', () => {
-    const rules = howItWorksRules(summary()).join('\n');
-    expect(rules).toContain('unlocks 10 days after');
-    expect(rules).toContain('next Monday payout');
-    expect(rules).toContain('Spend share is 2% of what your friend spends');
-    expect(rules).toContain('paid every Monday');
-    expect(rules).toContain(
-      "If a week's share comes to less than $2, it's paid with the next one.",
-    );
-    expect(rules).toContain('up to $1,500 from each friend');
-    expect(rules).toContain('Your first 8 welcome bonuses');
-    expect(rules).toContain('spends $300 or more between day 45 and day 90 after they join');
-    expect(rules).toContain('unlocks 2 more');
-    expect(rules).toContain('within 100 days of a welcome or big spender bonus');
-    expect(rules).toContain('never your card credit');
-    expect(rules).not.toMatch(/Thursday|second month|\$10\b|\$2,000|14 days|1%/);
-  });
-
-  it('leaves out rules an older backend does not send', () => {
-    const rules = howItWorksRules(
-      summary({
-        spendShare: { rate: 0.02, capPerFriendUsd: 1500, payoutWeekday: 1 },
-        bonusLimit: { enabled: true, base: 8, perActiveFriend: 2, activeSpendUsd: 300 },
-        clawback: undefined,
-      }),
-    ).join('\n');
-    expect(rules).not.toContain('paid with the next one');
-    expect(rules).not.toContain('reversed');
-    // The launch window, in the launch words.
-    expect(rules).toContain('in their second month');
+describe('How you earn (View all)', () => {
+  it('lists every reward from the terms', () => {
+    expect(allRewardsRows(terms)).toEqual([
+      {
+        kind: 'spendShare',
+        title: 'Spend share',
+        subtitle: 'of everything they spend',
+        value: '2%',
+      },
+      {
+        kind: 'welcome',
+        title: 'Welcome bonus',
+        subtitle: 'after $200 in 21 days',
+        value: '$15',
+      },
+      {
+        kind: 'bigSpender',
+        title: 'Big spender bonus',
+        subtitle: 'after $4,000 in 75 days',
+        value: '$60 each',
+      },
+      {
+        kind: 'upgrade',
+        title: 'Upgrade bonus',
+        subtitle: 'for Prime or Ultra',
+        value: 'Up to $120',
+      },
+    ]);
   });
 });
 

@@ -45,7 +45,7 @@ const TITLES: Record<ReferRewardKind, string> = {
 };
 
 /** "$10 each" when both sides get the same, "$10" for the referrer otherwise. */
-const eachLabel = (referrerUsd: number, friendUsd: number) =>
+export const eachLabel = (referrerUsd: number, friendUsd: number) =>
   referrerUsd === friendUsd ? `${formatUsdWhole(referrerUsd)} each` : formatUsdWhole(referrerUsd);
 
 /** The chip and the paragraph, worded from the live terms. */

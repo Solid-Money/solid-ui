@@ -34,28 +34,35 @@ const FILL_EASING = Easing.bezier(0.16, 1, 0.3, 1);
 
 export type ReferRewardKind = 'spendShare' | 'welcome' | 'bigSpender' | 'upgrade';
 
-/** Figma draws each icon at three sizes (tile, list row, sheet), each its own drawing. */
-type RewardIconSize = 32 | 36 | 56;
+/**
+ * Figma draws each icon at four sizes (tile, list row, "How you earn" row,
+ * sheet), each its own drawing.
+ */
+type RewardIconSize = 32 | 36 | 40 | 56;
 
 const REWARD_ICONS: Record<ReferRewardKind, Record<RewardIconSize, AssetPath>> = {
   spendShare: {
     32: 'images/referral-v4/reward-share-32.svg',
     36: 'images/referral-v4/reward-share-36.svg',
+    40: 'images/referral-v4/reward-share-40.svg',
     56: 'images/referral-v4/reward-share-56.svg',
   },
   welcome: {
     32: 'images/referral-v4/reward-welcome-32.svg',
     36: 'images/referral-v4/reward-welcome-36.svg',
+    40: 'images/referral-v4/reward-welcome-40.svg',
     56: 'images/referral-v4/reward-welcome-56.svg',
   },
   bigSpender: {
     32: 'images/referral-v4/reward-big-spender-32.svg',
     36: 'images/referral-v4/reward-big-spender-36.svg',
+    40: 'images/referral-v4/reward-big-spender-40.svg',
     56: 'images/referral-v4/reward-big-spender-56.svg',
   },
   upgrade: {
     32: 'images/referral-v4/reward-upgrade-32.svg',
     36: 'images/referral-v4/reward-upgrade-36.svg',
+    40: 'images/referral-v4/reward-upgrade-40.svg',
     56: 'images/referral-v4/reward-upgrade-56.svg',
   },
 };
@@ -256,9 +263,17 @@ export const ReferAmountChip = ({ label }: { label: string }) => (
   </View>
 );
 
-/** The round close control in a sheet's top-right corner. */
-export const ReferSheetClose = ({ onPress }: { onPress: () => void }) => (
-  <View className="w-full flex-row justify-end">
+/**
+ * The round close control in a sheet's top-right corner, with the sheet's
+ * title on its left when it has one (Figma 30443:14905).
+ */
+export const ReferSheetClose = ({ onPress, title }: { onPress: () => void; title?: string }) => (
+  <View className={cn('w-full flex-row items-center', title ? 'justify-between' : 'justify-end')}>
+    {title ? (
+      <Text className="min-w-0 flex-1 text-[22px] font-semibold text-white" numberOfLines={1}>
+        {title}
+      </Text>
+    ) : null}
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
