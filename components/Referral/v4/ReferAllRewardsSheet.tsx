@@ -27,7 +27,10 @@ export const allRewardsRows = (terms: ReferralV4Terms): RewardRowCopy[] => [
   {
     kind: 'welcome',
     title: 'Welcome bonus',
-    subtitle: `after ${formatUsdWhole(terms.welcome.spendTargetUsd)} in ${terms.welcome.windowDays} days`,
+    // The shops are part of the target, as the welcome sheet says.
+    subtitle: `after ${formatUsdWhole(terms.welcome.spendTargetUsd)}${
+      terms.welcome.merchantTarget > 0 ? ` at ${terms.welcome.merchantTarget}+ shops` : ''
+    } in ${terms.welcome.windowDays} days`,
     value: eachLabel(terms.welcome.referrerUsd, terms.welcome.friendUsd),
   },
   {

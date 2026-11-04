@@ -42,17 +42,7 @@ import {
   RewardIcon,
 } from './ReferV4Primitives';
 
-import type { CardCreditSummary, ReferralV4Summary } from '@/lib/types';
-
-/** What the card credit sheet shows before, or without, the user's own credit. */
-const NO_CARD_CREDIT: CardCreditSummary = {
-  availableUsd: 0,
-  pendingUsd: 0,
-  lifetimeGrantedUsd: 0,
-  lifetimeSpentUsd: 0,
-  spendable: false,
-  sources: [],
-};
+import type { ReferralV4Summary } from '@/lib/types';
 
 /** The hero avatars at Figma 29615:13405's size: 0.8 of the referral modal's. */
 const HERO_SCALE = 0.8;
@@ -215,8 +205,9 @@ export default function ReferScreen() {
   const [rewardSheet, setRewardSheet] = useState<ReferRewardKind | null>(null);
   const [isAllRewardsOpen, setIsAllRewardsOpen] = useState(false);
   const [isCardCreditOpen, setIsCardCreditOpen] = useState(false);
-  // Only read once the sheet that shows it is asked for.
-  const { data: cardCredit } = useCardCredit({ enabled: isCardCreditOpen });
+  // Read once "How you earn" opens, the only way to the sheet that shows it,
+  // so it is usually in by the time that sheet opens.
+  const { data: cardCredit } = useCardCredit({ enabled: isAllRewardsOpen || isCardCreditOpen });
   const hasTrackedView = useRef(false);
 
   const isLive = isReferralV4Live(summary);
@@ -389,7 +380,7 @@ export default function ReferScreen() {
       <CardCreditSheet
         isOpen={isCardCreditOpen}
         onOpenChange={setIsCardCreditOpen}
-        credit={cardCredit ?? NO_CARD_CREDIT}
+        credit={cardCredit}
       />
     </PageLayout>
   );
