@@ -2,15 +2,18 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import {
+  baseSpendableAssets,
   CARD_SPENDABLE_ASSETS,
   CardSpendableAsset,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
+import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
 import {
   baseEurcHeld,
   cardSpendableAssetsFor,
+  soEurUsdPerShare,
   sumCardSpendableUSD,
   unreachableBaseHoldings,
 } from '@/lib/utils/cardSpendable';
@@ -171,6 +174,61 @@ describe('sumCardSpendableUSD', () => {
     const tokens = [token({}), token({ contractTickerSymbol: 'WFUSE', quoteRate: 1 })];
 
     expect(sumCardSpendableUSD(tokens, extended)).toBeCloseTo(2.08, 6);
+  });
+
+  describe('soEUR', () => {
+    const soEurAssets = baseSpendableAssets([ADDRESSES.base.soEurcVault]);
+    // Its quote is always 0 in `useBalances`; the price comes from `soEurUsdPerShare`.
+    const soEur = token({
+      contractTickerSymbol: 'soEUR',
+      contractAddress: ADDRESSES.base.soEurcVault,
+      balance: '10000000', // 10 shares
+      quoteRate: 0,
+      chainId: base.id,
+    });
+
+    it('counts soEUR at the price it is given, so Cash matches "Your balance"', () => {
+      // The reported case: €59.21 in the balance panel, €49.03 on Cash — the €10.18 of soEUR.
+      expect(
+        sumCardSpendableUSD([soEur, usdc()], [...CARD_SPENDABLE_ASSETS, ...soEurAssets], 1.2),
+      ).toBeCloseTo(13, 6);
+    });
+
+    it('leaves soEUR out while it has no price, rather than counting it at par', () => {
+      expect(sumCardSpendableUSD([soEur], soEurAssets)).toBe(0);
+    });
+  });
+});
+
+describe('soEurUsdPerShare', () => {
+  const BASE_EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+  const eurc = (quoteRate: number, contractAddress = BASE_EURC) =>
+    token({ contractTickerSymbol: 'EURC', contractAddress, quoteRate, chainId: base.id });
+
+  // The build's EURC address comes from the environment; pinned so the match is on it.
+  beforeEach(() => {
+    jest.replaceProperty(BASE_SPEND_DEPLOYMENT, 'spendTokenAddress', BASE_EURC);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('prices a share at the vault rate through the Safe’s EURC quote', () => {
+    expect(soEurUsdPerShare([eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
+  });
+
+  it('does not take its quote from another token calling itself EURC', () => {
+    const impostor = eurc(50, '0x000000000000000000000000000000000000dEaD');
+
+    expect(soEurUsdPerShare([impostor], 1.02, 1.12)).toBeCloseTo(1.02 * 1.12, 6);
+    expect(soEurUsdPerShare([impostor, eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
+  });
+
+  it('falls back to the card’s euro rate when the Safe holds no EURC', () => {
+    expect(soEurUsdPerShare([usdc()], 1.02, 1.12)).toBeCloseTo(1.02 * 1.12, 6);
+  });
+
+  it('has no price without the vault rate or any euro rate', () => {
+    expect(soEurUsdPerShare([eurc(1.16)], undefined, 1.12)).toBeUndefined();
+    expect(soEurUsdPerShare([usdc()], 1.02, undefined)).toBeUndefined();
   });
 });
 
