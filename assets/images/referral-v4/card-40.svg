@@ -1,0 +1,14 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="icon/card" clip-path="url(#clip0_0_4)">
+<path id="Vector" d="M20 40C31.0457 40 40 31.0457 40 20C40 8.9543 31.0457 0 20 0C8.9543 0 0 8.9543 0 20C0 31.0457 8.9543 40 20 40Z" fill="white" fill-opacity="0.1"/>
+<g id="Group">
+<path id="Vector_2" d="M25.8327 14.9998H14.1665C13.2461 14.9998 12.4999 15.746 12.4999 16.6664V23.3328C12.4999 24.2532 13.2461 24.9994 14.1665 24.9994H25.8327C26.7531 24.9994 27.4993 24.2532 27.4993 23.3328V16.6664C27.4993 15.746 26.7531 14.9998 25.8327 14.9998Z" stroke="white" stroke-width="1.6666"/>
+<path id="Vector_3" d="M12.4999 18.333H27.4993M15.8331 22.4995H19.1663" stroke="white" stroke-width="1.6666" stroke-linecap="round"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_4">
+<rect width="40" height="40" fill="white"/>
+</clipPath>
+</defs>
+</svg>

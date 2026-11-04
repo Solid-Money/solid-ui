@@ -29,12 +29,15 @@ interface CardCreditSheetProps {
 }
 
 /**
- * What card credit is, opened from the Home pill (Figma 29602:13791): how much
- * is left, where it came from, and the four rules that make it different from
- * the balance.
+ * What card credit is (Figma 29602:13791): how much is left, where it came
+ * from, and the four rules that make it different from the balance. Opened
+ * from the Home pill, which only shows while there is credit, and from the
+ * referral program's "How you earn" sheet, where the user may have none yet:
+ * then it explains that bonuses are paid this way rather than showing $0.
  */
 const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps) => {
   const source = cardCreditSourceLine(credit.sources);
+  const hasCredit = credit.availableUsd > 0 || credit.pendingUsd > 0;
 
   return (
     <ReferSheet isOpen={isOpen} onOpenChange={onOpenChange} contentKey="card-credit">
@@ -42,11 +45,15 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
       <Text className="mt-[14px] text-center text-[22px] font-semibold text-white">
         Card credit
       </Text>
-      <View className="mt-[10px]">
-        <ReferAmountChip label={formatUsdCents(credit.availableUsd)} />
-      </View>
+      {hasCredit ? (
+        <View className="mt-[10px]">
+          <ReferAmountChip label={formatUsdCents(credit.availableUsd)} />
+        </View>
+      ) : null}
       <Text className="mt-3 text-center text-[15px] leading-[21px] text-white/60">
-        {source ? `${source} ` : ''}Spend it with your Solid card.
+        {hasCredit
+          ? `${source ? `${source} ` : ''}Spend it with your Solid card.`
+          : 'Your referral bonuses are paid as card credit, to spend with your Solid card.'}
       </Text>
       {credit.pendingUsd > 0 ? (
         <Text className="mt-1 text-center text-[13px] text-white/40">
