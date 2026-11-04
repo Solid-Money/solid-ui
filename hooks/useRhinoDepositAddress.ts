@@ -32,14 +32,11 @@ const describeError = (error: unknown): string => {
  * transfer nothing can receive.
  *
  * A failure is tracked, and toasted once with the reason when the backend gave
- * one (400: not offered, 412: no wallet yet, 503: rhino.fi unavailable) — unless
- * `notifyOnError` is off, for a screen that falls back to its own address
- * rather than showing the failure.
+ * one (400: not offered, 412: no wallet yet, 503: rhino.fi unavailable). The
+ * screen shows it too, with a retry (`refetch`): rhino.fi is the only provider
+ * on the rows it serves, so there is no other address to show instead.
  */
-export const useRhinoDepositAddress = (
-  selection: RhinoDepositSelection | undefined,
-  { notifyOnError = true }: { notifyOnError?: boolean } = {},
-) => {
+export const useRhinoDepositAddress = (selection: RhinoDepositSelection | undefined) => {
   const { user } = useUser();
   const chain = selection?.chain;
   const tokenSymbol = selection?.tokenSymbol;
@@ -82,10 +79,7 @@ export const useRhinoDepositAddress = (
       selected_token: tokenSymbol,
       destination_type: destinationType,
       error: describeError(error),
-      falls_back: !notifyOnError,
     });
-
-    if (!notifyOnError) return;
 
     void showErrorToast(error, {
       action: 'deposit',
@@ -98,12 +92,14 @@ export const useRhinoDepositAddress = (
         destination: destinationType,
       },
     });
-  }, [error, errorUpdatedAt, chain, tokenSymbol, destinationType, notifyOnError]);
+  }, [error, errorUpdatedAt, chain, tokenSymbol, destinationType]);
 
   return {
     address: query.data,
     isLoading: query.isLoading,
     isError: query.isError,
+    /** A retry in flight, so the screen can trade its "Try again" for a spinner. */
+    isFetching: query.isFetching,
     refetch: query.refetch,
   };
 };

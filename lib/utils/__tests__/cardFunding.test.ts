@@ -12,6 +12,7 @@ import {
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
   getCardFundChains,
+  getCardFundRhinoDestination,
   getCardFundRoutes,
   getCardFundRoutesTooltip,
   getCardFundSupportedNetworkNames,
@@ -208,5 +209,19 @@ describe('card fund sections', () => {
     // user looking for a row the flow will not show them.
     expect(CARD_FUND_MOVE_COPY.wirex.title).not.toMatch(/savings/i);
     expect(CARD_FUND_MOVE_COPY.rain.title).toMatch(/savings/i);
+  });
+});
+
+describe('getCardFundRhinoDestination', () => {
+  it('matches the dollar rows against rhino.fi’s card route', () => {
+    for (const symbol of CARD_FUND_TOKEN_SYMBOLS) {
+      expect(getCardFundRhinoDestination(symbol)).toBe('RAIN_CARD');
+    }
+  });
+
+  // No card route takes EURC, and the card address only ever delivered it to
+  // the Safe on Base, which is where rhino.fi's wallet route pays.
+  it('matches EURC against rhino.fi’s wallet route', () => {
+    expect(getCardFundRhinoDestination(CARD_FUND_EURC_SYMBOL)).toBe('WALLET');
   });
 });

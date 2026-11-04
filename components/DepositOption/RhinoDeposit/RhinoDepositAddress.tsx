@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ImageSourcePropType, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -24,7 +24,7 @@ import { DetectedDirectDepositResponse } from '@/lib/types';
 import RhinoChainIcon, { getRhinoChainIcon } from './RhinoChainIcon';
 import RhinoDepositDetails from './RhinoDepositDetails';
 import RhinoDepositStatus from './RhinoDepositStatus';
-import { trackRhinoFallback, useRhinoAddressAnalytics } from './useRhinoAddressAnalytics';
+import { useRhinoAddressAnalytics } from './useRhinoAddressAnalytics';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
@@ -40,20 +40,16 @@ type RhinoDepositAddressProps = {
    * closes and hands the user to the deposit's activity.
    */
   onDepositDetected?: (clientTxId: string) => void;
-  /**
-   * For an address standing in for one of the flow's own rows
-   * (`selection.fallbackChainId`): called once if the rhino.fi address cannot be
-   * had, for any reason, so the host shows that row's own address instead. No
-   * error is shown in that case. Omit it for a "More networks" chain, which has
-   * nothing to fall back to and offers a retry.
-   */
-  onFallback?: () => void;
 };
 
 /**
- * The savings and card funding flows' address step for a rhino.fi chain: the
- * user's rhino.fi address (Tron and Solana ones are not 0x), its QR, what to
- * send and within which limits, what arrives, and rhino.fi's progress on it.
+ * The savings and card funding flows' address step for a row rhino.fi serves:
+ * the user's rhino.fi address, its QR, what to send and within which limits,
+ * what arrives, and rhino.fi's progress on it.
+ *
+ * rhino.fi is the only provider on that row, so an address that cannot be had
+ * is a failure shown here, with a retry, and never a direct-deposit session in
+ * its place.
  *
  * No deposit fee notice, unlike the direct-deposit address: rhino.fi payouts pay
  * no Solid deposit fee.
@@ -62,37 +58,23 @@ const RhinoDepositAddress = ({
   selection,
   onChangeNetwork,
   onDepositDetected,
-  onFallback,
 }: RhinoDepositAddressProps) => {
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
 
-  const assets = useOfferedRhinoDepositAssets();
+  const { assets } = useOfferedRhinoDepositAssets();
   const offered = useMemo(() => findRhinoRoute(assets, selection), [assets, selection]);
-  const { address, isError, refetch } = useRhinoDepositAddress(selection, {
-    notifyOnError: !onFallback,
-  });
+  const { address, isError, isFetching, refetch } = useRhinoDepositAddress(selection);
 
   const depositAddress = address?.depositAddress;
-  const chainId = offered?.chain.chainId ?? selection.fallbackChainId;
-  // A row the app lists itself keeps the name it has there ("Polygon", not
-  // rhino.fi's own), so the screen reads as the row that was tapped.
-  const rowChain =
-    selection.fallbackChainId !== undefined ? getBridgeChain(selection.fallbackChainId) : undefined;
-  const chainName = rowChain?.name ?? address?.chainName ?? offered?.chain.name ?? selection.chain;
+  const { chainId } = selection;
+  // The row keeps the name it has in the list ("Polygon", not rhino.fi's own),
+  // so the screen reads as the row that was tapped.
+  const chainName =
+    getBridgeChain(chainId)?.name ?? address?.chainName ?? offered?.chain.name ?? selection.chain;
   const addressType = address?.addressType ?? offered?.chain.addressType;
   const chainIcon = getRhinoChainIcon(selection.chain, chainId);
   const trackCopy = useRhinoAddressAnalytics(selection, depositAddress);
-
-  // rhino.fi first, our own address as the fallback: the host swaps this screen
-  // for the row's own as soon as the request fails.
-  const hasFallenBackRef = useRef(false);
-  useEffect(() => {
-    if (!isError || !onFallback || hasFallenBackRef.current) return;
-    hasFallenBackRef.current = true;
-    trackRhinoFallback(selection);
-    onFallback();
-  }, [isError, onFallback, selection]);
 
   // rhino.fi pays out to the same savings / card destination a direct transfer
   // goes to, where the regular pipeline credits it. Its detection is what hands
@@ -163,7 +145,7 @@ const RhinoDepositAddress = ({
                   }
                 : {})}
             />
-          ) : isError && !onFallback ? (
+          ) : isError && !isFetching ? (
             <View className="items-center gap-y-3 px-6">
               <Text className="text-center text-sm text-white/70">
                 Could not load the deposit address.

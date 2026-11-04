@@ -2,7 +2,7 @@ import { ImageSourcePropType } from 'react-native';
 import { formatUnits, parseUnits } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
-import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
+import { getBridgeChain } from '@/constants/bridge';
 import {
   WALLET_DEPOSIT_CHAIN_IDS,
   WALLET_DEPOSIT_TOKEN_GROUPS,
@@ -12,7 +12,16 @@ import {
 } from '@/constants/walletDepositTokens';
 import { getAsset } from '@/lib/assets';
 import { isDevFeatureEnabled } from '@/lib/config';
-import { getRhinoSelectionForRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import {
+  findRhinoRouteForRow,
+  getRhinoSelectionForRow,
+  isOfferedRhinoRow,
+  isOwnPipelineChain,
+  resolveRhinoRow,
+  RhinoAssetsState,
+  RhinoDepositSelection,
+  RhinoRowState,
+} from '@/lib/rhinoDeposit';
 import { CardProvider, DepositAsset, RhinoDepositAssetsResponse } from '@/lib/types';
 
 export type WalletDepositNetwork = {
@@ -32,15 +41,23 @@ export type WalletDepositToken = {
 type WalletDepositProvider = CardProvider | null | undefined;
 
 /**
- * Who the screen is for: their card issuer, and whether they are offered the
- * deposit tokens still being rolled out (`useDepositTokensAccess`). Without
- * `hasNewTokens` only what every user is offered is listed (see `releasedOn`),
- * so a caller that leaves it out shows less rather than more.
+ * Who the screen is for, and what rhino.fi offers them: their card issuer,
+ * whether they are offered the deposit tokens still being rolled out
+ * (`useDepositTokensAccess`), and rhino.fi's routes, which decide every row but
+ * Fuse's. Without `hasNewTokens` only what every user is offered is listed (see
+ * `releasedOn`); without `rhino` the routes count as still loading, so only the
+ * Fuse rows are offered. A caller that leaves either out shows less, not more.
  */
 export type WalletDepositViewer = {
   provider?: WalletDepositProvider;
   hasNewTokens?: boolean;
+  rhino?: RhinoAssetsState;
 };
+
+/** How one row of the screen is served (see `getWalletDepositRow`). */
+export type WalletDepositRow = RhinoRowState;
+
+const RHINO_LOADING: RhinoAssetsState = { status: 'loading' };
 
 /** Deposits land on the Safe within roughly the same window on every chain. */
 export const WALLET_DEPOSIT_ESTIMATED_TIME = '~3 min';
@@ -120,8 +137,13 @@ const isPositiveAmount = (value: string): boolean => {
   }
 };
 
-/** The stablecoins the deposit pipeline has a route for. */
-const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
+/**
+ * The stablecoins a Wirex cardholder's deposit goes to their card address for
+ * (which delivers to the Safe on Fuse their card spends from), rather than to
+ * the wallet: minted by our pipeline on Fuse, and through rhino.fi's card route
+ * everywhere else.
+ */
+const CARD_ADDRESS_SYMBOLS: ReadonlySet<string> = new Set(['USDC', 'USDT']);
 
 /** EURC, which only a Wirex cardholder is offered. */
 const EURC_SYMBOL = 'EURC';
@@ -148,39 +170,48 @@ export const offersWalletDepositEurc = (provider: WalletDepositProvider): boolea
 
 /**
  * Whether the deposit address is one the pipeline mints, rather than the Safe.
+ * Only ever on a Fuse row: every other row is rhino.fi's.
  *
- * Both halves have to hold:
+ * All three have to hold:
  *
+ * - A Fuse row. Fuse is the one chain rhino.fi does not support, so it keeps
+ *   what it always showed.
  * - A Wirex cardholder. The address is minted against the card destination, and
  *   the backend resolves that by issuer: for Wirex it delivers to their Safe on
  *   Fuse, which is the same balance their card settles from. For a Rain
  *   cardholder it would deliver to the card, and for someone with no card there
- *   is no issuer to resolve — so everyone else is shown the Safe, everywhere.
- * - A stablecoin. EURC counts: for it the pipeline delivers to their Safe on
- *   Base instead, where the card's euro balance is spent from.
- *   Everything else has no route through the pipeline; it lands in the Safe and
- *   stays as the token that was sent, so there the Safe address is the right
+ *   is no issuer to resolve — so everyone else is shown the Safe.
+ * - A dollar stablecoin. FUSE and WFUSE have no route through the pipeline;
+ *   they land in the Safe and stay as sent, so there the Safe is the right
  *   answer rather than a fallback.
  */
 export const usesDirectDepositAddress = (
+  chainId: number,
   symbol: string,
   provider: WalletDepositProvider,
-): boolean => provider === CardProvider.WIREX && DIRECT_DEPOSIT_SYMBOLS.has(symbol);
+): boolean =>
+  isOwnPipelineChain(chainId) &&
+  provider === CardProvider.WIREX &&
+  CARD_ADDRESS_SYMBOLS.has(symbol);
 
 /**
- * The rhino.fi address a wallet row shows instead of the Safe, or undefined to
- * keep what the row shows today.
- *
- * The rule is the user's: a wallet deposit of USDC, USDT, ETH or EURC sent on a
- * chain other than Base arrives in the Safe on Base, which rhino.fi's `WALLET`
- * route does. So it applies only to those four tokens, never on Base or Fuse,
- * and only where rhino.fi has a route from that chain (see
- * `getRhinoSelectionForRow`). Every other token stays on the chain it was sent
- * on, as today.
- *
- * Nor for a pairing the pipeline mints an address for (a Wirex cardholder's
- * stablecoins, see {@link usesDirectDepositAddress}): that address delivers to
- * the Safe their card spends from, which is not the one on Base.
+ * The rhino.fi route a wallet row is matched against: `WALLET`, which pays the
+ * Safe on Base, except for a Wirex cardholder's USDC and USDT. Those take the
+ * card route (`RAIN_CARD`), which pays their card deposit address on Base, and
+ * our pipeline delivers it on to the Safe on Fuse their card spends from. Their
+ * EURC takes `WALLET` like everyone's: the Safe on Base is where their euro
+ * balance is spent from.
+ */
+export const getWalletRhinoDestination = (
+  symbol: string,
+  provider: WalletDepositProvider,
+): 'WALLET' | 'RAIN_CARD' =>
+  provider === CardProvider.WIREX && CARD_ADDRESS_SYMBOLS.has(symbol) ? 'RAIN_CARD' : 'WALLET';
+
+/**
+ * The rhino.fi address a wallet row shows, or undefined where rhino.fi has no
+ * route for it (see `getWalletDepositRow` for what such a row becomes). Never
+ * for Fuse.
  */
 export const getWalletRhinoSelection = (
   assets: RhinoDepositAssetsResponse | undefined,
@@ -188,18 +219,11 @@ export const getWalletRhinoSelection = (
   symbol: string,
   provider: WalletDepositProvider,
 ): RhinoDepositSelection | undefined =>
-  usesDirectDepositAddress(symbol, provider)
-    ? undefined
-    : getRhinoSelectionForRow(assets, { chainId, destinationType: 'WALLET', symbol });
-
-/**
- * Whether the pipeline can mint an address on a chain: the bridge sources, the
- * chains it watches. Optimism is a deposit chain for the Safe only, so a Wirex
- * cardholder's stablecoins — which always go through the pipeline — are not
- * offered there.
- */
-const isDirectDepositChain = (chainId: number): boolean =>
-  !!BRIDGE_TOKENS[chainId] && !BRIDGE_TOKENS[chainId].isComingSoon;
+  getRhinoSelectionForRow(assets, {
+    chainId,
+    destinationType: getWalletRhinoDestination(symbol, provider),
+    symbol,
+  });
 
 /**
  * The contract the pipeline credits for a native asset. It lists WETH and WFUSE;
@@ -226,21 +250,103 @@ const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isCo
 const isReleasedOn = (token: WalletDepositTokenConfig, chainId: number): boolean =>
   token.releasedOn?.includes(chainId) ?? false;
 
-/** The chains a currency is taken on for this person, in "Select network" order. */
-const getTokenChainIds = (
+/**
+ * The chains a currency could be taken on for this person, in "Select network"
+ * order, before rhino.fi has a say: where it has a contract, on an open chain,
+ * and released to them.
+ */
+const getCandidateChainIds = (
   token: WalletDepositTokenConfig,
   { provider, hasNewTokens = false }: WalletDepositViewer,
 ): number[] => {
   if (!isOffered(token, provider)) return [];
-  const minted = usesDirectDepositAddress(token.symbol, provider);
 
   return WALLET_DEPOSIT_CHAIN_IDS.filter(
     chainId =>
       token.contracts[chainId] !== undefined &&
       isOpenChain(chainId) &&
-      (hasNewTokens || isReleasedOn(token, chainId)) &&
-      (!minted || isDirectDepositChain(chainId)),
+      (hasNewTokens || isReleasedOn(token, chainId)),
   );
+};
+
+/**
+ * Each of a currency's candidate rows, and how it is served:
+ *
+ * - Fuse: our own pipeline, exactly as before (the Safe, or a Wirex
+ *   cardholder's minted address — see {@link usesDirectDepositAddress}).
+ * - Any other chain rhino.fi takes it into the wallet from: rhino.fi's address
+ *   (see {@link getWalletRhinoDestination}). A chain it has no route from is not
+ *   offered, with no Safe in its place — WBTC, which rhino.fi takes on
+ *   Ethereum, Base and BNB Chain, is offered on those three.
+ * - A currency rhino.fi takes from none of its rows (PAXG, cbBTC, UNI, …): the
+ *   Base row alone, showing the Safe, where it lands as sent. One with no Base
+ *   contract has no row there, and is not offered off Fuse at all.
+ *
+ * Until rhino.fi's routes are in, every row but Fuse's is `loading`, and
+ * `unavailable` if they cannot be had: which tokens rhino.fi takes is exactly
+ * what decides these rows, so none of them can be offered without it.
+ */
+const getTokenRows = (
+  token: WalletDepositTokenConfig,
+  viewer: WalletDepositViewer,
+): { chainId: number; state: WalletDepositRow }[] => {
+  const candidates = getCandidateChainIds(token, viewer);
+  const rhino = viewer.rhino ?? RHINO_LOADING;
+  const { symbol } = token;
+  const destinationType = getWalletRhinoDestination(symbol, viewer.provider);
+  // A card deposit (a Wirex cardholder's dollars) never lands in the Safe on
+  // Base: that is not the balance their card spends from.
+  const landsInSafeOnBase =
+    rhino.status === 'ready' &&
+    destinationType === 'WALLET' &&
+    !candidates.some(
+      chainId =>
+        !!findRhinoRouteForRow(rhino.assets, { chainId, destinationType: 'WALLET', symbol }),
+    );
+
+  return candidates.map(chainId => {
+    const state = resolveRhinoRow(rhino, { chainId, destinationType, symbol });
+    return state.kind === 'none' && chainId === base.id && landsInSafeOnBase
+      ? { chainId, state: { kind: 'own' } }
+      : { chainId, state };
+  });
+};
+
+/** The chains a currency is offered on for this person, in "Select network" order. */
+const getTokenChainIds = (token: WalletDepositTokenConfig, viewer: WalletDepositViewer): number[] =>
+  getTokenRows(token, viewer)
+    .filter(({ state }) => isOfferedRhinoRow(state))
+    .map(({ chainId }) => chainId);
+
+/**
+ * How the address screen serves a pairing: `own` (the Safe, or the minted
+ * address on Fuse), `rhino` (its rhino.fi address), `loading` or `unavailable`
+ * (rhino.fi's routes are not in, or cannot be had), or `none` — not a row this
+ * person is offered, which the screen moves off.
+ */
+export const getWalletDepositRow = (
+  chainId: number,
+  symbol: string,
+  viewer: WalletDepositViewer = {},
+): WalletDepositRow => {
+  const token = findToken(symbol);
+  const row = token && getTokenRows(token, viewer).find(item => item.chainId === chainId);
+  return row?.state ?? { kind: 'none' };
+};
+
+/**
+ * What the network list says about a currency's rows it cannot offer yet:
+ * `loading` while rhino.fi's routes are out, `unavailable` when they could not
+ * be had. Undefined once they are in, or for a currency only Fuse takes.
+ */
+export const getWalletDepositNetworksNotice = (
+  symbol: string,
+  viewer: WalletDepositViewer = {},
+): 'loading' | 'unavailable' | undefined => {
+  const token = findToken(symbol);
+  const kinds = token ? getTokenRows(token, viewer).map(({ state }) => state.kind) : [];
+  if (kinds.includes('loading')) return 'loading';
+  return kinds.includes('unavailable') ? 'unavailable' : undefined;
 };
 
 const toWalletDepositToken = ({
@@ -271,9 +377,10 @@ export const getWalletDepositTokens = (
 /**
  * Chains the wallet can be funded on, in display order.
  *
- * The deposit address is the user's Safe, which is the same address on every
- * chain — the choice here only decides which currencies are on offer, what the
- * minimum is, and which logo the QR carries.
+ * Off Fuse the address is the user's rhino.fi address for the row (the Safe
+ * only on Base, for a currency rhino.fi does not take), so the choice decides
+ * the address as well as which currencies are on offer, what the minimum is,
+ * and which logo the QR carries.
  *
  * With a viewer, only the chains carrying something offered to them; without
  * one, every chain, for looking a chain's name and logo up.
@@ -372,24 +479,22 @@ export const formatWalletDepositMinimum = (minimum: string): string => {
 
 /**
  * The pairing the screen opens on: USDC on Base (see
- * `DEFAULT_WALLET_DEPOSIT_CHAIN_ID`), falling back if either is off. Both are
+ * `DEFAULT_WALLET_DEPOSIT_CHAIN_ID`), falling back if Base is off. Both are
  * offered to everyone, so this needs no viewer.
  *
- * This address is the user's Safe on the chain they pick, not a bridge — what
- * lands on Base stays on Base. A Wirex cardholder's USDC and USDT are the
- * exception: they go to a minted address, which delivers them to the Safe on
- * Fuse, with the fee for that bridge quoted under the QR.
+ * The preferred pairing rather than a promise: on Base the address is the
+ * user's rhino.fi address, paying the Safe on Base, and should rhino.fi have no
+ * route there the screen moves to a chain it has one from (see
+ * `resolveWalletDepositChain`). A Wirex cardholder's USDC goes through rhino.fi's
+ * card route instead, which delivers it to the Safe on Fuse.
  */
 export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: string } => {
   const networks = getWalletDepositNetworks();
   const chainId = networks.some(network => network.chainId === DEFAULT_WALLET_DEPOSIT_CHAIN_ID)
     ? DEFAULT_WALLET_DEPOSIT_CHAIN_ID
     : (networks[0]?.chainId ?? mainnet.id);
-  const tokens = getWalletDepositTokens(chainId);
-  const symbol =
-    tokens.find(token => token.symbol === 'USDC')?.symbol ?? tokens[0]?.symbol ?? 'USDC';
 
-  return { chainId, symbol };
+  return { chainId, symbol: 'USDC' };
 };
 
 /**
@@ -428,7 +533,8 @@ export const groupWalletDepositTokens = (
 /**
  * The chains "Select network" offers once a currency is chosen: only those that
  * carry it, so switching chain can never quietly switch the currency too. All of
- * them when nothing is chosen yet, or no chain carries it.
+ * them when nothing is chosen yet; none for a currency no row takes (yet: until
+ * rhino.fi's routes are in, only Fuse's rows are offered).
  */
 export const getWalletDepositNetworksForToken = (
   symbol?: string,
@@ -436,10 +542,10 @@ export const getWalletDepositNetworksForToken = (
 ): WalletDepositNetwork[] => {
   const networks = getWalletDepositNetworks(viewer);
   const token = findToken(symbol);
-  const carrying = token ? getTokenChainIds(token, viewer) : [];
-  const offered = networks.filter(network => carrying.includes(network.chainId));
+  if (!token) return networks;
 
-  return offered.length ? offered : networks;
+  const carrying = getTokenChainIds(token, viewer);
+  return networks.filter(network => carrying.includes(network.chainId));
 };
 
 /**
@@ -447,8 +553,9 @@ export const getWalletDepositNetworksForToken = (
  *
  * The current chain when it carries the currency, so changing only the currency
  * from the address screen keeps the chain. Otherwise the currency's own home
- * (ARB on Arbitrum, OP on Optimism), then the default chain (see
- * `getDefaultWalletDepositSelection`) if it carries it, else the first that does.
+ * (`homeChainId`), then the default chain (see
+ * `getDefaultWalletDepositSelection`) if it carries it, else the first that does:
+ * Ethereum for USDC, should rhino.fi take none on Base.
  */
 export const resolveWalletDepositChain = (
   symbol: string,

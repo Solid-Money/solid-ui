@@ -161,6 +161,19 @@ const joinWithOr = (names: string[]): string =>
 export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
 
 /**
+ * The rhino.fi route a card deposit row is matched against.
+ *
+ * The card's own (`RAIN_CARD`) for the dollar stablecoins: rhino.fi pays the
+ * card deposit address on Base, and the pipeline takes it on to wherever the
+ * issuer spends from, as for a direct transfer. EURC is the exception. No card
+ * route takes it (they are dollar routes), and the card address only ever
+ * delivered it as EURC to the Safe on Base — exactly where rhino.fi's `WALLET`
+ * route pays, so that is the one its row uses.
+ */
+export const getCardFundRhinoDestination = (symbol: string): 'RAIN_CARD' | 'WALLET' =>
+  symbol === CARD_FUND_EURC_SYMBOL ? 'WALLET' : CARD_FUND_DESTINATION_TYPE;
+
+/**
  * Which groups the "Fund your card" step shows.
  *
  * Configuration rather than a prop per row, because what differs between the two

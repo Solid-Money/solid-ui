@@ -1,5 +1,6 @@
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
+import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
 import {
   describeRhinoArrival,
   findRhinoRoute,
@@ -7,14 +8,21 @@ import {
   formatDepositAddress,
   formatRhinoUsdLimits,
   getRhinoAddressErrorBody,
+  getRhinoAssetsState,
   getRhinoChainsForDestination,
   getRhinoDepositStatusView,
+  getRhinoListNotice,
   getRhinoRejectMessage,
   getRhinoSelectionForRow,
+  isOfferedRhinoRow,
+  isOwnPipelineChain,
   isRhinoDepositOffered,
   isSameDepositAddress,
   isValidRhinoDepositAddress,
   pickRhinoDeposit,
+  resolveRhinoRow,
+  RhinoAssetsState,
+  RhinoRowState,
 } from '@/lib/rhinoDeposit';
 
 import type {
@@ -111,11 +119,43 @@ const ASSETS: RhinoDepositAssetsResponse = {
 const chainsOf = (chains: { chain: string }[]) => chains.map(chain => chain.chain);
 
 describe('isRhinoDepositOffered', () => {
-  it('needs both the rollout and a backend with rhino.fi configured', () => {
-    expect(isRhinoDepositOffered(true, ASSETS)).toBe(true);
-    expect(isRhinoDepositOffered(false, ASSETS)).toBe(false);
-    expect(isRhinoDepositOffered(true, { enabled: false, chains: ASSETS.chains })).toBe(false);
-    expect(isRhinoDepositOffered(true, undefined)).toBe(false);
+  // No rollout gate: whoever the user is, the backend's answer decides.
+  it('needs only a backend with rhino.fi on', () => {
+    expect(isRhinoDepositOffered(ASSETS)).toBe(true);
+    expect(isRhinoDepositOffered({ enabled: false, chains: ASSETS.chains })).toBe(false);
+    expect(isRhinoDepositOffered(undefined)).toBe(false);
+  });
+});
+
+describe('getRhinoAssetsState', () => {
+  const idle = { isFetching: false, isError: false };
+
+  it('is ready once the backend answers with rhino.fi on', () => {
+    expect(getRhinoAssetsState(ASSETS, idle)).toEqual({ status: 'ready', assets: ASSETS });
+  });
+
+  it('keeps the rows while a refresh is out or has failed', () => {
+    expect(getRhinoAssetsState(ASSETS, { isFetching: true, isError: false }).status).toBe('ready');
+    expect(getRhinoAssetsState(ASSETS, { isFetching: false, isError: true }).status).toBe('ready');
+  });
+
+  it('is loading until the first answer, and while a retry is out', () => {
+    expect(getRhinoAssetsState(undefined, { isFetching: true, isError: false }).status).toBe(
+      'loading',
+    );
+    expect(getRhinoAssetsState(undefined, idle).status).toBe('loading');
+    expect(getRhinoAssetsState(undefined, { isFetching: true, isError: true }).status).toBe(
+      'loading',
+    );
+  });
+
+  it('is unavailable when the request failed or rhino.fi is off', () => {
+    expect(getRhinoAssetsState(undefined, { isFetching: false, isError: true })).toEqual({
+      status: 'unavailable',
+    });
+    expect(getRhinoAssetsState({ enabled: false, chains: [] }, idle)).toEqual({
+      status: 'unavailable',
+    });
   });
 });
 
@@ -431,107 +471,18 @@ describe('getRhinoAddressErrorBody', () => {
   });
 });
 
-/**
- * The backend's newer answer: the EVM chains the app lists itself appear too,
- * with their `chainId`, and no route is offered where the deposit chain is the
- * payout chain (no Base for the wallet, card, soUSD or soEURC; no Ethereum for
- * soETH). Card USDC and USDT arrive as sent; ETH to the card as USDC.
- */
-const usd = (symbol: string) => [
-  route('WALLET', symbol),
-  route('RAIN_CARD', symbol),
-  route('PROTOCOL', symbol, { vault: 'soUSD' }),
-];
-const eth = (withSavings: boolean) => [
-  route('WALLET', 'ETH'),
-  route('RAIN_CARD', 'USDC'),
-  ...(withSavings
-    ? [route('PROTOCOL', 'ETH', { vault: 'soETH', receiveChainId: mainnet.id })]
-    : []),
-];
-const token = (symbol: string, routes: RhinoDepositRoute[]) => ({
-  symbol,
-  address: '0x0000000000000000000000000000000000000002',
-  routes,
-});
-
-const ROW_ASSETS: RhinoDepositAssetsResponse = {
-  enabled: true,
-  chains: [
-    {
-      chain: 'ETHEREUM',
-      chainId: mainnet.id,
-      name: 'Ethereum',
-      addressType: 'EVM',
-      tokens: [
-        token('USDC', usd('USDC')),
-        token('USDT', usd('USDT')),
-        token('ETH', eth(false)),
-        token('EURC', [route('WALLET', 'EURC'), route('PROTOCOL', 'EURC', { vault: 'soEURC' })]),
-        // rhino.fi carries it; the app's lists do not.
-        token('USDe', [route('WALLET', 'USDe'), route('PROTOCOL', 'USDe', { vault: 'soUSD' })]),
-      ],
-    },
-    {
-      chain: 'ARBITRUM',
-      chainId: arbitrum.id,
-      name: 'Arbitrum One',
-      addressType: 'EVM',
-      tokens: [token('USDC', usd('USDC')), token('ETH', eth(true))],
-    },
-    {
-      chain: 'MATIC_POS',
-      chainId: polygon.id,
-      name: 'Polygon PoS',
-      addressType: 'EVM',
-      tokens: [token('USDT', usd('USDT'))],
-    },
-    {
-      chain: 'BINANCE',
-      chainId: bsc.id,
-      name: 'BNB Smart Chain',
-      addressType: 'EVM',
-      tokens: [token('USDC', usd('USDC'))],
-    },
-    {
-      chain: 'BASE',
-      chainId: base.id,
-      name: 'Base',
-      addressType: 'EVM',
-      // Base only for ETH into soETH, which pays out on Ethereum.
-      tokens: [
-        token('ETH', [route('PROTOCOL', 'ETH', { vault: 'soETH', receiveChainId: mainnet.id })]),
-      ],
-    },
-    {
-      // Not something the backend lists; here to show Fuse stays our own.
-      chain: 'FUSE',
-      chainId: fuse.id,
-      name: 'Fuse',
-      addressType: 'EVM',
-      tokens: [token('USDC', usd('USDC'))],
-    },
-    {
-      chain: 'TRON',
-      name: 'Tron',
-      addressType: 'TRON',
-      tokens: [token('USDT', usd('USDT'))],
-    },
-  ],
-};
-
 describe('findRhinoRouteForRow', () => {
   it('matches a row to the rhino.fi chain with its chainId', () => {
-    const found = findRhinoRouteForRow(ROW_ASSETS, {
+    const found = findRhinoRouteForRow(RHINO_ASSETS, {
       chainId: arbitrum.id,
       destinationType: 'RAIN_CARD',
       symbol: 'USDC',
     });
     expect(found?.chain.chain).toBe('ARBITRUM');
-    // Card USDC now arrives as sent.
+    // Card USDC arrives as sent.
     expect(found?.route).toMatchObject({ receiveSymbol: 'USDC', receiveChainId: base.id });
     expect(
-      findRhinoRouteForRow(ROW_ASSETS, {
+      findRhinoRouteForRow(RHINO_ASSETS, {
         chainId: polygon.id,
         destinationType: 'RAIN_CARD',
         symbol: 'USDT',
@@ -540,35 +491,62 @@ describe('findRhinoRouteForRow', () => {
   });
 
   it('needs a route for the row’s own destination and token', () => {
-    // MATIC_POS carries USDT, not USDC.
+    // MATIC_POS carries no ETH, and Arbitrum no EURC.
     expect(
-      findRhinoRouteForRow(ROW_ASSETS, {
+      findRhinoRouteForRow(RHINO_ASSETS, {
         chainId: polygon.id,
-        destinationType: 'RAIN_CARD',
-        symbol: 'USDC',
+        destinationType: 'WALLET',
+        symbol: 'ETH',
       }),
     ).toBeUndefined();
-    // Base pays out on Base, so the backend offers no Base route to the card.
     expect(
-      findRhinoRouteForRow(ROW_ASSETS, {
+      findRhinoRouteForRow(RHINO_ASSETS, {
+        chainId: arbitrum.id,
+        destinationType: 'WALLET',
+        symbol: 'EURC',
+      }),
+    ).toBeUndefined();
+    // EURC is never converted, so it has no card route.
+    expect(
+      findRhinoRouteForRow(RHINO_ASSETS, {
         chainId: base.id,
         destinationType: 'RAIN_CARD',
-        symbol: 'USDC',
+        symbol: 'EURC',
       }),
     ).toBeUndefined();
   });
 
+  // A Base deposit into a Base product goes through rhino.fi too.
+  it('matches the chain a route pays out on like any other', () => {
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
+      expect(
+        findRhinoRouteForRow(RHINO_ASSETS, { chainId: base.id, destinationType, symbol: 'USDC' })
+          ?.chain.chain,
+      ).toBe('BASE'),
+    );
+    expect(
+      findRhinoRouteForRow(RHINO_ASSETS, {
+        chainId: base.id,
+        destinationType: 'PROTOCOL',
+        symbol: 'EURC',
+        vault: 'soEURC',
+      })?.route,
+    ).toMatchObject({ receiveSymbol: 'EURC', receiveChainId: base.id });
+    expect(
+      findRhinoRouteForRow(RHINO_ASSETS, {
+        chainId: mainnet.id,
+        destinationType: 'PROTOCOL',
+        symbol: 'ETH',
+        vault: 'soETH',
+      })?.route,
+    ).toMatchObject({ receiveSymbol: 'ETH', receiveChainId: mainnet.id });
+  });
+
   it('matches savings only into the vault the token funds', () => {
     const soEth = { destinationType: 'PROTOCOL' as const, symbol: 'ETH', vault: 'soETH' };
-    expect(findRhinoRouteForRow(ROW_ASSETS, { ...soEth, chainId: base.id })?.route).toMatchObject({
-      receiveSymbol: 'ETH',
-      receiveChainId: mainnet.id,
-    });
-    expect(findRhinoRouteForRow(ROW_ASSETS, { ...soEth, chainId: arbitrum.id })).toBeDefined();
-    // Ethereum is where soETH pays out: that row stays our own.
-    expect(findRhinoRouteForRow(ROW_ASSETS, { ...soEth, chainId: mainnet.id })).toBeUndefined();
+    expect(findRhinoRouteForRow(RHINO_ASSETS, { ...soEth, chainId: arbitrum.id })).toBeDefined();
     expect(
-      findRhinoRouteForRow(ROW_ASSETS, {
+      findRhinoRouteForRow(RHINO_ASSETS, {
         chainId: arbitrum.id,
         destinationType: 'PROTOCOL',
         symbol: 'ETH',
@@ -577,10 +555,28 @@ describe('findRhinoRouteForRow', () => {
     ).toBeUndefined();
   });
 
+  // No symbol list of its own: a row asks for its screen's token, and rhino.fi's
+  // routes say where it is taken.
+  it('takes any token a row asks for where rhino.fi lists a route, WBTC included', () => {
+    const wbtc = (chainId: number) =>
+      findRhinoRouteForRow(RHINO_ASSETS, { chainId, destinationType: 'WALLET', symbol: 'WBTC' });
+    [mainnet.id, base.id, bsc.id].forEach(chainId => expect(wbtc(chainId)).toBeDefined());
+    [polygon.id, arbitrum.id, optimism.id].forEach(chainId =>
+      expect(wbtc(chainId)).toBeUndefined(),
+    );
+    expect(
+      findRhinoRouteForRow(RHINO_ASSETS, {
+        chainId: base.id,
+        destinationType: 'WALLET',
+        symbol: 'WETH',
+      }),
+    ).toBeUndefined();
+  });
+
   it('keeps Fuse on our own pipeline, whatever rhino.fi offers there', () => {
     (['WALLET', 'RAIN_CARD', 'PROTOCOL'] as const).forEach(destinationType =>
       expect(
-        findRhinoRouteForRow(ROW_ASSETS, {
+        findRhinoRouteForRow(RHINO_ASSETS, {
           chainId: fuse.id,
           destinationType,
           symbol: 'USDC',
@@ -588,51 +584,21 @@ describe('findRhinoRouteForRow', () => {
         }),
       ).toBeUndefined(),
     );
+    expect(isOwnPipelineChain(fuse.id)).toBe(true);
+    expect(isOwnPipelineChain(base.id)).toBe(false);
   });
 
   it('finds nothing while rhino.fi is off or has not answered', () => {
     const row = { chainId: arbitrum.id, destinationType: 'RAIN_CARD' as const, symbol: 'USDC' };
-    expect(findRhinoRouteForRow({ ...ROW_ASSETS, enabled: false }, row)).toBeUndefined();
+    expect(findRhinoRouteForRow({ ...RHINO_ASSETS, enabled: false }, row)).toBeUndefined();
     expect(findRhinoRouteForRow(undefined, row)).toBeUndefined();
-  });
-
-  describe('the wallet rule: USDC, USDT, ETH and EURC arrive on Base', () => {
-    const wallet = (chainId: number, symbol: string) =>
-      findRhinoRouteForRow(ROW_ASSETS, { chainId, destinationType: 'WALLET', symbol });
-
-    it('uses rhino.fi for those four off Base', () => {
-      ['USDC', 'USDT', 'ETH', 'EURC'].forEach(symbol =>
-        expect(wallet(mainnet.id, symbol)?.route).toMatchObject({ receiveChainId: base.id }),
-      );
-    });
-
-    it('leaves Base rows as they are', () => {
-      const withBaseWallet: RhinoDepositAssetsResponse = {
-        ...ROW_ASSETS,
-        chains: ROW_ASSETS.chains.map(chain =>
-          chain.chain === 'BASE' ? { ...chain, tokens: [token('USDC', usd('USDC'))] } : chain,
-        ),
-      };
-      expect(
-        findRhinoRouteForRow(withBaseWallet, {
-          chainId: base.id,
-          destinationType: 'WALLET',
-          symbol: 'USDC',
-        }),
-      ).toBeUndefined();
-    });
-
-    it('never uses rhino.fi for a token outside the four', () => {
-      expect(wallet(mainnet.id, 'USDe')).toBeUndefined();
-      expect(wallet(mainnet.id, 'WETH')).toBeUndefined();
-    });
   });
 });
 
 describe('getRhinoSelectionForRow', () => {
-  it('remembers the row, so a failed request can fall back to it', () => {
+  it('names the row the address is for', () => {
     expect(
-      getRhinoSelectionForRow(ROW_ASSETS, {
+      getRhinoSelectionForRow(RHINO_ASSETS, {
         chainId: mainnet.id,
         destinationType: 'PROTOCOL',
         symbol: 'USDT',
@@ -640,54 +606,102 @@ describe('getRhinoSelectionForRow', () => {
       }),
     ).toEqual({
       chain: 'ETHEREUM',
+      chainId: mainnet.id,
       tokenSymbol: 'USDT',
       destinationType: 'PROTOCOL',
       vault: 'soUSD',
-      fallbackChainId: mainnet.id,
     });
   });
 
-  it('keeps the row’s own address where rhino.fi has no route', () => {
+  it('has none where rhino.fi has no route', () => {
     expect(
-      getRhinoSelectionForRow(ROW_ASSETS, {
-        chainId: base.id,
+      getRhinoSelectionForRow(RHINO_ASSETS, {
+        chainId: polygon.id,
         destinationType: 'PROTOCOL',
-        symbol: 'USDC',
-        vault: 'soUSD',
+        symbol: 'ETH',
+        vault: 'soETH',
       }),
     ).toBeUndefined();
   });
 });
 
-describe('"More networks"', () => {
-  const rowsFor = { destinationType: 'RAIN_CARD' as const, symbol: 'USDT' };
-
-  it('leaves out the chains the flow already lists as rows', () => {
-    const rows = [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id];
-    expect(
-      chainsOf(getRhinoChainsForDestination(ROW_ASSETS, { ...rowsFor, excludeChainIds: rows })),
-    ).toEqual(['TRON']);
+describe('resolveRhinoRow', () => {
+  const READY: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS };
+  const LOADING: RhinoAssetsState = { status: 'loading' };
+  const UNAVAILABLE: RhinoAssetsState = { status: 'unavailable' };
+  const row = (chainId: number) => ({
+    chainId,
+    destinationType: 'PROTOCOL' as const,
+    symbol: 'USDC',
+    vault: 'soUSD',
   });
 
-  it('keeps an EVM chain the flow does not list for that token', () => {
-    // A flow whose rows for this token are Base and Fuse alone.
-    expect(
-      chainsOf(
-        getRhinoChainsForDestination(ROW_ASSETS, {
-          destinationType: 'WALLET',
-          symbol: 'EURC',
-          excludeChainIds: [base.id],
-        }),
-      ),
-    ).toEqual(['ETHEREUM']);
+  it('keeps Fuse our own, whatever the state of rhino.fi', () => {
+    [READY, LOADING, UNAVAILABLE].forEach(state =>
+      expect(resolveRhinoRow(state, row(fuse.id))).toEqual({ kind: 'own' }),
+    );
   });
 
-  it('never lists Fuse, nor a token the app does not offer', () => {
+  it('serves every other row through rhino.fi where it has a route', () => {
+    expect(resolveRhinoRow(READY, row(polygon.id))).toEqual({
+      kind: 'rhino',
+      selection: {
+        chain: 'MATIC_POS',
+        chainId: polygon.id,
+        tokenSymbol: 'USDC',
+        destinationType: 'PROTOCOL',
+        vault: 'soUSD',
+      },
+    });
+  });
+
+  // No fallback: such a row is not shown.
+  it('offers no row rhino.fi has no route for', () => {
     expect(
-      chainsOf(getRhinoChainsForDestination(ROW_ASSETS, { destinationType: 'WALLET' })),
-    ).not.toContain('FUSE');
-    expect(
-      getRhinoChainsForDestination(ROW_ASSETS, { destinationType: 'WALLET', symbol: 'USDe' }),
-    ).toEqual([]);
+      resolveRhinoRow(READY, {
+        chainId: polygon.id,
+        destinationType: 'PROTOCOL',
+        symbol: 'ETH',
+        vault: 'soETH',
+      }),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('decides no other row until the assets are in, nor when they cannot be had', () => {
+    expect(resolveRhinoRow(LOADING, row(mainnet.id))).toEqual({ kind: 'loading' });
+    expect(resolveRhinoRow(UNAVAILABLE, row(mainnet.id))).toEqual({ kind: 'unavailable' });
+  });
+});
+
+describe('isOfferedRhinoRow', () => {
+  it('offers only a row with an address, ours or rhino.fi’s', () => {
+    const selection = {
+      chain: 'BASE',
+      chainId: base.id,
+      tokenSymbol: 'USDC',
+      destinationType: 'WALLET' as const,
+    };
+    expect(isOfferedRhinoRow({ kind: 'own' })).toBe(true);
+    expect(isOfferedRhinoRow({ kind: 'rhino', selection })).toBe(true);
+    expect(isOfferedRhinoRow({ kind: 'loading' })).toBe(false);
+    expect(isOfferedRhinoRow({ kind: 'unavailable' })).toBe(false);
+    expect(isOfferedRhinoRow({ kind: 'none' })).toBe(false);
+  });
+});
+
+describe('getRhinoListNotice', () => {
+  const OWN: RhinoRowState = { kind: 'own' };
+  const NONE: RhinoRowState = { kind: 'none' };
+
+  it('waits while any row does, and offers a retry when any cannot be had', () => {
+    expect(getRhinoListNotice([OWN, { kind: 'loading' }])).toBe('loading');
+    expect(getRhinoListNotice([OWN, { kind: 'unavailable' }])).toBe('unavailable');
+    expect(getRhinoListNotice([{ kind: 'unavailable' }, { kind: 'loading' }])).toBe('loading');
+  });
+
+  it('says nothing beside rows that have an address, and says so when none does', () => {
+    expect(getRhinoListNotice([OWN, NONE])).toBeUndefined();
+    expect(getRhinoListNotice([NONE, NONE])).toBe('empty');
+    expect(getRhinoListNotice([])).toBe('empty');
   });
 });

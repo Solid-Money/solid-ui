@@ -19,6 +19,7 @@ export {
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
   getCardFundChains,
+  getCardFundRhinoDestination,
   getCardFundRoutes,
   getCardFundRoutesTooltip,
   getCardFundSupportedNetworkNames,

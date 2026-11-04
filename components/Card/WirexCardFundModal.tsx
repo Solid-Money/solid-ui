@@ -12,6 +12,7 @@ import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
 import {
   CARD_FUND_DESTINATION_TYPE,
   CARD_FUND_MOVE_COPY,
+  getCardFundRhinoDestination,
   getCardFundTokenIcon,
   WIREX_CARD_FUND_SECTIONS,
   WIREX_CARD_FUND_TOKENS,
@@ -36,7 +37,7 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
-import { getRhinoSelectionForRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import { isOfferedRhinoRow, resolveRhinoRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { CardProvider, DepositModal } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
@@ -132,7 +133,7 @@ export default function WirexCardFundModal({
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
-  // Set when a rhino.fi chain was picked: the address step shows its address instead.
+  // Set when a row rhino.fi serves was picked: the address step shows its address.
   const [rhinoSelection, setRhinoSelection] = useState<RhinoDepositSelection | undefined>(
     undefined,
   );
@@ -205,46 +206,34 @@ export default function WirexCardFundModal({
     [goToStep],
   );
 
-  // rhino.fi first for one of the list's own rows: when it has a route from
-  // this chain to the card, the address step shows the rhino.fi address, and the
-  // direct-deposit session is minted only if it has none or the request fails.
+  // rhino.fi on every row but Fuse, as for a Rain card: a row it has a card route
+  // from (EURC: its wallet route, see `getCardFundRhinoDestination`) shows the
+  // rhino.fi address, and only a Fuse row mints a direct-deposit session. The
+  // list offers nothing else, and nothing else is acted on here either.
   const handleNetworkSelect = useCallback(
     (chainId: number) => {
-      const rhino = getRhinoSelectionForRow(rhinoAssets, {
+      const row = resolveRhinoRow(rhinoAssets, {
         chainId,
-        destinationType: CARD_FUND_DESTINATION_TYPE,
+        destinationType: getCardFundRhinoDestination(selectedToken),
         symbol: selectedToken,
       });
+      if (!isOfferedRhinoRow(row)) return;
 
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
         chain_id: chainId,
         token_symbol: selectedToken,
         deposit_type: 'wirex_card_direct_deposit',
-        via_rhino: !!rhino,
+        via_rhino: row.kind === 'rhino',
       });
 
-      setRhinoSelection(rhino);
+      setRhinoSelection(row.kind === 'rhino' ? row.selection : undefined);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
-      if (!rhino) prepareSession({ chainId, token: selectedToken });
+      if (row.kind === 'own') prepareSession({ chainId, token: selectedToken });
       goToStep('address');
     },
     [goToStep, prepareSession, rhinoAssets, selectedToken],
   );
-
-  // The rhino.fi address for a row could not be had: the row's own session
-  // instead, on the same step.
-  const handleRhinoFallback = useCallback(() => {
-    const chainId = rhinoSelection?.fallbackChainId;
-    setRhinoSelection(undefined);
-    if (chainId === undefined) return;
-    setSelectedChainId(chainId);
-    setDepositAddress(undefined);
-    prepareSession({ chainId, token: selectedToken });
-  }, [prepareSession, rhinoSelection, selectedToken]);
-
-  // A rhino.fi chain from under the network list. Its address step fetches the
-  // user's rhino.fi address itself, so no direct-deposit session is minted.
 
   // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
   // buy-crypto steps now replace this modal's content without closing its shell.
@@ -447,9 +436,6 @@ export default function WirexCardFundModal({
           selection={rhinoSelection}
           onChangeNetwork={handleBack}
           onDepositDetected={handleDepositDetected}
-          onFallback={
-            rhinoSelection.fallbackChainId !== undefined ? handleRhinoFallback : undefined
-          }
         />
       );
     }

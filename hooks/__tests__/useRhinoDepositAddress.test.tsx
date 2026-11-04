@@ -1,7 +1,9 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useRhinoDepositAddress } from '@/hooks/useRhinoDepositAddress';
+import { track } from '@/lib/analytics';
 import { createRhinoDepositAddress } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
 
@@ -24,15 +26,21 @@ const mockCreate = createRhinoDepositAddress as jest.MockedFunction<
 >;
 const mockToast = showErrorToast as jest.MockedFunction<typeof showErrorToast>;
 
-const SELECTION = { chain: 'TRON', tokenSymbol: 'USDT', destinationType: 'PROTOCOL' as const };
+/** The Polygon row of the savings list. */
+const SELECTION = {
+  chain: 'MATIC_POS',
+  chainId: 137,
+  tokenSymbol: 'USDT',
+  destinationType: 'PROTOCOL' as const,
+};
 
 const response = (depositAddress: string): RhinoDepositAddressResponse => ({
   depositAddress,
-  chain: 'TRON',
-  chainName: 'Tron',
-  addressType: 'TRON',
+  chain: 'MATIC_POS',
+  chainName: 'Polygon PoS',
+  addressType: 'EVM',
   tokenSymbol: 'USDT',
-  tokenAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+  tokenAddress: '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',
   destinationType: 'PROTOCOL',
   receiveSymbol: 'USDC',
   receiveChainId: 8453,
@@ -52,10 +60,10 @@ const latest = () => seen[seen.length - 1];
 let root: any;
 let client: QueryClient;
 
-const mount = async (options?: { notifyOnError?: boolean }) => {
+const mount = async () => {
   client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
   const Probe = () => {
-    seen.push(useRhinoDepositAddress(SELECTION, options));
+    seen.push(useRhinoDepositAddress(SELECTION));
     return null;
   };
   await act(async () => {
@@ -80,17 +88,17 @@ afterEach(async () => {
 });
 
 describe('useRhinoDepositAddress', () => {
-  it('returns a Tron address as it came', async () => {
-    mockCreate.mockResolvedValue(response('TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE'));
+  it('returns the address as it came', async () => {
+    mockCreate.mockResolvedValue(response('0x8ba1f109551bD432803012645Ac136ddd64DBA72'));
     await mount();
 
-    expect(latest().address?.depositAddress).toBe('TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE');
+    expect(latest().address?.depositAddress).toBe('0x8ba1f109551bD432803012645Ac136ddd64DBA72');
     expect(latest().isError).toBe(false);
   });
 
-  // A 0x address for Tron is one nothing on Tron can send to.
+  // A Tron address for an EVM chain is one nothing on that chain can send to.
   it('treats an address in the wrong format for its chain as a failure', async () => {
-    mockCreate.mockResolvedValue(response('0x8ba1f109551bD432803012645Ac136ddd64DBA72'));
+    mockCreate.mockResolvedValue(response('TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE'));
     await mount();
 
     expect(latest().address).toBeUndefined();
@@ -108,11 +116,34 @@ describe('useRhinoDepositAddress', () => {
     });
   });
 
-  it('stays quiet for a screen that falls back to its own address', async () => {
+  // No screen falls back to an address of its own any more, so every failure is said.
+  it('toasts every failure, with no option to stay quiet', async () => {
     mockCreate.mockRejectedValue({ status: 412 });
-    await mount({ notifyOnError: false });
+    await mount();
 
     expect(latest().isError).toBe(true);
-    expect(mockToast).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledTimes(1);
+    expect(mockToast.mock.calls[0][1]).toMatchObject({
+      body: 'Finish setting up your wallet, then try again.',
+    });
+    expect(track).toHaveBeenCalledWith(
+      TRACKING_EVENTS.DEPOSIT_RHINO_ADDRESS_FAILED,
+      expect.not.objectContaining({ falls_back: expect.anything() }),
+    );
+  });
+
+  it('retries on request, clearing the failure while the retry is out', async () => {
+    mockCreate.mockRejectedValueOnce({ status: 503 });
+    await mount();
+    expect(latest().isError).toBe(true);
+
+    mockCreate.mockResolvedValue(response('0x8ba1f109551bD432803012645Ac136ddd64DBA72'));
+    await act(async () => {
+      void latest().refetch();
+    });
+    await settle();
+
+    expect(seen.some(result => result.isFetching && !result.isError)).toBe(true);
+    expect(latest().address?.depositAddress).toBe('0x8ba1f109551bD432803012645Ac136ddd64DBA72');
   });
 });
