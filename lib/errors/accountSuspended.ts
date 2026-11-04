@@ -22,17 +22,25 @@ const isResponse = (value: unknown): value is Response =>
   typeof Response !== 'undefined' && value instanceof Response;
 
 /**
+ * Whether a response body carries the code: at the top level, where the backend
+ * puts it, or under `error`, the other shape `normalizeError` reads. Reading
+ * both keeps the two in step, so a refusal described as a suspension always
+ * ends the session as one.
+ */
+const bodyCarriesSuspendedCode = (body: Record<string, unknown> | null): boolean =>
+  body?.code === ACCOUNT_SUSPENDED_CODE || asRecord(body?.error)?.code === ACCOUNT_SUSPENDED_CODE;
+
+/**
  * Whether a thrown value says the account is suspended, from what it already
  * carries: an `ApiError`'s `code`, a parsed `{ code }` body, or an axios error's
- * `response.data.code`. Synchronous, so it misses an unread `Response` — use
+ * `response.data` body. Synchronous, so it misses an unread `Response` — use
  * {@link readAccountSuspended} where one can arrive.
  */
 export const isAccountSuspendedError = (error: unknown): boolean => {
   const record = asRecord(error);
   if (!record) return false;
   if (record.code === ACCOUNT_SUSPENDED_CODE) return true;
-  const data = asRecord(asRecord(record.response)?.data);
-  return data?.code === ACCOUNT_SUSPENDED_CODE;
+  return bodyCarriesSuspendedCode(asRecord(asRecord(record.response)?.data));
 };
 
 /**
@@ -45,8 +53,7 @@ export const readAccountSuspended = async (error: unknown): Promise<boolean> => 
   if (isAccountSuspendedError(error)) return true;
   if (!isResponse(error) || error.status !== 403 || error.bodyUsed) return false;
   try {
-    const body = asRecord(await error.clone().json());
-    return body?.code === ACCOUNT_SUSPENDED_CODE;
+    return bodyCarriesSuspendedCode(asRecord(await error.clone().json()));
   } catch {
     return false;
   }

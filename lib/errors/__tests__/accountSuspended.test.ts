@@ -10,6 +10,10 @@ describe('isAccountSuspendedError', () => {
   it.each([
     ['an ApiError', { status: 403, code: 'ACCOUNT_SUSPENDED' }],
     ['an axios error', { response: { status: 403, data: { code: 'ACCOUNT_SUSPENDED' } } }],
+    [
+      'an axios error with the code under error',
+      { response: { status: 403, data: { error: { code: 'ACCOUNT_SUSPENDED' } } } },
+    ],
   ])('recognises %s', (_label, error) => {
     expect(isAccountSuspendedError(error)).toBe(true);
   });
@@ -36,6 +40,12 @@ describe('readAccountSuspended', () => {
     const res = response(403, { code: 'ACCOUNT_SUSPENDED' });
     await expect(readAccountSuspended(res)).resolves.toBe(true);
     expect(res.bodyUsed).toBe(false);
+  });
+
+  it('reads the code under error in a 403 Response body', async () => {
+    if (typeof Response === 'undefined') return;
+    const res = response(403, { error: { code: 'ACCOUNT_SUSPENDED' } });
+    await expect(readAccountSuspended(res)).resolves.toBe(true);
   });
 
   it('leaves other statuses unread', async () => {

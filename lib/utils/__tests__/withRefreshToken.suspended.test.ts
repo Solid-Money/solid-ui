@@ -69,6 +69,36 @@ describe('withRefreshToken — suspended accounts', () => {
     expect(logout).not.toHaveBeenCalled();
   });
 
+  it('ends the session as suspended when the retry after a refresh is refused', async () => {
+    // Suspended between the refresh and the retry.
+    mockRefreshToken.mockResolvedValue({ json: async () => ({ tokens: {} }) });
+    const call = jest
+      .fn()
+      .mockRejectedValueOnce(httpError(401))
+      .mockRejectedValueOnce(suspendedError());
+
+    await expect(utils.withRefreshToken(call)).rejects.toMatchObject({
+      code: 'ACCOUNT_SUSPENDED',
+    });
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(suspended).toHaveBeenCalledTimes(1);
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('passes any other retry failure through untouched, without refreshing again', async () => {
+    mockRefreshToken.mockResolvedValue({ json: async () => ({ tokens: {} }) });
+    const call = jest
+      .fn()
+      .mockRejectedValueOnce(httpError(401))
+      .mockRejectedValueOnce(httpError(500));
+
+    await expect(utils.withRefreshToken(call)).rejects.toMatchObject({ status: 500 });
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(suspended).not.toHaveBeenCalled();
+    expect(logout).not.toHaveBeenCalled();
+  });
+
   it('reads the code off an unread fetch Response', async () => {
     if (typeof Response === 'undefined') return;
     mockRefreshToken.mockRejectedValue(

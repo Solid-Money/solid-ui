@@ -337,6 +337,17 @@ export const ensureFreshAccessToken = async (): Promise<void> => {
 // Optional call: test suites that mock lib/api don't provide it.
 setAuthPreflight?.(ensureFreshAccessToken);
 
+/**
+ * Ends the session as suspended when `error` is the backend's suspension
+ * refusal (always a 403), and says whether it was.
+ */
+const endSessionIfSuspended = async (error: any): Promise<boolean> => {
+  if (!isHTTPError(error, 403) && !isHTTPError(error?.response, 403)) return false;
+  if (!(await readAccountSuspended(error))) return false;
+  endSuspendedSession();
+  return true;
+};
+
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
@@ -353,11 +364,8 @@ export const withRefreshToken = async <T>(
 
     // Suspended by an admin: the token is genuine, so refreshing it cannot help.
     // End the session and say why, instead of letting every screen fail on its own.
-    if (isHTTPError(error, 403) || isHTTPError(error?.response, 403)) {
-      if (await readAccountSuspended(error)) {
-        endSuspendedSession();
-        throw error;
-      }
+    if (await endSessionIfSuspended(error)) {
+      throw error;
     }
 
     if (!isHTTPError(error, 401)) {
@@ -390,8 +398,15 @@ export const withRefreshToken = async <T>(
       throw refreshTokenError;
     }
 
-    // Retry original request with new access token
-    return await apiCall();
+    // Retry original request with new access token. A suspension placed after
+    // the refresh is refused here instead; it ends the session the same way,
+    // and nothing is refreshed again.
+    try {
+      return await apiCall();
+    } catch (retryError) {
+      await endSessionIfSuspended(retryError);
+      throw retryError;
+    }
   }
 };
 
