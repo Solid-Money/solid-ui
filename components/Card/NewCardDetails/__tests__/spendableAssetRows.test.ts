@@ -1,15 +1,20 @@
 import { base, fuse } from 'viem/chains';
 
-import { buildSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
+import {
+  buildSpendableAssetRows,
+  cardCreditAssetRow,
+  withCardCreditRow,
+} from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { baseSpendableAssets, CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
-import { TokenBalance, TokenType } from '@/lib/types';
+import { CardCreditSummary, TokenBalance, TokenType } from '@/lib/types';
 
 jest.mock('@/hooks/useBalances', () => ({ useBalances: jest.fn() }));
 jest.mock('@/hooks/useCardSpendableBalance', () => ({ useCardSpendableAssets: jest.fn() }));
 jest.mock('@/hooks/useVaultExchangeRate', () => ({ useVaultExchangeRate: jest.fn() }));
 jest.mock('@/hooks/useMainCurrency', () => ({ useMainCurrency: jest.fn() }));
+jest.mock('@/hooks/useCardCredit', () => ({ useCardCredit: jest.fn() }));
 
 const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
 const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -204,10 +209,55 @@ describe('buildSpendableAssetRows', () => {
 
       expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
         ['usdc', 'USDC', undefined, '$25.00', undefined],
-        ['cbbtc', 'cbBTC', 'Bitcoin', '$960.00', '0.0012 cbBTC'],
+        ['cbbtc', 'cbBTC', 'Bitcoin', '$96.00', '0.0012 cbBTC'],
       ]);
       // Bitcoin counts in the balance, not as dollars.
       expect(dollarUsd).toBeCloseTo(25, 4);
+    });
+  });
+
+  /** Eli, Nov 4: card credit heads the list, since every purchase uses it first. */
+  describe('card credit', () => {
+    const credit = (overrides: Partial<CardCreditSummary> = {}): CardCreditSummary => ({
+      availableUsd: 10,
+      pendingUsd: 0,
+      lifetimeGrantedUsd: 10,
+      lifetimeSpentUsd: 0,
+      spendable: true,
+      sources: [],
+      ...overrides,
+    });
+
+    it('reads what is left, used first', () => {
+      expect(cardCreditAssetRow(credit({ availableUsd: 12.5 }))).toEqual({
+        key: 'card-credit',
+        icon: 'cardCredit',
+        name: 'Card credit',
+        subtitle: 'Used first',
+        value: '$12.50',
+        usd: 0,
+        isDollar: false,
+      });
+    });
+
+    it.each([
+      ['no summary', undefined],
+      ['nothing left', credit({ availableUsd: 0, pendingUsd: 4 })],
+      ['no active card to spend it with', credit({ spendable: false })],
+    ])('is left out with %s', (_label, summary) => {
+      expect(cardCreditAssetRow(summary)).toBeNull();
+    });
+
+    it('goes on top and adds nothing to the balance', () => {
+      const breakdown = buildSpendableAssetRows(HOLDINGS, CARD_SPENDABLE_ASSETS, 1.0);
+      const withCredit = withCardCreditRow(breakdown, credit());
+
+      expect(withCredit.rows.map(row => row.icon)).toEqual([
+        'cardCredit',
+        ...breakdown.rows.map(row => row.icon),
+      ]);
+      expect(withCredit.totalUsd).toBe(breakdown.totalUsd);
+      expect(withCredit.dollarUsd).toBe(breakdown.dollarUsd);
     });
   });
 });

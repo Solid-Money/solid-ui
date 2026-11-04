@@ -4,14 +4,20 @@ import { base } from 'viem/chains';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
+import { useCardCredit } from '@/hooks/useCardCredit';
 import { useCardSpendableAssets } from '@/hooks/useCardSpendableBalance';
 import { useMainCurrency } from '@/hooks/useMainCurrency';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
-import { TokenBalance } from '@/lib/types';
+import { showsCardCreditPill } from '@/lib/cardCredit';
+import { CardCreditSummary, TokenBalance } from '@/lib/types';
 import { matchesAsset } from '@/lib/utils/cardSpendable';
 
-/** Which logo a "Spendable assets" row draws. The last five are the crypto Base can sell. */
+/**
+ * Which logo a "Spendable assets" row draws: card credit, then the tokens. The last five are the
+ * crypto Base can sell.
+ */
 export type SpendableAssetIcon =
+  | 'cardCredit'
   | 'usdc'
   | 'usdt'
   | 'sousd'
@@ -135,6 +141,9 @@ export const buildSpendableAssetRows = (
     const usdOf = (token: TokenBalance) => units(token) * (token.quoteRate ?? 0);
 
     switch (icon) {
+      // Not a token: its row comes from `cardCreditAssetRow`.
+      case 'cardCredit':
+        return [];
       case 'usdc':
       case 'usdt': {
         const usd = matching.reduce((sum, token) => sum + usdOf(token), 0);
@@ -215,17 +224,53 @@ export const buildSpendableAssetRows = (
   };
 };
 
-/** {@link buildSpendableAssetRows} for the signed-in cardholder. */
+/**
+ * Card credit's row: what is left of it, "Used first", since every purchase draws on it before
+ * any asset below. Only while it can be spent — the Home pill's rule, so a user without an active
+ * card is not told it pays for anything.
+ *
+ * Listed, never added: card credit is a balance of its own, so it is in neither "Your balance"
+ * nor the dollars a purchase can draw on.
+ */
+export const cardCreditAssetRow = (
+  credit: CardCreditSummary | null | undefined,
+): SpendableAssetRow | null =>
+  credit && showsCardCreditPill(credit)
+    ? {
+        key: 'card-credit',
+        icon: 'cardCredit',
+        name: 'Card credit',
+        subtitle: 'Used first',
+        value: money(credit.availableUsd, 'USD'),
+        usd: 0,
+        isDollar: false,
+      }
+    : null;
+
+/** The breakdown with card credit's row on top, the totals untouched. */
+export const withCardCreditRow = (
+  breakdown: SpendableAssetBreakdown,
+  credit: CardCreditSummary | null | undefined,
+): SpendableAssetBreakdown => {
+  const row = cardCreditAssetRow(credit);
+  return row ? { ...breakdown, rows: [row, ...breakdown.rows] } : breakdown;
+};
+
+/** {@link buildSpendableAssetRows} for the signed-in cardholder, with their card credit on top. */
 export const useSpendableAssetRows = (): SpendableAssetBreakdown => {
   const { tokens } = useBalances();
   const assets = useCardSpendableAssets();
   const holdsSoEur = assets.some(asset => asset.symbol === 'soEUR');
   const { data: soEurRate } = useVaultExchangeRate('EUR', holdsSoEur);
   const { usdPerEur } = useMainCurrency();
+  // The query the Home pill already keeps warm, so the row is there when the sheet opens rather
+  // than growing the panel under the cardholder's thumb.
+  const { data: cardCredit } = useCardCredit();
 
   return useMemo(
-    () => buildSpendableAssetRows(tokens, assets, soEurRate, usdPerEur),
-    [tokens, assets, soEurRate, usdPerEur],
+    () =>
+      withCardCreditRow(buildSpendableAssetRows(tokens, assets, soEurRate, usdPerEur), cardCredit),
+    [tokens, assets, soEurRate, usdPerEur, cardCredit],
   );
 };
 
