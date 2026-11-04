@@ -9,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, {
@@ -28,17 +29,18 @@ import { type AssetPath, getAsset } from '@/lib/assets';
 import { AI_API_BRAND } from './AiApiPrimitives';
 
 // Figma node 29632:13369, "Illustration — agents orbit". Positions are in its
-// 387 × 196 frame; a narrower card scales the whole frame down.
+// 387 × 210 frame; a narrower card scales the whole frame down.
 const ORBIT_WIDTH = 387;
-const ORBIT_HEIGHT = 196;
-// The glow, every ring and the agent coin share this centre.
+const ORBIT_HEIGHT = 210;
+// The glow, every ring, the agent coin and the model coins' orbit share this centre.
 const CENTER_X = 193.5;
-const CENTER_Y = 100;
+const CENTER_Y = 106;
 
 /** Contour rings, innermost first. Each fades out towards the edge of one shared ellipse. */
 const RINGS = [
   { r: 56, opacity: 0.3 },
-  { r: 84, opacity: 0.22 },
+  // The ring the model coins travel along.
+  { r: 80, opacity: 0.28 },
   { r: 114, opacity: 0.2 },
   { r: 142, opacity: 0.15 },
   { r: 170, opacity: 0.14 },
@@ -51,10 +53,10 @@ const INNER_RINGS = [
   { r: 21.5, opacity: 0.35 },
 ];
 const SIGNAL_DOTS = [
-  { cx: 235.5, cy: 27.25 },
-  { cx: 60.06, cy: 51.43 },
-  { cx: 145.32, cy: 168.81 },
-  { cx: 322.2, cy: 39.99 },
+  { cx: 60.06, cy: 57.43 },
+  { cx: 322.2, cy: 45.99 },
+  { cx: 60.06, cy: 154.57 },
+  { cx: 296.82, cy: 154.18 },
 ];
 // The glow reaches past the frame's bottom, under the copy; the rings fade out
 // before the ellipse's edge.
@@ -64,82 +66,67 @@ interface ModelCoin {
   name: string;
   left: number;
   top: number;
-  size: number;
   backgroundColor?: string;
   logo: AssetPath;
   logoSize: number;
-  /** The far coins rest half faded. */
-  opacity?: number;
-  /** Where on the timeline the coin starts to appear. */
+  /** Where on the entrance timeline the coin starts to appear. */
   start: number;
 }
 
+/** Every model coin's size: they all ride the 80pt ring, a fifth of a turn apart. */
+const COIN_SIZE = 40;
+
+// The makers of the launch models, where Figma's frame puts them at the start
+// of the orbit.
 const MODEL_COINS: ModelCoin[] = [
   {
-    name: 'Meta',
-    left: 11.21,
-    top: 119.34,
-    size: 32,
-    backgroundColor: 'rgba(8, 102, 255, 0.8)',
-    logo: 'images/ai-api/model-meta.svg',
+    name: 'Kimi',
+    left: 97.42,
+    top: 61.28,
+    backgroundColor: 'rgba(11, 11, 11, 0.85)',
+    logo: 'images/ai-api/model-kimi.svg',
     logoSize: 19,
-    opacity: 0.55,
-    start: 0.14875,
-  },
-  {
-    name: 'Mistral',
-    left: 343.79,
-    top: 48.66,
-    size: 32,
-    backgroundColor: 'rgba(250, 82, 15, 0.8)',
-    logo: 'images/ai-api/model-mistral.svg',
-    logoSize: 17,
-    opacity: 0.55,
     start: 0.14875,
   },
   {
     name: 'Claude',
-    left: 73.82,
-    top: 16.59,
-    size: 46,
+    left: 173.5,
+    top: 6,
     backgroundColor: 'rgba(217, 119, 87, 0.8)',
     logo: 'images/ai-api/model-claude.svg',
-    logoSize: 31.364,
+    logoSize: 27.273,
     start: 0.14875,
   },
   {
     name: 'OpenAI',
-    left: 69.84,
-    top: 130.52,
-    size: 46,
+    left: 126.48,
+    top: 150.72,
     // Figma exports this coin whole, its fill included.
     logo: 'images/ai-api/model-openai.svg',
-    logoSize: 46,
+    logoSize: COIN_SIZE,
     start: 0.07,
   },
   {
-    name: 'Gemini',
-    left: 267.18,
-    top: 16.59,
-    size: 46,
+    name: 'GLM',
+    left: 220.52,
+    top: 150.72,
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    logo: 'images/ai-api/model-gemini.svg',
-    logoSize: 37.636,
+    logo: 'images/ai-api/model-glm.svg',
+    logoSize: 19,
     start: 0.11625,
   },
   {
     name: 'DeepSeek',
-    left: 276.2,
-    top: 119.71,
-    size: 46,
+    left: 249.58,
+    top: 61.28,
     backgroundColor: 'rgba(77, 107, 254, 0.85)',
     logo: 'images/ai-api/model-deepseek.svg',
-    logoSize: 28,
+    logoSize: 24.348,
     start: 0.14875,
   },
 ];
 
-const AGENT_COIN = { left: 151.5, top: 58, size: 84, start: 0.14875 };
+const AGENT_COIN = { left: 151.5, top: 64, size: 84, start: 0.14875 };
 
 // Lucide's bot, the glyph Figma uses, drawn here so it can carry the design's glow.
 const BOT_PATHS = [
@@ -156,10 +143,11 @@ const BOT_STROKE = 1.3125;
 const BOT_GLOW_DEVIATION = 1.5;
 
 // Figma's timeline (cohort of 28710:7027): every coin fades in and springs from
-// 55% to full size. Its translate keyframes export malformed (four stops at
-// 100%), so the coins hold their places, and the entrance plays once rather
-// than looping on a screen that is there to be read.
+// 55% to full size, then the model coins circle the agent clockwise, one turn
+// every 24 seconds. The entrance plays once: Figma's loop restarts it from
+// nothing each turn, which would blink every coin out every 24 seconds.
 const TIMELINE_DURATION_MS = 2000;
+const ORBIT_PERIOD_MS = 24000;
 const OPACITY_SPAN = 0.21;
 const SCALE_SPAN = 0.275;
 const SCALE_FROM = 0.55;
@@ -191,27 +179,45 @@ const spring = (phase: number) => {
 
 const Coin = ({
   progress,
+  orbit,
   start,
-  restingOpacity = 1,
+  offset,
   style,
   children,
 }: {
   progress: SharedValue<number>;
+  /** How far round the orbit the coins are, 0 to 1 a turn. */
+  orbit: SharedValue<number>;
   start: number;
-  restingOpacity?: number;
+  /**
+   * The coin's centre from the orbit's centre in Figma's frame. Omitted for the
+   * agent coin, which sits on the centre and so never moves.
+   */
+  offset?: { dx: number; dy: number };
   style: ViewStyle;
   children: ReactNode;
 }) => {
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: restingOpacity * EASE_OUT(getPhase(progress.value, start, start + OPACITY_SPAN)),
-    transform: [
-      {
-        scale:
-          SCALE_FROM +
-          (1 - SCALE_FROM) * spring(getPhase(progress.value, start, start + SCALE_SPAN)),
-      },
-    ],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    // Turning the coin's offset clockwise (y points down) about the centre, and
+    // moving it by the difference: Figma's translate keyframes trace the same circle.
+    const angle = orbit.value * 2 * Math.PI;
+    const dx = offset?.dx ?? 0;
+    const dy = offset?.dy ?? 0;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return {
+      opacity: EASE_OUT(getPhase(progress.value, start, start + OPACITY_SPAN)),
+      transform: [
+        { translateX: dx * cos - dy * sin - dx },
+        { translateY: dx * sin + dy * cos - dy },
+        {
+          scale:
+            SCALE_FROM +
+            (1 - SCALE_FROM) * spring(getPhase(progress.value, start, start + SCALE_SPAN)),
+        },
+      ],
+    };
+  });
 
   return <Animated.View style={[styles.coin, style, animatedStyle]}>{children}</Animated.View>;
 };
@@ -335,27 +341,38 @@ const BotGlyph = ({ id }: { id: string }) => (
 
 /**
  * The intro hero's illustration: the user's agent at the centre of the rings,
- * the models it can reach around it, coming in on Figma's entrance.
+ * the models it can reach circling it, coming in on Figma's entrance. With
+ * reduced motion on, everything rests where Figma's frame draws it.
  */
 const AiApiHeroOrbit = () => {
   const id = `ai-api-orbit-${useId().replace(/:/g, '')}`;
   const reduceMotion = useReducedMotion();
   const progress = useSharedValue(reduceMotion ? 1 : 0);
+  const orbit = useSharedValue(0);
   const [width, setWidth] = useState(0);
 
   useEffect(() => {
     cancelAnimation(progress);
+    cancelAnimation(orbit);
     progress.value = reduceMotion ? 1 : 0;
+    orbit.value = 0;
 
     if (!reduceMotion) {
       progress.value = withTiming(1, {
         duration: TIMELINE_DURATION_MS,
         easing: Easing.linear,
       });
+      orbit.value = withRepeat(
+        withTiming(1, { duration: ORBIT_PERIOD_MS, easing: Easing.linear }),
+        -1,
+      );
     }
 
-    return () => cancelAnimation(progress);
-  }, [progress, reduceMotion]);
+    return () => {
+      cancelAnimation(progress);
+      cancelAnimation(orbit);
+    };
+  }, [orbit, progress, reduceMotion]);
 
   const scale = width > 0 ? Math.min(1, width / ORBIT_WIDTH) : 1;
 
@@ -383,14 +400,18 @@ const AiApiHeroOrbit = () => {
             <Coin
               key={coin.name}
               progress={progress}
+              orbit={orbit}
               start={coin.start}
-              restingOpacity={coin.opacity}
+              offset={{
+                dx: coin.left + COIN_SIZE / 2 - CENTER_X,
+                dy: coin.top + COIN_SIZE / 2 - CENTER_Y,
+              }}
               style={{
                 left: coin.left,
                 top: coin.top,
-                width: coin.size,
-                height: coin.size,
-                borderRadius: coin.size / 2,
+                width: COIN_SIZE,
+                height: COIN_SIZE,
+                borderRadius: COIN_SIZE / 2,
                 backgroundColor: coin.backgroundColor,
               }}
             >
@@ -403,6 +424,7 @@ const AiApiHeroOrbit = () => {
           ))}
           <Coin
             progress={progress}
+            orbit={orbit}
             start={AGENT_COIN.start}
             style={{
               left: AGENT_COIN.left,

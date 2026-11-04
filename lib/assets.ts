@@ -206,27 +206,23 @@ export const ASSETS = {
   },
   'images/ai-api/model-claude.svg': {
     module: require('@/assets/images/ai-api/model-claude.svg'),
-    hash: 'd0b1efce',
+    hash: '7f66e6f6',
   },
   'images/ai-api/model-deepseek.svg': {
     module: require('@/assets/images/ai-api/model-deepseek.svg'),
-    hash: 'a1c3b3d2',
+    hash: '1af469b1',
   },
-  'images/ai-api/model-gemini.svg': {
-    module: require('@/assets/images/ai-api/model-gemini.svg'),
-    hash: '1e881f7e',
+  'images/ai-api/model-glm.svg': {
+    module: require('@/assets/images/ai-api/model-glm.svg'),
+    hash: '13762a5f',
   },
-  'images/ai-api/model-meta.svg': {
-    module: require('@/assets/images/ai-api/model-meta.svg'),
-    hash: 'd9e9614a',
-  },
-  'images/ai-api/model-mistral.svg': {
-    module: require('@/assets/images/ai-api/model-mistral.svg'),
-    hash: 'a6759454',
+  'images/ai-api/model-kimi.svg': {
+    module: require('@/assets/images/ai-api/model-kimi.svg'),
+    hash: '20aecd43',
   },
   'images/ai-api/model-openai.svg': {
     module: require('@/assets/images/ai-api/model-openai.svg'),
-    hash: '1eae3bf1',
+    hash: '05098715',
   },
   'images/app-update-hero.png': {
     module: require('@/assets/images/app-update-hero.png'),

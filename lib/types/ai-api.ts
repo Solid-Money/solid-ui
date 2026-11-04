@@ -66,9 +66,21 @@ export interface AiApiModel {
   /** What Solid charges. */
   inputUsdPerMTok: number;
   outputUsdPerMTok: number;
+  /** What Solid charges for cached input; null (or missing, on an older backend) shows none. */
+  cachedInputUsdPerMTok?: number | null;
   /** The model maker's own list price; null when we don't show a discount. */
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
+}
+
+/** One tier's AI cashback terms. */
+export interface AiApiCashbackTier {
+  /** Core, Prime or Ultra. */
+  tier: string;
+  /** 0.5 is 50%. */
+  rate: number;
+  /** USD a month. 0 means no cap. */
+  monthlyCapUsd: number;
 }
 
 export interface AiApiOverview {
@@ -79,6 +91,8 @@ export interface AiApiOverview {
   cashbackMonthlyCapUsd: number;
   /** The tier those terms are for: Core, Prime or Ultra. */
   cashbackTier: string;
+  /** Every tier's terms, lowest first. Missing on an older backend. */
+  cashbackTiers?: AiApiCashbackTier[];
   /** Days each charge's cashback is held before it lands in USD Yield. */
   cashbackSettlementDays: number;
   /** Base URL without `/v1`; null means "use the API host". */

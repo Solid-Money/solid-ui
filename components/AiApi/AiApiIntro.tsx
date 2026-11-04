@@ -10,16 +10,18 @@ import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 
 import {
+  aiApiSharedTierRate,
   formatAiApiCashback,
   formatAiApiLimit,
   formatAiApiRate,
+  formatAiApiTierCaps,
   formatAiApiUsd,
 } from './aiApiFormat';
 import AiApiHeroOrbit from './AiApiHeroOrbit';
-import { AiApiAntseedCard, AiApiMostUsedModels } from './AiApiModels';
+import { AiApiAntseedCard, AiApiModelList } from './AiApiModels';
 import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiInfoRow } from './AiApiPrimitives';
 
-import type { AiApiModel } from '@/lib/types/ai-api';
+import type { AiApiCashbackTier, AiApiModel } from '@/lib/types/ai-api';
 
 interface Agent {
   label: string;
@@ -82,6 +84,41 @@ const AgentLogo = ({ agent }: { agent: Agent }) => (
 /** The example the intro prices: a round number, so the halving reads at a glance. */
 const EXAMPLE_SPEND_USD = 100;
 
+/**
+ * Figma's footnote: `Every tier gets 50% back, on top of your card cashback: up
+ * to $50 a month on Core, $100 on Prime and $200 on Ultra. Cashback is
+ * credited 14 days after each charge, into USD Yield.` When the tiers' rates
+ * differ, or an older backend sends only the user's own, it speaks for their
+ * tier alone.
+ */
+const cashbackFootnote = ({
+  cashbackRate,
+  cashbackTier,
+  cashbackTiers,
+  cashbackMonthlyCapUsd,
+  settlementDays,
+}: {
+  cashbackRate: number;
+  cashbackTier: string;
+  cashbackTiers?: AiApiCashbackTier[];
+  cashbackMonthlyCapUsd: number;
+  settlementDays: number;
+}): string => {
+  const settles = `Cashback is credited ${settlementDays} days after each charge, into USD Yield.`;
+  const sharedRate = cashbackTiers ? aiApiSharedTierRate(cashbackTiers) : null;
+  if (cashbackTiers && sharedRate !== null) {
+    const caps = formatAiApiTierCaps(cashbackTiers);
+    return `Every tier gets ${formatAiApiRate(sharedRate)} back, on top of your card cashback${
+      caps ? `: ${caps}` : ''
+    }. ${settles}`;
+  }
+  const cap =
+    cashbackMonthlyCapUsd > 0 ? `, up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month` : '';
+  return `Your ${cashbackTier} tier gets ${formatAiApiRate(
+    cashbackRate,
+  )} back, on top of your card cashback${cap}. ${settles}`;
+};
+
 /** The hero's green glow, centred over the icon. */
 const HeroGlow = () => {
   const id = `ai-api-hero-${useId().replace(/:/g, '')}`;
@@ -111,6 +148,7 @@ const HeroGlow = () => {
 const AiApiIntro = ({
   cashbackRate,
   cashbackTier,
+  cashbackTiers,
   cashbackMonthlyCapUsd,
   settlementDays,
   models,
@@ -122,7 +160,9 @@ const AiApiIntro = ({
   cashbackRate: number;
   /** The user's tier, whose rate and cap these are: Core, Prime or Ultra. */
   cashbackTier: string;
-  /** That tier's monthly AI cashback cap, USD. 0 means no cap. */
+  /** Every tier's terms, for the footnote's caps; missing on an older backend. */
+  cashbackTiers?: AiApiCashbackTier[];
+  /** The user's tier's monthly AI cashback cap, USD. 0 means no cap. */
   cashbackMonthlyCapUsd: number;
   settlementDays: number;
   /** The models a key can call, most used first. */
@@ -135,7 +175,6 @@ const AiApiIntro = ({
 }) => {
   const rate = formatAiApiRate(cashbackRate);
   const cashbackUsd = EXAMPLE_SPEND_USD * cashbackRate;
-  const modelCount = models.length;
 
   return (
     <View className="w-full gap-5 px-4">
@@ -148,11 +187,8 @@ const AiApiIntro = ({
             cashback to run your agents
           </Text>
           <Text className="mt-4 text-center text-[15px] leading-[21px] text-white/65">
-            {modelCount > 1
-              ? `Get an API key for ${modelCount} AI models. `
-              : 'Get an API key for top AI models. '}
-            Pay as you go from your Wallet and get {cashbackRate === 0.5 ? 'half' : rate} of it
-            back.
+            One API key for top AI models. Pay as you go from your Wallet and get{' '}
+            {cashbackRate === 0.5 ? 'half' : rate} of it back.
           </Text>
         </View>
       </View>
@@ -178,7 +214,7 @@ const AiApiIntro = ({
         </ScrollView>
       </View>
 
-      <AiApiMostUsedModels models={models} onSeeAll={onOpenModels} />
+      <AiApiModelList models={models} onSeePrices={onOpenModels} />
 
       <View className="gap-[18px] rounded-twice bg-card px-4 py-[18px]">
         <Text className="text-[16px] font-semibold text-white">How it works</Text>
@@ -230,11 +266,13 @@ const AiApiIntro = ({
       <AiApiAntseedCard />
 
       <Text className="text-[12px] leading-[17px] text-white/45">
-        Your {cashbackTier} tier gets {rate} back
-        {cashbackMonthlyCapUsd > 0
-          ? `, up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
-          : ''}
-        . Cashback is credited {settlementDays} days after each charge, into USD Yield.
+        {cashbackFootnote({
+          cashbackRate,
+          cashbackTier,
+          cashbackTiers,
+          cashbackMonthlyCapUsd,
+          settlementDays,
+        })}
       </Text>
 
       {onCta ? (

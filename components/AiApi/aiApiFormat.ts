@@ -44,35 +44,46 @@ export const formatAiApiTokens = (tokens: number): string => {
 };
 
 /**
- * A per-million-token price: `$2.40`, `$0.095`, `$0.0003`. Cheap models are
- * priced in fractions of a cent, so small prices keep two significant digits
- * rather than rounding to `$0.00`.
+ * A per-million-token price, the way Figma's price sheet writes it: `$1.14`
+ * and `$0.27` in cents, `$0.072` and `$0.004` in tenths of a cent below
+ * $0.10, and `Free` for a model we don't charge for.
  */
 export const formatAiApiTokenPrice = (usdPerMTok: number): string => {
   const value = Math.max(0, usdPerMTok || 0);
-  if (value === 0) return '$0';
-  if (value >= 1) return `$${value.toFixed(2)}`;
-  return `$${Number(value.toPrecision(2))}`;
+  if (value === 0) return 'Free';
+  // Rounded to tenths of a cent first, so $0.0996 reads as $0.10 and not $0.100.
+  const thousandths = Math.round(value * 1000) / 1000;
+  if (thousandths >= 0.1) return `$${value.toFixed(2)}`;
+  if (thousandths >= 0.001) return `$${thousandths.toFixed(3)}`;
+  return '<$0.001';
 };
 
-/**
- * How far below the model maker's list price ours is, as a whole percent:
- * the smaller of the input and output discounts, rounded down, so the badge
- * never claims more than either price gives. Null when there is no list
- * price to compare with, or nothing is saved.
- */
-export const aiApiModelDiscount = (model: {
+type AiApiPricedModel = {
   inputUsdPerMTok: number;
   outputUsdPerMTok: number;
+  cachedInputUsdPerMTok?: number | null;
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
-}): number | null => {
+};
+
+/** Three input tokens to one output token: what a typical agent request reads and writes. */
+const blend = (input: number, output: number) => (3 * input + output) / 4;
+
+/** A model we charge nothing for: input, output or cached. */
+export const aiApiModelIsFree = (model: AiApiPricedModel): boolean =>
+  model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
+
+/**
+ * How far below the model maker's list price ours is, as a whole percent, on
+ * Figma's 3:1 input:output blend, rounded down so the tag never claims more
+ * than the blend saves. Null when there is no list price to compare with, or
+ * nothing is saved.
+ */
+export const aiApiModelDiscount = (model: AiApiPricedModel): number | null => {
   const { officialInputUsdPerMTok: officialIn, officialOutputUsdPerMTok: officialOut } = model;
   if (!officialIn || !officialOut || officialIn <= 0 || officialOut <= 0) return null;
-  const discount = Math.min(
-    1 - model.inputUsdPerMTok / officialIn,
-    1 - model.outputUsdPerMTok / officialOut,
-  );
+  const discount =
+    1 - blend(model.inputUsdPerMTok, model.outputUsdPerMTok) / blend(officialIn, officialOut);
   // The epsilon keeps a float like 0.9399999 from reading as 93%.
   const percent = Math.floor(discount * 100 + 1e-9);
   return percent > 0 ? percent : null;
@@ -80,6 +91,66 @@ export const aiApiModelDiscount = (model: {
 
 /** `−94%`, with a true minus sign. */
 export const formatAiApiDiscount = (percent: number): string => `\u2212${percent}%`;
+
+/** The green tag on a model: `Free`, `−94%`, or none when there is nothing to say. */
+export const aiApiModelTag = (model: AiApiPricedModel): string | null => {
+  if (aiApiModelIsFree(model)) return 'Free';
+  const discount = aiApiModelDiscount(model);
+  return discount ? formatAiApiDiscount(discount) : null;
+};
+
+const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+
+/** `Six`, to open a sentence with; `12` past nine. */
+export const formatAiApiCount = (count: number): string => COUNT_WORDS[count] ?? `${count}`;
+
+/**
+ * Every capped tier's monthly AI cashback cap, lowest first: `up to $50 a month
+ * on Core, $100 on Prime and $200 on Ultra`. Null when no tier has a cap.
+ */
+export const formatAiApiTierCaps = (
+  tiers: readonly { tier: string; monthlyCapUsd: number }[],
+): string | null => {
+  const caps = tiers
+    .filter(tier => tier.monthlyCapUsd > 0)
+    .map(
+      (tier, index) =>
+        `${formatAiApiLimit(tier.monthlyCapUsd)}${index === 0 ? ' a month' : ''} on ${tier.tier}`,
+    );
+  if (caps.length === 0) return null;
+  const list =
+    caps.length === 1 ? caps[0] : `${caps.slice(0, -1).join(', ')} and ${caps[caps.length - 1]}`;
+  return `up to ${list}`;
+};
+
+/** The one rate every tier shares, or null when they differ (or there are none). */
+export const aiApiSharedTierRate = (tiers: readonly { rate: number }[]): number | null =>
+  tiers.length > 0 && tiers.every(tier => tier.rate === tiers[0].rate) ? tiers[0].rate : null;
+
+/**
+ * The price sheet's note: `You get 50% back on every model, up to $50 a month
+ * on Core, $100 on Prime and $200 on Ultra.` Every tier's cap follows the
+ * user's rate only when every tier shares it, as the intro's footnote does.
+ * Otherwise, or without every tier's terms (an older backend), the user's own
+ * cap stands in.
+ */
+export const formatAiApiCashbackNote = ({
+  cashbackRate,
+  cashbackTiers,
+  cashbackMonthlyCapUsd,
+}: {
+  cashbackRate: number;
+  cashbackTiers?: readonly { tier: string; rate: number; monthlyCapUsd: number }[];
+  cashbackMonthlyCapUsd: number;
+}): string => {
+  const caps =
+    cashbackTiers && aiApiSharedTierRate(cashbackTiers) !== null
+      ? formatAiApiTierCaps(cashbackTiers)
+      : cashbackMonthlyCapUsd > 0
+        ? `up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
+        : null;
+  return `You get ${formatAiApiRate(cashbackRate)} back on every model${caps ? `, ${caps}` : ''}.`;
+};
 
 /** `Nov 1` — when limits reset and cashback lands. Dates are UTC days. */
 export const formatAiApiShortDate = (iso: string | Date): string =>
