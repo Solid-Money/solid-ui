@@ -40,6 +40,11 @@ interface InviteCodeFieldProps {
    */
   showPasteButton: boolean;
   onPaste: (text: string) => void;
+  /**
+   * While signup is sending: the code already went with the request, so it
+   * can't be changed until that answers.
+   */
+  disabled?: boolean;
   labelClassName?: string;
 }
 
@@ -57,10 +62,11 @@ const InviteCodeField = ({
   status,
   showPasteButton,
   onPaste,
+  disabled = false,
   labelClassName,
 }: InviteCodeFieldProps) => {
   const pasteControl =
-    showPasteButton && Platform.OS === 'ios' && Clipboard.isPasteButtonAvailable ? (
+    showPasteButton && !disabled && Platform.OS === 'ios' && Clipboard.isPasteButtonAvailable ? (
       <View className="flex-row items-center justify-between gap-3 rounded-xl bg-[#1F1F1F] py-2 pl-4 pr-2">
         <Text className="flex-1 text-[15px] font-medium text-white/80">Paste invite</Text>
         <Clipboard.ClipboardPasteButton
@@ -83,6 +89,7 @@ const InviteCodeField = ({
         {pasteControl}
         <Pressable
           onPress={onOpen}
+          disabled={disabled}
           accessibilityRole="button"
           hitSlop={8}
           className="self-start active:opacity-70 web:hover:opacity-80"
@@ -114,6 +121,7 @@ const InviteCodeField = ({
       <Input
         value={value}
         onChangeText={onChangeText}
+        editable={!disabled}
         placeholder="Optional"
         // Codes are kept as typed: older ones mix cases, and the lookup answers
         // with the canonical spelling.

@@ -327,6 +327,7 @@ export default function SignupEmail() {
       status={inviteStatus}
       showPasteButton={canPasteInvite && !inviteCode}
       onPaste={handlePasteInvite}
+      disabled={isLoading}
     />
   );
 

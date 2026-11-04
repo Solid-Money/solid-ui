@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 /** Literal brand green, for props that can't take a class (icon tints, fills). */
 export const REFER_ACCENT = '#94F27F';
 
-/** "Terms apply" on every reward sheet. */
+/** "Read the full terms" on every reward sheet. */
 export const REFERRAL_TERMS_URL =
   'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
 
@@ -34,28 +34,35 @@ const FILL_EASING = Easing.bezier(0.16, 1, 0.3, 1);
 
 export type ReferRewardKind = 'spendShare' | 'welcome' | 'bigSpender' | 'upgrade';
 
-/** Figma draws each icon at three sizes (tile, list row, sheet), stroke unchanged. */
-type RewardIconSize = 20 | 36 | 56;
+/**
+ * Figma draws each icon at four sizes (tile, list row, "How you earn" row,
+ * sheet), each its own drawing.
+ */
+type RewardIconSize = 32 | 36 | 40 | 56;
 
 const REWARD_ICONS: Record<ReferRewardKind, Record<RewardIconSize, AssetPath>> = {
   spendShare: {
-    20: 'images/referral-v4/reward-share.svg',
+    32: 'images/referral-v4/reward-share-32.svg',
     36: 'images/referral-v4/reward-share-36.svg',
+    40: 'images/referral-v4/reward-share-40.svg',
     56: 'images/referral-v4/reward-share-56.svg',
   },
   welcome: {
-    20: 'images/referral-v4/reward-welcome.svg',
+    32: 'images/referral-v4/reward-welcome-32.svg',
     36: 'images/referral-v4/reward-welcome-36.svg',
+    40: 'images/referral-v4/reward-welcome-40.svg',
     56: 'images/referral-v4/reward-welcome-56.svg',
   },
   bigSpender: {
-    20: 'images/referral-v4/reward-big-spender.svg',
+    32: 'images/referral-v4/reward-big-spender-32.svg',
     36: 'images/referral-v4/reward-big-spender-36.svg',
+    40: 'images/referral-v4/reward-big-spender-40.svg',
     56: 'images/referral-v4/reward-big-spender-56.svg',
   },
   upgrade: {
-    20: 'images/referral-v4/reward-upgrade.svg',
+    32: 'images/referral-v4/reward-upgrade-32.svg',
     36: 'images/referral-v4/reward-upgrade-36.svg',
+    40: 'images/referral-v4/reward-upgrade-40.svg',
     56: 'images/referral-v4/reward-upgrade-56.svg',
   },
 };
@@ -163,6 +170,77 @@ export const ReferProgressBar = ({ ratio, className }: { ratio: number; classNam
 /** The hairline between list rows. */
 export const ReferDivider = () => <View className="h-px w-full bg-white/[0.06]" />;
 
+interface ReferStat {
+  label: string;
+  value: string;
+}
+
+const StatColumn = ({ stat }: { stat: ReferStat }) => (
+  <View className="flex-1 items-center px-2.5 pt-[14px]">
+    <Text className="text-center text-[14px] leading-4 text-white/70" numberOfLines={1}>
+      {stat.label}
+    </Text>
+    <Text
+      className="mt-[10px] text-center text-[20px] font-semibold leading-[26px] text-white"
+      numberOfLines={1}
+    >
+      {stat.value}
+    </Text>
+  </View>
+);
+
+/**
+ * Two figures side by side — "This month" and "Total" (Figma 30229:14240), or
+ * "This month" and "Next payout" — the way the Rewards card shows them. `bare`
+ * drops the card surface, for when it heads a card of its own.
+ */
+export const ReferStats = ({
+  left,
+  right,
+  bare = false,
+}: {
+  left: ReferStat;
+  right: ReferStat;
+  bare?: boolean;
+}) => (
+  <View
+    className={cn('h-20 flex-row overflow-hidden', !bare && 'rounded-[20px] bg-card')}
+    accessible
+    accessibilityLabel={`${left.label} ${left.value}, ${right.label} ${right.value}`}
+  >
+    <StatColumn stat={left} />
+    <View className="my-[3px] w-px bg-white/10" />
+    <StatColumn stat={right} />
+  </View>
+);
+
+export type ReferRuleIcon = 'clock' | 'friends';
+
+const RULE_ICONS: Record<ReferRuleIcon, AssetPath> = {
+  clock: 'images/referral-v4/clock.svg',
+  friends: 'images/referral-v4/friends.svg',
+};
+
+export interface ReferRule {
+  icon: ReferRuleIcon;
+  text: string;
+}
+
+/** When and how a reward is paid, one line each (Figma "Payout rules"). */
+export const ReferRules = ({ rules }: { rules: ReferRule[] }) => (
+  <View className="w-full overflow-hidden rounded-[20px] bg-white/[0.05] px-4 py-1">
+    {rules.map((rule, index) => (
+      <View key={rule.text}>
+        {index > 0 ? <ReferDivider /> : null}
+        <View className="flex-row items-center gap-[10px] py-[13px]">
+          <ReferIcon asset={RULE_ICONS[rule.icon]} size={20} />
+          <Text className="min-w-0 flex-1 text-[14px] text-white/85">{rule.text}</Text>
+        </View>
+      </View>
+    ))}
+  </View>
+);
+
 /** A grouped list on the card surface (Figma "Friends", "Rewards", "Steps"). */
 export const ReferList = ({ children, className }: { children: ReactNode; className?: string }) => (
   <View className={cn('w-full overflow-hidden rounded-[20px] bg-card px-4 py-1', className)}>
@@ -185,9 +263,17 @@ export const ReferAmountChip = ({ label }: { label: string }) => (
   </View>
 );
 
-/** The round close control in a sheet's top-right corner. */
-export const ReferSheetClose = ({ onPress }: { onPress: () => void }) => (
-  <View className="w-full flex-row justify-end">
+/**
+ * The round close control in a sheet's top-right corner, with the sheet's
+ * title on its left when it has one (Figma 30443:14905).
+ */
+export const ReferSheetClose = ({ onPress, title }: { onPress: () => void; title?: string }) => (
+  <View className={cn('w-full flex-row items-center', title ? 'justify-between' : 'justify-end')}>
+    {title ? (
+      <Text className="min-w-0 flex-1 text-[22px] font-semibold text-white" numberOfLines={1}>
+        {title}
+      </Text>
+    ) : null}
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
@@ -200,7 +286,7 @@ export const ReferSheetClose = ({ onPress }: { onPress: () => void }) => (
   </View>
 );
 
-/** "Terms apply" — opens the rewards terms. */
+/** "Read the full terms" — opens the rewards terms. */
 export const ReferTermsLink = () => (
   <Pressable
     accessibilityRole="link"
@@ -217,6 +303,6 @@ export const ReferTermsLink = () => (
     }}
     className="self-center active:opacity-70 web:hover:opacity-80"
   >
-    <Text className="text-center text-[12px] text-white/35">Terms apply</Text>
+    <Text className="text-center text-[12px] text-white/35 underline">Read the full terms</Text>
   </Pressable>
 );

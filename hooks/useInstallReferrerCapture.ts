@@ -17,6 +17,9 @@ import { useUserStore } from '@/store/useUserStore';
  *
  * Read once, ever (an MMKV flag), and only where it can matter: a first launch
  * with nobody signed in on the device and no code already captured by a link.
+ * If Play's referrer service turns the read down, the flag is cleared again so
+ * the next launch asks once more (Play keeps the referrer for 90 days after
+ * install); anything after a successful read is final.
  * The code is checked against the public invite lookup before it is kept; if
  * the lookup itself is unavailable the code is kept anyway, because signup
  * validates it again and a missing endpoint should not cost the referrer.
@@ -36,10 +39,22 @@ export const useInstallReferrerCapture = () => {
     if (useUserStore.getState().users.length > 0 || referral.referralCode) return;
 
     // No cancellation on unmount: what this writes is the store, not component
-    // state, and the referrer can only be asked for this once.
+    // state.
     const capture = async () => {
+      let referrer: string;
       try {
-        const code = parseInstallReferrer(await Application.getInstallReferrerAsync());
+        referrer = await Application.getInstallReferrerAsync();
+      } catch (error) {
+        // No Play Store on the device, or its referrer service is unavailable
+        // right now. Ask again next launch rather than lose the invite: the flag
+        // was only set first so a crash in the native call can't repeat forever.
+        useReferralStore.getState().setInstallReferrerChecked(false);
+        console.warn('Install referrer unavailable:', error);
+        return;
+      }
+
+      try {
+        const code = parseInstallReferrer(referrer);
         if (!code) return;
 
         let validCode: string | null = code;
@@ -58,8 +73,7 @@ export const useInstallReferrerCapture = () => {
         useReferralStore.getState().setReferralCode(validCode, 'install_referrer');
         track(TRACKING_EVENTS.INVITE_CODE_APPLIED, { source: 'install_referrer' });
       } catch (error) {
-        // No Play Store on the device, or the referrer service is unavailable.
-        console.warn('Install referrer unavailable:', error);
+        console.warn('Install referrer capture failed:', error);
       }
     };
 
