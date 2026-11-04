@@ -181,6 +181,7 @@ describe('WalletDepositTokens', () => {
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
       symbol: 'WBTC',
       chainId: bsc.id,
+      rhinoChain: undefined,
       isChangingToken: false,
     });
   });
@@ -197,8 +198,34 @@ describe('WalletDepositTokens', () => {
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
       symbol: 'WBTC',
       chainId: base.id,
+      rhinoChain: undefined,
       isChangingToken: false,
     });
+  });
+
+  // Avalanche takes ETH and WBTC into the wallet; it takes no USDT.
+  it('keeps a "More networks" chain that takes the new token, and leaves one that does not', () => {
+    mockDeposit.walletDeposit = {
+      chainId: base.id,
+      symbol: 'ETH',
+      rhinoChain: 'AVALANCHE',
+      isChangingToken: true,
+    } as any;
+    const root = render();
+    const press = (label: string) =>
+      act(() =>
+        root.root.find((node: any) => node.props.accessibilityLabel === label).props.onPress(),
+      );
+
+    press('WBTC, Wrapped Bitcoin');
+    expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ symbol: 'WBTC', rhinoChain: 'AVALANCHE' }),
+    );
+
+    press('USDT, Tether USD');
+    expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ symbol: 'USDT', rhinoChain: undefined }),
+    );
   });
 
   it('ticks the current token only when coming back to change it', () => {

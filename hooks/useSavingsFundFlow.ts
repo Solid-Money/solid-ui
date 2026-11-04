@@ -12,7 +12,12 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
-import { isOfferedRhinoRow, resolveRhinoRow } from '@/lib/rhinoDeposit';
+import {
+  getRhinoExtraChains,
+  isOfferedRhinoRow,
+  resolveRhinoRow,
+  RhinoDepositSelection,
+} from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -37,9 +42,10 @@ const describeSessionError = (error: unknown): string => {
  * three screens - which the deposit modal renders without props - all read the
  * same state, and closing the modal clears it with the rest of the flow.
  *
- * rhino.fi is the provider on every row but Fuse: the address step for those is
- * the user's rhino.fi address (`rhinoDeposit`), and a direct-deposit session is
- * only ever minted for a Fuse row.
+ * rhino.fi is the provider on every row but Fuse, USDT included (its soUSD route
+ * takes USDT as USDC): the address step for those is the user's rhino.fi
+ * address (`rhinoDeposit`), as it is for a "More networks" chain, and a
+ * direct-deposit session is only ever minted for a Fuse row.
  */
 export const useSavingsFundFlow = () => {
   const router = useRouter();
@@ -162,6 +168,31 @@ export const useSavingsFundFlow = () => {
     ],
   );
 
+  /**
+   * A "More networks" chain from under the list. The address step shows the
+   * user's rhino.fi address for it, which fetches its own address; no
+   * direct-deposit session is minted.
+   */
+  const selectRhinoNetwork = useCallback(
+    (selection: RhinoDepositSelection) => {
+      track(TRACKING_EVENTS.NETWORK_SELECTED, {
+        chain_id: selection.chainId,
+        rhino_chain: selection.chain,
+        token_symbol: selection.tokenSymbol,
+        deposit_type: 'savings_direct_deposit',
+        via_rhino: true,
+      });
+      setDirectDepositSession({
+        selectedToken: selection.tokenSymbol,
+        chainId: undefined,
+        walletAddress: undefined,
+      });
+      setRhinoDeposit(selection);
+      setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
+    },
+    [setDirectDepositSession, setModal, setRhinoDeposit],
+  );
+
   const selectToken = useCallback(
     (symbol: string) => {
       setRhinoDeposit(undefined);
@@ -171,18 +202,35 @@ export const useSavingsFundFlow = () => {
         walletAddress: undefined,
       });
 
-      // Tokens sent on a single chain (WFUSE, EURC) skip the one-row chain
-      // list, once that row has an address. Until rhino.fi's routes are in, or
-      // when they cannot be had or have none, the list is where that is said.
+      // Tokens sent on a single chain (WFUSE) skip the one-row chain list, once
+      // that row has an address, and unless "More networks" makes it a choice
+      // again. Until rhino.fi's routes are in, or when they cannot be had or
+      // have none, the list is where that is said.
       const networks = getSavingsFundNetworks(symbol);
-      if (networks.length === 1 && isOfferedRhinoRow(resolveRow(networks[0].chainId, symbol))) {
+      const extraChains = getRhinoExtraChains(rhinoAssets.assets, {
+        destinationType: 'PROTOCOL',
+        symbol,
+        vault: getSavingsFundToken(symbol).vaultToken,
+      });
+      if (
+        networks.length === 1 &&
+        extraChains.length === 0 &&
+        isOfferedRhinoRow(resolveRow(networks[0].chainId, symbol))
+      ) {
         selectNetwork(networks[0].chainId, symbol);
         return;
       }
 
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     },
-    [resolveRow, selectNetwork, setDirectDepositSession, setModal, setRhinoDeposit],
+    [
+      resolveRow,
+      rhinoAssets.assets,
+      selectNetwork,
+      setDirectDepositSession,
+      setModal,
+      setRhinoDeposit,
+    ],
   );
 
   /** Re-runs the session request for the Fuse row already chosen. */
@@ -225,6 +273,7 @@ export const useSavingsFundFlow = () => {
     hasSessionError,
     selectToken,
     selectNetwork,
+    selectRhinoNetwork,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,

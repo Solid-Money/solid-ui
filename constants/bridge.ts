@@ -218,9 +218,11 @@ export const BRIDGE_TOKENS: BridgeTokens = {
  * address (`SAVINGS_FUND_EURC`), which takes EURC on Base only.
  *
  * Base only for now. The backend also accepts EURC sent from Ethereum
- * (0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c) and bridges it to Base, but that
- * leg is not offered until the backend wallet carries an Ethereum EURC float to
- * pay the bridge's exact-output overshoot. Adding the entry back offers it.
+ * (`EURC_ETHEREUM_ADDRESS`) and bridges it to Base, but that leg is not offered
+ * here until the backend wallet carries an Ethereum EURC float to pay the
+ * bridge's exact-output overshoot. Adding the entry offers it. The wallet and
+ * soEURC deposit screens take Ethereum EURC through rhino.fi instead, which
+ * pays it out as EURC on Base and needs no float of ours.
  */
 export const EURC_TOKENS: Record<number, BridgeToken> = {
   [base.id]: {
@@ -232,6 +234,15 @@ export const EURC_TOKENS: Record<number, BridgeToken> = {
     isPermit: false,
   },
 };
+
+/**
+ * Circle's EURC on Ethereum, as rhino.fi lists it
+ * (`/sda/deposit-addresses/ETHEREUM/BASE/supported-tokens`) and Circle
+ * publishes it. Only for the screens that take it through rhino.fi (the wallet
+ * deposit address, soEURC's direct deposit); not in `EURC_TOKENS`, which would
+ * offer it to card funding and the savings deposit form as well.
+ */
+export const EURC_ETHEREUM_ADDRESS = '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c';
 
 export const getUsdcAddress = (chainId: number) => {
   const usdcAddress = BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;

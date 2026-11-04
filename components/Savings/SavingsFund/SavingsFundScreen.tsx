@@ -28,6 +28,7 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
     hasSessionError,
     selectToken,
     selectNetwork,
+    selectRhinoNetwork,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,
@@ -39,6 +40,7 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
       <SavingsFundNetworks
         symbol={selectedToken}
         onSelect={chainId => selectNetwork(chainId)}
+        onSelectRhino={selectRhinoNetwork}
         loadingChainId={isPreparingSession ? selectedChainId : undefined}
       />
     );

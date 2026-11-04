@@ -1,4 +1,11 @@
 import { BRIDGE_TOKENS, EURC_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
+import {
+  findRhinoRoute,
+  resolveRhinoRow,
+  RhinoAssetsState,
+  RhinoDepositSelection,
+} from '@/lib/rhinoDeposit';
+import { CardProvider } from '@/lib/types';
 import { CardFundRoute } from '@/lib/utils/cardFundMove';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
@@ -154,24 +161,84 @@ const joinWithOr = (names: string[]): string =>
  * Named for Rain because Rain was the only issuer when the address was first
  * derived, and its salt — and so every address already handed out — has to stay
  * exactly as it was. A Wirex cardholder deposits to the same address; the
- * backend resolves the issuer and delivers the funds to the Rain card on Base
- * or to the cardholder's Safe on Fuse accordingly. EURC is the exception: it
- * goes to the Safe on Base, as EURC, whichever the issuer.
+ * backend resolves the issuer and delivers the funds to the Rain card on Base,
+ * or for Wirex to the cardholder's Safe: on Fuse for a deposit made on Fuse, on
+ * Base for one made anywhere else. EURC is the exception: it goes to the Safe on
+ * Base, as EURC, whichever the issuer.
  */
 export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
 
 /**
  * The rhino.fi route a card deposit row is matched against.
  *
- * The card's own (`RAIN_CARD`) for the dollar stablecoins: rhino.fi pays the
- * card deposit address on Base, and the pipeline takes it on to wherever the
- * issuer spends from, as for a direct transfer. EURC is the exception. No card
- * route takes it (they are dollar routes), and the card address only ever
- * delivered it as EURC to the Safe on Base — exactly where rhino.fi's `WALLET`
- * route pays, so that is the one its row uses.
+ * - Rain's dollar stablecoins: the card's own (`RAIN_CARD`). rhino.fi pays the
+ *   card deposit address on Base, and the pipeline takes it on to the card, as
+ *   for a direct transfer.
+ * - A Wirex cardholder's: `WALLET`, which pays their Safe on Base, where their
+ *   card deposits off Fuse now land. Routing them through the card address
+ *   would only reach the same Safe a leg later.
+ * - EURC, whoever issued the card: `WALLET`. No card route takes it (they are
+ *   dollar routes), and the card address only ever delivered it as EURC to the
+ *   Safe on Base — exactly where rhino.fi's `WALLET` route pays.
+ *
+ * USDT is matched against these too, but takes neither: our own pipeline still
+ * carries it to the card (see `OWN_PIPELINE_SYMBOLS`), so its rows mint the
+ * card's own `RAIN_CARD` session whatever is returned here.
  */
-export const getCardFundRhinoDestination = (symbol: string): 'RAIN_CARD' | 'WALLET' =>
-  symbol === CARD_FUND_EURC_SYMBOL ? 'WALLET' : CARD_FUND_DESTINATION_TYPE;
+export const getCardFundRhinoDestination = (
+  symbol: string,
+  provider: CardProvider | null | undefined,
+): 'RAIN_CARD' | 'WALLET' =>
+  symbol === CARD_FUND_EURC_SYMBOL || provider === CardProvider.WIREX
+    ? 'WALLET'
+    : CARD_FUND_DESTINATION_TYPE;
+
+/**
+ * Where "Move from wallet" sends a Wirex cardholder's holding, by the address a
+ * deposit of that token on that chain would use:
+ *
+ * - `card`: the card deposit address (a `RAIN_CARD` session), for an own row —
+ *   USDT, which our pipeline still carries, and which the backend delivers to
+ *   the Safe on Base from any chain but Fuse;
+ * - `rhino`: the user's rhino.fi address for the row, with rhino.fi's limits,
+ *   for USDC — its wallet route, paying the Safe on Base;
+ * - `loading` / `unavailable`: rhino.fi's routes are not in, or cannot be had;
+ * - `none`: nothing to send it to, or nothing a move would change: a holding
+ *   on the chain rhino.fi pays out on (USDC on Base) already sits in the Safe
+ *   it would be delivered to, and sending it out and back only costs the fees.
+ *
+ * Every holding is an ERC-20 (`getCardFundRoutes` lists USDC and USDT only), so
+ * none is the native ETH that rhino.fi does not detect when a contract — the
+ * Safe — sends it on Base.
+ */
+export type WirexMoveDestination =
+  | { kind: 'card' }
+  | { kind: 'rhino'; selection: RhinoDepositSelection; minimumUsd: number; maximumUsd: number }
+  | { kind: 'loading' }
+  | { kind: 'unavailable' }
+  | { kind: 'none' };
+
+export const resolveWirexMoveDestination = (
+  rhino: RhinoAssetsState,
+  holding: { chainId: number; symbol: string },
+): WirexMoveDestination => {
+  const row = resolveRhinoRow(rhino, {
+    chainId: holding.chainId,
+    destinationType: getCardFundRhinoDestination(holding.symbol, CardProvider.WIREX),
+    symbol: holding.symbol,
+  });
+  if (row.kind === 'own') return { kind: 'card' };
+  if (row.kind !== 'rhino') return row;
+
+  const found = findRhinoRoute(rhino.assets, row.selection);
+  if (!found || found.route.receiveChainId === holding.chainId) return { kind: 'none' };
+  return {
+    kind: 'rhino',
+    selection: row.selection,
+    minimumUsd: found.route.minimumUsd,
+    maximumUsd: found.route.maximumUsd,
+  };
+};
 
 /**
  * Which groups the "Fund your card" step shows.
@@ -209,16 +276,16 @@ export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
  * Wirex cards offer direct stablecoin deposits, the local-currency onramp, and
  * moving what the cardholder already holds in Solid.
  *
- * Local currencies work because the onramp needs no Fuse leg of its own: TransFi
- * has no USDC-on-Fuse entry, so the backend points the delivery at the same card
+ * Local currencies work because the onramp needs no leg of its own: TransFi has
+ * no USDC-on-Fuse entry, so the backend points the delivery at the same card
  * deposit address the stablecoin rows hand out, and the direct-deposit pipeline
- * carries it to the Safe on Fuse from there.
+ * carries it to the cardholder's Safe from there.
  *
- * `moveFromSolid` is on for the same reason, and takes the same route: the app
- * transfers from the cardholder's Safe to that card deposit address and the
- * pipeline does the rest. That is deliberately *not* the Rain mechanic (approve,
- * then a backend pull via `POST /deposit`), which delivers to Base and would need
- * a Fuse-pointed leg of its own. See `WirexMoveFromWallet`.
+ * `moveFromSolid` is on for the same reason: the app transfers from the
+ * cardholder's Safe to the address a deposit of that token would use (rhino.fi's
+ * for USDC, the card deposit address for USDT) and the rest happens as for any
+ * deposit. That is deliberately *not* the Rain mechanic (approve, then a backend
+ * pull via `POST /deposit`). See `WirexMoveFromWallet`.
  *
  * `cashDeposit` and `externalWallet` still need their own backend legs pointed at
  * Fuse, so they stay off rather than being offered and then failing with no
