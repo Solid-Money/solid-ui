@@ -29,6 +29,7 @@ import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
   USER,
 } from '@/lib/config';
+import { showAccountSuspendedToast } from '@/lib/errors/accountSuspendedToast';
 import { useIntercom } from '@/lib/intercom';
 import {
   createPasskeySignatureBatch,
@@ -792,6 +793,9 @@ const useUser = (): UseUserReturn => {
         router.replace({ pathname: '/welcome', params: { session: reason } });
       } else {
         router.replace(path.ONBOARDING);
+        // Onboarding has no session notice of its own, and a suspended account
+        // signed out without one would just look logged out: say why here.
+        if (reason === 'suspended') showAccountSuspendedToast();
       }
     },
     [
