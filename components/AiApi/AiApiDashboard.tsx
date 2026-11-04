@@ -21,10 +21,12 @@ import { track } from '@/lib/analytics';
 import { showErrorToast } from '@/lib/errors';
 
 import {
+  formatAiApiBillingFunds,
   formatAiApiCashback,
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiMonth,
+  formatAiApiNotCounted,
   formatAiApiPaidFrom,
   formatAiApiRate,
   formatAiApiShortDate,
@@ -134,9 +136,11 @@ const StatusBanner = ({
         body={
           covered
             ? 'Your Wallet has enough again. Start your agents to settle the waiting charge.'
-            : `Your Wallet doesn’t have enough ${formatAiApiPaidFrom(
+            : `Your Wallet doesn’t have enough ${formatAiApiBillingFunds(
                 billing.billingTokens,
-              )} on Base. Add funds and they start again right away.`
+              )} on Base. ${formatAiApiNotCounted(
+                billing.billingTokens,
+              )} Add funds and they start again right away.`
         }
         actionLabel={covered ? 'Start again' : 'Add funds'}
         isLoading={retry.isPending}
@@ -181,9 +185,11 @@ const StatusBanner = ({
       <AiApiBanner
         icon={<CirclePause {...BANNER_ICON} />}
         title="Your agents are paused"
-        body={`Your Wallet doesn’t have enough ${formatAiApiPaidFrom(
+        body={`Your Wallet doesn’t have enough ${formatAiApiBillingFunds(
           billing.billingTokens,
-        )} on Base to pay for what they use. Add funds and they start again within a minute.`}
+        )} on Base to pay for what they use. ${formatAiApiNotCounted(
+          billing.billingTokens,
+        )} Add funds and they start again within a minute.`}
         actionLabel="Add funds"
         onAction={() => {
           track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED);

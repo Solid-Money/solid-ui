@@ -4,6 +4,7 @@ import {
   aiApiModelIsFree,
   aiApiModelTag,
   aiApiSharedTierRate,
+  formatAiApiBillingFunds,
   formatAiApiCashback,
   formatAiApiCashbackNote,
   formatAiApiCount,
@@ -12,6 +13,7 @@ import {
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiLongDate,
+  formatAiApiNotCounted,
   formatAiApiPaidFrom,
   formatAiApiRate,
   formatAiApiShortDate,
@@ -105,6 +107,23 @@ describe('formatAiApiPaidFrom', () => {
 
   it('falls back to the Wallet when the list could not be read', () => {
     expect(formatAiApiPaidFrom([])).toBe('Your Wallet');
+  });
+});
+
+describe('the "not enough" banners', () => {
+  it('names what the Wallet is short of, and plain funds when the list could not be read', () => {
+    expect(formatAiApiBillingFunds(['USDC'])).toBe('USDC');
+    expect(formatAiApiBillingFunds(['USDC', 'soUSD'])).toBe('USDC, then soUSD');
+    expect(formatAiApiBillingFunds([])).toBe('funds');
+  });
+
+  it('says the card balance and Savings don’t pay for usage', () => {
+    expect(formatAiApiNotCounted(['USDC'])).toBe('Your card balance and Savings don’t count.');
+  });
+
+  it('leaves Savings out once a savings token pays, or when the list is unknown', () => {
+    expect(formatAiApiNotCounted(['USDC', 'soUSD'])).toBe('Your card balance doesn’t count.');
+    expect(formatAiApiNotCounted([])).toBe('Your card balance doesn’t count.');
   });
 });
 
