@@ -16,6 +16,7 @@ import {
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
   EXPO_PUBLIC_FUSE_GAS_RESERVE,
 } from '@/lib/config';
+import { EXTERNAL_WALLET_DEPOSIT_PAUSED, isOwnSafe } from '@/lib/deposit/externalWallet';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -193,6 +194,13 @@ const useDepositFromEOAFuse = (
 
       let txHash: `0x${string}` | undefined;
       if (token === 'WFUSE') {
+        // The WFUSE deposit is pulled by the backend, which pulls only from the
+        // user's own Safe. Refuse before the approval prompt. Native FUSE is
+        // deposited by the wallet itself and is unaffected.
+        if (!isOwnSafe(eoaAddress, user.safeAddress)) {
+          throw new Error(EXTERNAL_WALLET_DEPOSIT_PAUSED);
+        }
+
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
