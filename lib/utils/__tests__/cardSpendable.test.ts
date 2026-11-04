@@ -7,6 +7,7 @@ import {
   CardSpendableAsset,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
+import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
 import {
@@ -200,11 +201,25 @@ describe('sumCardSpendableUSD', () => {
 });
 
 describe('soEurUsdPerShare', () => {
-  const eurc = (quoteRate: number) =>
-    token({ contractTickerSymbol: 'EURC', quoteRate, chainId: base.id });
+  const BASE_EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+  const eurc = (quoteRate: number, contractAddress = BASE_EURC) =>
+    token({ contractTickerSymbol: 'EURC', contractAddress, quoteRate, chainId: base.id });
+
+  // The build's EURC address comes from the environment; pinned so the match is on it.
+  beforeEach(() => {
+    jest.replaceProperty(BASE_SPEND_DEPLOYMENT, 'spendTokenAddress', BASE_EURC);
+  });
+  afterEach(() => jest.restoreAllMocks());
 
   it('prices a share at the vault rate through the Safe’s EURC quote', () => {
     expect(soEurUsdPerShare([eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
+  });
+
+  it('does not take its quote from another token calling itself EURC', () => {
+    const impostor = eurc(50, '0x000000000000000000000000000000000000dEaD');
+
+    expect(soEurUsdPerShare([impostor], 1.02, 1.12)).toBeCloseTo(1.02 * 1.12, 6);
+    expect(soEurUsdPerShare([impostor, eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
   });
 
   it('falls back to the card’s euro rate when the Safe holds no EURC', () => {

@@ -35,6 +35,24 @@ export const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): bo
 };
 
 /**
+ * The dollar quote of the Safe's Base EURC, or undefined when it holds none that is priced.
+ *
+ * Matched on this build's EURC address when it has one, and on the ticker only without it, as
+ * {@link baseEurcHeld} does: any token can call itself EURC, and this quote prices soEUR.
+ */
+export const baseEurcUsdQuote = (tokens: TokenBalance[] | undefined): number | undefined => {
+  const configured = BASE_SPEND_DEPLOYMENT.spendTokenAddress?.toLowerCase();
+  return (tokens ?? []).find(
+    token =>
+      token.chainId === BASE_SPEND_DEPLOYMENT.chainId &&
+      (configured
+        ? token.contractAddress?.toLowerCase() === configured
+        : token.contractTickerSymbol?.toUpperCase() === 'EURC') &&
+      (token.quoteRate ?? 0) > 0,
+  )?.quoteRate;
+};
+
+/**
  * Dollars per soEUR share, or undefined when it cannot be priced.
  *
  * soEUR has no USD quote (`useBalances` holds it at 0 so no dollar sum picks it up by accident),
@@ -47,12 +65,7 @@ export const soEurUsdPerShare = (
   usdPerEur: number | undefined,
 ): number | undefined => {
   const usdPerEurc =
-    (tokens ?? []).find(
-      token =>
-        token.chainId === BASE_SPEND_DEPLOYMENT.chainId &&
-        token.contractTickerSymbol?.toUpperCase() === 'EURC' &&
-        (token.quoteRate ?? 0) > 0,
-    )?.quoteRate ?? (usdPerEur && usdPerEur > 0 ? usdPerEur : undefined);
+    baseEurcUsdQuote(tokens) ?? (usdPerEur && usdPerEur > 0 ? usdPerEur : undefined);
   return soEurRate && usdPerEurc ? soEurRate * usdPerEurc : undefined;
 };
 
