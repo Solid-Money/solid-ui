@@ -10,6 +10,7 @@ import {
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
 } from '@/lib/config';
+import { EXTERNAL_WALLET_DEPOSIT_PAUSED, isOwnSafe } from '@/lib/deposit/externalWallet';
 import { SOEURC_DECIMALS } from '@/lib/deposit/soEurc';
 import {
   captureDepositError,
@@ -150,6 +151,10 @@ const useDepositFromEOAEur = (
       }
       if (!isSponsor) {
         throw new Error(`Minimum deposit amount is ${minimumAmount} EURC`);
+      }
+      // The backend pulls the EURC, and it pulls only from the user's own Safe.
+      if (!isOwnSafe(eoaAddress, user.safeAddress)) {
+        throw new Error(EXTERNAL_WALLET_DEPOSIT_PAUSED);
       }
 
       // Before the pending state, the network switch and the approval prompt.

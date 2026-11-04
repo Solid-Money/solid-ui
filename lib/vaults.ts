@@ -101,9 +101,13 @@ export const getTokenVault = (token?: {
 
 export const getVaultDepositConfig = (vault?: Vault): VaultDepositConfig => {
   const config = vault?.depositConfig;
+  const methods = config?.methods?.length ? config.methods : DEFAULT_METHODS;
 
   return {
-    methods: config?.methods?.length ? config.methods : DEFAULT_METHODS,
+    // Deposits from a connected external wallet are paused: the backend refuses
+    // them (see lib/deposit/externalWallet). Every "Send from your crypto
+    // wallet" entry point checks this list for 'wallet'.
+    methods: methods.filter(method => method !== 'wallet'),
     supportedChains: config?.supportedChains?.length
       ? config.supportedChains
       : ALL_SUPPORTED_CHAINS,

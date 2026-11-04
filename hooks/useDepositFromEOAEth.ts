@@ -11,6 +11,7 @@ import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import { EXTERNAL_WALLET_DEPOSIT_PAUSED, isOwnSafe } from '@/lib/deposit/externalWallet';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -166,6 +167,11 @@ const useDepositFromEOAEth = (
 
       const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
+      // Every ETH deposit here is pulled by the backend, which pulls only from
+      // the user's own Safe. Refuse before the wrap or approval prompt.
+      if (!isOwnSafe(eoaAddress, user.safeAddress)) {
+        throw new Error(EXTERNAL_WALLET_DEPOSIT_PAUSED);
+      }
 
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
         user_id: user?.userId,

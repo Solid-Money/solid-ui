@@ -6,6 +6,7 @@ import useDepositFromEOAEur, {
   EOA_DEPOSIT_UNAVAILABLE,
 } from '@/hooks/useDepositFromEOAEur';
 import { createDeposit } from '@/lib/api';
+import { EXTERNAL_WALLET_DEPOSIT_PAUSED } from '@/lib/deposit/externalWallet';
 import { Status } from '@/lib/types';
 import { checkAndSetAllowanceToken } from '@/lib/utils/contract';
 // react-test-renderer is supplied by jest-expo without bundled declarations.
@@ -17,6 +18,9 @@ const EOA = '0x1111111111111111111111111111111111111111';
 const DEPOSIT_WALLET = '0x2222222222222222222222222222222222222222';
 
 let mockSpender = DEPOSIT_WALLET;
+// The backend pulls only from the user's own Safe, so the cases that reach it
+// name the connected wallet as the Safe.
+let mockSafe = EOA;
 const mockSwitchChain = jest.fn();
 const mockCreateActivity = jest.fn().mockResolvedValue('activity');
 const mockUpdateActivity = jest.fn();
@@ -30,7 +34,7 @@ jest.mock('@/lib/config', () => ({
 }));
 jest.mock('@/hooks/useUser', () => ({
   __esModule: true,
-  default: () => ({ user: { userId: 'a', safeAddress: '0xsafe', suborgId: 'org' } }),
+  default: () => ({ user: { userId: 'a', safeAddress: mockSafe, suborgId: 'org' } }),
 }));
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: any) =>
@@ -86,6 +90,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   mockSpender = DEPOSIT_WALLET;
+  mockSafe = EOA;
   statuses = [];
   act(() => {
     root = create(<Harness />);
@@ -112,6 +117,21 @@ it.each([
   expect(statuses).not.toContain(Status.PENDING);
   expect(hook.depositStatus.status).toBe(Status.ERROR);
   expect(hook.error).toBe(EOA_DEPOSIT_UNAVAILABLE);
+});
+
+// The backend answers 403 to a pull from anything but the user's Safe; asking
+// the wallet to approve first would leave an approval for nothing.
+it('refuses a connected wallet that is not the Safe before any wallet prompt', async () => {
+  mockSafe = '0x4d22bE2509C4c0B7902BF542E1460c6cE1f210f7';
+  await act(async () => {
+    await expect(hook.deposit('100')).rejects.toThrow(EXTERNAL_WALLET_DEPOSIT_PAUSED);
+  });
+
+  expect(mockSwitchChain).not.toHaveBeenCalled();
+  expect(approve).not.toHaveBeenCalled();
+  expect(mockCreateActivity).not.toHaveBeenCalled();
+  expect(backendDeposit).not.toHaveBeenCalled();
+  expect(hook.depositStatus.status).toBe(Status.ERROR);
 });
 
 it('approves the configured deposit wallet and asks the backend for a EUR deposit', async () => {
