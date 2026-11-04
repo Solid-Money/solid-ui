@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
+import { base } from 'viem/chains';
 
 import { BuyCryptoFlowContent } from '@/components/BuyCrypto/Transfi/BuyCryptoFlow';
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
@@ -13,7 +13,6 @@ import {
   getCardFundRhinoDestination,
   getCardFundTokenIcon,
 } from '@/components/Card/CardFund/constants';
-import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { UsdMethodList } from '@/components/DepositOption/DepositUsdOptions';
 import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
@@ -43,7 +42,7 @@ import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-type Step = 'options' | 'usdMethods' | 'networks' | 'address' | 'externalAddress';
+type Step = 'options' | 'usdMethods' | 'networks' | 'address';
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
@@ -51,7 +50,6 @@ const MODAL_STATES: Record<Step, ModalState> = {
   options: { name: 'options', number: 0 },
   usdMethods: { name: 'usd-methods', number: 1 },
   networks: { name: 'networks', number: 1 },
-  externalAddress: { name: 'external-address', number: 1 },
   address: { name: 'address', number: 2 },
 };
 
@@ -83,7 +81,7 @@ interface CardDirectDepositModalProps {
 
 // Shared mobile variant (native + web-mobile). External wallet connect
 // (thirdweb useConnectModal) is desktop-only, so "Deposit from an external
-// wallet" shows the shared deposit address here instead of a connect flow.
+// wallet" shows a USDC deposit address here instead of a connect flow.
 export default function CardDirectDepositModalMobile({
   trigger = null,
   isOpen: isOpenProp,
@@ -273,28 +271,22 @@ export default function CardDirectDepositModalMobile({
     [goToStep],
   );
 
-  // "Deposit from an external wallet" — the chain-independent share-address flow.
-  const handleExternalWallet = useCallback(() => {
-    setDepositAddress(undefined);
-    prepareSession({ chainId: 8453, token: 'USDC' });
-    goToStep('externalAddress');
-  }, [goToStep, prepareSession]);
-
-  // rhino.fi on every row but Fuse: a row it has a card route from shows the
-  // rhino.fi address, and only a Fuse row mints a direct-deposit session. The
-  // list offers nothing else, and nothing else is acted on here either.
-  const handleNetworkSelect = useCallback(
-    (chainId: number) => {
+  // rhino.fi on every row but Fuse's and USDT's: a row it has a card route from
+  // shows the rhino.fi address, and only an own row (Fuse, or USDT our pipeline
+  // carries) mints a direct-deposit session. Nothing else has an address, so
+  // nothing else is opened here; says whether the address step was.
+  const openNetwork = useCallback(
+    (chainId: number, token: string): boolean => {
       const row = resolveRhinoRow(rhinoAssets, {
         chainId,
-        destinationType: getCardFundRhinoDestination(selectedToken),
-        symbol: selectedToken,
+        destinationType: getCardFundRhinoDestination(token, CardProvider.RAIN),
+        symbol: token,
       });
-      if (!isOfferedRhinoRow(row)) return;
+      if (!isOfferedRhinoRow(row)) return false;
 
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
         chain_id: chainId,
-        token_symbol: selectedToken,
+        token_symbol: token,
         deposit_type: 'card_direct_deposit',
         via_rhino: row.kind === 'rhino',
       });
@@ -302,11 +294,45 @@ export default function CardDirectDepositModalMobile({
       setRhinoSelection(row.kind === 'rhino' ? row.selection : undefined);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
-      if (row.kind === 'own') prepareSession({ chainId, token: selectedToken });
+      if (row.kind === 'own') prepareSession({ chainId, token });
+      goToStep('address');
+      return true;
+    },
+    [goToStep, prepareSession, rhinoAssets],
+  );
+
+  const handleNetworkSelect = useCallback(
+    (chainId: number) => {
+      openNetwork(chainId, selectedToken);
+    },
+    [openNetwork, selectedToken],
+  );
+
+  // A "More networks" chain from under the list. Its address step fetches the
+  // user's rhino.fi address itself, so no direct-deposit session is minted.
+  const handleRhinoNetworkSelect = useCallback(
+    (selection: RhinoDepositSelection) => {
+      setSelectedChainId(undefined);
+      setDepositAddress(undefined);
+      setRhinoSelection(selection);
       goToStep('address');
     },
-    [goToStep, prepareSession, rhinoAssets, selectedToken],
+    [goToStep],
   );
+
+  // "Deposit from an external wallet": USDC on Base, the cheapest send, at the
+  // address a USDC row on Base shows — rhino.fi's, whose network row on the
+  // address step changes chain. Our own address no longer serves every chain,
+  // so there is no chain-independent address to share: while rhino.fi's routes
+  // are not in, or if Base has none, the USDC network list is where to pick.
+  const handleExternalWallet = useCallback(() => {
+    const token = 'USDC';
+    setSelectedToken(token);
+    setSelectedChainId(undefined);
+    setDepositAddress(undefined);
+    setRhinoSelection(undefined);
+    if (!openNetwork(base.id, token)) goToStep('networks');
+  }, [goToStep, openNetwork]);
 
   // The webhook has seen the transfer — hand the user straight to its progress screen.
   const handleDepositDetected = useCallback(
@@ -393,7 +419,14 @@ export default function CardDirectDepositModalMobile({
     }
 
     if (step === 'networks') {
-      return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
+      return (
+        <CardFundNetworks
+          symbol={selectedToken}
+          cardProvider={CardProvider.RAIN}
+          onSelect={handleNetworkSelect}
+          onSelectRhino={handleRhinoNetworkSelect}
+        />
+      );
     }
 
     if (step === 'address' && rhinoSelection) {
@@ -416,16 +449,6 @@ export default function CardDirectDepositModalMobile({
           onChangeNetwork={handleBack}
           onDepositDetected={handleDepositDetected}
         />
-      );
-    }
-
-    if (step === 'externalAddress') {
-      return depositAddress ? (
-        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
-      ) : (
-        <View className="items-center py-12">
-          <ActivityIndicator color="white" />
-        </View>
       );
     }
 

@@ -69,9 +69,10 @@ const RhinoDepositAddress = ({
   const depositAddress = address?.depositAddress;
   const { chainId } = selection;
   // The row keeps the name it has in the list ("Polygon", not rhino.fi's own),
-  // so the screen reads as the row that was tapped.
-  const chainName =
-    getBridgeChain(chainId)?.name ?? address?.chainName ?? offered?.chain.name ?? selection.chain;
+  // so the screen reads as the row that was tapped. A "More networks" chain has
+  // no row of ours, so it is rhino.fi's name.
+  const appChainName = chainId !== undefined ? getBridgeChain(chainId)?.name : undefined;
+  const chainName = appChainName ?? address?.chainName ?? offered?.chain.name ?? selection.chain;
   const addressType = address?.addressType ?? offered?.chain.addressType;
   const chainIcon = getRhinoChainIcon(selection.chain, chainId);
   const trackCopy = useRhinoAddressAnalytics(selection, depositAddress);

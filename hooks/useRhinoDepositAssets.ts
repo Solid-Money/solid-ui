@@ -4,11 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { getRhinoDepositAssets } from '@/lib/api';
 import {
   getRhinoAssetsState,
+  getRhinoExtraChains,
   resolveRhinoRow,
   RhinoAssetsState,
+  RhinoExtraChainFilter,
   RhinoRowFilter,
   RhinoRowState,
 } from '@/lib/rhinoDeposit';
+
+import type { RhinoDepositChain } from '@/lib/types';
 
 export const RHINO_DEPOSIT_ASSETS_QUERY_KEY = 'rhino-deposit-assets';
 
@@ -74,4 +78,22 @@ export const useRhinoNetworkRows = <Row extends { chainId: number }>(
     [destinationType, rhino, rows, symbol, vault],
   );
   return { rows: resolved, retry: rhino.retry };
+};
+
+/**
+ * "More networks" for a screen: the rhino.fi chains the app has no row for,
+ * with a route for its token, destination and vault (see
+ * `getRhinoExtraChains`). Empty until rhino.fi's routes are in, and when they
+ * cannot be had: the screen's own list already says so.
+ */
+export const useRhinoExtraNetworks = ({
+  destinationType,
+  symbol,
+  vault,
+}: RhinoExtraChainFilter): RhinoDepositChain[] => {
+  const { assets } = useOfferedRhinoDepositAssets();
+  return useMemo(
+    () => getRhinoExtraChains(assets, { destinationType, symbol, vault }),
+    [assets, destinationType, symbol, vault],
+  );
 };

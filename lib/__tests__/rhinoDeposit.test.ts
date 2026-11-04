@@ -1,6 +1,6 @@
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
-import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
 import {
   describeRhinoArrival,
   findRhinoRoute,
@@ -11,14 +11,19 @@ import {
   getRhinoAssetsState,
   getRhinoChainsForDestination,
   getRhinoDepositStatusView,
+  getRhinoExtraChains,
+  getRhinoExtraSelection,
   getRhinoListNotice,
   getRhinoRejectMessage,
   getRhinoSelectionForRow,
+  getRhinoTokensForDestination,
   isOfferedRhinoRow,
   isOwnPipelineChain,
+  isOwnPipelineToken,
   isRhinoDepositOffered,
   isSameDepositAddress,
   isValidRhinoDepositAddress,
+  OWN_PIPELINE_SYMBOLS,
   pickRhinoDeposit,
   resolveRhinoRow,
   RhinoAssetsState,
@@ -484,8 +489,9 @@ describe('findRhinoRouteForRow', () => {
     expect(
       findRhinoRouteForRow(RHINO_ASSETS, {
         chainId: polygon.id,
-        destinationType: 'RAIN_CARD',
+        destinationType: 'PROTOCOL',
         symbol: 'USDT',
+        vault: 'soUSD',
       })?.chain.chain,
     ).toBe('MATIC_POS');
   });
@@ -670,6 +676,193 @@ describe('resolveRhinoRow', () => {
   it('decides no other row until the assets are in, nor when they cannot be had', () => {
     expect(resolveRhinoRow(LOADING, row(mainnet.id))).toEqual({ kind: 'loading' });
     expect(resolveRhinoRow(UNAVAILABLE, row(mainnet.id))).toEqual({ kind: 'unavailable' });
+  });
+
+  // The old bridge: USDT to the wallet or the card is our own pipeline's on
+  // every chain, whatever rhino.fi lists and whether or not it has answered.
+  it('keeps USDT to the wallet and the card our own, on every chain', () => {
+    const WITH_USDT: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_USDT_ROUTES };
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
+      [READY, WITH_USDT, LOADING, UNAVAILABLE].forEach(state =>
+        [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id].forEach(chainId =>
+          expect(resolveRhinoRow(state, { chainId, destinationType, symbol: 'USDT' })).toEqual({
+            kind: 'own',
+          }),
+        ),
+      ),
+    );
+  });
+
+  // Savings is unchanged: rhino.fi's soUSD route takes USDT as USDC.
+  it('leaves USDT into savings to rhino.fi', () => {
+    expect(
+      resolveRhinoRow(READY, {
+        chainId: polygon.id,
+        destinationType: 'PROTOCOL',
+        symbol: 'USDT',
+        vault: 'soUSD',
+      }),
+    ).toMatchObject({ kind: 'rhino', selection: { chain: 'MATIC_POS', tokenSymbol: 'USDT' } });
+    expect(
+      resolveRhinoRow(LOADING, {
+        chainId: polygon.id,
+        destinationType: 'PROTOCOL',
+        symbol: 'USDT',
+        vault: 'soUSD',
+      }),
+    ).toEqual({ kind: 'loading' });
+  });
+
+  it('leaves every other token to the wallet or the card to rhino.fi', () => {
+    expect(
+      resolveRhinoRow(READY, { chainId: polygon.id, destinationType: 'RAIN_CARD', symbol: 'USDC' }),
+    ).toMatchObject({ kind: 'rhino' });
+    expect(
+      resolveRhinoRow(LOADING, { chainId: base.id, destinationType: 'WALLET', symbol: 'ETH' }),
+    ).toEqual({ kind: 'loading' });
+  });
+});
+
+describe('isOwnPipelineToken', () => {
+  // The one switch: until rhino.fi delivers USDT on Base, our pipeline carries it.
+  it('is USDT, to the wallet or the card, and nothing else', () => {
+    expect([...OWN_PIPELINE_SYMBOLS]).toEqual(['USDT']);
+    expect(isOwnPipelineToken('USDT', 'WALLET')).toBe(true);
+    expect(isOwnPipelineToken('USDT', 'RAIN_CARD')).toBe(true);
+    expect(isOwnPipelineToken('USDT', 'PROTOCOL')).toBe(false);
+    ['USDC', 'EURC', 'ETH', 'WBTC'].forEach(symbol => {
+      expect(isOwnPipelineToken(symbol, 'WALLET')).toBe(false);
+      expect(isOwnPipelineToken(symbol, 'RAIN_CARD')).toBe(false);
+    });
+  });
+});
+
+/** "More networks": rhino.fi's chains the app has no row for. */
+describe('getRhinoExtraChains', () => {
+  // Never an app chain, which shows once as its own row, nor Arc, held back.
+  it('lists only the chains the app has no row for, Arc aside', () => {
+    expect(
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'USDC' })),
+    ).toEqual(['SOLANA', 'AVALANCHE']);
+    expect(
+      chainsOf(
+        getRhinoExtraChains(RHINO_ASSETS, {
+          destinationType: 'PROTOCOL',
+          symbol: 'USDT',
+          vault: 'soUSD',
+        }),
+      ),
+    ).toEqual(['TRON', 'SOLANA', 'AVALANCHE']);
+  });
+
+  it('lists only what rhino.fi routes to the screen’s destination', () => {
+    expect(
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'WALLET', symbol: 'EURC' })),
+    ).toEqual(['SOLANA']);
+    expect(
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'EURC' })),
+    ).toEqual([]);
+    expect(
+      getRhinoExtraChains(RHINO_ASSETS, {
+        destinationType: 'PROTOCOL',
+        symbol: 'ETH',
+        vault: 'soUSD',
+      }),
+    ).toEqual([]);
+  });
+
+  // The backend lists none; were it to, our pipeline carries USDT there instead.
+  it('has none for USDT to the wallet or the card', () => {
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType => {
+      expect(getRhinoExtraChains(RHINO_ASSETS, { destinationType, symbol: 'USDT' })).toEqual([]);
+      expect(
+        getRhinoExtraChains(RHINO_ASSETS_WITH_USDT_ROUTES, { destinationType, symbol: 'USDT' }),
+      ).toEqual([]);
+    });
+  });
+
+  it('has none while rhino.fi is off', () => {
+    expect(getRhinoExtraChains(undefined, { destinationType: 'WALLET', symbol: 'USDC' })).toEqual(
+      [],
+    );
+    expect(
+      getRhinoExtraChains(
+        { ...RHINO_ASSETS, enabled: false },
+        { destinationType: 'WALLET', symbol: 'USDC' },
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('getRhinoExtraSelection', () => {
+  const chain = (name: string) => RHINO_ASSETS.chains.find(item => item.chain === name)!;
+
+  it('selects the chain by rhino.fi’s id, with its EVM id only when it has one', () => {
+    expect(
+      getRhinoExtraSelection(chain('TRON'), {
+        destinationType: 'PROTOCOL',
+        symbol: 'USDT',
+        vault: 'soUSD',
+      }),
+    ).toEqual({ chain: 'TRON', tokenSymbol: 'USDT', destinationType: 'PROTOCOL', vault: 'soUSD' });
+    expect(
+      getRhinoExtraSelection(chain('AVALANCHE'), { destinationType: 'WALLET', symbol: 'ETH' }),
+    ).toEqual({
+      chain: 'AVALANCHE',
+      chainId: 43114,
+      tokenSymbol: 'ETH',
+      destinationType: 'WALLET',
+    });
+  });
+});
+
+/** A malformed `/deposit/rhino/assets` must offer nothing, never throw mid-render. */
+describe('a payload with lists missing', () => {
+  const broken = {
+    enabled: true,
+    chains: [
+      { chain: 'NO_TOKENS', chainId: 1, name: 'No tokens', addressType: 'EVM', tokens: null },
+      {
+        chain: 'NO_ROUTES',
+        chainId: 137,
+        name: 'No routes',
+        addressType: 'EVM',
+        tokens: [{ symbol: 'USDC', address: '0x1', routes: null }],
+      },
+      { chain: 'NOTHING', chainId: 42161, name: 'Nothing', addressType: 'EVM' },
+    ],
+  } as unknown as RhinoDepositAssetsResponse;
+  const noChains = { enabled: true, chains: null } as unknown as RhinoDepositAssetsResponse;
+  const filter = { destinationType: 'WALLET' as const, symbol: 'USDC' };
+
+  it('treats a missing chains list as empty', () => {
+    expect(isRhinoDepositOffered(noChains)).toBe(true);
+    expect(isRhinoDepositOffered(null)).toBe(false);
+    expect(getRhinoChainsForDestination(noChains, filter)).toEqual([]);
+    expect(
+      findRhinoRoute(noChains, { chain: 'BASE', tokenSymbol: 'USDC', destinationType: 'WALLET' }),
+    ).toBeUndefined();
+    expect(getRhinoExtraChains(noChains, filter)).toEqual([]);
+    expect(
+      resolveRhinoRow({ status: 'ready', assets: noChains }, { ...filter, chainId: base.id }),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('treats missing tokens and routes lists as empty', () => {
+    broken.chains.forEach(chain => expect(getRhinoTokensForDestination(chain, filter)).toEqual([]));
+    expect(getRhinoChainsForDestination(broken, filter)).toEqual([]);
+    expect(
+      findRhinoRoute(broken, {
+        chain: 'NO_ROUTES',
+        tokenSymbol: 'USDC',
+        destinationType: 'WALLET',
+      }),
+    ).toBeUndefined();
+    [mainnet.id, polygon.id, arbitrum.id].forEach(chainId =>
+      expect(resolveRhinoRow({ status: 'ready', assets: broken }, { ...filter, chainId })).toEqual({
+        kind: 'none',
+      }),
+    );
   });
 });
 

@@ -1,7 +1,7 @@
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
-import { EURC_TOKENS } from '@/constants/bridge';
+import { EURC_ETHEREUM_ADDRESS, EURC_TOKENS } from '@/constants/bridge';
 
 import type { AssetPath } from '@/lib/assets';
 
@@ -55,12 +55,13 @@ export type WalletDepositTokenConfig = {
  * lists them within each group, and the chains each has a contract on.
  *
  * A candidate list: which of these rows are offered is rhino.fi's to say, on
- * every chain but Fuse (see `getWalletDepositRow`). A row rhino.fi takes pays
- * the Safe on Base; a currency it takes on no row is offered on Base alone,
- * where the address is the Safe and it stays as sent; Fuse is the Safe (or a
- * Wirex cardholder's minted address), as it always was. None of these top up the
- * card or Earn, except a Wirex cardholder's dollars, which reach the Safe their
- * card spends from (see `getWalletRhinoDestination`).
+ * every chain but Fuse, except for USDT, which our own pipeline still carries
+ * (see `getWalletDepositRow`). A row rhino.fi takes pays the Safe on Base; a
+ * currency it takes on no row is offered on Base alone, where the address is
+ * the Safe and it stays as sent; Fuse is the Safe (or a Wirex cardholder's
+ * minted address), as it always was. None of these top up the card or Earn,
+ * except a Wirex cardholder's dollars on Fuse, which reach the Safe their card
+ * spends from there (see `getWalletOwnAddress`).
  *
  * Deliberately not `BRIDGE_TOKENS`: every surface that offers a token on a chain
  * reads that map, so listing these there would offer them for card funding,
@@ -107,16 +108,20 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id],
   },
   {
-    // Wirex cardholders only (see `offersWalletDepositEurc`), on the chains
-    // `EURC_TOKENS` lists, which the pipeline delivers from.
+    // Wirex cardholders only (see `offersWalletDepositEurc`): on Ethereum, which
+    // rhino.fi takes it from, and the chains `EURC_TOKENS` lists. rhino.fi pays
+    // either out as EURC to the Safe on Base.
     symbol: 'EURC',
     name: 'Euro Coin',
     group: 'stablecoins',
     icon: 'images/eurc.png',
-    contracts: Object.fromEntries(
-      Object.entries(EURC_TOKENS).map(([chainId, token]) => [chainId, token.address]),
-    ),
-    releasedOn: Object.keys(EURC_TOKENS).map(Number),
+    contracts: {
+      [mainnet.id]: EURC_ETHEREUM_ADDRESS,
+      ...Object.fromEntries(
+        Object.entries(EURC_TOKENS).map(([chainId, token]) => [chainId, token.address]),
+      ),
+    },
+    releasedOn: [mainnet.id, ...Object.keys(EURC_TOKENS).map(Number)],
   },
   {
     symbol: 'PAXG',

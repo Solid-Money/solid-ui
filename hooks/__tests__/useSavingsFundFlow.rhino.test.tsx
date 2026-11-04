@@ -161,27 +161,73 @@ describe('useSavingsFundFlow, rhino.fi on every row but Fuse', () => {
 
   it('skips the one-row list once its row has an address', async () => {
     mount();
-    act(() => flow().selectToken('EURC'));
-    await settle();
-
-    expect(mockStore.setRhinoDeposit).toHaveBeenLastCalledWith(
-      expect.objectContaining({ chain: 'BASE', vault: 'soEURC' }),
-    );
-    expect(mockStore.setModal).toHaveBeenLastCalledWith(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
-
     act(() => flow().selectToken('WFUSE'));
     await settle();
     expect(mockCreateSession).toHaveBeenCalledWith(fuse.id, 'WFUSE', 'PROTOCOL');
+    expect(mockStore.setModal).toHaveBeenLastCalledWith(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
+  });
+
+  // EURC is taken on Ethereum as well as Base now, so there is a choice to make.
+  it('lists EURC’s networks, Ethereum among them, both through rhino.fi', async () => {
+    mount();
+    act(() => flow().selectToken('EURC'));
+    await settle();
+    expect(mockStore.setModal).toHaveBeenLastCalledWith(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
+
+    act(() => flow().selectNetwork(mainnet.id, 'EURC'));
+    await settle();
+    expect(mockStore.setRhinoDeposit).toHaveBeenLastCalledWith({
+      chain: 'ETHEREUM',
+      chainId: mainnet.id,
+      tokenSymbol: 'EURC',
+      destinationType: 'PROTOCOL',
+      vault: 'soEURC',
+    });
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  // Savings is unchanged: USDT into soUSD stays rhino.fi's, our own pipeline
+  // carries it to the wallet and the card only.
+  it('takes USDT through rhino.fi into soUSD', async () => {
+    mount();
+    act(() => flow().selectNetwork(polygon.id, 'USDT'));
+    await settle();
+
+    expect(mockStore.setRhinoDeposit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ chain: 'MATIC_POS', tokenSymbol: 'USDT', vault: 'soUSD' }),
+    );
+    expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
   // The list is where a loader, or a retry, says why there is no row yet.
-  it('shows the one-row list while its row waits for rhino.fi', async () => {
+  it('shows the list while its rows wait for rhino.fi', async () => {
     mockRhino.current = { status: 'loading', retry: jest.fn() };
     mount();
     act(() => flow().selectToken('EURC'));
     await settle();
 
     expect(mockStore.setModal).toHaveBeenLastCalledWith(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('shows a "More networks" chain’s rhino.fi address, minting no session', async () => {
+    mount();
+    const selection = {
+      chain: 'TRON',
+      tokenSymbol: 'USDT',
+      destinationType: 'PROTOCOL' as const,
+      vault: 'soUSD',
+    };
+    act(() => flow().selectRhinoNetwork(selection));
+    await settle();
+
+    expect(mockStore.setRhinoDeposit).toHaveBeenLastCalledWith(selection);
+    expect(mockStore.setDirectDepositSession).toHaveBeenLastCalledWith({
+      selectedToken: 'USDT',
+      chainId: undefined,
+      walletAddress: undefined,
+    });
+    expect(mockStore.setModal).toHaveBeenLastCalledWith(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 });
