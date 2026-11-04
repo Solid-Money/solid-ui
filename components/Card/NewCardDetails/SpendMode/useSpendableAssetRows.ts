@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { formatUnits } from 'viem';
-import { base } from 'viem/chains';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
@@ -8,7 +7,7 @@ import { useCardSpendableAssets } from '@/hooks/useCardSpendableBalance';
 import { useMainCurrency } from '@/hooks/useMainCurrency';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { TokenBalance } from '@/lib/types';
-import { matchesAsset } from '@/lib/utils/cardSpendable';
+import { matchesAsset, soEurUsdPerShare } from '@/lib/utils/cardSpendable';
 
 /** Which logo a "Spendable assets" row draws. The last five are the crypto Base can sell. */
 export type SpendableAssetIcon =
@@ -117,13 +116,7 @@ export const buildSpendableAssetRows = (
   usdPerEur?: number,
 ): SpendableAssetBreakdown => {
   const held = tokens ?? [];
-  const eurcUsdQuote =
-    held.find(
-      token =>
-        token.chainId === base.id &&
-        token.contractTickerSymbol?.toUpperCase() === 'EURC' &&
-        (token.quoteRate ?? 0) > 0,
-    )?.quoteRate ?? (usdPerEur && usdPerEur > 0 ? usdPerEur : undefined);
+  const soEurUsd = soEurUsdPerShare(held, soEurRate, usdPerEur);
 
   const rows = assets.flatMap((asset, index): SpendableAssetRow[] => {
     const icon = asset.symbol ? ICON_BY_SYMBOL[asset.symbol] : undefined;
@@ -191,7 +184,7 @@ export const buildSpendableAssetRows = (
       }
       case 'soeur': {
         const eur = soEurRate ? amount * soEurRate : undefined;
-        const usd = eur !== undefined && eurcUsdQuote ? eur * eurcUsdQuote : 0;
+        const usd = soEurUsd ? amount * soEurUsd : 0;
         return [
           {
             key,

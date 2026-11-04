@@ -2,6 +2,7 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import {
+  baseSpendableAssets,
   CARD_SPENDABLE_ASSETS,
   CardSpendableAsset,
   describeCardSpendableAssets,
@@ -11,6 +12,7 @@ import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
 import {
   baseEurcHeld,
   cardSpendableAssetsFor,
+  soEurUsdPerShare,
   sumCardSpendableUSD,
   unreachableBaseHoldings,
 } from '@/lib/utils/cardSpendable';
@@ -171,6 +173,47 @@ describe('sumCardSpendableUSD', () => {
     const tokens = [token({}), token({ contractTickerSymbol: 'WFUSE', quoteRate: 1 })];
 
     expect(sumCardSpendableUSD(tokens, extended)).toBeCloseTo(2.08, 6);
+  });
+
+  describe('soEUR', () => {
+    const soEurAssets = baseSpendableAssets([ADDRESSES.base.soEurcVault]);
+    // Its quote is always 0 in `useBalances`; the price comes from `soEurUsdPerShare`.
+    const soEur = token({
+      contractTickerSymbol: 'soEUR',
+      contractAddress: ADDRESSES.base.soEurcVault,
+      balance: '10000000', // 10 shares
+      quoteRate: 0,
+      chainId: base.id,
+    });
+
+    it('counts soEUR at the price it is given, so Cash matches "Your balance"', () => {
+      // The reported case: €59.21 in the balance panel, €49.03 on Cash — the €10.18 of soEUR.
+      expect(
+        sumCardSpendableUSD([soEur, usdc()], [...CARD_SPENDABLE_ASSETS, ...soEurAssets], 1.2),
+      ).toBeCloseTo(13, 6);
+    });
+
+    it('leaves soEUR out while it has no price, rather than counting it at par', () => {
+      expect(sumCardSpendableUSD([soEur], soEurAssets)).toBe(0);
+    });
+  });
+});
+
+describe('soEurUsdPerShare', () => {
+  const eurc = (quoteRate: number) =>
+    token({ contractTickerSymbol: 'EURC', quoteRate, chainId: base.id });
+
+  it('prices a share at the vault rate through the Safe’s EURC quote', () => {
+    expect(soEurUsdPerShare([eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
+  });
+
+  it('falls back to the card’s euro rate when the Safe holds no EURC', () => {
+    expect(soEurUsdPerShare([usdc()], 1.02, 1.12)).toBeCloseTo(1.02 * 1.12, 6);
+  });
+
+  it('has no price without the vault rate or any euro rate', () => {
+    expect(soEurUsdPerShare([eurc(1.16)], undefined, 1.12)).toBeUndefined();
+    expect(soEurUsdPerShare([usdc()], 1.02, undefined)).toBeUndefined();
   });
 });
 

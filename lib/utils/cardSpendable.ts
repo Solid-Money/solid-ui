@@ -4,12 +4,13 @@ import {
   CardSpendableAsset,
 } from '@/constants/cardSpendableAssets';
 import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
+import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance } from '@/lib/types';
 
 /** USD value of one holding: balance scaled out of its decimals × its USD rate. */
-const tokenValueUSD = (token: TokenBalance): number => {
+const tokenValueUSD = (token: TokenBalance, usdRate = token.quoteRate ?? 0): number => {
   const balance = Number(token.balance ?? 0) / 10 ** token.contractDecimals;
-  const value = balance * (token.quoteRate ?? 0);
+  const value = balance * usdRate;
   // An unpriced token (quoteRate 0) contributes nothing rather than NaN-ing the
   // whole total, which is what a single missing rate used to do downstream.
   return Number.isFinite(value) && value > 0 ? value : 0;
@@ -34,6 +35,28 @@ export const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): bo
 };
 
 /**
+ * Dollars per soEUR share, or undefined when it cannot be priced.
+ *
+ * soEUR has no USD quote (`useBalances` holds it at 0 so no dollar sum picks it up by accident),
+ * so it is valued at the soEUR accountant rate in euros, then in dollars through the Safe's own
+ * EURC quote — or, when it holds no EURC to quote from, the card's euro rate.
+ */
+export const soEurUsdPerShare = (
+  tokens: TokenBalance[] | undefined,
+  soEurRate: number | undefined,
+  usdPerEur: number | undefined,
+): number | undefined => {
+  const usdPerEurc =
+    (tokens ?? []).find(
+      token =>
+        token.chainId === BASE_SPEND_DEPLOYMENT.chainId &&
+        token.contractTickerSymbol?.toUpperCase() === 'EURC' &&
+        (token.quoteRate ?? 0) > 0,
+    )?.quoteRate ?? (usdPerEur && usdPerEur > 0 ? usdPerEur : undefined);
+  return soEurRate && usdPerEurc ? soEurRate * usdPerEurc : undefined;
+};
+
+/**
  * USD across the Safe's holdings that the card can spend.
  *
  * Filters the holdings by the configured assets rather than reading one named
@@ -41,14 +64,25 @@ export const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): bo
  * holding counts at most once however many entries match it, so an overlapping
  * config — say a bare "USDC" alongside a chain- or address-scoped one — cannot
  * double count the same money.
+ *
+ * soEUR counts at `soEurUsd` ({@link soEurUsdPerShare}), since its quote is always 0. Without it
+ * the Cash figure left soEUR out while "Your balance" under it counted it.
  */
 export const sumCardSpendableUSD = (
   tokens: TokenBalance[] | undefined,
   assets: CardSpendableAsset[],
+  soEurUsd?: number,
 ): number =>
   (tokens ?? [])
     .filter(token => isCardSpendable(token, assets))
-    .reduce((total, token) => total + tokenValueUSD(token), 0);
+    .reduce(
+      (total, token) =>
+        total +
+        (token.contractAddress?.toLowerCase() === ADDRESSES.base.soEurcVault.toLowerCase()
+          ? tokenValueUSD(token, soEurUsd ?? 0)
+          : tokenValueUSD(token)),
+      0,
+    );
 
 /**
  * Whether this exact holding is one the card can already settle from.
