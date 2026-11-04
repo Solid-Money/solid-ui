@@ -1,14 +1,18 @@
 import React from 'react';
-import { arbitrum, optimism } from 'viem/chains';
+import { arbitrum, base, bsc } from 'viem/chains';
 
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
+
+import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/input', () => 'Input');
+jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('lucide-react-native', () => ({
   Check: 'Check',
@@ -30,11 +34,21 @@ jest.mock('@/hooks/useCardProvider', () => ({
 jest.mock('@/hooks/useDepositTokensAccess', () => ({
   useDepositTokensAccess: () => ({ isEnabled: mockAccess.isEnabled, isLoading: false }),
 }));
+jest.mock('@/hooks/useRhinoDepositAssets', () => ({
+  useOfferedRhinoDepositAssets: () => mockRhino.current,
+}));
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: (state: any) => unknown) => selector(mockDeposit),
 }));
 
 const mockAccess = { isEnabled: true };
+const mockRetry = jest.fn();
+const READY: OfferedRhinoDepositAssets = {
+  status: 'ready',
+  assets: RHINO_ASSETS,
+  retry: mockRetry,
+};
+const mockRhino: { current: OfferedRhinoDepositAssets } = { current: READY };
 
 const mockDeposit = {
   walletDeposit: {} as { chainId?: number; symbol?: string; isChangingToken?: boolean },
@@ -63,20 +77,47 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockDeposit.walletDeposit = {};
   mockAccess.isEnabled = true;
+  mockRhino.current = READY;
 });
 
 describe('WalletDepositTokens', () => {
-  it('lists every token under its group, ticker over full name', () => {
+  it('lists every token with a row under its group, ticker over full name', () => {
     const root = render();
     const shown = texts(root);
 
-    expect(shown).toEqual(expect.arrayContaining(['Stablecoins', 'Gold & silver', 'Crypto']));
-    expect(shown).toEqual(
-      expect.arrayContaining(['PAXG', 'Gold', 'cbBTC', 'Coinbase Wrapped BTC']),
-    );
+    expect(shown).toEqual(expect.arrayContaining(['Stablecoins', 'Crypto']));
+    expect(shown).toEqual(expect.arrayContaining(['WBTC', 'cbBTC', 'Coinbase Wrapped BTC']));
     expect(shown).not.toContain('EURC');
-    // A row each: 19 tokens, EURC being a Wirex cardholder's alone.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(19);
+    // rhino.fi takes none of them, and none is on Base, where the Safe would be.
+    expect(shown).not.toContain('Gold & silver');
+    expect(shown).not.toContain('PAXG');
+    expect(shown).not.toContain('OP');
+    // A row each: 12 tokens, EURC being a Wirex cardholder's alone.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(12);
+  });
+
+  // Which tokens have a row is rhino.fi's to say off Fuse: no list until it has.
+  it('waits for rhino.fi’s routes before listing anything', () => {
+    mockRhino.current = { status: 'loading', retry: mockRetry };
+    const root = render();
+
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(0);
+    expect(
+      root.root.findAll((node: any) => node.props.accessibilityLabel === 'Loading tokens').length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('lists what Fuse takes, with a retry for the rest, when the routes cannot be had', () => {
+    mockRhino.current = { status: 'unavailable', retry: mockRetry };
+    const root = render();
+    const shown = texts(root);
+
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'FUSE', 'WFUSE']));
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(4);
+    expect(shown).toContain('Couldn’t load the other tokens.');
+
+    act(() => root.root.findByType('Button').props.onPress());
+    expect(mockRetry).toHaveBeenCalled();
   });
 
   it('lists only what everyone is offered for someone not given the new tokens', () => {
@@ -114,20 +155,38 @@ describe('WalletDepositTokens', () => {
     expect(texts(root)).toContain('USDC');
   });
 
-  it('opens the address on the token’s home chain once picked', () => {
+  it('opens the address on Base for a token rhino.fi takes nowhere, as the Safe', () => {
     const root = render();
-    const op = root.root.find((node: any) => node.props.accessibilityLabel === 'OP, Optimism');
-    act(() => op.props.onPress());
+    const cbBtc = root.root.find(
+      (node: any) => node.props.accessibilityLabel === 'cbBTC, Coinbase Wrapped BTC',
+    );
+    act(() => cbBtc.props.onPress());
 
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
-      symbol: 'OP',
-      chainId: optimism.id,
+      symbol: 'cbBTC',
+      chainId: base.id,
       isChangingToken: false,
     });
     expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   });
 
-  it('keeps the chain already showing when it carries the token', () => {
+  it('keeps the chain already showing when rhino.fi takes the token there', () => {
+    mockDeposit.walletDeposit = { chainId: bsc.id, symbol: 'USDC', isChangingToken: true };
+    const root = render();
+    const wbtc = root.root.find(
+      (node: any) => node.props.accessibilityLabel === 'WBTC, Wrapped Bitcoin',
+    );
+    act(() => wbtc.props.onPress());
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
+      symbol: 'WBTC',
+      chainId: bsc.id,
+      isChangingToken: false,
+    });
+  });
+
+  // rhino.fi has no WBTC route from Arbitrum, so that row is not offered.
+  it('moves off the chain showing when rhino.fi does not take the token there', () => {
     mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC', isChangingToken: true };
     const root = render();
     const wbtc = root.root.find(
@@ -137,7 +196,7 @@ describe('WalletDepositTokens', () => {
 
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
       symbol: 'WBTC',
-      chainId: arbitrum.id,
+      chainId: base.id,
       isChangingToken: false,
     });
   });

@@ -3,6 +3,7 @@ import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
 
+import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
@@ -13,8 +14,9 @@ import { useDepositStore } from '@/store/useDepositStore';
 import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
+  getWalletDepositNetworksNotice,
+  getWalletDepositRow,
   getWalletDepositTokenIcon,
-  getWalletRhinoSelection,
 } from './constants';
 import { useWalletDepositViewer } from './useWalletDepositViewer';
 
@@ -138,8 +140,11 @@ type WalletDepositNetworkListProps = {
  * `zIndex` does not carry from a nested child over a later sibling.
  *
  * It offers only the chains carrying the chosen currency, so changing network
- * can never quietly change the currency with it. A row rhino.fi serves under
- * the wallet rule is marked "via rhino.fi" (see `getWalletRhinoSelection`).
+ * can never quietly change the currency with it, and of those only the rows
+ * with an address: every row rhino.fi serves, marked "via rhino.fi", plus Fuse,
+ * and Base for a currency rhino.fi does not take (see `getWalletDepositRow`).
+ * While rhino.fi's routes are out, or when they cannot be had, a loader or a
+ * retry stands in for its rows.
  */
 export const WalletDepositNetworkList = ({
   chainId,
@@ -152,9 +157,10 @@ export const WalletDepositNetworkList = ({
     () => getWalletDepositNetworksForToken(symbol, viewer),
     [symbol, viewer],
   );
-  const rhinoAssets = useOfferedRhinoDepositAssets();
+  const { retry: retryRhino } = useOfferedRhinoDepositAssets();
+  const notice = getWalletDepositNetworksNotice(symbol, viewer);
   const isRhinoRow = (rowChainId: number) =>
-    !!getWalletRhinoSelection(rhinoAssets, rowChainId, symbol, viewer.provider);
+    getWalletDepositRow(rowChainId, symbol, viewer).kind === 'rhino';
 
   return (
     <>
@@ -186,6 +192,15 @@ export const WalletDepositNetworkList = ({
             {item.chainId === chainId ? <Check size={18} color="#94F27F" /> : null}
           </Pressable>
         ))}
+        {notice ? (
+          <RhinoNetworksNotice
+            notice={notice}
+            symbol={symbol}
+            hasRows={networks.length > 0}
+            onRetry={retryRhino}
+            className={cn('py-4', networks.length > 0 && 'border-t border-white/[0.06]')}
+          />
+        ) : null}
       </View>
     </>
   );

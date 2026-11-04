@@ -131,10 +131,9 @@ interface DepositState {
    */
   savingsFundIntent: SavingsFundIntent;
   /**
-   * The rhino.fi address the savings direct-deposit address step shows instead
-   * of the direct-deposit one: for a row rhino.fi serves (with
-   * `fallbackChainId`, so a failure falls back to that row's session), or a
-   * "More networks" chain. Not persisted, and cleared with the rest of the flow.
+   * The rhino.fi address the savings direct-deposit address step shows, for a
+   * row rhino.fi serves (every row but Fuse's, whose step shows the session
+   * instead). Not persisted, and cleared with the rest of the flow.
    */
   rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */
@@ -220,9 +219,8 @@ export const useDepositStore = create<DepositState>()(
       clearBankTransferData: () => set({ bankTransfer: {} }),
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
-      // Naming an EVM chain without a rhino.fi one leaves rhino.fi, so a caller
-      // that opens the address on a chain of its own (Main currency, AI API)
-      // never lands on a rhino.fi chain left over from an earlier visit.
+      // A caller may name a pairing of its own (Main currency, AI API); the
+      // address screen moves off one that has no row for this user.
       setWalletDeposit: data =>
         set({
           walletDeposit: {

@@ -10,16 +10,19 @@ import { withRefreshToken } from '@/lib/utils';
 export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
 
 /**
- * The address to show for a (chain, currency) pairing on the deposit screen.
+ * Our own address for a (chain, currency) pairing on the deposit screen: only
+ * for a row that is ours (`enabled`), which is Fuse, or Base for a currency
+ * rhino.fi does not take. Every other row is rhino.fi's, and this hands out
+ * nothing for it — not the Safe, and no minted address.
  *
- * A Wirex cardholder depositing a stablecoin gets an address minted by
- * `createDirectDepositSession` — watched, so the transfer is detected, credited
- * and recorded as activity. Everyone else sees the Safe address, for every
- * currency (see {@link usesDirectDepositAddress}).
+ * A Wirex cardholder depositing a dollar stablecoin on Fuse gets an address
+ * minted by `createDirectDepositSession` — watched, so the transfer is
+ * detected, credited and recorded as activity. Everyone else sees the Safe
+ * address (see {@link usesDirectDepositAddress}).
  *
  * The destination is the card's (`RAIN_CARD`), which is historical naming: the
  * backend resolves the issuer, and for Wirex that means their Safe on Fuse —
- * the balance their card settles from — or, for EURC, their Safe on Base. Which is exactly why the rule is theirs
+ * the balance their card settles from. Which is exactly why the rule is theirs
  * alone: the same call for a Rain cardholder would deliver to the card, and for
  * someone with no card there is no issuer to resolve.
  *
@@ -27,10 +30,14 @@ export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
  * caller shows the failure rather than quietly falling back to the Safe, which
  * would hand out an address the deposit would be stranded on.
  */
-export const useWalletDepositAddress = (chainId: number, symbol: string) => {
+export const useWalletDepositAddress = (
+  chainId: number,
+  symbol: string,
+  { enabled = true }: { enabled?: boolean } = {},
+) => {
   const { user } = useUser();
   const { provider } = useCardProvider();
-  const needsSession = usesDirectDepositAddress(symbol, provider);
+  const needsSession = enabled && usesDirectDepositAddress(chainId, symbol, provider);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [WALLET_DEPOSIT_ADDRESS_QUERY_KEY, chainId, symbol],
@@ -42,6 +49,10 @@ export const useWalletDepositAddress = (chainId: number, symbol: string) => {
     staleTime: Infinity,
     retry: false,
   });
+
+  if (!enabled) {
+    return { address: undefined, isLoading: false, isError: false, isMinted: false };
+  }
 
   if (!needsSession) {
     return { address: user?.safeAddress, isLoading: false, isError: false, isMinted: false };

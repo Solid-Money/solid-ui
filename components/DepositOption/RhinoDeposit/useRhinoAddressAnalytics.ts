@@ -39,17 +39,3 @@ export const useRhinoAddressAnalytics = (
     });
   }, [chain, destinationType, tokenSymbol]);
 };
-
-/**
- * A row's rhino.fi address could not be had, and the screen fell back to the
- * row's own address (the direct-deposit session or the Safe).
- */
-export const trackRhinoFallback = (selection: RhinoDepositSelection) => {
-  track(TRACKING_EVENTS.DEPOSIT_RHINO_ADDRESS_FALLBACK, {
-    deposit_method: 'rhino_deposit_address',
-    rhino_chain: selection.chain,
-    chain_id: selection.fallbackChainId,
-    selected_token: selection.tokenSymbol,
-    destination_type: selection.destinationType,
-  });
-};

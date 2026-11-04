@@ -3,9 +3,11 @@ import { ImageSourcePropType, Keyboard, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Check, ChevronRight, Search, X } from 'lucide-react-native';
 
+import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -126,6 +128,11 @@ const NoMatchingToken = ({ onShowAll }: { onShowAll: () => void }) => (
  * holdings, with a search over ticker and name above them. The chain follows
  * from the pick (see `resolveWalletDepositChain`), and the address screen's
  * network pill is there to change it.
+ *
+ * Which currencies there are, and on which chains, is rhino.fi's to say on every
+ * chain but Fuse, so the list waits for its routes rather than offering a pick
+ * that may have no row. If they cannot be had, it lists what Fuse takes, with a
+ * retry for the rest.
  */
 const WalletDepositTokens = () => {
   const setModal = useDepositStore(state => state.setModal);
@@ -139,6 +146,8 @@ const WalletDepositTokens = () => {
   const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
   const viewer = useWalletDepositViewer();
+  const { retry: retryRhino } = useOfferedRhinoDepositAssets();
+  const rhinoStatus = viewer.rhino?.status ?? 'loading';
   const tokens = useMemo(() => getAllWalletDepositTokens(viewer), [viewer]);
   const groups = useMemo(
     () =>
@@ -160,7 +169,18 @@ const WalletDepositTokens = () => {
     <View className="gap-y-5">
       <TokenSearchField value={query} onChangeText={setQuery} />
 
-      {groups.length ? (
+      {rhinoStatus === 'ready' ? null : (
+        <RhinoNetworksNotice
+          notice={rhinoStatus}
+          symbol=""
+          noun="tokens"
+          hasRows={tokens.length > 0}
+          onRetry={retryRhino}
+          className={rhinoStatus === 'loading' ? 'py-14' : 'rounded-[15px] bg-card'}
+        />
+      )}
+
+      {rhinoStatus === 'loading' ? null : groups.length ? (
         groups.map(group => (
           <View key={group.key} className="gap-y-2">
             <Text className="text-sm font-medium text-white/50">{group.label}</Text>

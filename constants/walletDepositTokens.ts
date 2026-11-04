@@ -35,7 +35,8 @@ export type WalletDepositTokenConfig = {
   /**
    * The chain the address opens on, for a token Base (the default) does not
    * carry: ARB on Arbitrum, OP on Optimism, PAXG on Ethereum, the wrapped coins
-   * on the chain exchanges send them on. A token on Base opens there.
+   * on the chain exchanges send them on. A token on Base opens there. Only
+   * counts on a row this person is offered: one rhino.fi takes, or Base.
    */
   homeChainId?: number;
   /**
@@ -50,13 +51,16 @@ export type WalletDepositTokenConfig = {
 };
 
 /**
- * Every currency the deposit address takes, in the order "Select token" lists
- * them within each group, and the chains each is taken on.
+ * Every currency the deposit address could take, in the order "Select token"
+ * lists them within each group, and the chains each has a contract on.
  *
- * The address is the user's Safe on every chain, so whatever lands on it stays
- * as the token that was sent: none of these top up the card or Earn. Only a
- * Wirex cardholder's stablecoins go anywhere else (see
- * `usesDirectDepositAddress`).
+ * A candidate list: which of these rows are offered is rhino.fi's to say, on
+ * every chain but Fuse (see `getWalletDepositRow`). A row rhino.fi takes pays
+ * the Safe on Base; a currency it takes on no row is offered on Base alone,
+ * where the address is the Safe and it stays as sent; Fuse is the Safe (or a
+ * Wirex cardholder's minted address), as it always was. None of these top up the
+ * card or Earn, except a Wirex cardholder's dollars, which reach the Safe their
+ * card spends from (see `getWalletRhinoDestination`).
  *
  * Deliberately not `BRIDGE_TOKENS`: every surface that offers a token on a chain
  * reads that map, so listing these there would offer them for card funding,
