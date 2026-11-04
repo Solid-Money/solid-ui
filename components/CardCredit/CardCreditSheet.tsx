@@ -45,6 +45,11 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
   // Held credit is not there to spend: a purchase holding all of it is no
   // reason for a $0.00 chip.
   const hasCredit = availableUsd > 0;
+  // Credit can be earned before there is a card to spend it with: a referrer
+  // without an active card still sees what they hold, and what it takes.
+  const spendLine = credit?.spendable
+    ? 'Spend it with your Solid card.'
+    : 'Spend it once your Solid card is active.';
 
   return (
     <ReferSheet isOpen={isOpen} onOpenChange={onOpenChange} contentKey="card-credit">
@@ -59,7 +64,7 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
       ) : null}
       <Text className="mt-3 text-center text-[15px] leading-[21px] text-white/60">
         {hasCredit
-          ? `${source ? `${source} ` : ''}Spend it with your Solid card.`
+          ? `${source ? `${source} ` : ''}${spendLine}`
           : 'Your referral bonuses are paid as card credit, to spend with your Solid card.'}
       </Text>
       {pendingUsd > 0 ? (
