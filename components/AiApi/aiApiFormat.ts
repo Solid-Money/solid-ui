@@ -196,3 +196,22 @@ export const formatAiApiPaidFrom = (tokens: readonly string[]): string => {
   if (tokens.length === 1) return tokens[0];
   return `${tokens.slice(0, -1).join(', ')}, then ${tokens[tokens.length - 1]}`;
 };
+
+/**
+ * What a "not enough" banner says the Wallet is short of: `USDC`, or plain
+ * `funds` when the token list could not be read, rather than the paid-from
+ * fallback, which would read "doesn't have enough Your Wallet".
+ */
+export const formatAiApiBillingFunds = (tokens: readonly string[]): string =>
+  tokens.length === 0 ? 'funds' : formatAiApiPaidFrom(tokens);
+
+/**
+ * What doesn't pay for usage, for users who topped up their card or saved
+ * and still see the banner: the card balance always, and Savings too unless a
+ * savings token (soUSD and the like) is one of the billing tokens. A list that
+ * could not be read names the card balance alone, which is true either way.
+ */
+export const formatAiApiNotCounted = (tokens: readonly string[]): string =>
+  tokens.length > 0 && !tokens.some(token => /^so[A-Z]/.test(token))
+    ? 'Your card balance and Savings don’t count.'
+    : 'Your card balance doesn’t count.';
