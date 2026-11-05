@@ -10,7 +10,7 @@ import {
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
 } from '@/lib/config';
-import { EXTERNAL_WALLET_DEPOSIT_PAUSED, isOwnSafe } from '@/lib/deposit/externalWallet';
+import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
 import { SOEURC_DECIMALS } from '@/lib/deposit/soEurc';
 import {
   captureDepositError,
@@ -152,16 +152,20 @@ const useDepositFromEOAEur = (
       if (!isSponsor) {
         throw new Error(`Minimum deposit amount is ${minimumAmount} EURC`);
       }
-      // The backend pulls the EURC, and it pulls only from the user's own Safe.
-      if (!isOwnSafe(eoaAddress, user.safeAddress)) {
-        throw new Error(EXTERNAL_WALLET_DEPOSIT_PAUSED);
-      }
-
       // Before the pending state, the network switch and the approval prompt.
       const spender = getDepositSpender();
       const amountWei = parseUnits(amount, SOEURC_DECIMALS);
       if (amountWei <= 0n || balance === undefined || amountWei > balance)
         throw new Error('Insufficient EURC balance');
+
+      // The backend pulls the EURC, and only from the user's Safe or a wallet
+      // linked to their account. Link this one, if it isn't yet, once nothing
+      // else can refuse the deposit, and before the network switch and the
+      // approval prompt.
+      await ensureWalletLinked(account, user.safeAddress, {
+        onSignRequest: () =>
+          setDepositStatus({ status: Status.PENDING, message: 'Sign to link your wallet' }),
+      });
 
       trackDepositValidated(ctx);
       setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });

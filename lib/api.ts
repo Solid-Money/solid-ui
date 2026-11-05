@@ -3268,6 +3268,45 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
   return response.json();
 };
 
+/** An external wallet the user linked by signature; deposits may pull from it. */
+export type LinkedWallet = { address: string; linkedAt: string };
+
+const linkedWalletsRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/linked-wallets${path}`,
+    {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  // Unlinking answers 204 with no body.
+  const data = response.status === 204 ? undefined : await response.json().catch(() => ({}));
+  if (!response.ok) throw data;
+  return data as T;
+};
+
+export const getLinkedWallets = (): Promise<LinkedWallet[]> => linkedWalletsRequest('');
+
+/** The message the wallet must sign to be linked; valid for one use, for 10 minutes. */
+export const createWalletLinkChallenge = (
+  address: string,
+): Promise<{ message: string; expiresAt: string }> =>
+  linkedWalletsRequest('/challenge', { method: 'POST', body: JSON.stringify({ address }) });
+
+export const linkWallet = (address: string, signature: string): Promise<LinkedWallet> =>
+  linkedWalletsRequest('', { method: 'POST', body: JSON.stringify({ address, signature }) });
+
+export const unlinkWallet = (address: string): Promise<void> =>
+  linkedWalletsRequest(`/${address}`, { method: 'DELETE' });
+
 export const depositTransactions = async (safeAddress: string): Promise<DepositTransaction[]> => {
   const jwt = getJWTToken();
 

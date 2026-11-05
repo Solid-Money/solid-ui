@@ -28,7 +28,7 @@ import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, getLifiQuote } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
-import { EXTERNAL_WALLET_DEPOSIT_PAUSED, isOwnSafe } from '@/lib/deposit/externalWallet';
+import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
@@ -414,9 +414,13 @@ const useDepositFromEOA = (
         ? (EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address)
         : (ADDRESSES.ethereum.vault as Address);
       // A sponsored deposit is pulled by the backend, which pulls only from the
-      // user's own Safe. Refuse before the permit or approval prompt.
-      if (isSponsor && !isOwnSafe(eoaAddress, user.safeAddress)) {
-        throw new Error(EXTERNAL_WALLET_DEPOSIT_PAUSED);
+      // user's Safe or a wallet linked to their account. Link this one, if it
+      // isn't yet, before the permit or approval prompt.
+      if (isSponsor) {
+        await ensureWalletLinked(account, user.safeAddress, {
+          onSignRequest: () =>
+            setDepositStatus({ status: Status.PENDING, message: 'Sign to link your wallet' }),
+        });
       }
 
       // Track deposit validation passed
