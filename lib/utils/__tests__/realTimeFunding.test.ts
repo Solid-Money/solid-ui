@@ -7,6 +7,7 @@ import {
   formatTokenAmount,
   pendingApprovalsFor,
   RAIN_RTF_PUBLISHED_OPERATORS,
+  rainRtfOperatorFor,
   rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
@@ -250,11 +251,52 @@ describe('the operator pin', () => {
       ],
     });
 
-  it('knows both of Rain’s published operators', () => {
-    expect(RAIN_RTF_PUBLISHED_OPERATORS.has(OPERATOR)).toBe(true);
-    expect(RAIN_RTF_PUBLISHED_OPERATORS.has('0xa3750f692bb9fc5e62834f9291e3d508d7ba4f74')).toBe(
-      true,
-    );
+  const PRODUCTION_OPERATOR = '0xa3750f692bb9fc5e62834f9291e3d508d7ba4f74';
+  const operatorOnly = (address: string) =>
+    asset({
+      spenders: [{ kind: 'operator', address, currentAllowance: '0', isApproved: false }],
+    });
+
+  it('knows the operator Rain publishes for each environment', () => {
+    expect(RAIN_RTF_PUBLISHED_OPERATORS.sandbox).toBe(OPERATOR);
+    expect(RAIN_RTF_PUBLISHED_OPERATORS.production).toBe(PRODUCTION_OPERATOR);
+    expect(rainRtfOperatorFor(8453)).toBe(PRODUCTION_OPERATOR);
+    expect(rainRtfOperatorFor(84532)).toBe(OPERATOR);
+    expect(rainRtfOperatorFor(1)).toBeUndefined();
+  });
+
+  it('passes the production operator on a production chain', () => {
+    expect(
+      unknownOperatorSpenders(
+        chain({
+          chainId: 8453,
+          name: 'Base',
+          environment: 'production',
+          assets: [operatorOnly(PRODUCTION_OPERATOR)],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('refuses the other environment’s operator', () => {
+    // Both are Rain's, but a production chain must get the production
+    // operator — and the chain id decides that, not the status's own label.
+    expect(
+      unknownOperatorSpenders(
+        chain({ chainId: 8453, environment: 'sandbox', assets: [operatorOnly(OPERATOR)] }),
+      ),
+    ).toEqual([OPERATOR]);
+    expect(
+      unknownOperatorSpenders(
+        chain({ chainId: 84532, assets: [operatorOnly(PRODUCTION_OPERATOR)] }),
+      ),
+    ).toEqual([PRODUCTION_OPERATOR]);
+  });
+
+  it('approves no operator on a chain this build does not know', () => {
+    expect(
+      unknownOperatorSpenders(chain({ chainId: 999999, assets: [operatorOnly(OPERATOR)] })),
+    ).toEqual([OPERATOR]);
   });
 
   it('passes a chain whose operator Rain publishes, in any case', () => {

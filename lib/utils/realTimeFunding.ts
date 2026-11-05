@@ -55,7 +55,7 @@ export const formatTokenAmount = (
 };
 
 /**
- * Rain's published operator contracts — sandbox and production — lowercased.
+ * Rain's published operator contracts, lowercased, by environment.
  *
  * ## Why the app pins the operator
  *
@@ -65,18 +65,40 @@ export const formatTokenAmount = (
  * (which is where the collateral spender comes from). A wrong or tampered
  * configuration would otherwise have this app ask every new cardholder to
  * approve whatever address it named. So an operator spender is only approved
- * if it is one of these; anything else stops the approval with an
- * update-the-app message rather than signing it.
+ * if it is the one Rain publishes for that chain's environment; anything else
+ * stops the approval with an update-the-app message rather than signing it.
  *
- * Rain publishes one operator per environment. If it ever moves, this list
+ * Rain publishes one operator per environment. If it ever moves, this table
  * moves with it in a release — the backend pins the same addresses.
  */
-export const RAIN_RTF_PUBLISHED_OPERATORS: ReadonlySet<string> = new Set([
-  // Production (Base, Arbitrum, Plasma).
-  '0xa3750f692bb9fc5e62834f9291e3d508d7ba4f74',
-  // Sandbox (Base Sepolia, Arbitrum Sepolia, Plasma testnet).
-  '0x5a6e6b0d5ea051cfff9b3dcc2aa8dac226458f29',
-]);
+export const RAIN_RTF_PUBLISHED_OPERATORS: Readonly<Record<'production' | 'sandbox', string>> = {
+  production: '0xa3750f692bb9fc5e62834f9291e3d508d7ba4f74',
+  sandbox: '0x5a6e6b0d5ea051cfff9b3dcc2aa8dac226458f29',
+};
+
+/**
+ * Which environment each RTF chain belongs to, by chain id.
+ *
+ * Fixed here rather than read off the status, because the status is what is
+ * being checked: a production chain must get the production operator, and a
+ * chain id is the one thing that names its environment unambiguously (Base
+ * 8453 against Base Sepolia 84532). A chain missing from this table has no
+ * operator this build will approve.
+ */
+const RAIN_RTF_CHAIN_ENVIRONMENTS: Readonly<Record<number, 'production' | 'sandbox'>> = {
+  8453: 'production', // Base
+  42161: 'production', // Arbitrum
+  9745: 'production', // Plasma
+  84532: 'sandbox', // Base Sepolia
+  421614: 'sandbox', // Arbitrum Sepolia
+  9746: 'sandbox', // Plasma testnet
+};
+
+/** The operator Rain publishes for this chain's environment, if this build knows the chain. */
+export const rainRtfOperatorFor = (chainId: number | undefined): string | undefined => {
+  const environment = chainId === undefined ? undefined : RAIN_RTF_CHAIN_ENVIRONMENTS[chainId];
+  return environment ? RAIN_RTF_PUBLISHED_OPERATORS[environment] : undefined;
+};
 
 /** Every approval a chain still owes, flattened across its assets. */
 export interface PendingApproval {
@@ -87,20 +109,24 @@ export interface PendingApproval {
 }
 
 /**
- * Operator spenders on this chain, still owed an approval, that are not one
- * of Rain's published operators. Empty when the chain is safe to approve.
+ * Operator spenders on this chain, still owed an approval, that are not the
+ * operator Rain publishes for the chain's environment — including the other
+ * environment's. Empty when the chain is safe to approve.
  */
-export const unknownOperatorSpenders = (chain: RainRtfChain | undefined): string[] => [
-  ...new Set(
-    pendingApprovalsFor(chain)
-      .filter(
-        approval =>
-          approval.spenderKind === 'operator' &&
-          !RAIN_RTF_PUBLISHED_OPERATORS.has(approval.spenderAddress.trim().toLowerCase()),
-      )
-      .map(approval => approval.spenderAddress),
-  ),
-];
+export const unknownOperatorSpenders = (chain: RainRtfChain | undefined): string[] => {
+  const expected = rainRtfOperatorFor(chain?.chainId);
+  return [
+    ...new Set(
+      pendingApprovalsFor(chain)
+        .filter(
+          approval =>
+            approval.spenderKind === 'operator' &&
+            approval.spenderAddress.trim().toLowerCase() !== expected,
+        )
+        .map(approval => approval.spenderAddress),
+    ),
+  ];
+};
 
 /**
  * The (token, spender) pairs on this chain that still need approving.
