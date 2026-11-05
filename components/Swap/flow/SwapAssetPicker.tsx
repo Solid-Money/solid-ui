@@ -19,7 +19,6 @@ import {
 } from '@/lib/swapAssets';
 import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 import { SwapField } from '@/lib/types/swap-field';
-import { cn } from '@/lib/utils';
 import { formatSwapAmount, formatSwapUsd } from '@/lib/utils/swap/format';
 import { useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 
@@ -36,14 +35,9 @@ const AssetRow = ({
 }) => (
   <Pressable
     onPress={() => onPress(row)}
-    disabled={row.disabled}
     accessibilityRole="button"
-    accessibilityState={{ disabled: row.disabled }}
     accessibilityLabel={`${row.name}, ${row.subtitle}`}
-    className={cn(
-      'flex-row items-center gap-3.5 px-[18px] py-[13px] web:hover:bg-card-hover',
-      row.disabled && 'opacity-40',
-    )}
+    className="flex-row items-center gap-3.5 px-[18px] py-[13px] web:hover:bg-card-hover"
   >
     <SwapAssetLogo asset={row.asset} size={34} showChain={row.members.length === 1} />
     <View className="flex-1 gap-0.5">
@@ -54,7 +48,7 @@ const AssetRow = ({
     </View>
     {showBalance && row.balance > 0 ? (
       <Balance usd={row.balanceUsd} amount={row.balance} symbol={assetDisplayName(row.asset)} />
-    ) : row.members.length > 1 && !row.disabled ? (
+    ) : row.members.length > 1 ? (
       <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
     ) : null}
   </Pressable>
@@ -141,9 +135,10 @@ const NetworkStep = ({
 
 /**
  * Screens 2 and 3 of the swap: the coins, one row per asset rather than per
- * contract. "You pay" lists what's held; "You get" what the paying coin can
- * become, from the route matrix and the backend's route map. An asset on
- * more than one network asks which network next.
+ * contract, and only ones that can be swapped. "You pay" lists what's held;
+ * "You get" what the paying coin can become, from the route matrix and the
+ * backend's route map. An asset on more than one network asks which network
+ * next.
  */
 const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
   const { fromAsset } = useSwapFlow();
