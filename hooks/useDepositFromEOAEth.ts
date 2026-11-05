@@ -12,6 +12,7 @@ import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -540,6 +541,9 @@ const useDepositFromEOAEth = (
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_CHAIN)) {
         errMsg = ERRORS.ERROR_SWITCHING_CHAIN;
+      } else if (error instanceof WalletLinkError) {
+        // Linking the wallet failed: the server says why, in words meant for the user.
+        errMsg = error.message;
       }
 
       setDepositStatus({ status: Status.ERROR });

@@ -1,5 +1,6 @@
 import { createWalletLinkChallenge, getLinkedWallets, linkWallet } from '@/lib/api';
 import { ensureWalletLinked, isOwnSafe } from '@/lib/deposit/externalWallet';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 
 jest.mock('@/lib/api', () => ({
   getLinkedWallets: jest.fn(),
@@ -81,6 +82,36 @@ describe('ensureWalletLinked', () => {
 
     await expect(ensureWalletLinked(account as never, SAFE)).rejects.toThrow('User rejected');
     expect(link).not.toHaveBeenCalled();
+  });
+
+  it('passes on the server’s reason when it refuses the link', async () => {
+    link.mockRejectedValue({
+      statusCode: 400,
+      message:
+        'The signature does not match this wallet. Smart contract wallets cannot be linked yet.',
+    });
+
+    const failure = ensureWalletLinked(wallet() as never, SAFE);
+
+    await expect(failure).rejects.toBeInstanceOf(WalletLinkError);
+    await expect(failure).rejects.toThrow('Smart contract wallets cannot be linked yet.');
+  });
+
+  it('says what failed when the server gives no reason', async () => {
+    linked.mockRejectedValue(new Error(''));
+
+    await expect(ensureWalletLinked(wallet() as never, SAFE)).rejects.toThrow(
+      "Couldn't check your linked wallets. Please try again.",
+    );
+  });
+
+  it('leaves a declined signature as the wallet’s own error', async () => {
+    const account = wallet();
+    account.signMessage.mockRejectedValue(new Error('User rejected'));
+
+    await expect(ensureWalletLinked(account as never, SAFE)).rejects.not.toBeInstanceOf(
+      WalletLinkError,
+    );
   });
 
   it('refuses without a connected wallet', async () => {

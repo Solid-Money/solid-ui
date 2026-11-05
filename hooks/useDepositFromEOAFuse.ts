@@ -17,6 +17,7 @@ import {
   EXPO_PUBLIC_FUSE_GAS_RESERVE,
 } from '@/lib/config';
 import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -506,6 +507,9 @@ const useDepositFromEOAFuse = (
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_CHAIN)) {
         errMsg = ERRORS.ERROR_SWITCHING_CHAIN;
+      } else if (error instanceof WalletLinkError) {
+        // Linking the wallet failed: the server says why, in words meant for the user.
+        errMsg = error.message;
       }
 
       setDepositStatus({ status: Status.ERROR });

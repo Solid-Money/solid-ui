@@ -3288,12 +3288,22 @@ const linkedWalletsRequest = async <T>(path: string, init: RequestInit = {}): Pr
   );
 
   // Unlinking answers 204 with no body.
-  const data = response.status === 204 ? undefined : await response.json().catch(() => ({}));
-  if (!response.ok) throw data;
-  return data as T;
+  if (response.status === 204) return undefined as T;
+  if (!response.ok) throw await response.json().catch(() => ({}));
+  // A success whose body isn't JSON rejects rather than passing as empty.
+  return (await response.json()) as T;
 };
 
-export const getLinkedWallets = (): Promise<LinkedWallet[]> => linkedWalletsRequest('');
+export const getLinkedWallets = async (): Promise<LinkedWallet[]> => {
+  const wallets = await linkedWalletsRequest<unknown>('');
+  if (
+    !Array.isArray(wallets) ||
+    !wallets.every(wallet => typeof (wallet as { address?: unknown })?.address === 'string')
+  ) {
+    throw new Error('Unexpected response listing linked wallets');
+  }
+  return wallets as LinkedWallet[];
+};
 
 /** The message the wallet must sign to be linked; valid for one use, for 10 minutes. */
 export const createWalletLinkChallenge = (

@@ -1,6 +1,8 @@
 import { createWalletLinkChallenge, getLinkedWallets, linkWallet } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
+import { toWalletLinkError } from './walletLinkError';
+
 import type { Account } from 'thirdweb/wallets';
 
 /**
@@ -32,11 +34,20 @@ export const ensureWalletLinked = async (
   if (isOwnSafe(account.address, safeAddress)) return;
 
   const address = account.address.toLowerCase();
-  const linked = await withRefreshToken(() => getLinkedWallets());
-  if (linked?.some(wallet => wallet.address.toLowerCase() === address)) return;
+  const linked = await withRefreshToken(() => getLinkedWallets()).catch(error => {
+    throw toWalletLinkError(error, "Couldn't check your linked wallets. Please try again.");
+  });
+  if (linked.some(wallet => wallet.address.toLowerCase() === address)) return;
 
-  const { message } = await withRefreshToken(() => createWalletLinkChallenge(account.address));
+  const { message } = await withRefreshToken(() =>
+    createWalletLinkChallenge(account.address),
+  ).catch(error => {
+    throw toWalletLinkError(error, "Couldn't start linking this wallet. Please try again.");
+  });
   onSignRequest?.();
+  // A declined signature is the wallet's own error, so it reads as a rejection.
   const signature = await account.signMessage({ message });
-  await withRefreshToken(() => linkWallet(account.address, signature));
+  await withRefreshToken(() => linkWallet(account.address, signature)).catch(error => {
+    throw toWalletLinkError(error, "Couldn't link this wallet. Please try again.");
+  });
 };
