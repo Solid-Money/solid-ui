@@ -18,6 +18,7 @@ import {
   rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
+  unknownOperatorSpenders,
 } from '@/lib/utils/realTimeFunding';
 import { getChain } from '@/lib/wagmi';
 
@@ -230,6 +231,16 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
           // wrong token on the wrong network and look like success.
           throw new UserCopyError(
             `${target.name} isn’t supported by this version of the app. Please update and try again.`,
+          );
+        }
+
+        // The operator is approved by every cardholder for an unlimited
+        // amount, so it has to be one Rain publishes — not just whatever the
+        // backend names. An unknown one stops the walk before anything is
+        // signed; see RAIN_RTF_PUBLISHED_OPERATORS.
+        if (unknownOperatorSpenders(target).length > 0) {
+          throw new UserCopyError(
+            `Real-Time Funding on ${target.name} needs an app update before it can be approved. Please update and try again.`,
           );
         }
 
