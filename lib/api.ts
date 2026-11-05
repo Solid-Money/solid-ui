@@ -3268,6 +3268,55 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
   return response.json();
 };
 
+/** An external wallet the user linked by signature; deposits may pull from it. */
+export type LinkedWallet = { address: string; linkedAt: string };
+
+const linkedWalletsRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/linked-wallets${path}`,
+    {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  // Unlinking answers 204 with no body.
+  if (response.status === 204) return undefined as T;
+  if (!response.ok) throw await response.json().catch(() => ({}));
+  // A success whose body isn't JSON rejects rather than passing as empty.
+  return (await response.json()) as T;
+};
+
+export const getLinkedWallets = async (): Promise<LinkedWallet[]> => {
+  const wallets = await linkedWalletsRequest<unknown>('');
+  if (
+    !Array.isArray(wallets) ||
+    !wallets.every(wallet => typeof (wallet as { address?: unknown })?.address === 'string')
+  ) {
+    throw new Error('Unexpected response listing linked wallets');
+  }
+  return wallets as LinkedWallet[];
+};
+
+/** The message the wallet must sign to be linked; valid for one use, for 10 minutes. */
+export const createWalletLinkChallenge = (
+  address: string,
+): Promise<{ message: string; expiresAt: string }> =>
+  linkedWalletsRequest('/challenge', { method: 'POST', body: JSON.stringify({ address }) });
+
+export const linkWallet = (address: string, signature: string): Promise<LinkedWallet> =>
+  linkedWalletsRequest('', { method: 'POST', body: JSON.stringify({ address, signature }) });
+
+export const unlinkWallet = (address: string): Promise<void> =>
+  linkedWalletsRequest(`/${address}`, { method: 'DELETE' });
+
 export const depositTransactions = async (safeAddress: string): Promise<DepositTransaction[]> => {
   const jwt = getJWTToken();
 
