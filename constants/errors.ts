@@ -1,3 +1,4 @@
+import { ACCOUNT_SUSPENDED_MESSAGE, isAccountSuspendedError } from '@/lib/errors/accountSuspended';
 import { getUserErrorMessage } from '@/lib/errors/classify';
 export const ERRORS = {
   USERNAME_ALREADY_EXISTS: 'Username already exists',
@@ -97,6 +98,9 @@ export const loginErrorMessage = (error: unknown): string => {
   // WebAuthn reports a dismissed prompt as a failure; the platform's wording for
   // it describes the machinery, not the thing the user just chose to do.
   if (err?.name === 'NotAllowedError') return 'User cancelled login';
+
+  // An admin suspended the account: signing in again cannot help, support can.
+  if (isAccountSuspendedError(error)) return ACCOUNT_SUSPENDED_MESSAGE;
 
   if (isUnlinkedPasskeyError(error)) {
     // A typed reply names which flavour it is, and its copy is the precise one.
