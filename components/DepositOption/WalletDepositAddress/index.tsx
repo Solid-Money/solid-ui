@@ -38,6 +38,7 @@ import {
   getWalletDepositRow,
   getWalletDepositTokenIcon,
   resolveWalletDepositChain,
+  resolveWalletDepositExtraChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
@@ -147,6 +148,9 @@ const WalletDepositAddress = () => {
     if (row.kind !== 'none') return undefined;
     // A "More networks" chain that no longer takes the currency: back to the row.
     if (rhinoChain) return { rhinoChain: undefined };
+    // A currency only "More networks" carries (native BTC): its first chain there.
+    const extraChain = resolveWalletDepositExtraChain(symbol, undefined, viewer);
+    if (extraChain) return { rhinoChain: extraChain };
     const nextChainId = resolveWalletDepositChain(symbol, chainId, viewer);
     const nextSymbol = resolveWalletDepositSymbol(nextChainId, symbol, viewer) ?? symbol;
     return nextChainId !== chainId || nextSymbol !== symbol
@@ -349,6 +353,7 @@ const WalletDepositAddress = () => {
         {rhino && rhinoSelection ? (
           <RhinoDepositDetails
             tokenSymbol={symbol}
+            chain={rhino.chain.chain}
             chainName={rhinoChainName ?? rhino.chain.name}
             destinationType={rhinoSelection.destinationType}
             receiveSymbol={rhinoAddress?.receiveSymbol ?? rhino.route.receiveSymbol}

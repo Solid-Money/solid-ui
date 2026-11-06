@@ -153,7 +153,7 @@ export interface DepositAssetsResponse {
 export type RhinoDestinationType = 'WALLET' | 'PROTOCOL' | 'RAIN_CARD';
 
 /** The address format a rhino.fi chain uses. Only `EVM` is a 0x address. */
-export type RhinoAddressType = 'EVM' | 'TRON' | 'SOL';
+export type RhinoAddressType = 'EVM' | 'TRON' | 'SOL' | 'BTC';
 
 /** What a token sent on a rhino.fi chain turns into at one destination. */
 export interface RhinoDepositRoute {

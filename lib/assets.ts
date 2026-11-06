@@ -292,6 +292,7 @@ export const ASSETS = {
     hash: '75a2ebe8',
   },
   'images/bsc.png': { module: require('@/assets/images/bsc.png'), hash: '4135f6a8' },
+  'images/btc.png': { module: require('@/assets/images/btc.png'), hash: 'b5a68f18' },
   'images/buy_crypto.png': { module: require('@/assets/images/buy_crypto.png'), hash: 'a072a946' },
   'images/card-action-add-funds.png': {
     module: require('@/assets/images/card-action-add-funds.png'),

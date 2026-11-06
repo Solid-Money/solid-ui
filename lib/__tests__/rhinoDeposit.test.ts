@@ -1,6 +1,10 @@
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_BASE_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
+import {
+  RHINO_ASSETS,
+  RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
+  RHINO_ASSETS_WITH_BITCOIN,
+} from '@/lib/__tests__/rhinoFixtures';
 import {
   describeRhinoArrival,
   findRhinoRoute,
@@ -9,6 +13,7 @@ import {
   formatRhinoUsdLimits,
   getRhinoAddressErrorBody,
   getRhinoAssetsState,
+  getRhinoChainNote,
   getRhinoChainsForDestination,
   getRhinoDepositStatusView,
   getRhinoExtraChains,
@@ -17,6 +22,7 @@ import {
   getRhinoRejectMessage,
   getRhinoSelectionForRow,
   getRhinoTokensForDestination,
+  isKnownRhinoAddressType,
   isOfferedRhinoRow,
   isOwnPipelineChain,
   isOwnPipelineToken,
@@ -228,21 +234,21 @@ describe('getRhinoChainsForDestination', () => {
   });
 
   it('leaves out a chain whose address format the app cannot check', () => {
-    const withBitcoin = {
+    const withTon = {
       enabled: true,
       chains: [
         ...ASSETS.chains,
         {
-          chain: 'BITCOIN',
-          name: 'Bitcoin',
-          addressType: 'BTC' as never,
-          tokens: [{ symbol: 'USDC', address: 'x', routes: [route('WALLET', 'USDC')] }],
+          chain: 'TON',
+          name: 'TON',
+          addressType: 'TON' as never,
+          tokens: [{ symbol: 'USDT', address: 'x', routes: [route('WALLET', 'USDC')] }],
         },
       ],
     };
     expect(
-      chainsOf(getRhinoChainsForDestination(withBitcoin, { destinationType: 'WALLET' })),
-    ).not.toContain('BITCOIN');
+      chainsOf(getRhinoChainsForDestination(withTon, { destinationType: 'WALLET' })),
+    ).not.toContain('TON');
   });
 });
 
@@ -916,5 +922,86 @@ describe('getRhinoListNotice', () => {
     expect(getRhinoListNotice([OWN, NONE])).toBeUndefined();
     expect(getRhinoListNotice([NONE, NONE])).toBe('empty');
     expect(getRhinoListNotice([])).toBe('empty');
+  });
+});
+
+describe('native BTC on Bitcoin', () => {
+  const TAPROOT = 'bc1pwvza3f5hz85h9xdsmar8vjznsta9un82r5m5rvdsyys56u4xg75qytn3t4';
+  const SEGWIT = 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh';
+  const LEGACY = '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa';
+  const P2SH = '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy';
+
+  it('knows how to show a Bitcoin address', () => {
+    expect(isKnownRhinoAddressType('BTC')).toBe(true);
+    expect(isKnownRhinoAddressType('FLASH')).toBe(false);
+  });
+
+  it('takes every mainnet encoding, the Taproot rhino.fi hands out included', () => {
+    for (const address of [TAPROOT, SEGWIT, LEGACY, P2SH]) {
+      expect(isValidRhinoDepositAddress(address, 'BTC')).toBe(true);
+    }
+  });
+
+  it('refuses a Bitcoin address that is not one, or not on mainnet', () => {
+    expect(isValidRhinoDepositAddress(EVM_ADDRESS, 'BTC')).toBe(false);
+    // Testnet, and characters bech32 does not have.
+    expect(isValidRhinoDepositAddress('tb1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', 'BTC')).toBe(
+      false,
+    );
+    expect(isValidRhinoDepositAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlb', 'BTC')).toBe(
+      false,
+    );
+    expect(isValidRhinoDepositAddress('bc1q', 'BTC')).toBe(false);
+    // And a Bitcoin address is no address on an EVM chain.
+    expect(isValidRhinoDepositAddress(TAPROOT, 'EVM')).toBe(false);
+  });
+
+  it('lists Bitcoin under "More networks" for the wallet and the card, never savings', () => {
+    for (const destinationType of ['WALLET', 'RAIN_CARD'] as const) {
+      expect(
+        getRhinoExtraChains(RHINO_ASSETS_WITH_BITCOIN, { destinationType, symbol: 'BTC' }).map(
+          chain => chain.chain,
+        ),
+      ).toEqual(['BITCOIN']);
+    }
+    expect(
+      getRhinoExtraChains(RHINO_ASSETS_WITH_BITCOIN, {
+        destinationType: 'PROTOCOL',
+        symbol: 'BTC',
+      }),
+    ).toEqual([]);
+    // It takes BTC alone.
+    expect(
+      getRhinoExtraChains(RHINO_ASSETS_WITH_BITCOIN, { destinationType: 'WALLET', symbol: 'USDC' })
+        .map(chain => chain.chain)
+        .includes('BITCOIN'),
+    ).toBe(false);
+  });
+
+  it('says what lands: WBTC in the wallet, USDC on the card', () => {
+    expect(
+      describeRhinoArrival({
+        tokenSymbol: 'BTC',
+        receiveSymbol: 'WBTC',
+        receiveChainId: base.id,
+        destinationType: 'WALLET',
+      }),
+    ).toBe('Converted to WBTC in your wallet on Base');
+    expect(
+      describeRhinoArrival({
+        tokenSymbol: 'BTC',
+        receiveSymbol: 'USDC',
+        receiveChainId: base.id,
+        destinationType: 'RAIN_CARD',
+      }),
+    ).toBe('Converted to USDC for your card');
+  });
+
+  it('warns that Bitcoin takes longer, and nothing else does', () => {
+    expect(getRhinoChainNote('BITCOIN')).toBe(
+      'Arrives after 1 Bitcoin confirmation, usually 5–20 min',
+    );
+    expect(getRhinoChainNote('TRON')).toBeUndefined();
+    expect(getRhinoChainNote(undefined)).toBeUndefined();
   });
 });

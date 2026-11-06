@@ -4,7 +4,7 @@ import { base, fuse, mainnet, optimism, polygon } from 'viem/chains';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
 import { getWalletOwnAddress } from '@/components/DepositOption/WalletDepositAddress/constants';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
 import { CardProvider } from '@/lib/types';
 
 import type { WalletDepositViewer } from '@/components/DepositOption/WalletDepositAddress/constants';
@@ -423,5 +423,73 @@ describe('WalletDepositAddress on a "More networks" chain', () => {
     act(() => root.root.findByType('WalletDepositNetworkList').props.onSelectExtra('SOLANA'));
 
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: 'SOLANA' });
+  });
+});
+
+describe('WalletDepositAddress for native BTC', () => {
+  const BITCOIN_ADDRESS = 'bc1pwvza3f5hz85h9xdsmar8vjznsta9un82r5m5rvdsyys56u4xg75qytn3t4';
+
+  beforeEach(() => {
+    mockViewer.current = {
+      ...WIREX_READY,
+      rhino: { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN },
+    };
+    mockRhinoAddress.mockImplementation((selection: unknown) => ({
+      address: {
+        ...rhinoResponse('WALLET'),
+        depositAddress: BITCOIN_ADDRESS,
+        chain: 'BITCOIN',
+        chainName: 'Bitcoin',
+        addressType: 'BTC',
+        tokenSymbol: 'BTC',
+        tokenAddress: '0x0000000000000000000000000000000000000000',
+        receiveSymbol: 'WBTC',
+        minimumUsd: 10,
+        maximumUsd: 50000,
+      },
+      isError: false,
+      isFetching: false,
+      refetch: mockRhinoRefetch,
+      selection,
+    }));
+  });
+
+  it('shows its Bitcoin address, what lands, and how long Bitcoin takes', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'BTC', rhinoChain: 'BITCOIN' } as any;
+    render();
+
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith({
+      chain: 'BITCOIN',
+      tokenSymbol: 'BTC',
+      destinationType: 'WALLET',
+    });
+    expect(qrValues()).toEqual([BITCOIN_ADDRESS]);
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(root.root.findByType('RhinoDepositDetails').props).toMatchObject({
+      tokenSymbol: 'BTC',
+      chain: 'BITCOIN',
+      chainName: 'Bitcoin',
+      receiveSymbol: 'WBTC',
+      minimumUsd: 10,
+      maximumUsd: 50000,
+    });
+  });
+
+  // Opened on a chain of the list's own (from elsewhere in the app, or left
+  // over): there is none for BTC, so it moves to Bitcoin rather than to USDC.
+  it('moves to Bitcoin when opened on a chain of the list’s own', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'BTC' };
+    render();
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: 'BITCOIN' });
+    expect(ownAddressWasEnabled()).toBe(false);
+  });
+
+  it('falls back to the default pairing once Bitcoin is switched off', () => {
+    mockViewer.current = WIREX_READY;
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'BTC', rhinoChain: 'BITCOIN' } as any;
+    render();
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: undefined });
   });
 });

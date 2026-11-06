@@ -127,7 +127,12 @@ export type RhinoRouteFilter = {
   vault?: string;
 };
 
-const KNOWN_ADDRESS_TYPES: ReadonlySet<string> = new Set<RhinoAddressType>(['EVM', 'TRON', 'SOL']);
+const KNOWN_ADDRESS_TYPES: ReadonlySet<string> = new Set<RhinoAddressType>([
+  'EVM',
+  'TRON',
+  'SOL',
+  'BTC',
+]);
 
 /**
  * Whether the app knows how to show an address of this type. A chain whose
@@ -395,11 +400,19 @@ const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const TRON_ADDRESS = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
 /** A base58 public key: 32 bytes, so 32 to 44 characters. */
 const SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+/**
+ * Mainnet Bitcoin, in either encoding: bech32/bech32m, `bc1` and lowercase
+ * (SegWit, and Taproot's `bc1p`, which rhino.fi hands out), from bech32's
+ * alphabet, which has no 1, b, i or o; or base58, `1` (legacy) or `3` (P2SH).
+ */
+const BITCOIN_BECH32_ADDRESS = /^bc1[02-9ac-hj-np-z]{11,71}$/;
+const BITCOIN_BASE58_ADDRESS = /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/;
 
 /**
  * Whether an address is well-formed for its chain. Only EVM addresses are 0x;
- * a Tron or Solana address that came back as one (or the reverse) would be an
- * address nothing on that chain can send to, so it is treated as a failure.
+ * a Tron, Solana or Bitcoin address that came back as one (or the reverse)
+ * would be an address nothing on that chain can send to, so it is treated as a
+ * failure.
  */
 export const isValidRhinoDepositAddress = (address: string, addressType: string): boolean => {
   switch (addressType) {
@@ -409,6 +422,8 @@ export const isValidRhinoDepositAddress = (address: string, addressType: string)
       return TRON_ADDRESS.test(address);
     case 'SOL':
       return SOLANA_ADDRESS.test(address);
+    case 'BTC':
+      return BITCOIN_BECH32_ADDRESS.test(address) || BITCOIN_BASE58_ADDRESS.test(address);
     default:
       return false;
   }
@@ -416,7 +431,8 @@ export const isValidRhinoDepositAddress = (address: string, addressType: string)
 
 /**
  * Whether two deposit addresses are the same. EVM addresses are hex, so case is
- * only a checksum; Tron and Solana are base58, where case is part of the value.
+ * only a checksum; Tron, Solana and Bitcoin's base58 are case-sensitive, and
+ * bech32 is lowercase as handed out.
  */
 export const isSameDepositAddress = (a: string, b: string, addressType: string): boolean =>
   addressType === 'EVM' ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -452,6 +468,18 @@ export const formatRhinoUsdLimits = (minimumUsd?: number, maximumUsd?: number): 
   }
   return parts.join(' · ');
 };
+
+/**
+ * What a sender should know about a chain before sending on it: Bitcoin
+ * settles far slower than the rest, so the usual few minutes would mislead.
+ */
+const RHINO_CHAIN_NOTES: Record<string, string> = {
+  BITCOIN: 'Arrives after 1 Bitcoin confirmation, usually 5–20 min',
+};
+
+/** The note for a rhino.fi chain (`BITCOIN`), if it has one. */
+export const getRhinoChainNote = (chain?: string): string | undefined =>
+  chain ? RHINO_CHAIN_NOTES[chain] : undefined;
 
 const RECEIVE_CHAIN_NAMES: Record<number, string> = {
   [mainnet.id]: 'Ethereum',

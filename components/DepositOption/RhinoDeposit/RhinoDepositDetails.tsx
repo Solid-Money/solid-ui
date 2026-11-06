@@ -4,12 +4,14 @@ import { Info } from 'lucide-react-native';
 
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { describeRhinoArrival, formatRhinoUsdLimits } from '@/lib/rhinoDeposit';
+import { describeRhinoArrival, formatRhinoUsdLimits, getRhinoChainNote } from '@/lib/rhinoDeposit';
 
 import type { RhinoDestinationType } from '@/lib/types';
 
 type RhinoDepositDetailsProps = {
   tokenSymbol: string;
+  /** rhino.fi's chain id (`BITCOIN`), for anything to know about sending on it. */
+  chain?: string;
   chainName: string;
   destinationType: RhinoDestinationType;
   /** What lands; omitted until the route is known. */
@@ -28,6 +30,7 @@ type RhinoDepositDetailsProps = {
  */
 const RhinoDepositDetails = ({
   tokenSymbol,
+  chain,
   chainName,
   destinationType,
   receiveSymbol,
@@ -37,6 +40,7 @@ const RhinoDepositDetails = ({
   maximumUsd,
 }: RhinoDepositDetailsProps) => {
   const limits = formatRhinoUsdLimits(minimumUsd, maximumUsd);
+  const chainNote = getRhinoChainNote(chain);
 
   return (
     <View className="gap-y-2">
@@ -65,6 +69,7 @@ const RhinoDepositDetails = ({
           })}
         </Text>
       ) : null}
+      {chainNote ? <Text className="text-center text-sm text-white/70">{chainNote}</Text> : null}
       {limits ? (
         <Text className="text-center text-sm text-white/50">
           Deposits outside these limits can’t be processed

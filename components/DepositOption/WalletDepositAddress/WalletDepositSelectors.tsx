@@ -232,7 +232,13 @@ export const WalletDepositNetworkList = ({
         />
       ) : null}
       {extraNetworks.length ? (
-        <Text className="border-t border-white/[0.06] px-[18px] pb-1 pt-3 text-sm font-medium text-white/50">
+        <Text
+          className={cn(
+            'px-[18px] pb-1 pt-3 text-sm font-medium text-white/50',
+            // Nothing above it to divide from for a currency only these carry (BTC).
+            (networks.length > 0 || notice) && 'border-t border-white/[0.06]',
+          )}
+        >
           More networks
         </Text>
       ) : null}

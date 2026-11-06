@@ -175,6 +175,7 @@ const RhinoDepositAddress = ({
 
       <RhinoDepositDetails
         tokenSymbol={selection.tokenSymbol}
+        chain={selection.chain}
         chainName={chainName}
         destinationType={selection.destinationType}
         receiveSymbol={address?.receiveSymbol ?? offered?.route.receiveSymbol}
