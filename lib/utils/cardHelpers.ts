@@ -512,24 +512,44 @@ export const cardSweepExplorerUrl = (details: CardSpendDetails | undefined): str
   return `https://explorer.fuse.io/tx/${hash}`;
 };
 
+/** Base — where card refunds are paid from the Card Refund Payout Wallet. */
+const BASE_CHAIN_ID = 8453;
+
 /**
- * Explorer link for the USDC.e transfer that paid a refund, on Fuse.
+ * Explorer link for the transfer that paid a refund: USDC or EURC on Base, or
+ * USDC.e on Fuse for refunds paid before the Base refund wallet.
  *
  * Its own helper rather than a second call to {@link cardSweepExplorerUrl} with
  * a different field: the two hashes point in opposite directions — one is money
  * we took, one is money we sent back — and a single helper reading whichever
  * field happened to be set is how a refund ends up rendered under a "Sweep"
- * label. Same chain guard, for the same reason.
+ * label. An unrecognised chain returns nothing, for the same reason.
  */
 export const cardRefundExplorerUrl = (
   refund: CardRefundDetails | undefined,
 ): string | undefined => {
   const hash = refund?.tx_hash;
   if (!hash) return undefined;
-  const chainId = refund?.chain_id ?? FUSE_CHAIN_ID;
-  if (chainId !== FUSE_CHAIN_ID) return undefined;
-  return `https://explorer.fuse.io/tx/${hash}`;
+  switch (refund?.chain_id ?? FUSE_CHAIN_ID) {
+    case FUSE_CHAIN_ID:
+      return `https://explorer.fuse.io/tx/${hash}`;
+    case BASE_CHAIN_ID:
+      return `https://basescan.org/tx/${hash}`;
+    default:
+      return undefined;
+  }
 };
+
+/**
+ * What reached the Safe for a refund, in the currency it was paid in: euros for
+ * a EURC refund (a purchase paid in euros), dollars otherwise.
+ */
+export const cardRefundPaidAmount = (
+  refund: CardRefundDetails,
+): { amount: number; currency: 'USD' | 'EUR' } =>
+  refund.payout_currency?.toUpperCase() === 'EUR' && typeof refund.payout_token_amount === 'number'
+    ? { amount: refund.payout_token_amount, currency: 'EUR' }
+    : { amount: refund.paid_usd, currency: 'USD' };
 
 /**
  * Currencies that read better as a leading symbol. Deliberately short: anything

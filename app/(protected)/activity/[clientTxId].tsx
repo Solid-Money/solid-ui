@@ -66,6 +66,7 @@ import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from 
 import { cardDeclineReason, isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
 import {
   cardRefundExplorerUrl,
+  cardRefundPaidAmount,
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
@@ -708,7 +709,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             ),
             value: (
               <Value className="text-brand">
-                {formatCardAmount(String(refundLeg.paid_usd), cardProvider, 'USD')}
+                {formatCardAmount(
+                  String(cardRefundPaidAmount(refundLeg).amount),
+                  cardProvider,
+                  cardRefundPaidAmount(refundLeg).currency,
+                )}
               </Value>
             ),
           }

@@ -2900,10 +2900,17 @@ export interface CardRefundDetails {
   cashback_deducted_usd?: number;
   /** What actually reached the Safe, or will. `gross_usd` minus the deduction. */
   paid_usd: number;
-  /** The USDC.e transfer that paid it, on Fuse. Absent until it lands. */
+  /** The transfer that paid it. Absent until it lands. */
   tx_hash?: string;
-  /** Chain the refund was paid on. Fuse (122) — NOT the issuer's chain. */
+  /**
+   * Chain the refund was paid on: Base (8453) from the Card Refund Payout Wallet,
+   * Fuse (122) for refunds paid before it. NOT the issuer's chain.
+   */
   chain_id?: number;
+  /** `USD` (paid in USDC) or `EUR` (paid in EURC). Absent on refunds paid on Fuse. */
+  payout_currency?: string;
+  /** Tokens sent, in `payout_currency` units. Absent on refunds paid on Fuse. */
+  payout_token_amount?: number;
   /** One sentence explaining the deduction, when there is one to explain. */
   note?: string;
 }
