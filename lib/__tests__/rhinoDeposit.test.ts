@@ -1,6 +1,6 @@
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BASE_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
 import {
   describeRhinoArrival,
   findRhinoRoute,
@@ -23,7 +23,7 @@ import {
   isRhinoDepositOffered,
   isSameDepositAddress,
   isValidRhinoDepositAddress,
-  OWN_PIPELINE_SYMBOLS,
+  OWN_PIPELINE_TOKEN_CHAINS,
   pickRhinoDeposit,
   resolveRhinoRow,
   RhinoAssetsState,
@@ -678,18 +678,35 @@ describe('resolveRhinoRow', () => {
     expect(resolveRhinoRow(UNAVAILABLE, row(mainnet.id))).toEqual({ kind: 'unavailable' });
   });
 
-  // The old bridge: USDT to the wallet or the card is our own pipeline's on
-  // every chain, whatever rhino.fi lists and whether or not it has answered.
-  it('keeps USDT to the wallet and the card our own, on every chain', () => {
-    const WITH_USDT: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_USDT_ROUTES };
+  // USDT sent on Base to the wallet or the card is our own pipeline's, whatever
+  // rhino.fi lists and whether or not it has answered: rhino.fi's docs have
+  // Base USDT as delivery-only, so it is not trusted to accept it there.
+  it('keeps wallet and card USDT on Base our own, whatever rhino.fi lists', () => {
+    const WITH_BASE_USDT: RhinoAssetsState = {
+      status: 'ready',
+      assets: RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
+    };
     (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
-      [READY, WITH_USDT, LOADING, UNAVAILABLE].forEach(state =>
-        [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id].forEach(chainId =>
-          expect(resolveRhinoRow(state, { chainId, destinationType, symbol: 'USDT' })).toEqual({
-            kind: 'own',
-          }),
-        ),
+      [READY, WITH_BASE_USDT, LOADING, UNAVAILABLE].forEach(state =>
+        expect(
+          resolveRhinoRow(state, { chainId: base.id, destinationType, symbol: 'USDT' }),
+        ).toEqual({ kind: 'own' }),
       ),
+    );
+  });
+
+  // Everywhere else rhino.fi takes it, and pays it out as USDC.
+  it('serves wallet and card USDT off Base through rhino.fi', () => {
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
+      [mainnet.id, polygon.id, arbitrum.id, optimism.id, bsc.id].forEach(chainId => {
+        expect(resolveRhinoRow(READY, { chainId, destinationType, symbol: 'USDT' })).toMatchObject({
+          kind: 'rhino',
+          selection: { chainId, tokenSymbol: 'USDT', destinationType },
+        });
+        expect(resolveRhinoRow(LOADING, { chainId, destinationType, symbol: 'USDT' })).toEqual({
+          kind: 'loading',
+        });
+      }),
     );
   });
 
@@ -724,15 +741,19 @@ describe('resolveRhinoRow', () => {
 });
 
 describe('isOwnPipelineToken', () => {
-  // The one switch: until rhino.fi delivers USDT on Base, our pipeline carries it.
-  it('is USDT, to the wallet or the card, and nothing else', () => {
-    expect([...OWN_PIPELINE_SYMBOLS]).toEqual(['USDT']);
-    expect(isOwnPipelineToken('USDT', 'WALLET')).toBe(true);
-    expect(isOwnPipelineToken('USDT', 'RAIN_CARD')).toBe(true);
-    expect(isOwnPipelineToken('USDT', 'PROTOCOL')).toBe(false);
+  it('is USDT on Base, to the wallet or the card, and nothing else', () => {
+    expect(Object.keys(OWN_PIPELINE_TOKEN_CHAINS)).toEqual(['USDT']);
+    expect(isOwnPipelineToken('USDT', 'WALLET', base.id)).toBe(true);
+    expect(isOwnPipelineToken('USDT', 'RAIN_CARD', base.id)).toBe(true);
+    expect(isOwnPipelineToken('USDT', 'PROTOCOL', base.id)).toBe(false);
+    // Off Base, rhino.fi's (Fuse is our own for another reason: isOwnPipelineChain).
+    [mainnet.id, polygon.id, arbitrum.id, optimism.id, bsc.id, fuse.id].forEach(chainId => {
+      expect(isOwnPipelineToken('USDT', 'WALLET', chainId)).toBe(false);
+      expect(isOwnPipelineToken('USDT', 'RAIN_CARD', chainId)).toBe(false);
+    });
     ['USDC', 'EURC', 'ETH', 'WBTC'].forEach(symbol => {
-      expect(isOwnPipelineToken(symbol, 'WALLET')).toBe(false);
-      expect(isOwnPipelineToken(symbol, 'RAIN_CARD')).toBe(false);
+      expect(isOwnPipelineToken(symbol, 'WALLET', base.id)).toBe(false);
+      expect(isOwnPipelineToken(symbol, 'RAIN_CARD', base.id)).toBe(false);
     });
   });
 });
@@ -771,14 +792,13 @@ describe('getRhinoExtraChains', () => {
     ).toEqual([]);
   });
 
-  // The backend lists none; were it to, our pipeline carries USDT there instead.
-  it('has none for USDT to the wallet or the card', () => {
-    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType => {
-      expect(getRhinoExtraChains(RHINO_ASSETS, { destinationType, symbol: 'USDT' })).toEqual([]);
+  // Tron, Solana and the rest pay wallet and card USDT out as USDC.
+  it('lists wallet and card USDT on the chains the app has no row for', () => {
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
       expect(
-        getRhinoExtraChains(RHINO_ASSETS_WITH_USDT_ROUTES, { destinationType, symbol: 'USDT' }),
-      ).toEqual([]);
-    });
+        chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType, symbol: 'USDT' })),
+      ).toEqual(['TRON', 'SOLANA', 'AVALANCHE']),
+    );
   });
 
   it('has none while rhino.fi is off', () => {

@@ -10,18 +10,17 @@ export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
 
 /**
  * Our own address for a (chain, currency) pairing on the deposit screen: only
- * for a row that is ours (`enabled`) — Fuse, USDT off Fuse, or Base for a
+ * for a row that is ours (`enabled`) — Fuse, USDT on Base, or Base for a
  * currency rhino.fi does not take. Every other row is rhino.fi's, and this
  * hands out nothing for it — not the Safe, and no minted address.
  *
  * Which of ours is `getWalletOwnAddress`'s to say:
  *
  * - A minted address (`createDirectDepositSession`), watched, so the transfer
- *   is detected, credited and recorded as activity: USDT on the chains the
- *   pipeline watches it on, as a `WALLET` session the backend delivers to the
- *   Safe on Base, and a Wirex cardholder's dollars on Fuse, as a `RAIN_CARD`
- *   session it delivers to their Safe on Fuse. That one is historical naming:
- *   the backend resolves the issuer, which is why it is Wirex's alone.
+ *   is detected, credited and recorded as activity: a Wirex cardholder's
+ *   dollars on Fuse, as a `RAIN_CARD` session the backend delivers to their
+ *   Safe on Fuse. That is historical naming: the backend resolves the issuer,
+ *   which is why it is Wirex's alone.
  * - The Safe, everywhere else it is offered, where the deposit lands as sent.
  *
  * Minting a session is a POST, so a failure is not retried into a loop; the

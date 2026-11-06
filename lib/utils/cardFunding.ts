@@ -181,9 +181,10 @@ export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
  *   dollar routes), and the card address only ever delivered it as EURC to the
  *   Safe on Base — exactly where rhino.fi's `WALLET` route pays.
  *
- * USDT is matched against these too, but takes neither: our own pipeline still
- * carries it to the card (see `OWN_PIPELINE_SYMBOLS`), so its rows mint the
- * card's own `RAIN_CARD` session whatever is returned here.
+ * USDT takes these too, and arrives as USDC: rhino.fi cannot pay USDT out on
+ * Base for us, so both routes swap it. Sent on Base itself it takes neither:
+ * our own pipeline keeps it there (see `OWN_PIPELINE_TOKEN_CHAINS`), so that
+ * row mints the card's own `RAIN_CARD` session whatever is returned here.
  */
 export const getCardFundRhinoDestination = (
   symbol: string,
@@ -198,10 +199,9 @@ export const getCardFundRhinoDestination = (
  * deposit of that token on that chain would use:
  *
  * - `card`: the card deposit address (a `RAIN_CARD` session), for an own row —
- *   USDT, which our pipeline still carries, and which the backend delivers to
- *   the Safe on Base from any chain but Fuse;
- * - `rhino`: the user's rhino.fi address for the row, with rhino.fi's limits,
- *   for USDC — its wallet route, paying the Safe on Base;
+ *   Fuse, and USDT on Base, which our own pipeline keeps;
+ * - `rhino`: the user's rhino.fi address for the row, with rhino.fi's limits —
+ *   its wallet route, paying the Safe on Base (USDT as USDC);
  * - `loading` / `unavailable`: rhino.fi's routes are not in, or cannot be had;
  * - `none`: nothing to send it to, or nothing a move would change: a holding
  *   on the chain rhino.fi pays out on (USDC on Base) already sits in the Safe
@@ -282,8 +282,9 @@ export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
  * carries it to the cardholder's Safe from there.
  *
  * `moveFromSolid` is on for the same reason: the app transfers from the
- * cardholder's Safe to the address a deposit of that token would use (rhino.fi's
- * for USDC, the card deposit address for USDT) and the rest happens as for any
+ * cardholder's Safe to the address a deposit of that token would use (rhino.fi's,
+ * which pays USDT out as USDC; the card deposit address on Fuse and for USDT on
+ * Base) and the rest happens as for any
  * deposit. That is deliberately *not* the Rain mechanic (approve, then a backend
  * pull via `POST /deposit`). See `WirexMoveFromWallet`.
  *

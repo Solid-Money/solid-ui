@@ -41,7 +41,7 @@ jest.mock('@/hooks/useEuroSpendEnablement', () => ({
   useEuroSpendEnablement: () => ({ shouldOffer: false }),
 }));
 // Our own address, as `getWalletOwnAddress` decides it: minted (a Wirex
-// cardholder's Fuse dollars, USDT off Fuse), or the Safe.
+// cardholder's Fuse dollars), or the Safe.
 jest.mock('@/hooks/useWalletDepositAddress', () => ({
   useWalletDepositAddress: (chainId: number, symbol: string, options: { enabled?: boolean }) =>
     mockWalletAddress(chainId, symbol, options),
@@ -125,7 +125,7 @@ const rhinoResponse = (destinationType: 'WALLET' | 'RAIN_CARD'): RhinoDepositAdd
   maximumUsd: 100000,
 });
 const mockRhinoRefetch = jest.fn();
-const mockRhinoAddress = jest.fn((selection: unknown): any =>
+const rhinoAddressFor = (selection: unknown): any =>
   selection
     ? {
         address: rhinoResponse((selection as { destinationType: 'WALLET' }).destinationType),
@@ -133,8 +133,8 @@ const mockRhinoAddress = jest.fn((selection: unknown): any =>
         isFetching: false,
         refetch: mockRhinoRefetch,
       }
-    : { address: undefined, isError: false, isFetching: false, refetch: mockRhinoRefetch },
-);
+    : { address: undefined, isError: false, isFetching: false, refetch: mockRhinoRefetch };
+const mockRhinoAddress = jest.fn(rhinoAddressFor);
 
 let root: any;
 const render = () => {
@@ -164,6 +164,8 @@ const ownAddressWasEnabled = () =>
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
+  // A case that fails the rhino.fi address must not fail it for the next one.
+  mockRhinoAddress.mockImplementation(rhinoAddressFor);
   mockDetected.params = undefined;
   mockViewer.current = WIREX_READY;
   mockDeposit.walletDeposit = { chainId: fuse.id, symbol: 'USDC' };
@@ -331,34 +333,41 @@ describe('WalletDepositAddress for a token rhino.fi takes nowhere', () => {
   });
 });
 
-/** USDT goes through our own pipeline, which rhino.fi's routes do not decide. */
-describe('WalletDepositAddress for USDT, our own pipeline', () => {
+/**
+ * USDT is rhino.fi's off Base, paid to the Safe on Base as USDC; sent on Base,
+ * our own pipeline keeps it, and the address is the Safe.
+ */
+describe('WalletDepositAddress for USDT', () => {
   [CardProvider.WIREX, null].forEach(provider => {
-    it(`mints a wallet address off Fuse, with the fee notice and minimum (${provider ?? 'no card'})`, () => {
+    it(`shows the rhino.fi wallet address off Base, paying USDC (${provider ?? 'no card'})`, () => {
       mockViewer.current = { ...WIREX_READY, provider };
       mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDT' };
       render();
 
-      expect(qrValues()).toEqual(['0xabc']);
-      expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
-      expect(root.root.findAllByType('RhinoDepositDetails')).toHaveLength(0);
-      expect(root.root.findAllByType('DepositFeeNotice')).toHaveLength(1);
-      expect(texts()).toContain('Send at least');
-      expect(mockDetected.params).toEqual(
-        expect.objectContaining({ enabled: true, destinationType: 'WALLET' }),
+      expect(qrValues()).toEqual([RHINO_ADDRESS]);
+      expect(mockRhinoAddress).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          chain: 'MATIC_POS',
+          tokenSymbol: 'USDT',
+          destinationType: 'WALLET',
+        }),
       );
+      expect(ownAddressWasEnabled()).toBe(false);
+      expect(root.root.findByType('RhinoDepositDetails').props.receiveSymbol).toBe('USDC');
+      expect(root.root.findAllByType('DepositFeeNotice')).toHaveLength(0);
     });
   });
 
-  it('needs nothing from rhino.fi', () => {
+  it('hands out no address of ours off Base while rhino.fi’s routes cannot be had', () => {
     mockViewer.current = { ...WIREX_READY, rhino: { status: 'unavailable' } };
     mockDeposit.walletDeposit = { chainId: mainnet.id, symbol: 'USDT' };
     render();
 
-    expect(qrValues()).toEqual(['0xabc']);
+    expect(qrValues()).toEqual([]);
+    expect(ownAddressWasEnabled()).toBe(false);
   });
 
-  // rhino.fi cannot take USDT on Base; the Safe there can spend it as it lands.
+  // rhino.fi is not trusted to take USDT on Base; the Safe there can spend it as it lands.
   it('shows the Safe on Base, unwatched and with no fee', () => {
     mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDT' };
     render();
@@ -369,17 +378,14 @@ describe('WalletDepositAddress for USDT, our own pipeline', () => {
     expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
   });
 
-  // The pipeline does not watch Optimism, so there is no USDT row there.
-  it('moves off Optimism', () => {
+  // Our pipeline never watched Optimism; rhino.fi takes USDT there.
+  it('takes USDT on Optimism through rhino.fi', () => {
     mockDeposit.walletDeposit = { chainId: optimism.id, symbol: 'USDT' };
     render();
 
-    expect(qrValues()).toEqual([]);
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
     expect(ownAddressWasEnabled()).toBe(false);
-    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith(
-      expect.objectContaining({ symbol: 'USDT' }),
-    );
-    expect(mockDeposit.setWalletDeposit.mock.calls[0][0].chainId).not.toBe(optimism.id);
+    expect(mockDeposit.setWalletDeposit).not.toHaveBeenCalled();
   });
 });
 

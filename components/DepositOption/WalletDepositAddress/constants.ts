@@ -2,7 +2,7 @@ import { ImageSourcePropType } from 'react-native';
 import { formatUnits, parseUnits } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
-import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
+import { getBridgeChain } from '@/constants/bridge';
 import {
   WALLET_DEPOSIT_CHAIN_IDS,
   WALLET_DEPOSIT_TOKEN_GROUPS,
@@ -19,7 +19,6 @@ import {
   getRhinoSelectionForRow,
   isOfferedRhinoRow,
   isOwnPipelineChain,
-  isOwnPipelineToken,
   resolveRhinoRow,
   RhinoAssetsState,
   RhinoDepositSelection,
@@ -186,10 +185,6 @@ export type WalletOwnAddress =
   | { kind: 'session'; destinationType: 'WALLET' | 'RAIN_CARD' }
   | { kind: 'safe' };
 
-/** Whether our pipeline watches this token on this chain: `BRIDGE_TOKENS` lists it there. */
-const isPipelineToken = (chainId: number, symbol: string): boolean =>
-  !!BRIDGE_TOKENS[chainId]?.tokens?.[symbol];
-
 /**
  * The address of a wallet row our own pipeline serves (see `getWalletDepositRow`),
  * or undefined where it has none to give — the row is then not offered.
@@ -201,14 +196,11 @@ const isPipelineToken = (chainId: number, symbol: string): boolean =>
  *   anyone else's dollars) is the Safe, where it lands as sent. For a Rain
  *   cardholder that address would deliver to the card, and for someone with no
  *   card there is no issuer to resolve, which is why it is Wirex's alone.
- * - A token our pipeline still carries off Fuse (`isOwnPipelineToken`: USDT):
- *   a `WALLET` session on the chains the pipeline watches it on (Ethereum,
- *   Polygon, Arbitrum, BNB Chain), which the backend bridges to the Safe on
- *   Base; on Base itself, the Safe, which rhino.fi cannot take it into but the
- *   Safe can spend; and nothing anywhere else (Optimism, which the pipeline does
- *   not watch). Wirex cardholders included: theirs reach the same Safe on Base.
- * - Any other row off Fuse is rhino.fi's, except the Base row of a currency
- *   rhino.fi takes nowhere, which is the Safe (decided by `getTokenRows`).
+ * - Base: the Safe, where it lands as sent. That is USDT on Base, which our own
+ *   pipeline keeps (`isOwnPipelineToken`) and the Safe spends as it is, and the
+ *   Base row of a currency rhino.fi takes nowhere (decided by `getTokenRows`).
+ * - Any other row is rhino.fi's, USDT included (paid to the Safe as USDC), so
+ *   there is no address of ours to give.
  */
 export const getWalletOwnAddress = (
   chainId: number,
@@ -219,12 +211,6 @@ export const getWalletOwnAddress = (
     return provider === CardProvider.WIREX && CARD_ADDRESS_SYMBOLS.has(symbol)
       ? { kind: 'session', destinationType: 'RAIN_CARD' }
       : { kind: 'safe' };
-  }
-  if (isOwnPipelineToken(symbol, WALLET_RHINO_DESTINATION)) {
-    if (chainId === base.id) return { kind: 'safe' };
-    return isPipelineToken(chainId, symbol)
-      ? { kind: 'session', destinationType: WALLET_RHINO_DESTINATION }
-      : undefined;
   }
   return chainId === base.id ? { kind: 'safe' } : undefined;
 };
@@ -296,13 +282,12 @@ const getCandidateChainIds = (
  *
  * - Fuse: our own pipeline, exactly as before (the Safe, or a Wirex
  *   cardholder's minted address — see {@link getWalletOwnAddress}).
- * - USDT, which our pipeline still carries off Fuse (`OWN_PIPELINE_SYMBOLS`):
- *   its own `WALLET` session on the chains the pipeline watches it on, the Safe
- *   on Base, and no row on Optimism. None of it waits for rhino.fi.
+ * - USDT on Base, which our own pipeline keeps (`OWN_PIPELINE_TOKEN_CHAINS`):
+ *   the Safe, without waiting for rhino.fi.
  * - Any other chain rhino.fi takes it into the wallet from: rhino.fi's address,
- *   which pays the Safe on Base. A chain it has no route from is not offered,
- *   with no Safe in its place — WBTC, which rhino.fi takes on Ethereum, Base and
- *   BNB Chain, is offered on those three.
+ *   which pays the Safe on Base (USDT as USDC). A chain it has no route from is
+ *   not offered, with no Safe in its place — WBTC, which rhino.fi takes on
+ *   Ethereum, Base and BNB Chain, is offered on those three.
  * - A currency rhino.fi takes from none of its rows (PAXG, cbBTC, UNI, …): the
  *   Base row alone, showing the Safe, where it lands as sent. One with no Base
  *   contract has no row there, and is not offered off Fuse at all.
@@ -328,7 +313,7 @@ const getTokenRows = (
   return candidates.map(chainId => {
     const state = resolveRhinoRow(rhino, { chainId, destinationType, symbol });
     if (state.kind === 'own') {
-      // An own row with no address of ours (USDT on Optimism) is not offered.
+      // An own row with no address of ours is not offered.
       return getWalletOwnAddress(chainId, symbol, viewer.provider)
         ? { chainId, state }
         : { chainId, state: { kind: 'none' } };
@@ -365,8 +350,8 @@ export const getWalletDepositRow = (
  * "More networks" for a currency: the chains the app has no row for that
  * rhino.fi takes it into the wallet from (Tron, Solana, Avalanche, …), in
  * rhino.fi's order. Only once its routes are in, and only for a currency this
- * person is offered at all (EURC: a Wirex cardholder). None for USDT, which
- * rhino.fi does not route to the wallet (see `getRhinoExtraChains`).
+ * person is offered at all (EURC: a Wirex cardholder). USDT included: Tron,
+ * Solana and the rest pay it to the Safe as USDC (see `getRhinoExtraChains`).
  */
 export const getWalletDepositExtraNetworks = (
   symbol: string,

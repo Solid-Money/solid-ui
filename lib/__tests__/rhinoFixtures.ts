@@ -11,10 +11,11 @@ import type {
  * `/deposit/rhino/assets` as the backend answers once every route also takes
  * deposits on the chain it pays out on (Base for the wallet, the card and
  * soEURC; Ethereum for soUSD and soETH), the wallet route carries WBTC, EURC is
- * taken on Ethereum, and USDT is listed into soUSD alone: no wallet or card
- * route takes it, since rhino.fi cannot deliver it on Base. Beside the app's
- * own chains, a few it has no row for ("More networks"), Arc among them.
- * Shared by the tests of every screen that reads it; not a test file itself.
+ * taken on Ethereum, and USDT goes everywhere as USDC (rhino.fi cannot pay USDT
+ * out on Base for us) - except sent on Base, where only soUSD takes it: the
+ * wallet and the card keep Base USDT for our own pipeline. Beside the app's own
+ * chains, a few it has no row for ("More networks"), Arc among them. Shared by
+ * the tests of every screen that reads it; not a test file itself.
  */
 
 export const rhinoRoute = (
@@ -46,18 +47,15 @@ const usdc = rhinoToken('USDC', [
   soUsd,
 ]);
 
-/** USDT: into soUSD alone. rhino.fi cannot deliver it on Base, where the wallet and card are. */
-const usdt = rhinoToken('USDT', [soUsd]);
-
-/**
- * USDT as the backend listed it before it dropped USDT's wallet and card
- * routes: what our own pipeline has to win over, should it list them again.
- */
-export const RHINO_USDT_EVERYWHERE = rhinoToken('USDT', [
-  rhinoRoute('WALLET', 'USDT'),
-  rhinoRoute('RAIN_CARD', 'USDT'),
+/** USDT: to the wallet and the card as USDC, into soUSD. */
+const usdt = rhinoToken('USDT', [
+  rhinoRoute('WALLET', 'USDC'),
+  rhinoRoute('RAIN_CARD', 'USDC'),
   soUsd,
 ]);
+
+/** USDT sent on Base: into soUSD alone. The wallet and the card keep it for our own pipeline. */
+const usdtOnBase = rhinoToken('USDT', [soUsd]);
 
 const dollar = (symbol: string) => (symbol === 'USDT' ? usdt : usdc);
 
@@ -99,7 +97,7 @@ export const RHINO_ASSETS: RhinoDepositAssetsResponse = {
       chainId: base.id,
       name: 'Base',
       addressType: 'EVM',
-      tokens: [dollar('USDC'), dollar('USDT'), ether, euro, bitcoin],
+      tokens: [dollar('USDC'), usdtOnBase, ether, euro, bitcoin],
     },
     {
       chain: 'ARBITRUM',
@@ -160,11 +158,15 @@ export const RHINO_ASSETS: RhinoDepositAssetsResponse = {
   ],
 };
 
-/** The same answer from a backend that still lists USDT to the wallet and the card. */
-export const RHINO_ASSETS_WITH_USDT_ROUTES: RhinoDepositAssetsResponse = {
+/**
+ * The same answer from a backend that also lists USDT sent on Base to the
+ * wallet and the card: what our own pipeline has to win over there.
+ */
+export const RHINO_ASSETS_WITH_BASE_USDT_ROUTES: RhinoDepositAssetsResponse = {
   ...RHINO_ASSETS,
-  chains: RHINO_ASSETS.chains.map(chain => ({
-    ...chain,
-    tokens: chain.tokens.map(token => (token.symbol === 'USDT' ? RHINO_USDT_EVERYWHERE : token)),
-  })),
+  chains: RHINO_ASSETS.chains.map(chain =>
+    chain.chain === 'BASE'
+      ? { ...chain, tokens: chain.tokens.map(token => (token.symbol === 'USDT' ? usdt : token)) }
+      : chain,
+  ),
 };

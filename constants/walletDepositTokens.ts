@@ -55,7 +55,7 @@ export type WalletDepositTokenConfig = {
  * lists them within each group, and the chains each has a contract on.
  *
  * A candidate list: which of these rows are offered is rhino.fi's to say, on
- * every chain but Fuse, except for USDT, which our own pipeline still carries
+ * every chain but Fuse, except for USDT on Base, which our own pipeline keeps
  * (see `getWalletDepositRow`). A row rhino.fi takes pays the Safe on Base; a
  * currency it takes on no row is offered on Base alone, where the address is
  * the Safe and it stays as sent; Fuse is the Safe (or a Wirex cardholder's

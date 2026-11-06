@@ -126,13 +126,20 @@ describe('WirexMoveAmount', () => {
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
-  it('sends USDT to the card deposit address, our own pipeline’s', async () => {
+  // rhino.fi's wallet route takes USDT too, paying it to the Safe on Base as USDC.
+  it('sends USDT to the user’s rhino.fi wallet address, minting no session', async () => {
     render(holding(mainnet.id, 'USDT'), 20);
-    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chain: 'ETHEREUM',
+        tokenSymbol: 'USDT',
+        destinationType: 'WALLET',
+      }),
+    );
 
     await act(async () => moveButton().props.onPress());
-    expect(mockCreateSession).toHaveBeenCalledWith(mainnet.id, 'USDT', 'RAIN_CARD');
-    expect(mockSend).toHaveBeenCalledWith('20', CARD_ADDRESS);
+    expect(mockSend).toHaveBeenCalledWith('20', RHINO_ADDRESS);
+    expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
   // rhino.fi does not process a deposit under its floor.
