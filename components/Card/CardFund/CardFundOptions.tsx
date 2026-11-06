@@ -14,8 +14,10 @@ import {
   CARD_FUND_USD_ICON,
   CardFundSections,
   CardFundToken,
+  getCardFundCryptoRows,
   getCardFundNetworkChips,
   getCardFundRoutesTooltip,
+  getCardFundTokenIcon,
   RAIN_CARD_FUND_SECTIONS,
 } from '@/components/Card/CardFund/constants';
 import {
@@ -24,12 +26,17 @@ import {
 } from '@/components/Card/CardFund/localCurrencies';
 import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import NeedHelp from '@/components/NeedHelp';
+import { useDepositTokensAccess } from '@/hooks/useDepositTokensAccess';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
 type CardFundOptionsProps = {
-  /** Stablecoin picked for the direct-deposit flow (USDC / USDT / EURC). */
+  /**
+   * Token picked for the direct-deposit flow: a stablecoin (USDC / USDT /
+   * EURC), or crypto sold for USDC on the way (BTC).
+   */
   onTokenPress: (symbol: string) => void;
   /**
    * The stablecoin rows, in display order. Defaults to the dollar stablecoins
@@ -100,6 +107,10 @@ const CardFundOptions = ({
     sections.localCurrencies && !!onLocalCurrencyPress && isTransfiAvailable;
   const showCashDeposit = sections.cashDeposit || showLocalCurrencies;
   const showOther = sections.moveFromSolid || sections.externalWallet || !!onBuyCryptoPress;
+  // Only what rhino.fi takes to the card from somewhere, and only with access.
+  const rhino = useOfferedRhinoDepositAssets();
+  const { isEnabled: hasNewTokens } = useDepositTokensAccess();
+  const cryptoRows = sections.crypto ? getCardFundCryptoRows(rhino, hasNewTokens) : [];
 
   return (
     <View className="gap-y-8">
@@ -116,6 +127,30 @@ const CardFundOptions = ({
               title={token.symbol}
               chips={getCardFundNetworkChips(token.symbol)}
               onPress={() => onTokenPress(token.symbol)}
+            />
+          ))}
+        </CardFundGroup>
+      ) : null}
+
+      {cryptoRows.length ? (
+        <CardFundGroup
+          label="Crypto"
+          labelTooltip="Sold for USDC on the way to your card, at the market rate when your deposit confirms."
+          labelTooltipContext="card_fund_crypto"
+        >
+          {cryptoRows.map(row => (
+            <CardFundRow
+              key={row.symbol}
+              icon={
+                <Image
+                  source={getCardFundTokenIcon(row.symbol)}
+                  style={TOKEN_ICON_STYLE}
+                  contentFit="cover"
+                />
+              }
+              title={row.symbol}
+              chips={row.networks}
+              onPress={() => onTokenPress(row.symbol)}
             />
           ))}
         </CardFundGroup>

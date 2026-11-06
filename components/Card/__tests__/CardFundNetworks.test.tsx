@@ -2,7 +2,7 @@ import React from 'react';
 import { arbitrum, base, fuse, polygon } from 'viem/chains';
 
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
-import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
 import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
 
@@ -37,8 +37,13 @@ jest.mock('@/components/Card/CardFund/constants', () => ({
 // The rows as `useRhinoNetworkRows` resolves them (tested on its own), over
 // whichever state of rhino.fi's routes the case sets.
 jest.mock('@/hooks/useRhinoDepositAssets', () => {
-  const { resolveRhinoRow } = jest.requireActual('@/lib/rhinoDeposit');
+  const { getRhinoExtraChains, resolveRhinoRow } = jest.requireActual('@/lib/rhinoDeposit');
   return {
+    useOfferedRhinoDepositAssets: () => mockRhino.current,
+    useRhinoExtraNetworks: (filter: object) =>
+      mockRhino.current.status === 'ready'
+        ? getRhinoExtraChains(mockRhino.current.assets, filter)
+        : [],
     useRhinoNetworkRows: (filter: object, rows: { chainId: number }[]) => ({
       rows: rows.map(row => ({
         row,
@@ -49,16 +54,19 @@ jest.mock('@/hooks/useRhinoDepositAssets', () => {
   };
 });
 
-// As `getCardFundChains` lists them: Base carries no USDT in `BRIDGE_TOKENS`.
+// As `getCardFundChains` lists them: Base carries no USDT in `BRIDGE_TOKENS`,
+// and no chain of the list's own carries BTC.
 const mockNetworks = (symbol: string) =>
-  symbol === 'EURC'
-    ? [{ chainId: base.id, name: 'Base', icon: 'base' }]
-    : [
-        { chainId: polygon.id, name: 'Polygon', icon: 'polygon' },
-        ...(symbol === 'USDT' ? [] : [{ chainId: base.id, name: 'Base', icon: 'base' }]),
-        { chainId: arbitrum.id, name: 'Arbitrum', icon: 'arbitrum' },
-        { chainId: fuse.id, name: 'Fuse', icon: 'fuse' },
-      ];
+  symbol === 'BTC'
+    ? []
+    : symbol === 'EURC'
+      ? [{ chainId: base.id, name: 'Base', icon: 'base' }]
+      : [
+          { chainId: polygon.id, name: 'Polygon', icon: 'polygon' },
+          ...(symbol === 'USDT' ? [] : [{ chainId: base.id, name: 'Base', icon: 'base' }]),
+          { chainId: arbitrum.id, name: 'Arbitrum', icon: 'arbitrum' },
+          { chainId: fuse.id, name: 'Fuse', icon: 'fuse' },
+        ];
 const mockRetry = jest.fn();
 const READY: OfferedRhinoDepositAssets = {
   status: 'ready',
@@ -153,7 +161,57 @@ describe('CardFundNetworks', () => {
     expect(rows()[0].props.chips).toContain(RHINO_NETWORK_CHIP);
   });
 
+  // BTC has no row of the list's own: Bitcoin, under "More networks", alone.
+  it('offers BTC from "More networks" alone, with no empty state over it', () => {
+    mockRhino.current = { ...READY, assets: RHINO_ASSETS_WITH_BITCOIN };
+    render('BTC');
+
+    expect(rows()).toHaveLength(0);
+    expect(texts()).not.toContain('No network takes BTC right now.');
+    expect(root.root.findByType('RhinoNetworkGroup').props).toMatchObject({
+      destinationType: 'RAIN_CARD',
+      symbol: 'BTC',
+    });
+  });
+
+  it('waits for rhino.fi’s routes for BTC, and offers a retry if they cannot be had', () => {
+    mockRhino.current = { status: 'loading', retry: mockRetry };
+    render('BTC');
+    expect(
+      root.root.findAll((node: any) => node.props.accessibilityLabel === 'Loading networks').length,
+    ).toBeGreaterThan(0);
+    expect(texts()).not.toContain('No network takes BTC right now.');
+    act(() => root.unmount());
+
+    mockRhino.current = { status: 'unavailable', retry: mockRetry };
+    render('BTC');
+    expect(texts()).toContain('Couldn’t load the networks.');
+  });
+
+  it('says no network takes BTC once rhino.fi has Bitcoin off', () => {
+    render('BTC');
+    expect(texts()).toContain('No network takes BTC right now.');
+  });
+
+  // Not Base, nor Solana under "More networks": nowhere at all.
   it('says so when no row takes the token', () => {
+    mockRhino.current = {
+      ...READY,
+      assets: {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.filter(
+          chain => chain.chain !== 'BASE' && chain.chain !== 'SOLANA',
+        ),
+      },
+    };
+    render('EURC');
+
+    expect(rows()).toHaveLength(0);
+    expect(texts()).toContain('No network takes EURC right now.');
+  });
+
+  // "No network takes EURC" over a list that has Solana would contradict it.
+  it('says nothing is empty when "More networks" takes the token', () => {
     mockRhino.current = {
       ...READY,
       assets: {
@@ -164,7 +222,7 @@ describe('CardFundNetworks', () => {
     render('EURC');
 
     expect(rows()).toHaveLength(0);
-    expect(texts()).toContain('No network takes EURC right now.');
+    expect(texts()).not.toContain('No network takes EURC right now.');
   });
 
   // rhino.fi takes USDT from every row but Fuse's, and pays it out as USDC: to

@@ -11,7 +11,11 @@ import {
 } from '@/components/Card/CardFund/constants';
 import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
 import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
-import { useRhinoNetworkRows } from '@/hooks/useRhinoDepositAssets';
+import {
+  useOfferedRhinoDepositAssets,
+  useRhinoExtraNetworks,
+  useRhinoNetworkRows,
+} from '@/hooks/useRhinoDepositAssets';
 import {
   getRhinoListNotice,
   isOfferedRhinoRow,
@@ -23,7 +27,7 @@ import { CardProvider } from '@/lib/types';
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
 type CardFundNetworksProps = {
-  /** Stablecoin chosen on the previous step — scopes the chain list. */
+  /** Token chosen on the previous step — scopes the chain list. */
   symbol: string;
   /**
    * The issuer the flow is for, which decides the rhino.fi route the rows are
@@ -62,8 +66,19 @@ const CardFundNetworks = ({
   const networks = useMemo(() => getCardFundNetworks(symbol), [symbol]);
   const destinationType = getCardFundRhinoDestination(symbol, cardProvider);
   const { rows, retry } = useRhinoNetworkRows({ destinationType, symbol }, networks);
+  const { status: rhinoStatus } = useOfferedRhinoDepositAssets();
+  const extraNetworks = useRhinoExtraNetworks({ destinationType, symbol });
   const offered = rows.filter(({ state }) => isOfferedRhinoRow(state));
-  const notice = getRhinoListNotice(rows.map(({ state }) => state));
+  const listNotice = getRhinoListNotice(rows.map(({ state }) => state));
+  // A token with no row of the list's own (BTC, only Bitcoin takes) waits on
+  // rhino.fi's routes all the same; and a list "More networks" adds to under it
+  // is not empty.
+  const notice =
+    !networks.length && rhinoStatus !== 'ready'
+      ? rhinoStatus
+      : listNotice === 'empty' && extraNetworks.length
+        ? undefined
+        : listNotice;
 
   return (
     <View className="gap-y-4">
