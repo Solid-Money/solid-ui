@@ -1,6 +1,7 @@
 import { BRIDGE_TOKENS, EURC_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
 import {
   findRhinoRoute,
+  getRhinoExtraChains,
   resolveRhinoRow,
   RhinoAssetsState,
   RhinoDepositSelection,
@@ -33,6 +34,41 @@ export const CARD_FUND_TOKEN_SYMBOLS = ['USDC', 'USDT'] as const;
  * only on the chains `EURC_TOKENS` lists (Base, for now).
  */
 export const CARD_FUND_EURC_SYMBOL = 'EURC';
+
+/**
+ * Crypto the card takes, after the stablecoins: native BTC, sent on Bitcoin
+ * and sold for USDC on the way, through rhino.fi's card route. Not a
+ * `CARD_FUND_TOKEN_SYMBOLS` entry: no chain the list has a row for carries it,
+ * so it is offered under "More networks" alone, and nothing moves it.
+ */
+export const CARD_FUND_CRYPTO_SYMBOLS = ['BTC'] as const;
+
+/** A crypto row on "Fund your card", with the networks it can be sent on. */
+export interface CardFundCryptoRow {
+  symbol: string;
+  networks: string[];
+}
+
+/**
+ * The crypto rows "Fund your card" lists: each that rhino.fi takes to the card
+ * from somewhere (BTC from Bitcoin, where the backend has Bitcoin switched
+ * on), named with those networks. Like the wallet's, only for those given the
+ * new deposit tokens (see `useDepositTokensAccess`), and none until rhino.fi's
+ * routes are in, since only they say a row has anywhere to be sent from.
+ */
+export const getCardFundCryptoRows = (
+  rhino: RhinoAssetsState,
+  hasNewTokens: boolean,
+): CardFundCryptoRow[] => {
+  if (rhino.status !== 'ready' || !hasNewTokens) return [];
+  return CARD_FUND_CRYPTO_SYMBOLS.flatMap(symbol => {
+    const chains = getRhinoExtraChains(rhino.assets, {
+      destinationType: CARD_FUND_DESTINATION_TYPE,
+      symbol,
+    });
+    return chains.length ? [{ symbol, networks: chains.map(chain => chain.name) }] : [];
+  });
+};
 
 /** One chain a card deposit can arrive from. */
 export interface CardFundChain {
@@ -174,6 +210,7 @@ export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
  * - Rain's dollar stablecoins: the card's own (`RAIN_CARD`). rhino.fi pays the
  *   card deposit address on Base, and the pipeline takes it on to the card, as
  *   for a direct transfer.
+ * - Rain's BTC, sent on Bitcoin: `RAIN_CARD` too, which sells it for USDC.
  * - A Wirex cardholder's: `WALLET`, which pays their Safe on Base, where their
  *   card deposits off Fuse now land. Routing them through the card address
  *   would only reach the same Safe a leg later.
@@ -251,6 +288,11 @@ export const resolveWirexMoveDestination = (
 export type CardFundSections = {
   stablecoins: boolean;
   /**
+   * Crypto sold for USDC on the way to the card (BTC; see
+   * `getCardFundCryptoRows`), through rhino.fi's card route.
+   */
+  crypto: boolean;
+  /**
    * USD — the virtual account's ACH / Wire, Apple Pay, and Cash App where it is
    * offered. All of them are listed under USD, so off means none is offered.
    */
@@ -266,6 +308,7 @@ export type CardFundSections = {
 /** Rain cards offer every funding method. */
 export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
   stablecoins: true,
+  crypto: true,
   cashDeposit: true,
   localCurrencies: true,
   moveFromSolid: true,
@@ -274,7 +317,7 @@ export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
 
 /**
  * Wirex cards offer direct stablecoin deposits, the local-currency onramp, and
- * moving what the cardholder already holds in Solid.
+ * moving what the cardholder already holds in Solid. Not crypto (see below).
  *
  * Local currencies work because the onramp needs no leg of its own: TransFi has
  * no USDC-on-Fuse entry, so the backend points the delivery at the same card
@@ -294,6 +337,10 @@ export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
  */
 export const WIREX_CARD_FUND_SECTIONS: CardFundSections = {
   stablecoins: true,
+  // A Wirex cardholder's deposits off Fuse go to the Safe on Base through
+  // rhino.fi's wallet route, which pays BTC out as WBTC, not dollars the card
+  // can spend. Their wallet takes BTC already.
+  crypto: false,
   cashDeposit: false,
   localCurrencies: true,
   moveFromSolid: true,

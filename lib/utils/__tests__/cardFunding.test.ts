@@ -6,7 +6,11 @@ import {
   CARD_SPENDABLE_ASSETS,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_BASE_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
+import {
+  RHINO_ASSETS,
+  RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
+  RHINO_ASSETS_WITH_BITCOIN,
+} from '@/lib/__tests__/rhinoFixtures';
 import { RhinoAssetsState } from '@/lib/rhinoDeposit';
 import { CardProvider, TokenBalance, TokenType } from '@/lib/types';
 import {
@@ -14,6 +18,7 @@ import {
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
   getCardFundChains,
+  getCardFundCryptoRows,
   getCardFundRhinoDestination,
   getCardFundRoutes,
   getCardFundRoutesTooltip,
@@ -308,5 +313,36 @@ describe('resolveWirexMoveDestination', () => {
       },
     };
     expect(resolveWirexMoveDestination(noEthereum, holding)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('getCardFundCryptoRows', () => {
+  const WITH_BITCOIN: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
+
+  it('lists BTC, sent on Bitcoin, once rhino.fi takes it to the card', () => {
+    expect(getCardFundCryptoRows(WITH_BITCOIN, true)).toEqual([
+      { symbol: 'BTC', networks: ['Bitcoin'] },
+    ]);
+  });
+
+  it('lists nothing while rhino.fi does not take it: Bitcoin off, or routes not in', () => {
+    expect(getCardFundCryptoRows({ status: 'ready', assets: RHINO_ASSETS }, true)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'loading' }, true)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'unavailable' }, true)).toEqual([]);
+  });
+
+  // As in the wallet: the internal team in production, everyone on qa.
+  it('lists nothing for someone not given the new deposit tokens', () => {
+    expect(getCardFundCryptoRows(WITH_BITCOIN, false)).toEqual([]);
+  });
+
+  it('is offered to Rain cards, not Wirex', () => {
+    expect(RAIN_CARD_FUND_SECTIONS.crypto).toBe(true);
+    // rhino.fi's wallet route would pay a Wirex cardholder's BTC out as WBTC.
+    expect(WIREX_CARD_FUND_SECTIONS.crypto).toBe(false);
+  });
+
+  it('is matched against the card route, which sells it for USDC', () => {
+    expect(getCardFundRhinoDestination('BTC', CardProvider.RAIN)).toBe('RAIN_CARD');
   });
 });
