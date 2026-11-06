@@ -68,7 +68,7 @@ export interface CardWaitlistResponse {
 /**
  * Where a direct-deposit session's address delivers: savings (`PROTOCOL`), the
  * card (`RAIN_CARD`, which for a Wirex cardholder is their Safe), or the wallet
- * (`WALLET`: the Safe on Base, for a token our pipeline still carries there).
+ * (`WALLET`: the Safe on Base).
  */
 export type DirectDepositDestinationType = 'PROTOCOL' | 'RAIN_CARD' | 'WALLET';
 

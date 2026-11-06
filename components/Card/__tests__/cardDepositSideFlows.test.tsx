@@ -194,12 +194,28 @@ describe('Rain card, mobile: "Deposit from an external wallet"', () => {
     expect(mockPrepare).not.toHaveBeenCalled();
   });
 
-  it('mints the card session for USDT, our own pipeline’s', () => {
+  // rhino.fi's card route takes USDT too, and pays it to the card as USDC.
+  it('shows the rhino.fi card address for USDT, minting no session', () => {
     render(<CardDirectDepositModalMobile isOpen onOpenChange={jest.fn()} />);
     act(() => root.root.findByType('CardFundOptions').props.onTokenPress('USDT'));
     act(() => root.root.findByType('CardFundNetworks').props.onSelect(mainnet.id));
 
-    expect(mockPrepare).toHaveBeenCalledWith({ chainId: mainnet.id, token: 'USDT' });
+    expect(root.root.findByType('RhinoDepositAddress').props.selection).toEqual({
+      chain: 'ETHEREUM',
+      chainId: mainnet.id,
+      tokenSymbol: 'USDT',
+      destinationType: 'RAIN_CARD',
+    });
+    expect(mockPrepare).not.toHaveBeenCalled();
+  });
+
+  // Fuse stays our own: the card's session.
+  it('mints the card session for USDT on Fuse', () => {
+    render(<CardDirectDepositModalMobile isOpen onOpenChange={jest.fn()} />);
+    act(() => root.root.findByType('CardFundOptions').props.onTokenPress('USDT'));
+    act(() => root.root.findByType('CardFundNetworks').props.onSelect(fuse.id));
+
+    expect(mockPrepare).toHaveBeenCalledWith({ chainId: fuse.id, token: 'USDT' });
     expect(root.root.findByType('CardFundDepositAddress').props.address).toBe(SESSION_ADDRESS);
   });
 

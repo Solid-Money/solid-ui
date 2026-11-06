@@ -64,15 +64,11 @@ afterEach(async () => {
 });
 
 describe('useWalletDepositAddress', () => {
-  // The old bridge: the backend delivers it to the Safe on Base.
-  it('mints a WALLET session for USDT off Fuse', async () => {
+  // rhino.fi's, paid to the Safe on Base as USDC: nothing of ours to hand out.
+  it('mints nothing for USDT off Base and Fuse, which rhino.fi takes', async () => {
     await mount(polygon.id, 'USDT');
-    expect(mockCreateSession).toHaveBeenCalledWith(polygon.id, 'USDT', 'WALLET');
-    expect(current()).toMatchObject({
-      address: '0xabc',
-      isMinted: true,
-      sessionDestination: 'WALLET',
-    });
+    expect(mockCreateSession).not.toHaveBeenCalled();
+    expect(current()).toMatchObject({ address: undefined, isMinted: false });
   });
 
   it('mints the card session on Fuse for a Wirex cardholder’s dollars', async () => {

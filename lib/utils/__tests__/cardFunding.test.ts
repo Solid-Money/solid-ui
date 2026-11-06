@@ -6,7 +6,7 @@ import {
   CARD_SPENDABLE_ASSETS,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BASE_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
 import { RhinoAssetsState } from '@/lib/rhinoDeposit';
 import { CardProvider, TokenBalance, TokenType } from '@/lib/types';
 import {
@@ -240,7 +240,8 @@ describe('getCardFundRhinoDestination', () => {
 
 /**
  * "Move from wallet" sends a Wirex cardholder's holding where a deposit of it
- * would go: rhino.fi's wallet route for USDC, the card address for USDT.
+ * would go: rhino.fi's wallet route (USDT as USDC), the card address for USDT
+ * on Base.
  */
 describe('resolveWirexMoveDestination', () => {
   const READY: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS };
@@ -263,21 +264,31 @@ describe('resolveWirexMoveDestination', () => {
     });
   });
 
-  // Our own pipeline: the card address, which the backend delivers to the Safe
-  // on Base. Not rhino.fi's, even from a backend still listing USDT routes.
-  it('moves USDT to the card deposit address, whatever rhino.fi lists or says', () => {
+  // rhino.fi's wallet route pays it to the Safe on Base as USDC.
+  it('moves USDT through rhino.fi’s wallet route, with its limits', () => {
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+      expect(resolveWirexMoveDestination(READY, { chainId, symbol: 'USDT' })).toMatchObject({
+        kind: 'rhino',
+        selection: { chainId, tokenSymbol: 'USDT', destinationType: 'WALLET' },
+        minimumUsd: 5,
+        maximumUsd: 100000,
+      }),
+    );
+  });
+
+  // Our own pipeline keeps USDT on Base: the card address, as before, whatever
+  // rhino.fi lists or says.
+  it('moves USDT on Base to the card deposit address', () => {
     const states: RhinoAssetsState[] = [
       READY,
-      { status: 'ready', assets: RHINO_ASSETS_WITH_USDT_ROUTES },
+      { status: 'ready', assets: RHINO_ASSETS_WITH_BASE_USDT_ROUTES },
       { status: 'loading' },
       { status: 'unavailable' },
     ];
     states.forEach(state =>
-      [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
-        expect(resolveWirexMoveDestination(state, { chainId, symbol: 'USDT' })).toEqual({
-          kind: 'card',
-        }),
-      ),
+      expect(resolveWirexMoveDestination(state, { chainId: base.id, symbol: 'USDT' })).toEqual({
+        kind: 'card',
+      }),
     );
   });
 

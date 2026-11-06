@@ -75,12 +75,11 @@ const AddressRetry = ({ message, onRetry }: { message: string; onRetry: () => vo
  * Which address depends on the row (see `getWalletDepositRow`):
  *
  * - Every row but Fuse's is rhino.fi's: the user's rhino.fi address for the
- *   currency, paying the Safe on Base, a Wirex cardholder's included. If it
- *   cannot be had, the screen says so and offers a retry; it never hands out an
- *   address of ours instead.
- * - Except USDT, which our own pipeline still carries: a minted `WALLET`
- *   address the backend bridges to the Safe on Base, and the Safe itself on
- *   Base (see `getWalletOwnAddress`).
+ *   currency, paying the Safe on Base, a Wirex cardholder's included (USDT
+ *   arrives as USDC). If it cannot be had, the screen says so and offers a
+ *   retry; it never hands out an address of ours instead.
+ * - Except USDT on Base, which our own pipeline keeps: the Safe itself, which
+ *   spends it as it is (see `getWalletOwnAddress`).
  * - Fuse is the Safe, or a Wirex cardholder's minted address, as it always was.
  * - A currency rhino.fi takes on none of its rows is offered on Base alone, and
  *   there the address is the Safe, where it lands as sent.
@@ -159,8 +158,7 @@ const WalletDepositAddress = () => {
   }, [correction, setWalletDeposit]);
 
   // Our own address, for our own rows only: the Safe, or an address the
-  // pipeline mints and watches (USDT off Fuse; a Wirex cardholder's dollars on
-  // Fuse).
+  // pipeline mints and watches (a Wirex cardholder's dollars on Fuse).
   const {
     address: walletAddress,
     isError: hasWalletAddressError,

@@ -2,7 +2,7 @@ import React from 'react';
 import { arbitrum, base, fuse, polygon } from 'viem/chains';
 
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
 import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
 
@@ -12,9 +12,9 @@ import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 const { act, create } = require('react-test-renderer');
 
 /**
- * "Fund your card", step 2: rhino.fi is the provider on every row but Fuse's
- * and USDT's, so the list offers those rows only once rhino.fi has a route
- * from them, and never an address of ours in their place.
+ * "Fund your card", step 2: rhino.fi is the provider on every row but Fuse's,
+ * so the list offers those rows only once rhino.fi has a route from them, and
+ * never an address of ours in their place.
  */
 
 jest.mock('expo-image', () => ({ Image: 'Image' }));
@@ -167,26 +167,29 @@ describe('CardFundNetworks', () => {
     expect(texts()).toContain('No network takes EURC right now.');
   });
 
-  // The old bridge: every USDT row mints the card's own session.
-  it('offers every USDT row as our own, whatever rhino.fi’s state, and none via rhino.fi', () => {
-    const states: OfferedRhinoDepositAssets[] = [
-      READY,
-      { status: 'loading', retry: mockRetry },
-      { status: 'unavailable', retry: mockRetry },
-      { ...READY, assets: RHINO_ASSETS_WITH_USDT_ROUTES },
-    ];
-    states.forEach(state => {
-      [CardProvider.RAIN, CardProvider.WIREX].forEach(provider => {
-        mockRhino.current = state;
-        render('USDT', provider);
+  // rhino.fi takes USDT from every row but Fuse's, and pays it out as USDC: to
+  // the card for Rain, to the Safe on Base for Wirex.
+  it('serves every USDT row but Fuse’s through rhino.fi', () => {
+    [CardProvider.RAIN, CardProvider.WIREX].forEach(provider => {
+      render('USDT', provider);
 
-        expect(titles()).toEqual(['Polygon', 'Arbitrum', 'Fuse']);
-        rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_NETWORK_CHIP));
-        expect(texts()).not.toContain('Couldn’t load the networks.');
-        act(() => root.unmount());
-        root = undefined;
-      });
+      expect(titles()).toEqual(['Polygon', 'Arbitrum', 'Fuse']);
+      const chips = Object.fromEntries(
+        rows().map((row: any) => [row.props.title, row.props.chips]),
+      );
+      expect(chips.Polygon).toContain(RHINO_NETWORK_CHIP);
+      expect(chips.Arbitrum).toContain(RHINO_NETWORK_CHIP);
+      expect(chips.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+      act(() => root.unmount());
+      root = undefined;
     });
+  });
+
+  it('offers only Fuse’s USDT row until rhino.fi’s routes are in', () => {
+    mockRhino.current = { status: 'loading', retry: mockRetry };
+    render('USDT');
+
+    expect(titles()).toEqual(['Fuse']);
   });
 
   // A Wirex cardholder's USDC lands in their Safe on Base: the wallet route.

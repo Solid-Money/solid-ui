@@ -203,7 +203,7 @@ describe('WalletDepositTokens', () => {
     });
   });
 
-  // Avalanche takes ETH and WBTC into the wallet; it takes no USDT.
+  // Avalanche takes ETH and WBTC into the wallet; it takes no WETH.
   it('keeps a "More networks" chain that takes the new token, and leaves one that does not', () => {
     mockDeposit.walletDeposit = {
       chainId: base.id,
@@ -222,9 +222,9 @@ describe('WalletDepositTokens', () => {
       expect.objectContaining({ symbol: 'WBTC', rhinoChain: 'AVALANCHE' }),
     );
 
-    press('USDT, Tether USD');
+    press('WETH, Wrapped Ether');
     expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
-      expect.objectContaining({ symbol: 'USDT', rhinoChain: undefined }),
+      expect.objectContaining({ symbol: 'WETH', rhinoChain: undefined }),
     );
   });
 

@@ -34,7 +34,7 @@ type RhinoNetworkGroupProps = {
  * the user's rhino.fi address for that chain; nothing of ours is minted for it.
  *
  * Renders nothing until rhino.fi's routes are in, when they cannot be had (the
- * list above already says so), and when no such chain takes the token: USDT to
+ * list above already says so), and when no such chain takes the token: EURC to
  * the card, say, which rhino.fi does not route.
  */
 const RhinoNetworkGroup = ({

@@ -2,7 +2,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_USDT_ROUTES } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
 import { getRhinoDepositAssets } from '@/lib/api';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -90,16 +90,14 @@ describe('RhinoNetworkGroup', () => {
     expect(rows()).toHaveLength(0);
   });
 
-  // rhino.fi lists no USDT route to the card or wallet; were it to, our own
-  // pipeline, which carries USDT there, still would not watch these chains.
-  it('shows nothing for USDT to the card or the wallet', async () => {
+  // rhino.fi pays USDT to the card or the wallet out as USDC, Tron and all.
+  it('lists the chains rhino.fi takes USDT to the card or the wallet from', async () => {
     await mount({ destinationType: 'RAIN_CARD', symbol: 'USDT' });
-    expect(rows()).toHaveLength(0);
+    expect(titles()).toEqual(['Tron', 'Solana', 'Avalanche']);
 
-    mockGetAssets.mockResolvedValue(RHINO_ASSETS_WITH_USDT_ROUTES);
     await act(async () => root.unmount());
     await mount({ destinationType: 'WALLET', symbol: 'USDT' });
-    expect(rows()).toHaveLength(0);
+    expect(titles()).toEqual(['Tron', 'Solana', 'Avalanche']);
   });
 
   it('shows nothing when rhino.fi is off, or its routes cannot be had', async () => {

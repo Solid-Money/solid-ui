@@ -22,9 +22,9 @@ import type {
  *   fall back to.
  * - Fuse rows are our own pipeline's (the direct-deposit session, or the Safe),
  *   whatever rhino.fi lists: rhino.fi does not support Fuse.
- * - So are the wallet and card rows of a token in `OWN_PIPELINE_SYMBOLS` (USDT):
- *   rhino.fi cannot deliver it where those screens need it, so our pipeline
- *   ("the old bridge") still does, on the chains it watches.
+ * - So are the wallet and card rows of a token on a chain in
+ *   `OWN_PIPELINE_TOKEN_CHAINS` (USDT on Base), which rhino.fi is not trusted to
+ *   accept there.
  * - Every other row waits for `/deposit/rhino/assets`, and is unavailable when
  *   that fails or says rhino.fi is off (see `resolveRhinoRow`).
  * - Under a screen's own rows, "More networks": the chains rhino.fi serves that
@@ -53,35 +53,41 @@ const OWN_PIPELINE_CHAIN_IDS: ReadonlySet<number> = new Set([fuse.id]);
 export const isOwnPipelineChain = (chainId: number): boolean => OWN_PIPELINE_CHAIN_IDS.has(chainId);
 
 /**
- * The tokens our own pipeline still carries off Fuse on the wallet and card
- * screens ("the old bridge"), rather than rhino.fi: USDT, which rhino.fi cannot
- * deliver on Base, where those screens pay out. The backend lists no USDT
- * wallet or card route meanwhile.
+ * The tokens our own pipeline still takes on the wallet and card screens, and
+ * the chains it takes them on, rather than rhino.fi: USDT sent on Base.
  *
- * The one switch for it. Once rhino.fi delivers USDT on Base, take it out of
- * this set and every wallet and card USDT row is rhino.fi's again, "More
- * networks" included. Savings never used it: rhino.fi's soUSD route takes USDT
- * and deposits it as USDC.
+ * rhino.fi takes wallet and card USDT from every other chain and pays it out as
+ * USDC on Base, since it cannot pay USDT out there for us (the backend's
+ * `WALLET_USDT` and `CARD_USDC` routes; the address screen says "Converted to
+ * USDC"). Sent on Base itself, its docs have Base USDT as "Delivery only", so
+ * it is not trusted to accept it, and the backend lists no wallet or card USDT
+ * route there. The wallet's Base row is the Safe, which spends USDT as it is;
+ * the card's is the card deposit address. Savings is not affected: rhino.fi's
+ * soUSD route takes USDT on every chain it lists, as USDC.
  */
-export const OWN_PIPELINE_SYMBOLS: ReadonlySet<string> = new Set(['USDT']);
+export const OWN_PIPELINE_TOKEN_CHAINS: Readonly<Record<string, ReadonlySet<number>>> = {
+  USDT: new Set([base.id]),
+};
 
-/** The destinations `OWN_PIPELINE_SYMBOLS` applies to: the wallet's and the card's. */
+/** The destinations `OWN_PIPELINE_TOKEN_CHAINS` applies to: the wallet's and the card's. */
 const OWN_PIPELINE_DESTINATIONS: ReadonlySet<RhinoDestinationType> = new Set<RhinoDestinationType>([
   'WALLET',
   'RAIN_CARD',
 ]);
 
 /**
- * Whether a token goes through our own pipeline on every chain for this
- * destination, rhino.fi's routes aside: USDT to the wallet or the card (see
- * `OWN_PIPELINE_SYMBOLS`). Which chains the pipeline takes it on is the
- * screen's to say (the card: `BRIDGE_TOKENS`; the wallet: those, plus the Safe
- * on Base).
+ * Whether a token sent on a chain goes through our own pipeline for this
+ * destination, rhino.fi's routes aside: USDT on Base to the wallet or the card
+ * (see `OWN_PIPELINE_TOKEN_CHAINS`). Never a "More networks" chain: Base is
+ * one of the app's own rows.
  */
 export const isOwnPipelineToken = (
   symbol: string,
   destinationType: RhinoDestinationType,
-): boolean => OWN_PIPELINE_DESTINATIONS.has(destinationType) && OWN_PIPELINE_SYMBOLS.has(symbol);
+  chainId: number,
+): boolean =>
+  OWN_PIPELINE_DESTINATIONS.has(destinationType) &&
+  (OWN_PIPELINE_TOKEN_CHAINS[symbol]?.has(chainId) ?? false);
 
 /**
  * A list from `/deposit/rhino/assets`, or none when the payload left it out
@@ -248,18 +254,14 @@ export type RhinoExtraChainFilter = RhinoRouteFilter & { symbol: string };
 /**
  * "More networks": the rhino.fi chains the app has no row for, with a route for
  * the screen's token, destination and vault. Only what rhino.fi lists for that
- * destination, so a token it does not route there (USDT to the wallet or the
- * card) gets none; and none for a token our own pipeline carries there (see
- * `OWN_PIPELINE_SYMBOLS`), which does not watch these chains. Empty when
- * rhino.fi is off.
+ * destination, so a token it does not route there gets none. Wallet and card
+ * USDT included: our own pipeline keeps it on Base alone, which is never one of
+ * these. Empty when rhino.fi is off.
  */
 export const getRhinoExtraChains = (
   assets: RhinoDepositAssetsResponse | undefined,
   filter: RhinoExtraChainFilter,
-): RhinoDepositChain[] =>
-  isOwnPipelineToken(filter.symbol, filter.destinationType)
-    ? []
-    : getRhinoChainsForDestination(assets, filter).filter(isRhinoExtraChain);
+): RhinoDepositChain[] => getRhinoChainsForDestination(assets, filter).filter(isRhinoExtraChain);
 
 /** The address a "More networks" chain shows for the screen's token. */
 export const getRhinoExtraSelection = (
@@ -329,12 +331,11 @@ export const getRhinoSelectionForRow = (
  * How one of a screen's own network rows is served:
  *
  * - `own`: our own pipeline's address (a direct-deposit session, or the Safe):
- *   on Fuse, as it always was, and for a token our pipeline still carries to
- *   that destination (`isOwnPipelineToken`: USDT to the wallet or the card),
- *   whatever rhino.fi lists and whether or not its routes are in. The screen
- *   mints the session for its own destination (the card's `RAIN_CARD`, the
- *   wallet's `WALLET`), and lists only the chains the pipeline takes the token
- *   on;
+ *   on Fuse, as it always was, and for a token our pipeline still takes on
+ *   that chain for that destination (`isOwnPipelineToken`: USDT on Base to the
+ *   wallet or the card), whatever rhino.fi lists and whether or not its routes
+ *   are in. The screen decides the address: the card's `RAIN_CARD` session, or
+ *   for the wallet the Safe;
  * - `rhino`: the rhino.fi address for `selection`;
  * - `loading`: not known until the assets arrive, so not offered yet;
  * - `unavailable`: the assets failed, or rhino.fi is off, so it cannot be offered;
@@ -352,7 +353,10 @@ export type RhinoRowState =
 
 /** How a screen's own network row is served, from the state of rhino.fi's routes. */
 export const resolveRhinoRow = (state: RhinoAssetsState, row: RhinoRowFilter): RhinoRowState => {
-  if (isOwnPipelineChain(row.chainId) || isOwnPipelineToken(row.symbol, row.destinationType)) {
+  if (
+    isOwnPipelineChain(row.chainId) ||
+    isOwnPipelineToken(row.symbol, row.destinationType, row.chainId)
+  ) {
     return { kind: 'own' };
   }
   if (state.status !== 'ready') return { kind: state.status };
@@ -361,8 +365,8 @@ export const resolveRhinoRow = (state: RhinoAssetsState, row: RhinoRowFilter): R
 };
 
 /**
- * Whether a row has an address to show — ours on Fuse and for USDT to the
- * wallet or card, rhino.fi's elsewhere — and so can be picked.
+ * Whether a row has an address to show — ours on Fuse and for USDT on Base to
+ * the wallet or card, rhino.fi's elsewhere — and so can be picked.
  */
 export const isOfferedRhinoRow = (
   state: RhinoRowState,
