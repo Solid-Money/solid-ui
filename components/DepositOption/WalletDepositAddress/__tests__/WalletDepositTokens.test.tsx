@@ -3,7 +3,7 @@ import { arbitrum, base, bsc } from 'viem/chains';
 
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 
@@ -226,6 +226,28 @@ describe('WalletDepositTokens', () => {
     expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
       expect.objectContaining({ symbol: 'WETH', rhinoChain: undefined }),
     );
+  });
+
+  // Native BTC has no row of the list's own: Bitcoin, under "More networks".
+  it('opens native BTC on Bitcoin, once rhino.fi takes it there', () => {
+    expect(texts(render())).not.toContain('BTC');
+
+    mockRhino.current = { ...READY, assets: RHINO_ASSETS_WITH_BITCOIN };
+    const root = render();
+    expect(texts(root)).toEqual(expect.arrayContaining(['BTC', 'Bitcoin']));
+    act(() =>
+      root.root
+        .find((node: any) => node.props.accessibilityLabel === 'BTC, Bitcoin')
+        .props.onPress(),
+    );
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
+      symbol: 'BTC',
+      chainId: base.id,
+      rhinoChain: 'BITCOIN',
+      isChangingToken: false,
+    });
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   });
 
   it('ticks the current token only when coming back to change it', () => {

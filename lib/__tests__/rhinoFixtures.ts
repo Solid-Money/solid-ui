@@ -170,3 +170,34 @@ export const RHINO_ASSETS_WITH_BASE_USDT_ROUTES: RhinoDepositAssetsResponse = {
       : chain,
   ),
 };
+
+/** Native BTC, sent on Bitcoin: WBTC to the Safe on Base, USDC to the card. */
+const nativeBitcoin: RhinoDepositToken = {
+  symbol: 'BTC',
+  address: '0x0000000000000000000000000000000000000000',
+  routes: [
+    rhinoRoute('WALLET', 'WBTC', { minimumUsd: 10, maximumUsd: 50000 }),
+    rhinoRoute('RAIN_CARD', 'USDC', { minimumUsd: 10, maximumUsd: 50000 }),
+  ],
+};
+
+/**
+ * The same answer from a backend with Bitcoin switched on: native BTC, which
+ * no chain of the app's own carries, listed after Solana as the backend does.
+ */
+export const RHINO_ASSETS_WITH_BITCOIN: RhinoDepositAssetsResponse = {
+  ...RHINO_ASSETS,
+  chains: RHINO_ASSETS.chains.flatMap(chain =>
+    chain.chain === 'SOLANA'
+      ? [
+          chain,
+          {
+            chain: 'BITCOIN',
+            name: 'Bitcoin',
+            addressType: 'BTC' as const,
+            tokens: [nativeBitcoin],
+          },
+        ]
+      : [chain],
+  ),
+};

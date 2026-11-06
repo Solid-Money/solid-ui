@@ -13,10 +13,10 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 import {
   getAllWalletDepositTokens,
-  getWalletDepositExtraNetworks,
   groupWalletDepositTokens,
   matchesWalletDepositSearch,
   resolveWalletDepositChain,
+  resolveWalletDepositExtraChain,
   WalletDepositToken,
 } from './constants';
 import { useWalletDepositViewer } from './useWalletDepositViewer';
@@ -158,18 +158,10 @@ const WalletDepositTokens = () => {
 
   const handleSelect = (token: WalletDepositToken) => {
     Keyboard.dismiss();
-    // A "More networks" chain carries over when rhino.fi takes the new currency
-    // into the wallet there too, as an app chain does; otherwise the address
-    // goes back to one of the list's own rows.
-    const keepsExtraChain =
-      !!walletDeposit.rhinoChain &&
-      getWalletDepositExtraNetworks(token.symbol, viewer).some(
-        chain => chain.chain === walletDeposit.rhinoChain,
-      );
     setWalletDeposit({
       symbol: token.symbol,
       chainId: resolveWalletDepositChain(token.symbol, walletDeposit.chainId, viewer),
-      rhinoChain: keepsExtraChain ? walletDeposit.rhinoChain : undefined,
+      rhinoChain: resolveWalletDepositExtraChain(token.symbol, walletDeposit.rhinoChain, viewer),
       isChangingToken: false,
     });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);

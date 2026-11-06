@@ -111,6 +111,7 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
   WFUSE: '500',
   PAXG: '0.003',
   SLVx: '0.2',
+  BTC: '0.00015',
   WBTC: '0.00015',
   cbBTC: '0.00015',
   ZEC: '0.01',
@@ -245,9 +246,24 @@ const WRAPPED_EQUIVALENT: Record<string, string> = {
 const findToken = (symbol?: string): WalletDepositTokenConfig | undefined =>
   WALLET_DEPOSIT_TOKENS.find(token => token.symbol === symbol);
 
-/** Whether a currency is on offer to this person at all, on any chain. */
-const isOffered = (token: WalletDepositTokenConfig, provider: WalletDepositProvider): boolean => {
+/**
+ * A currency no chain of the list's own carries, which only "More networks"
+ * can offer: native BTC, on Bitcoin.
+ */
+const isMoreNetworksOnly = (token: WalletDepositTokenConfig): boolean =>
+  Object.keys(token.contracts).length === 0;
+
+/**
+ * Whether a currency is on offer to this person at all, on any chain. One only
+ * "More networks" carries is a new deposit token on every chain it has, so it
+ * is offered only with access (see `useDepositTokensAccess`).
+ */
+const isOffered = (
+  token: WalletDepositTokenConfig,
+  { provider, hasNewTokens = false }: WalletDepositViewer,
+): boolean => {
   if (token.devOnly && !isDevFeatureEnabled) return false;
+  if (isMoreNetworksOnly(token) && !hasNewTokens) return false;
   if (token.symbol === EURC_SYMBOL) return offersWalletDepositEurc(provider);
   return true;
 };
@@ -265,9 +281,10 @@ const isReleasedOn = (token: WalletDepositTokenConfig, chainId: number): boolean
  */
 const getCandidateChainIds = (
   token: WalletDepositTokenConfig,
-  { provider, hasNewTokens = false }: WalletDepositViewer,
+  viewer: WalletDepositViewer,
 ): number[] => {
-  if (!isOffered(token, provider)) return [];
+  const { hasNewTokens = false } = viewer;
+  if (!isOffered(token, viewer)) return [];
 
   return WALLET_DEPOSIT_CHAIN_IDS.filter(
     chainId =>
@@ -358,7 +375,7 @@ export const getWalletDepositExtraNetworks = (
   viewer: WalletDepositViewer = {},
 ): RhinoDepositChain[] => {
   const token = findToken(symbol);
-  if (!token || !isOffered(token, viewer.provider) || viewer.rhino?.status !== 'ready') return [];
+  if (!token || !isOffered(token, viewer) || viewer.rhino?.status !== 'ready') return [];
   return getRhinoExtraChains(viewer.rhino.assets, {
     destinationType: WALLET_RHINO_DESTINATION,
     symbol,
@@ -390,6 +407,27 @@ export const getWalletDepositExtraRow = (
         }),
       }
     : { kind: 'none' };
+};
+
+/**
+ * The "More networks" chain to show once `symbol` is picked: the one showing
+ * (`currentRhinoChain`) when rhino.fi takes the currency into the wallet there
+ * too, as an app chain carries over; else, for a currency no row of the list's
+ * own carries (native BTC, which only Bitcoin takes), rhino.fi's first chain
+ * for it. Undefined otherwise: the address goes to one of the list's rows (see
+ * `resolveWalletDepositChain`).
+ */
+export const resolveWalletDepositExtraChain = (
+  symbol: string,
+  currentRhinoChain: string | undefined,
+  viewer: WalletDepositViewer = {},
+): string | undefined => {
+  const extraChains = getWalletDepositExtraNetworks(symbol, viewer);
+  if (currentRhinoChain && extraChains.some(chain => chain.chain === currentRhinoChain)) {
+    return currentRhinoChain;
+  }
+  const token = findToken(symbol);
+  return token && isMoreNetworksOnly(token) ? extraChains[0]?.chain : undefined;
 };
 
 /**
@@ -558,12 +596,15 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
  * Every currency the deposit address can take, each once, for "Select token" —
  * the first step, taken before any chain is chosen. In the order the design
  * lists them: the stablecoins, gold and silver, then ETH and the rest, with the
- * wrapped natives last.
+ * wrapped natives last. A currency only "More networks" carries counts: native
+ * BTC has no row of the list's own.
  */
 export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): WalletDepositToken[] =>
-  WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, viewer).length > 0).map(
-    toWalletDepositToken,
-  );
+  WALLET_DEPOSIT_TOKENS.filter(token =>
+    isMoreNetworksOnly(token)
+      ? getWalletDepositExtraNetworks(token.symbol, viewer).length > 0
+      : getTokenChainIds(token, viewer).length > 0,
+  ).map(toWalletDepositToken);
 
 /**
  * Whether a currency answers a search: by ticker or by name, so "btc" finds WBTC

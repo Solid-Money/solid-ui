@@ -166,6 +166,16 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, base.id],
   },
   {
+    // Native BTC, sent on Bitcoin itself. No contract on any chain the list has
+    // a row for, so it is offered under "More networks" alone, once rhino.fi
+    // takes it there: its Bitcoin address pays the Safe WBTC on Base.
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    group: 'crypto',
+    icon: 'images/btc.png',
+    contracts: {},
+  },
+  {
     // Base and BNB Chain carry the LayerZero WBTC, the same contract on both.
     symbol: 'WBTC',
     name: 'Wrapped Bitcoin',

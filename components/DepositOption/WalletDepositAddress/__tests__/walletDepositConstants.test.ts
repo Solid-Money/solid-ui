@@ -19,6 +19,7 @@ import {
   matchesWalletDepositSearch,
   offersWalletDepositEurc,
   resolveWalletDepositChain,
+  resolveWalletDepositExtraChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
@@ -27,6 +28,7 @@ import { isWalletDepositContract, WALLET_DEPOSIT_TOKENS } from '@/constants/wall
 import {
   RHINO_ASSETS,
   RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
+  RHINO_ASSETS_WITH_BITCOIN,
   rhinoRoute,
   rhinoToken,
 } from '@/lib/__tests__/rhinoFixtures';
@@ -1068,5 +1070,63 @@ describe('getWalletDepositExtraRow', () => {
     // Tron takes USDT alone.
     expect(getWalletDepositExtraRow('TRON', 'USDC', ALL)).toEqual({ kind: 'none' });
     expect(getWalletDepositExtraRow('ARC', 'USDC', ALL)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('native BTC', () => {
+  /** rhino.fi's routes with Bitcoin switched on for this deployment. */
+  const WITH_BITCOIN: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
+  const NEW_TOKENS = { hasNewTokens: true, rhino: WITH_BITCOIN };
+
+  it('is listed once rhino.fi takes it on Bitcoin, after ETH and before WBTC', () => {
+    const symbols = symbolsOf(getAllWalletDepositTokens(NEW_TOKENS));
+    expect(symbols).toContain('BTC');
+    expect(symbols.indexOf('BTC')).toBe(symbols.indexOf('WBTC') - 1);
+    // Not while rhino.fi does not list it there: Bitcoin off, or routes not in.
+    expect(symbolsOf(getAllWalletDepositTokens(ALL))).not.toContain('BTC');
+    expect(
+      symbolsOf(getAllWalletDepositTokens({ hasNewTokens: true, rhino: { status: 'loading' } })),
+    ).not.toContain('BTC');
+  });
+
+  // A new deposit token on every chain it has: the internal team in production
+  // until it is rolled out, everyone on qa/preview builds.
+  it('is offered only to those given the new deposit tokens', () => {
+    const basic = { rhino: WITH_BITCOIN };
+    expect(symbolsOf(getAllWalletDepositTokens(basic))).not.toContain('BTC');
+    expect(getWalletDepositExtraNetworks('BTC', basic)).toEqual([]);
+    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', basic)).toEqual({ kind: 'none' });
+  });
+
+  it('has no row of the list’s own, only Bitcoin under "More networks"', () => {
+    expect(getWalletDepositNetworksForToken('BTC', NEW_TOKENS)).toEqual([]);
+    expect(getWalletDepositExtraNetworks('BTC', NEW_TOKENS).map(chain => chain.chain)).toEqual([
+      'BITCOIN',
+    ]);
+    // On no chain the list has: never a stray row on Base, where nothing is.
+    expect(getWalletDepositRow(base.id, 'BTC', NEW_TOKENS)).toEqual({ kind: 'none' });
+  });
+
+  it('serves Bitcoin with its rhino.fi address, which has no EVM chain id', () => {
+    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', NEW_TOKENS)).toEqual({
+      kind: 'rhino',
+      selection: { chain: 'BITCOIN', tokenSymbol: 'BTC', destinationType: 'WALLET' },
+    });
+  });
+
+  it('opens on Bitcoin when picked, and keeps a "More networks" chain only where it fits', () => {
+    expect(resolveWalletDepositExtraChain('BTC', undefined, NEW_TOKENS)).toBe('BITCOIN');
+    // From Tron, which takes no BTC.
+    expect(resolveWalletDepositExtraChain('BTC', 'TRON', NEW_TOKENS)).toBe('BITCOIN');
+    // A currency with rows of its own goes back to them, as before.
+    expect(resolveWalletDepositExtraChain('USDC', undefined, NEW_TOKENS)).toBeUndefined();
+    expect(resolveWalletDepositExtraChain('WBTC', 'BITCOIN', NEW_TOKENS)).toBeUndefined();
+    expect(resolveWalletDepositExtraChain('USDT', 'TRON', NEW_TOKENS)).toBe('TRON');
+    // Nowhere to open while Bitcoin is off.
+    expect(resolveWalletDepositExtraChain('BTC', undefined, ALL)).toBeUndefined();
+  });
+
+  it('is drawn with its own mark', () => {
+    expect(getWalletDepositTokenIcon('BTC')).toBe('images/btc.png');
   });
 });
