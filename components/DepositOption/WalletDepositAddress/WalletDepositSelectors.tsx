@@ -5,6 +5,8 @@ import { Check, ChevronDown } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
+import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -12,6 +14,7 @@ import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
+  getWalletRhinoSelection,
 } from './constants';
 import { useWalletDepositViewer } from './useWalletDepositViewer';
 
@@ -135,7 +138,8 @@ type WalletDepositNetworkListProps = {
  * `zIndex` does not carry from a nested child over a later sibling.
  *
  * It offers only the chains carrying the chosen currency, so changing network
- * can never quietly change the currency with it.
+ * can never quietly change the currency with it. A row rhino.fi serves under
+ * the wallet rule is marked "via rhino.fi" (see `getWalletRhinoSelection`).
  */
 export const WalletDepositNetworkList = ({
   chainId,
@@ -148,6 +152,9 @@ export const WalletDepositNetworkList = ({
     () => getWalletDepositNetworksForToken(symbol, viewer),
     [symbol, viewer],
   );
+  const rhinoAssets = useOfferedRhinoDepositAssets();
+  const isRhinoRow = (rowChainId: number) =>
+    !!getWalletRhinoSelection(rhinoAssets, rowChainId, symbol, viewer.provider);
 
   return (
     <>
@@ -173,6 +180,9 @@ export const WalletDepositNetworkList = ({
           >
             <Image source={item.icon} style={ROW_ICON_STYLE} contentFit="cover" />
             <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
+            {isRhinoRow(item.chainId) ? (
+              <Text className="text-sm text-white/50">{RHINO_NETWORK_CHIP}</Text>
+            ) : null}
             {item.chainId === chainId ? <Check size={18} color="#94F27F" /> : null}
           </Pressable>
         ))}

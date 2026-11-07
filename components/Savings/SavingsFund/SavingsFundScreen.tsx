@@ -1,5 +1,6 @@
 import React from 'react';
 
+import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import SavingsFundDepositAddress from '@/components/Savings/SavingsFund/SavingsFundDepositAddress';
 import SavingsFundNetworks from '@/components/Savings/SavingsFund/SavingsFundNetworks';
 import SavingsFundOptions from '@/components/Savings/SavingsFund/SavingsFundOptions';
@@ -22,10 +23,12 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
     selectedToken,
     selectedChainId,
     depositAddress,
+    rhinoDeposit,
     isPreparingSession,
     hasSessionError,
     selectToken,
     selectNetwork,
+    fallBackFromRhino,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,
@@ -38,6 +41,17 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
         symbol={selectedToken}
         onSelect={chainId => selectNetwork(chainId)}
         loadingChainId={isPreparingSession ? selectedChainId : undefined}
+      />
+    );
+  }
+
+  if (step === 'address' && rhinoDeposit) {
+    return (
+      <RhinoDepositAddress
+        selection={rhinoDeposit}
+        onChangeNetwork={() => setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS)}
+        onDepositDetected={openDetectedDeposit}
+        onFallback={rhinoDeposit.fallbackChainId !== undefined ? fallBackFromRhino : undefined}
       />
     );
   }

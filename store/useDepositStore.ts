@@ -17,6 +17,7 @@ import {
   TransactionStatusModal,
 } from '@/lib/types';
 
+import type { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 // Type-only imports (erased at build → no thirdweb runtime cost on mobile).
 import type { Account, Wallet } from 'thirdweb/wallets';
 
@@ -129,6 +130,13 @@ interface DepositState {
    * one flow and is cleared by `resetDepositFlow`.
    */
   savingsFundIntent: SavingsFundIntent;
+  /**
+   * The rhino.fi address the savings direct-deposit address step shows instead
+   * of the direct-deposit one, for a row rhino.fi serves (`fallbackChainId` is
+   * that row, so a failure falls back to its session). Not persisted, and
+   * cleared with the rest of the flow.
+   */
+  rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */
   upgradeTopUp?: { tier: RewardsTier; depositToSavings: boolean };
   /**
@@ -148,6 +156,7 @@ interface DepositState {
   setDepositSourceChosen: (v: boolean) => void;
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
+  setRhinoDeposit: (selection: RhinoDepositSelection | undefined) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -180,6 +189,7 @@ export const useDepositStore = create<DepositState>()(
       depositSourceChosen: false,
       savingsFundIntent: 'savings',
       upgradeTopUp: undefined,
+      rhinoDeposit: undefined,
       walletDeposit: {},
       externalWallet: {
         address: undefined,
@@ -193,6 +203,7 @@ export const useDepositStore = create<DepositState>()(
       setDepositSourceChosen: (v: boolean) => set({ depositSourceChosen: v }),
       setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
       setUpgradeTopUp: context => set({ upgradeTopUp: context }),
+      setRhinoDeposit: selection => set({ rhinoDeposit: selection }),
 
       setModal: modal => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -232,6 +243,7 @@ export const useDepositStore = create<DepositState>()(
           depositSourceChosen: false,
           savingsFundIntent: 'savings',
           upgradeTopUp: undefined,
+          rhinoDeposit: undefined,
           walletDeposit: {},
         }),
     }),

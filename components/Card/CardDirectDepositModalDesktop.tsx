@@ -17,6 +17,7 @@ import {
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import { UsdMethodList } from '@/components/DepositOption/DepositUsdOptions';
+import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
 import { OrchestraFlowContent } from '@/components/Orchestra/OrchestraFlow';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
@@ -29,6 +30,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHasFeature } from '@/hooks/useFeatureAccess';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useOrchestraCardEntry } from '@/hooks/useOrchestraCardEntry';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
@@ -39,6 +41,7 @@ import {
 } from '@/lib/buyCryptoFlow';
 import { EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT } from '@/lib/config';
 import { getOrchestraBackTarget, getOrchestraTitle, isOrchestraModal } from '@/lib/orchestraFlow';
+import { getRhinoSelectionForRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -108,6 +111,11 @@ export default function CardDirectDepositModal({
   // Deposit address fetched after chain selection (both the direct-deposit and
   // the connected-wallet paths send to the same session wallet).
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
+  // Set when a rhino.fi chain was picked: the address step shows its address instead.
+  const [rhinoSelection, setRhinoSelection] = useState<RhinoDepositSelection | undefined>(
+    undefined,
+  );
+  const rhinoAssets = useOfferedRhinoDepositAssets();
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const walletConnectingRef = useRef(false);
@@ -168,6 +176,7 @@ export default function CardDirectDepositModal({
         setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
+        setRhinoSelection(undefined);
       }
     },
     [isControlled, onOpenChange],
@@ -307,28 +316,51 @@ export default function CardDirectDepositModal({
       setSelectedToken(symbol);
       setSelectedChainId(undefined);
       setDepositAddress(undefined);
+      setRhinoSelection(undefined);
       goToStep('networks');
     },
     [goToStep],
   );
 
   // Direct-deposit path: pick the chain the stablecoin is sent from.
+  // rhino.fi first for one of the list's own rows: when it has a route from
+  // this chain to the card, the address step shows the rhino.fi address, and the
+  // direct-deposit session is minted only if it has none or the request fails.
   const handleDirectNetworkSelect = useCallback(
     (chainId: number) => {
+      const rhino = getRhinoSelectionForRow(rhinoAssets, {
+        chainId,
+        destinationType: CARD_FUND_DESTINATION_TYPE,
+        symbol: selectedToken,
+      });
+
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
         chain_id: chainId,
         network_name: BRIDGE_TOKENS[chainId]?.name,
         token_symbol: selectedToken,
         deposit_type: 'card_direct_deposit',
+        via_rhino: !!rhino,
       });
 
+      setRhinoSelection(rhino);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
-      prepareSession({ chainId, token: selectedToken });
+      if (!rhino) prepareSession({ chainId, token: selectedToken });
       goToStep('address');
     },
-    [goToStep, prepareSession, selectedToken],
+    [goToStep, prepareSession, rhinoAssets, selectedToken],
   );
+
+  // The rhino.fi address for a row could not be had: the row's own session
+  // instead, on the same step.
+  const handleRhinoFallback = useCallback(() => {
+    const chainId = rhinoSelection?.fallbackChainId;
+    setRhinoSelection(undefined);
+    if (chainId === undefined) return;
+    setSelectedChainId(chainId);
+    setDepositAddress(undefined);
+    prepareSession({ chainId, token: selectedToken });
+  }, [prepareSession, rhinoSelection, selectedToken]);
 
   // Connected-wallet path only — always navigates to the send form.
   const handleWalletNetworkSelect = useCallback(
@@ -445,6 +477,19 @@ export default function CardDirectDepositModal({
 
     if (step === 'networks') {
       return <CardFundNetworks symbol={selectedToken} onSelect={handleDirectNetworkSelect} />;
+    }
+
+    if (step === 'address' && rhinoSelection) {
+      return (
+        <RhinoDepositAddress
+          selection={rhinoSelection}
+          onChangeNetwork={handleBack}
+          onDepositDetected={handleDepositDetected}
+          onFallback={
+            rhinoSelection.fallbackChainId !== undefined ? handleRhinoFallback : undefined
+          }
+        />
+      );
     }
 
     if (step === 'address') {
