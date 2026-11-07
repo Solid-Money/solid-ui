@@ -214,7 +214,12 @@ const ReplyBubble = ({
             {message.redacted ? (
               <Text className="text-[15px] italic text-white/60">This message was removed</Text>
             ) : message.body ? (
-              <Markdown value={message.body} textColor="#FFFFFF" />
+              <Markdown
+                value={message.body}
+                textColor="#FFFFFF"
+                // Solid AI may only link to solid.xyz; teammates to any web page.
+                linkPolicy={message.author.type === 'ai' ? 'solid' : 'web'}
+              />
             ) : null}
             {!message.redacted && <MessageSources message={message} />}
           </View>
