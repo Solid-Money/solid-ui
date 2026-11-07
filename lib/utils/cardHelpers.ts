@@ -1,3 +1,5 @@
+import { parseUnits } from 'viem';
+
 import { CARD_FROZEN_BY_SOLID_CODE } from '@/constants/errors';
 import {
   CardCollateralTokenBalanceDto,
@@ -512,23 +514,64 @@ export const cardSweepExplorerUrl = (details: CardSpendDetails | undefined): str
   return `https://explorer.fuse.io/tx/${hash}`;
 };
 
+/** Base — where card refunds are paid from the Card Refund Payout Wallet. */
+const BASE_CHAIN_ID = 8453;
+
 /**
- * Explorer link for the USDC.e transfer that paid a refund, on Fuse.
+ * Explorer link for the transfer that paid a refund: USDC or EURC on Base, or
+ * USDC.e on Fuse for refunds paid before the Base refund wallet.
  *
  * Its own helper rather than a second call to {@link cardSweepExplorerUrl} with
  * a different field: the two hashes point in opposite directions — one is money
  * we took, one is money we sent back — and a single helper reading whichever
  * field happened to be set is how a refund ends up rendered under a "Sweep"
- * label. Same chain guard, for the same reason.
+ * label. An unrecognised chain returns nothing, for the same reason.
  */
 export const cardRefundExplorerUrl = (
   refund: CardRefundDetails | undefined,
 ): string | undefined => {
   const hash = refund?.tx_hash;
   if (!hash) return undefined;
-  const chainId = refund?.chain_id ?? FUSE_CHAIN_ID;
-  if (chainId !== FUSE_CHAIN_ID) return undefined;
-  return `https://explorer.fuse.io/tx/${hash}`;
+  switch (refund?.chain_id ?? FUSE_CHAIN_ID) {
+    case FUSE_CHAIN_ID:
+      return `https://explorer.fuse.io/tx/${hash}`;
+    case BASE_CHAIN_ID:
+      return `https://basescan.org/tx/${hash}`;
+    default:
+      return undefined;
+  }
+};
+
+/** EURC is 6-decimal on Base. */
+const EURC_DECIMALS = 6;
+
+/**
+ * What reached the Safe for a refund, formatted in the currency it was paid in:
+ * euros for a EURC refund (a purchase paid in euros), dollars otherwise.
+ *
+ * The EURC figure is a token amount, so it is read with `parseUnits` and
+ * rounded to the cent in bigint, half up: no float ever holds it. A refund
+ * without one (anything paid before the Base refund wallet, or in USDC) keeps
+ * the dollar figure it always showed.
+ */
+export const formatCardRefundPaid = (
+  refund: CardRefundDetails,
+  provider?: CardProvider | null,
+): string => {
+  const tokenAmount = refund.payout_token_amount?.trim();
+  if (refund.payout_currency?.toUpperCase() === 'EUR' && tokenAmount) {
+    try {
+      const units = parseUnits(tokenAmount, EURC_DECIMALS);
+      const negative = units < 0n;
+      const magnitude = negative ? -units : units;
+      const cents = (magnitude + 5_000n) / 10_000n;
+      const value = `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
+      return `${negative ? '-' : ''}${CURRENCY_SYMBOLS.EUR}${value}`;
+    } catch {
+      // Not a decimal string: fall through to the dollar figure rather than show nothing.
+    }
+  }
+  return formatCardAmount(String(refund.paid_usd), provider, 'USD');
 };
 
 /**
