@@ -2907,12 +2907,16 @@ export interface CardRefundDetails {
    * Fuse (122) for refunds paid before it. NOT the issuer's chain.
    */
   chain_id?: number;
-  /** `USD` (paid in USDC) or `EUR` (paid in EURC). Absent on refunds paid on Fuse. */
+  /**
+   * `USD` (paid in USDC) or `EUR` (paid in EURC). Present only when every part of
+   * the refund has been paid, all in this one currency.
+   */
   payout_currency?: string;
   /**
-   * Tokens sent, as an exact decimal string in `payout_currency` units ("15",
-   * "38.8"). A token amount: read it with `parseUnits`, never `parseFloat`.
-   * Absent on refunds paid on Fuse.
+   * Tokens sent across every part of the refund (the same credits as `paid_usd`,
+   * not the latest transfer alone), as an exact decimal string in
+   * `payout_currency` units ("15", "38.8"). A token amount: read it with
+   * `parseUnits`, never `parseFloat`. Absent whenever `payout_currency` is.
    */
   payout_token_amount?: string;
   /** One sentence explaining the deduction, when there is one to explain. */
