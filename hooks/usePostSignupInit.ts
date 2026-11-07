@@ -73,7 +73,12 @@ export const usePostSignupInit = (user: User | undefined) => {
                   isDeposited: true,
                 });
               }
-            } catch (error) {
+            } catch (error: any) {
+              // queryClient.clear() during session expiry/logout cancels in-flight
+              // TanStack Query fetches with a CancelledError. This is expected
+              // control flow, not a real failure — swallow it silently, analogous
+              // to the AbortError guard in lib/utils/utils.ts.
+              if (error?.name === 'CancelledError') return;
               Sentry.captureException(error, {
                 tags: {
                   type: 'balance_check_error_lazy',
