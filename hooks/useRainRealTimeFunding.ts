@@ -18,6 +18,7 @@ import {
   rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
+  unknownOperatorSpenders,
 } from '@/lib/utils/realTimeFunding';
 import { getChain } from '@/lib/wagmi';
 
@@ -206,6 +207,18 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
       }
       if (!status || pendingChains.length === 0) {
         throw new UserCopyError('Real-Time Funding is not available for this card right now.');
+      }
+
+      // The operator is approved by every cardholder for an unlimited amount,
+      // so it has to be the one Rain publishes for the chain — not just
+      // whatever the backend names. Every chain is checked before the first
+      // signature, so an unknown operator on a later chain cannot leave the
+      // earlier ones signed and consented; see RAIN_RTF_PUBLISHED_OPERATORS.
+      const unpinned = pendingChains.find(target => unknownOperatorSpenders(target).length > 0);
+      if (unpinned) {
+        throw new UserCopyError(
+          `Real-Time Funding on ${unpinned.name} needs an app update before it can be approved. Please update and try again.`,
+        );
       }
 
       const authorized: number[] = [];

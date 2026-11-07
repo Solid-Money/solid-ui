@@ -1,6 +1,6 @@
 import { type Address, encodeFunctionData, erc20Abi } from 'viem';
 
-import type { RainRtfChain, RainRtfStatus } from '@/lib/types';
+import type { RainRtfChain, RainRtfSpender, RainRtfStatus } from '@/lib/types';
 
 /**
  * Real-Time Funding: which approvals are owed, and how they batch.
@@ -54,12 +54,79 @@ export const formatTokenAmount = (
   return fractionText ? `${wholeText}.${fractionText}` : wholeText;
 };
 
+/**
+ * Rain's published operator contracts, lowercased, by environment.
+ *
+ * ## Why the app pins the operator
+ *
+ * The operator is a tenant-wide spender: every cardholder grants it an
+ * **unlimited** allowance on their own wallet, and the address comes from the
+ * backend's configuration rather than from Rain's per-user contract record
+ * (which is where the collateral spender comes from). A wrong or tampered
+ * configuration would otherwise have this app ask every new cardholder to
+ * approve whatever address it named. So an operator spender is only approved
+ * if it is the one Rain publishes for that chain's environment; anything else
+ * stops the approval with an update-the-app message rather than signing it.
+ *
+ * Rain publishes one operator per environment. If it ever moves, this table
+ * moves with it in a release — the backend pins the same addresses.
+ */
+export const RAIN_RTF_PUBLISHED_OPERATORS: Readonly<Record<'production' | 'sandbox', string>> = {
+  production: '0xa3750f692bb9fc5e62834f9291e3d508d7ba4f74',
+  sandbox: '0x5a6e6b0d5ea051cfff9b3dcc2aa8dac226458f29',
+};
+
+/**
+ * Which environment each RTF chain belongs to, by chain id.
+ *
+ * Fixed here rather than read off the status, because the status is what is
+ * being checked: a production chain must get the production operator, and a
+ * chain id is the one thing that names its environment unambiguously (Base
+ * 8453 against Base Sepolia 84532). A chain missing from this table has no
+ * operator this build will approve.
+ */
+const RAIN_RTF_CHAIN_ENVIRONMENTS: Readonly<Record<number, 'production' | 'sandbox'>> = {
+  8453: 'production', // Base
+  42161: 'production', // Arbitrum
+  9745: 'production', // Plasma
+  84532: 'sandbox', // Base Sepolia
+  421614: 'sandbox', // Arbitrum Sepolia
+  9746: 'sandbox', // Plasma testnet
+};
+
+/** The operator Rain publishes for this chain's environment, if this build knows the chain. */
+export const rainRtfOperatorFor = (chainId: number | undefined): string | undefined => {
+  const environment = chainId === undefined ? undefined : RAIN_RTF_CHAIN_ENVIRONMENTS[chainId];
+  return environment ? RAIN_RTF_PUBLISHED_OPERATORS[environment] : undefined;
+};
+
 /** Every approval a chain still owes, flattened across its assets. */
 export interface PendingApproval {
   tokenAddress: string;
   symbol: string;
   spenderAddress: string;
+  spenderKind: RainRtfSpender['kind'];
 }
+
+/**
+ * Operator spenders on this chain, still owed an approval, that are not the
+ * operator Rain publishes for the chain's environment — including the other
+ * environment's. Empty when the chain is safe to approve.
+ */
+export const unknownOperatorSpenders = (chain: RainRtfChain | undefined): string[] => {
+  const expected = rainRtfOperatorFor(chain?.chainId);
+  return [
+    ...new Set(
+      pendingApprovalsFor(chain)
+        .filter(
+          approval =>
+            approval.spenderKind === 'operator' &&
+            approval.spenderAddress.trim().toLowerCase() !== expected,
+        )
+        .map(approval => approval.spenderAddress),
+    ),
+  ];
+};
 
 /**
  * The (token, spender) pairs on this chain that still need approving.
@@ -84,6 +151,7 @@ export const pendingApprovalsFor = (chain: RainRtfChain | undefined): PendingApp
         tokenAddress: asset.tokenAddress,
         symbol: asset.symbol,
         spenderAddress: spender.address,
+        spenderKind: spender.kind,
       })),
   );
 
@@ -109,6 +177,16 @@ export const buildApprovalBatch = (params: {
 }): { to: Address; data: `0x${string}`; value: bigint }[] => {
   const { chain, maxAllowance } = params;
   const amount = BigInt(maxAllowance);
+
+  // Last line of defence: never encode an unlimited approval to an operator
+  // Rain has not published. The hook checks first to show the cardholder
+  // why; this makes sure no other caller can build one either.
+  const unknown = unknownOperatorSpenders(chain);
+  if (unknown.length > 0) {
+    throw new Error(
+      `Refusing to approve unrecognised Rain operator ${unknown.join(', ')} on chain ${chain?.chainId}`,
+    );
+  }
 
   return pendingApprovalsFor(chain).map(approval => ({
     to: approval.tokenAddress as Address,
