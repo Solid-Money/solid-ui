@@ -20,66 +20,66 @@ export const calculateUnclaimedMerklRewards = (rewards: MerklRewards) => {
   return {
     value,
     formatted,
-  }
-}
+  };
+};
 
 export const getMerklRewards = async (
   address: string,
   chainId: number,
-  campaignId: string = EXPO_PUBLIC_MERKL_CAMPAIGN_ID
+  campaignId: string = EXPO_PUBLIC_MERKL_CAMPAIGN_ID,
 ): Promise<MerklRewards> => {
   const { status, data } = await MerklApi('https://api.merkl.xyz')
     .v4.users({ address })
-    .rewards.get({ query: { chainId: [chainId.toString()], breakdownPage: 0 } })
+    .rewards.get({ query: { chainId: [chainId.toString()], breakdownPage: 0 } });
 
-  if (status !== 200) throw 'Failed to fetch Merkl rewards'
+  if (status !== 200) throw 'Failed to fetch Merkl rewards';
 
-  if (!data) throw 'No data received from Merkl API'
+  if (!data) throw 'No data received from Merkl API';
 
   let rewardsData: MerklRewards = [];
 
   for (const d of data) {
-    if (d.chain.id !== chainId) continue
+    if (d.chain.id !== chainId) continue;
 
     for (const reward of d.rewards) {
       for (const breakdown of reward.breakdowns) {
         if (breakdown.campaignId === campaignId) {
-          rewardsData.push(reward as unknown as MerklReward)
+          rewardsData.push(reward as unknown as MerklReward);
         }
       }
     }
   }
 
-  return rewardsData
-}
+  return rewardsData;
+};
 
 export const claimMerklRewards = async (
   smartAccountClient: SmartAccountClient,
   chain: Chain,
   trackTransaction: TrackTransaction,
-  campaignId: string = EXPO_PUBLIC_MERKL_CAMPAIGN_ID
+  campaignId: string = EXPO_PUBLIC_MERKL_CAMPAIGN_ID,
 ) => {
-  const safeAddress = smartAccountClient.account?.address
-  if (!safeAddress) throw 'Safe address not found'
+  const safeAddress = smartAccountClient.account?.address;
+  if (!safeAddress) throw 'Safe address not found';
 
-  const rewards = await getMerklRewards(safeAddress, chain.id, campaignId)
+  const rewards = await getMerklRewards(safeAddress, chain.id, campaignId);
 
-  const users: `0x${string}`[] = []
-  const tokens: `0x${string}`[] = []
-  const amounts: bigint[] = []
-  const proofs: `0x${string}`[][] = []
+  const users: `0x${string}`[] = [];
+  const tokens: `0x${string}`[] = [];
+  const amounts: bigint[] = [];
+  const proofs: `0x${string}`[][] = [];
 
   for (const reward of rewards) {
-    const tokenAddress = reward.token.address as `0x${string}`
-    users.push(safeAddress)
-    tokens.push(tokenAddress)
-    amounts.push(BigInt(reward.amount))
-    proofs.push(reward.proofs as `0x${string}`[])
+    const tokenAddress = reward.token.address as `0x${string}`;
+    users.push(safeAddress);
+    tokens.push(tokenAddress);
+    amounts.push(BigInt(reward.amount));
+    proofs.push(reward.proofs as `0x${string}`[]);
   }
 
-  if (tokens.length === 0) throw 'No tokens to claim Merkl rewards'
+  if (tokens.length === 0) throw 'No tokens to claim Merkl rewards';
 
-  const merklDistributorAddress = ADDRESSES.fuse.merklDistributor
+  const merklDistributorAddress = ADDRESSES.fuse.merklDistributor;
 
   const transactions = [
     {
@@ -90,11 +90,11 @@ export const claimMerklRewards = async (
         args: [users, tokens, amounts, proofs],
       }),
     },
-  ]
+  ];
 
-  const { formatted: formattedAmount } = calculateUnclaimedMerklRewards(rewards)
+  const { formatted: formattedAmount } = calculateUnclaimedMerklRewards(rewards);
   // Track only successful claim rewards
-  const status = TransactionStatus.SUCCESS
+  const status = TransactionStatus.SUCCESS;
 
   const result = await trackTransaction(
     {
@@ -111,15 +111,11 @@ export const claimMerklRewards = async (
         tokenAddress: ADDRESSES.fuse.vault,
       },
     },
-    () => executeTransactions(
-      smartAccountClient,
-      transactions,
-      'Failed to claim Merkl rewards',
-      chain,
-    )
+    () =>
+      executeTransactions(smartAccountClient, transactions, 'Failed to claim Merkl rewards', chain),
   );
 
-  const transaction = getTransaction(result)
+  const transaction = getTransaction(result);
 
   if (transaction === USER_CANCELLED_TRANSACTION) {
     const error = new Error('User cancelled transaction');
@@ -138,5 +134,5 @@ export const claimMerklRewards = async (
     throw error;
   }
 
-  return transaction
-}
+  return transaction;
+};
