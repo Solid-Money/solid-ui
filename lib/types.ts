@@ -2909,8 +2909,12 @@ export interface CardRefundDetails {
   chain_id?: number;
   /** `USD` (paid in USDC) or `EUR` (paid in EURC). Absent on refunds paid on Fuse. */
   payout_currency?: string;
-  /** Tokens sent, in `payout_currency` units. Absent on refunds paid on Fuse. */
-  payout_token_amount?: number;
+  /**
+   * Tokens sent, as an exact decimal string in `payout_currency` units ("15",
+   * "38.8"). A token amount: read it with `parseUnits`, never `parseFloat`.
+   * Absent on refunds paid on Fuse.
+   */
+  payout_token_amount?: string;
   /** One sentence explaining the deduction, when there is one to explain. */
   note?: string;
 }

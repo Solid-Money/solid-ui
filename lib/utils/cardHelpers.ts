@@ -1,3 +1,5 @@
+import { parseUnits } from 'viem';
+
 import { CARD_FROZEN_BY_SOLID_CODE } from '@/constants/errors';
 import {
   CardCollateralTokenBalanceDto,
@@ -540,16 +542,37 @@ export const cardRefundExplorerUrl = (
   }
 };
 
+/** EURC is 6-decimal on Base. */
+const EURC_DECIMALS = 6;
+
 /**
- * What reached the Safe for a refund, in the currency it was paid in: euros for
- * a EURC refund (a purchase paid in euros), dollars otherwise.
+ * What reached the Safe for a refund, formatted in the currency it was paid in:
+ * euros for a EURC refund (a purchase paid in euros), dollars otherwise.
+ *
+ * The EURC figure is a token amount, so it is read with `parseUnits` and
+ * rounded to the cent in bigint, half up: no float ever holds it. A refund
+ * without one (anything paid before the Base refund wallet, or in USDC) keeps
+ * the dollar figure it always showed.
  */
-export const cardRefundPaidAmount = (
+export const formatCardRefundPaid = (
   refund: CardRefundDetails,
-): { amount: number; currency: 'USD' | 'EUR' } =>
-  refund.payout_currency?.toUpperCase() === 'EUR' && typeof refund.payout_token_amount === 'number'
-    ? { amount: refund.payout_token_amount, currency: 'EUR' }
-    : { amount: refund.paid_usd, currency: 'USD' };
+  provider?: CardProvider | null,
+): string => {
+  const tokenAmount = refund.payout_token_amount?.trim();
+  if (refund.payout_currency?.toUpperCase() === 'EUR' && tokenAmount) {
+    try {
+      const units = parseUnits(tokenAmount, EURC_DECIMALS);
+      const negative = units < 0n;
+      const magnitude = negative ? -units : units;
+      const cents = (magnitude + 5_000n) / 10_000n;
+      const value = `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
+      return `${negative ? '-' : ''}${CURRENCY_SYMBOLS.EUR}${value}`;
+    } catch {
+      // Not a decimal string: fall through to the dollar figure rather than show nothing.
+    }
+  }
+  return formatCardAmount(String(refund.paid_usd), provider, 'USD');
+};
 
 /**
  * Currencies that read better as a leading symbol. Deliberately short: anything
