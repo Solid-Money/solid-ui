@@ -4281,6 +4281,14 @@ export interface TierOffer {
   tier: RewardsTier;
   /** FUSE that must be locked to hold this tier. */
   lockFuse: number;
+  /**
+   * FUSE still to lock to reach this tier, measured against what the lock is
+   * graded on (`lock.committedFuse`), not its live value. 0 once held.
+   *
+   * Optional because an older backend does not send it; `remainingFuseForTier`
+   * falls back to the live value then.
+   */
+  lockShortfallFuse?: number;
   /** Whether the lock route can be taken right now. */
   lockAvailable: boolean;
   /**
@@ -4303,6 +4311,12 @@ export interface TierLockState {
   /** Term a new lock carries, in days. */
   durationDays: number;
   lockedFuse: number;
+  /**
+   * What the tier is resolved from: each tranche at no less than it was worth
+   * when locked. Above `lockedFuse` while the soFUSE rate sits below a
+   * tranche's floor. Optional because an older backend does not send it.
+   */
+  committedFuse?: number;
   /** Raw locked soFUSE shares, as a decimal string. */
   lockedShares: string;
   unlockedTier: RewardsTier;

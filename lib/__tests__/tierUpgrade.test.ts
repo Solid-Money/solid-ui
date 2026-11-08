@@ -123,6 +123,22 @@ describe('remainingFuseForTier', () => {
     expect(remainingFuseForTier(offer(), 50_000)).toBe(0);
     expect(remainingFuseForTier(offer(), 60_000)).toBe(0);
   });
+
+  // The Oct 25 2026 case: live value 399,996.59 after a rate dip, graded at
+  // 399,999.57. The backend's shortfall is the one the tier is resolved from.
+  it("quotes the backend's graded shortfall over the live value", () => {
+    const ultra = offer({ lockFuse: 400_000, lockShortfallFuse: 0.4274 });
+
+    expect(remainingFuseForTier(ultra, 399_996.591)).toBe(0.4274);
+  });
+
+  it('trusts a zero shortfall from the backend', () => {
+    expect(remainingFuseForTier(offer({ lockShortfallFuse: 0 }), 49_999.8)).toBe(0);
+  });
+
+  it('falls back to the live value when an older backend sends none', () => {
+    expect(remainingFuseForTier(offer({ lockFuse: 400_000 }), 399_996.5)).toBeCloseTo(3.5, 6);
+  });
 });
 
 describe('availableRoutes', () => {

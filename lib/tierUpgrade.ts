@@ -90,9 +90,21 @@ export const fuseForShares = (shares: bigint, rate: bigint): number => {
  *
  * What is already locked counts, so topping up from Prime to Ultra asks for the
  * difference rather than for the whole thing again.
+ *
+ * The backend's figure when it sends one. The tier is resolved from what the
+ * lock is *graded* on — each tranche at no less than it was worth when locked —
+ * and that parts from the live `lockedFuse` whenever the soFUSE rate dips. On
+ * Oct 25 2026 this asked a user 0.43 FUSE short of Ultra for 3.41, because it
+ * subtracted the live value. `lockedFuse` is the fallback for an older backend.
  */
-export const remainingFuseForTier = (offer: TierOffer, lockedFuse: number): number =>
-  Math.max(0, offer.lockFuse - Math.max(0, lockedFuse));
+export const remainingFuseForTier = (offer: TierOffer, lockedFuse: number): number => {
+  const shortfall = offer.lockShortfallFuse;
+  if (typeof shortfall === 'number' && Number.isFinite(shortfall)) {
+    return Math.max(0, shortfall);
+  }
+
+  return Math.max(0, offer.lockFuse - Math.max(0, lockedFuse));
+};
 
 /** The routes a tier can actually be bought by right now, cheapest intent first. */
 export const availableRoutes = (offer: TierOffer | undefined): TierUpgradeRoute[] => {
