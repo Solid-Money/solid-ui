@@ -137,9 +137,8 @@ describe('You pay', () => {
   it('groups held coins from the swap list, euros with the dollars, and WFUSE with crypto', () => {
     expect(titles(sections)).toEqual([
       'Stablecoins: USDC, EURC, USDT',
-      'Earn: USD Yield, USD Yield on Base, ETH Yield on Fuse',
+      'Earn: USD Yield',
       'Crypto: ETH, FUSE, WFUSE',
-      'Can’t be swapped yet: USDC on Arbitrum, Fuse Bridged USDC (Deprecated), FUSE on Base',
     ]);
   });
 
@@ -155,22 +154,14 @@ describe('You pay', () => {
     expect(sections[2].rows[0].subtitle).toBe('On Base');
   });
 
-  it('shows every earn held, greying the ones withdrawn in Earn rather than swapped', () => {
-    const [swappable, ...withdrawn] = sections[1].rows;
-    expect(swappable.disabled).toBe(false);
-    expect(withdrawn.map(row => row.asset)).toEqual([usdYieldBase, ethYield]);
-    for (const row of withdrawn) {
-      expect(row.disabled).toBe(true);
-      expect(row.subtitle).toBe('Withdraw it in Earn instead');
+  it('leaves out holdings the swap can’t take: Earn shares withdrawn in Earn, other networks, old coins', () => {
+    const shown = sections.flatMap(section => section.rows.flatMap(row => row.members));
+    for (const unswappable of [usdYieldBase, usdcArbitrum, ethYield, oldUsdc, bridgedFuse]) {
+      expect(shown).not.toContain(unswappable);
     }
   });
 
-  it('greys out what the list leaves out', () => {
-    expect(sections[3].rows.every(row => row.disabled)).toBe(true);
-    expect(sections[3].rows[0].subtitle).toBe('Not on the swap list yet');
-  });
-
-  it('lists the rest of the swap list and Earn too, greyed, after what is held', () => {
+  it('leaves out what isn’t held, the rest of the list and Earn included', () => {
     const sections = payAssetSections(
       [
         asset('USDT', FUSE, 0),
@@ -178,21 +169,15 @@ describe('You pay', () => {
         asset('soFUSE', FUSE, 0),
         asset('soEURC', BASE, 0, { swappable: false }),
         usdYield,
+        notHeld,
       ],
       { chainName },
     );
-    expect(titles(sections)).toEqual([
-      'Stablecoins: USDC, USDT',
-      'Earn: USD Yield, FUSE Yield, EUR Yield',
-    ]);
-    const [usdc, usdt] = sections[0].rows;
-    expect(usdc.disabled).toBe(false);
-    expect(usdt).toMatchObject({ disabled: true, subtitle: 'Dollar coin' });
-    expect(sections[1].rows[1]).toMatchObject({ disabled: true, subtitle: 'Earn on FUSE' });
-    expect(sections[1].rows[2]).toMatchObject({
-      disabled: true,
-      subtitle: 'Deposit and withdraw it in Earn',
-    });
+    expect(titles(sections)).toEqual(['Stablecoins: USDC', 'Earn: USD Yield']);
+  });
+
+  it('shows nothing when nothing held can be swapped', () => {
+    expect(payAssetSections([usdcArbitrum, ethYield, notHeld], { chainName })).toEqual([]);
   });
 
   it('searches by product name and by symbol', () => {
@@ -224,40 +209,29 @@ describe('You get', () => {
     asset('VOLT', FUSE),
   ];
   const all = [...listed, ...unlisted];
-  /** What can be picked: the rows that aren't greyed. */
-  const offered = (...args: Parameters<typeof getAssetSections>) =>
-    getAssetSections(...args)
-      .map(section => ({ ...section, rows: section.rows.filter(row => !row.disabled) }))
-      .filter(section => section.rows.length > 0);
+  const offered = getAssetSections;
 
-  it('lists the whole swap list and Earn, greying what the paying coin can’t become', () => {
+  it('lists only what the paying coin can become, nothing off the swap list', () => {
     const from = find('USDC', FUSE);
-    const sections = getAssetSections(all, { from, reachable: null, chainName });
+    const sections = offered(all, { from, reachable: null, chainName });
     expect(titles(sections)).toEqual([
       'Stablecoins: USDC, USDT, EURC',
-      'Earn: USD Yield, FUSE Yield, ETH Yield',
+      'Earn: USD Yield, FUSE Yield',
       'Crypto: FUSE, WFUSE, ETH, WETH, cbBTC, WBTC, AAVE, ENA, SOL, UNI',
     ]);
     const row = (name: string) =>
       sections.flatMap(section => section.rows).find(candidate => candidate.name === name)!;
-    expect(row('EURC')).toMatchObject({
-      disabled: false,
-      subtitle: 'Euro coin · arrives on Base',
-    });
-    expect(row('ETH')).toMatchObject({ disabled: false, subtitle: 'Ether · arrives on Base' });
-    expect(row('ETH Yield')).toMatchObject({
-      disabled: true,
-      subtitle: 'Deposit it in Earn instead',
-    });
-    expect(row('FUSE').disabled).toBe(false);
+    expect(row('EURC').subtitle).toBe('Euro coin · arrives on Base');
+    expect(row('ETH').subtitle).toBe('Ether · arrives on Base');
   });
 
-  it('greys the coin being paid with when it is on no other network', () => {
+  it('leaves out the coin being paid with when it is on no other network', () => {
     const from = find('FUSE', FUSE);
-    const fuseRow = getAssetSections(all, { from, reachable: null, chainName })
-      .flatMap(section => section.rows)
-      .find(row => row.name === 'FUSE');
-    expect(fuseRow).toMatchObject({ disabled: true, subtitle: 'You’re paying with this' });
+    const names = offered(all, { from, reachable: null, chainName }).flatMap(section =>
+      section.rows.map(row => row.name),
+    );
+    expect(names).not.toContain('FUSE');
+    expect(names).toContain('WFUSE');
   });
 
   it('offers Base, Ethereum and BNB Chain coins for a Fuse coin, the Fuse one first', () => {
@@ -343,9 +317,9 @@ describe('You get', () => {
   it('keeps to the backend’s routes off Fuse once it has them, and offers Fuse whatever they say', () => {
     const from = find('ETH', BASE);
     const reachable = new Set([key(find('USDT', BASE)), key(find('EURC', ETHEREUM))]);
-    const sections = getAssetSections(all, { from, reachable, chainName });
+    const sections = offered(all, { from, reachable, chainName });
     const rows = sections.flatMap(section => section.rows);
-    expect(titles(offered(all, { from, reachable, chainName }))).toEqual([
+    expect(titles(sections)).toEqual([
       'Stablecoins: USDC, USDT, EURC',
       'Earn: USD Yield, FUSE Yield',
       'Crypto: FUSE, WFUSE',
@@ -355,23 +329,45 @@ describe('You get', () => {
     expect(row('USDC').members).toEqual([find('USDC', FUSE)]);
     expect(row('USDT').asset).toBe(find('USDT', BASE));
     expect(row('EURC').asset).toBe(find('EURC', ETHEREUM));
-    expect(row('WETH')).toMatchObject({ disabled: true, subtitle: 'Not with ETH on Base yet' });
+    expect(row('WETH')).toBeUndefined();
   });
 
-  it('offers every coin from a Fuse coin, whatever LI.FI’s route map says', () => {
+  it('keeps to the backend’s list off Fuse for a Fuse coin, and offers every Fuse coin', () => {
     const from = find('USDC', FUSE);
-    const reachable = new Set<string>();
+    // What a sponsored swap delivers off Fuse: USDC, ETH on Base, USDT off Base.
+    const reachable = new Set(
+      [
+        find('USDC', BASE),
+        find('USDC', ETHEREUM),
+        find('USDC', BSC),
+        find('USDT', ETHEREUM),
+        find('USDT', BSC),
+        find('ETH', BASE),
+      ].map(key),
+    );
     const sections = offered(all, { from, reachable, chainName });
     expect(titles(sections)).toEqual([
-      'Stablecoins: USDC, USDT, EURC',
+      'Stablecoins: USDC, USDT',
       'Earn: USD Yield, FUSE Yield',
-      'Crypto: FUSE, WFUSE, ETH, WETH, cbBTC, WBTC, AAVE, ENA, SOL, UNI',
+      'Crypto: FUSE, WFUSE, ETH',
     ]);
-    expect(sections[0].rows[0].members).toEqual([
-      find('USDC', BASE),
-      find('USDC', ETHEREUM),
-      find('USDC', BSC),
+    const [usdc, usdt] = sections[0].rows;
+    expect(usdc.members).toEqual([find('USDC', BASE), find('USDC', ETHEREUM), find('USDC', BSC)]);
+    expect(usdt.asset).toBe(find('USDT', FUSE));
+    expect(usdt.members).not.toContain(find('USDT', BASE));
+  });
+
+  it('offers only Fuse coins for a Fuse coin that can’t leave Fuse', () => {
+    const from = find('FUSE Yield', FUSE);
+    const sections = offered(all, { from, reachable: new Set<string>(), chainName });
+    expect(titles(sections)).toEqual([
+      'Stablecoins: USDC, USDT',
+      'Earn: USD Yield',
+      'Crypto: FUSE, WFUSE',
     ]);
+    for (const row of sections.flatMap(section => section.rows)) {
+      expect(row.members.every(member => member.chainId === FUSE)).toBe(true);
+    }
   });
 });
 
