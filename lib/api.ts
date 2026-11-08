@@ -143,6 +143,7 @@ import {
   RewardsTier,
   RewardsUserData,
   SavingsSummaryResponse,
+  SignedTurnkeyRequest,
   SourceDepositInstructions,
   StatementDownload,
   StatementFormat,
@@ -3224,7 +3225,25 @@ export const createBridgeTransfer = async (params: {
   return response.json();
 };
 
-export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
+/**
+ * Response of `verify-generic-otp`. From the SEC-010 backend on, a verified
+ * code no longer changes the email: `stepUpRequired` asks for the account's
+ * passkey to sign the change (see {@link confirmEmailChange}), carrying
+ * `verificationToken`. An older backend omits the flag and has already saved
+ * the address.
+ */
+export type VerifyGenericOtpResponse = {
+  success: boolean;
+  message?: string;
+  verificationToken: string;
+  stepUpRequired?: boolean;
+};
+
+export const verifyGenericOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+): Promise<VerifyGenericOtpResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -3242,6 +3261,39 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
         otpCode,
         email,
       }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
+/**
+ * Last step of an in-app email change. Hands the backend the Turnkey
+ * UPDATE_USER_EMAIL that the account's passkey just signed; the backend relays
+ * it to Turnkey and only saves the address once Turnkey accepts the signature,
+ * so a session token alone can never move the recovery email.
+ *
+ * `recoveryEmailHoldUntil` is when the new address can start an account
+ * recovery — a freshly changed one waits before it can.
+ */
+export const confirmEmailChange = async (
+  otpId: string,
+  signedRequest: SignedTurnkeyRequest,
+): Promise<{ success: boolean; email: string; recoveryEmailHoldUntil?: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/confirm-email-change`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ otpId, signedRequest }),
     },
   );
   const data = await response.json();

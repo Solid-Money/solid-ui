@@ -31,6 +31,16 @@ export const PASSKEY_ACCOUNT_NOT_FOUND_CODE = 'PASSKEY_ACCOUNT_NOT_FOUND';
  */
 export const EMAIL_DOMAIN_NOT_ALLOWED_CODE = 'EMAIL_DOMAIN_NOT_ALLOWED';
 
+/**
+ * The email change reached the backend without a valid passkey confirmation —
+ * or the verified code it belonged to has expired or was already used. The
+ * user has to request a new code.
+ */
+export const EMAIL_CHANGE_STEP_UP_REQUIRED_CODE = 'EMAIL_CHANGE_STEP_UP_REQUIRED';
+
+/** Turnkey did not accept the passkey's signature for the email change. */
+export const EMAIL_CHANGE_CONFIRM_FAILED_CODE = 'EMAIL_CHANGE_CONFIRM_FAILED';
+
 export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE =
   "This email provider isn't supported. Please use a different email address.";
 
