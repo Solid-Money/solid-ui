@@ -136,3 +136,35 @@ describe('ReferralFriendRow — a reward that will not pay the referrer', () => 
     expect(text).not.toContain('$25');
   });
 });
+
+describe('ReferralFriendRow — a paid reward that covered a reversed one', () => {
+  it('says how much of it went to what was owed', () => {
+    const text = textOf(
+      render(
+        row({
+          stage: ReferralFriendStage.PAID,
+          rewardUsd: 25,
+          debtOffsetUsd: 10,
+          payoutToken: 'soFUSE' as ReferralRewardListItem['payoutToken'],
+          payoutTokenAmount: '2010.12',
+        }),
+      ),
+    );
+
+    expect(text).toContain('$10 of this went to cover a reversed reward');
+  });
+
+  it('says when all of it did, and nothing was sent', () => {
+    const text = textOf(
+      render(row({ stage: ReferralFriendStage.PAID, rewardUsd: 25, debtOffsetUsd: 25 })),
+    );
+
+    expect(text).toContain('All of this went to cover a reversed reward');
+  });
+
+  it('stays quiet for a reward paid in full', () => {
+    const text = textOf(render(row({ stage: ReferralFriendStage.PAID, rewardUsd: 25 })));
+
+    expect(text).not.toContain('reversed reward');
+  });
+});

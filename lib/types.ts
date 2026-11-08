@@ -3807,6 +3807,13 @@ export interface ReferralRewardListItem {
   payoutTokenAmount?: string;
   /** Explorer link for the referrer's payout, once that leg is on chain. */
   payoutTxUrl?: string;
+  /**
+   * The part of this reward that went to cover what the user owed for an
+   * earlier reward reversed after it was paid, rather than being sent. When it
+   * is the whole reward, nothing was sent and there is no transfer to link.
+   * Absent when none was, and on older backends.
+   */
+  debtOffsetUsd?: number;
 }
 
 /**
@@ -3854,6 +3861,12 @@ export interface ReferralSummary {
   friendsPending: number;
   hasActiveCard: boolean;
   referrals: ReferralRewardListItem[];
+  /**
+   * What this user owes back for rewards reversed after they were paid —
+   * taken out of their next referral rewards, never out of their wallet. Null
+   * when nothing is owed; absent on older backends.
+   */
+  debt?: { remainingUsd: number; reversedCount: number } | null;
 }
 
 // ---------------------------------------------------------------------------
