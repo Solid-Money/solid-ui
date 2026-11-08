@@ -3260,6 +3260,10 @@ export const verifyGenericOtp = async (
         otpId,
         otpCode,
         email,
+        // This build finishes the change with a passkey (confirmEmailChange).
+        // The backend refuses builds that don't, before the code is spent:
+        // they would report success while the account kept its old address.
+        supportsPasskeyConfirmation: true,
       }),
     },
   );
