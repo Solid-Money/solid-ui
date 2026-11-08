@@ -285,6 +285,23 @@ export const formatFuseHeld = (amount: number): string => formatFuse(Math.floor(
 export const formatFuseShortfall = (amount: number): string => formatFuse(Math.ceil(amount));
 
 /**
+ * An amount about to be locked, to the cent and rounded UP.
+ *
+ * Whole FUSE is right for a tier's price and wrong for what a top-up commits:
+ * quoted against the graded value, a top-up is often a fraction of a FUSE, and
+ * `formatFuse` printed "0 FUSE" above a button that locks 1.10. Rounded up so
+ * the screen never shows less than what is locked; the epsilon keeps a whole
+ * amount whose float lands a hair over it from reading a cent high.
+ */
+export const formatFuseToLock = (amount: number): string => {
+  if (!Number.isFinite(amount) || amount <= 0) return '0';
+
+  return (Math.ceil(amount * 100 - 1e-9) / 100).toLocaleString('en-US', {
+    maximumFractionDigits: 2,
+  });
+};
+
+/**
  * A USD figure with cents: "$199.00".
  *
  * Renders nothing at all for a tier that is not sold for cash, which arrives as

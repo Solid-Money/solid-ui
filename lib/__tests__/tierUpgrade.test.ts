@@ -4,6 +4,7 @@ import {
   formatFuse,
   formatFuseHeld,
   formatFuseShortfall,
+  formatFuseToLock,
   formatLockDuration,
   formatMembershipDate,
   formatMembershipDay,
@@ -414,6 +415,19 @@ describe('formatting', () => {
     expect(formatFuseHeld(14_999.6)).toBe('14,999');
     expect(formatFuseHeld(15_000)).toBe('15,000');
     expect(formatFuseHeld(15_000.9)).toBe('15,000');
+  });
+
+  // A top-up quoted against the graded value is often under a FUSE; whole
+  // FUSE printed it as "0 FUSE" above a button that locks 1.10.
+  it('writes an amount to lock to the cent, rounded up', () => {
+    expect(formatFuseToLock(0.4274)).toBe('0.43');
+    expect(formatFuseToLock(1.104)).toBe('1.11');
+    expect(formatFuseToLock(349_855.2437758722)).toBe('349,855.25');
+    expect(formatFuseToLock(350_000)).toBe('350,000');
+    // Float noise over a whole amount does not read a cent high.
+    expect(formatFuseToLock(349_999.99999999994 + 6e-11)).toBe('350,000');
+    expect(formatFuseToLock(0)).toBe('0');
+    expect(formatFuseToLock(Number.NaN)).toBe('0');
   });
 
   it('rounds a shortfall up, so topping it up always clears it', () => {
