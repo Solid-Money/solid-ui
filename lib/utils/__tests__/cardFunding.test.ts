@@ -314,6 +314,23 @@ describe('resolveWirexMoveDestination', () => {
     };
     expect(resolveWirexMoveDestination(noEthereum, holding)).toEqual({ kind: 'none' });
   });
+
+  // As before rhino.fi: the card deposit address, which delivers to the Safe on
+  // Base, so what is already there stays put.
+  it('moves to the card deposit address while rhino.fi is off', () => {
+    const OFF: RhinoAssetsState = { status: 'disabled' };
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+      ['USDC', 'USDT'].forEach(symbol =>
+        expect(resolveWirexMoveDestination(OFF, { chainId, symbol })).toEqual({ kind: 'card' }),
+      ),
+    );
+    expect(resolveWirexMoveDestination(OFF, { chainId: base.id, symbol: 'USDC' })).toEqual({
+      kind: 'none',
+    });
+    expect(resolveWirexMoveDestination(OFF, { chainId: base.id, symbol: 'USDT' })).toEqual({
+      kind: 'card',
+    });
+  });
 });
 
 describe('getCardFundCryptoRows', () => {
@@ -329,6 +346,7 @@ describe('getCardFundCryptoRows', () => {
     expect(getCardFundCryptoRows({ status: 'ready', assets: RHINO_ASSETS }, true)).toEqual([]);
     expect(getCardFundCryptoRows({ status: 'loading' }, true)).toEqual([]);
     expect(getCardFundCryptoRows({ status: 'unavailable' }, true)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'disabled' }, true)).toEqual([]);
   });
 
   // As in the wallet: the internal team in production, everyone on qa.

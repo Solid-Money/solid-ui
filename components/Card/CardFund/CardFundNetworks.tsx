@@ -17,6 +17,7 @@ import {
   useRhinoNetworkRows,
 } from '@/hooks/useRhinoDepositAssets';
 import {
+  getRhinoAssetsNotice,
   getRhinoListNotice,
   isOfferedRhinoRow,
   RHINO_NETWORK_CHIP,
@@ -73,9 +74,10 @@ const CardFundNetworks = ({
   // A token with no row of the list's own (BTC, only Bitcoin takes) waits on
   // rhino.fi's routes all the same; and a list "More networks" adds to under it
   // is not empty.
+  const rhinoNotice = getRhinoAssetsNotice(rhinoStatus);
   const notice =
-    !networks.length && rhinoStatus !== 'ready'
-      ? rhinoStatus
+    !networks.length && rhinoNotice
+      ? rhinoNotice
       : listNotice === 'empty' && extraNetworks.length
         ? undefined
         : listNotice;

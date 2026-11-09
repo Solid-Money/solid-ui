@@ -12,6 +12,7 @@ import {
   formatDepositAddress,
   formatRhinoUsdLimits,
   getRhinoAddressErrorBody,
+  getRhinoAssetsNotice,
   getRhinoAssetsState,
   getRhinoChainNote,
   getRhinoChainsForDestination,
@@ -160,13 +161,50 @@ describe('getRhinoAssetsState', () => {
     );
   });
 
-  it('is unavailable when the request failed or rhino.fi is off', () => {
+  it('is unavailable when the request failed', () => {
     expect(getRhinoAssetsState(undefined, { isFetching: false, isError: true })).toEqual({
       status: 'unavailable',
     });
-    expect(getRhinoAssetsState({ enabled: false, chains: [] }, idle)).toEqual({
-      status: 'unavailable',
-    });
+    expect(
+      getRhinoAssetsState(undefined, {
+        isFetching: false,
+        isError: true,
+        error: { status: 503 },
+      }),
+    ).toEqual({ status: 'unavailable' });
+  });
+
+  // The backend answers `enabled: false` without a rhino.fi key: asking again
+  // gets the same answer, so it is not a failure to retry.
+  it('is disabled when the backend has rhino.fi off, even while a refresh is out', () => {
+    const OFF = { enabled: false, chains: [] };
+    expect(getRhinoAssetsState(OFF, idle)).toEqual({ status: 'disabled' });
+    expect(getRhinoAssetsState(OFF, { isFetching: true, isError: false }).status).toBe('disabled');
+    expect(getRhinoAssetsState(OFF, { isFetching: false, isError: true }).status).toBe('disabled');
+  });
+
+  // A backend from before rhino.fi has no such endpoint.
+  it('is disabled when the backend has no rhino.fi endpoint', () => {
+    expect(
+      getRhinoAssetsState(undefined, { isFetching: false, isError: true, error: { status: 404 } }),
+    ).toEqual({ status: 'disabled' });
+    // Not from an error the query has since got past.
+    expect(
+      getRhinoAssetsState(ASSETS, { isFetching: false, isError: false, error: { status: 404 } })
+        .status,
+    ).toBe('ready');
+  });
+});
+
+describe('getRhinoAssetsNotice', () => {
+  it('waits while the routes are out, and offers a retry when they cannot be had', () => {
+    expect(getRhinoAssetsNotice('loading')).toBe('loading');
+    expect(getRhinoAssetsNotice('unavailable')).toBe('unavailable');
+  });
+
+  it('says nothing once they are in, or when rhino.fi is off', () => {
+    expect(getRhinoAssetsNotice('ready')).toBeUndefined();
+    expect(getRhinoAssetsNotice('disabled')).toBeUndefined();
   });
 });
 
@@ -641,6 +679,7 @@ describe('resolveRhinoRow', () => {
   const READY: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS };
   const LOADING: RhinoAssetsState = { status: 'loading' };
   const UNAVAILABLE: RhinoAssetsState = { status: 'unavailable' };
+  const DISABLED: RhinoAssetsState = { status: 'disabled' };
   const row = (chainId: number) => ({
     chainId,
     destinationType: 'PROTOCOL' as const,
@@ -649,9 +688,23 @@ describe('resolveRhinoRow', () => {
   });
 
   it('keeps Fuse our own, whatever the state of rhino.fi', () => {
-    [READY, LOADING, UNAVAILABLE].forEach(state =>
+    [READY, LOADING, UNAVAILABLE, DISABLED].forEach(state =>
       expect(resolveRhinoRow(state, row(fuse.id))).toEqual({ kind: 'own' }),
     );
+  });
+
+  // As before rhino.fi: the screen's own address on every row, with no retry.
+  it('serves every row through our own pipeline while rhino.fi is off', () => {
+    [mainnet.id, polygon.id, base.id, arbitrum.id, optimism.id, bsc.id].forEach(chainId => {
+      expect(resolveRhinoRow(DISABLED, row(chainId))).toEqual({ kind: 'own' });
+      expect(
+        resolveRhinoRow(DISABLED, { chainId, destinationType: 'RAIN_CARD', symbol: 'USDC' }),
+      ).toEqual({ kind: 'own' });
+      expect(
+        resolveRhinoRow(DISABLED, { chainId, destinationType: 'WALLET', symbol: 'ETH' }),
+      ).toEqual({ kind: 'own' });
+    });
+    expect(getRhinoListNotice([resolveRhinoRow(DISABLED, row(polygon.id))])).toBeUndefined();
   });
 
   it('serves every other row through rhino.fi where it has a route', () => {

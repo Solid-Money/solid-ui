@@ -10,17 +10,19 @@ export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
 
 /**
  * Our own address for a (chain, currency) pairing on the deposit screen: only
- * for a row that is ours (`enabled`) — Fuse, USDT on Base, or Base for a
- * currency rhino.fi does not take. Every other row is rhino.fi's, and this
- * hands out nothing for it — not the Safe, and no minted address.
+ * for a row that is ours (`enabled`) — Fuse, USDT on Base, Base for a currency
+ * rhino.fi does not take, and every row while the backend has rhino.fi off
+ * (`rhinoOff`). Every other row is rhino.fi's, and this hands out nothing for
+ * it — not the Safe, and no minted address.
  *
  * Which of ours is `getWalletOwnAddress`'s to say:
  *
  * - A minted address (`createDirectDepositSession`), watched, so the transfer
  *   is detected, credited and recorded as activity: a Wirex cardholder's
  *   dollars on Fuse, as a `RAIN_CARD` session the backend delivers to their
- *   Safe on Fuse. That is historical naming: the backend resolves the issuer,
- *   which is why it is Wirex's alone.
+ *   Safe on Fuse (historical naming: the backend resolves the issuer, which is
+ *   why it is Wirex's alone); and, while rhino.fi is off, USDC and USDT off
+ *   Base as a `WALLET` session the backend bridges to the Safe on Base.
  * - The Safe, everywhere else it is offered, where the deposit lands as sent.
  *
  * Minting a session is a POST, so a failure is not retried into a loop; the
@@ -30,11 +32,11 @@ export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
 export const useWalletDepositAddress = (
   chainId: number,
   symbol: string,
-  { enabled = true }: { enabled?: boolean } = {},
+  { enabled = true, rhinoOff = false }: { enabled?: boolean; rhinoOff?: boolean } = {},
 ) => {
   const { user } = useUser();
   const { provider } = useCardProvider();
-  const own = enabled ? getWalletOwnAddress(chainId, symbol, provider) : undefined;
+  const own = enabled ? getWalletOwnAddress(chainId, symbol, provider, { rhinoOff }) : undefined;
   const sessionDestination = own?.kind === 'session' ? own.destinationType : undefined;
 
   const { data, isLoading, isError } = useQuery({

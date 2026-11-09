@@ -24,8 +24,10 @@ type RhinoNetworksNoticeProps = {
 /**
  * Stands in a network list for the rows rhino.fi serves while they cannot be
  * offered: a loader until `/deposit/rhino/assets` answers, then a retry if it
- * failed or rhino.fi is off. Never an address of our own in their place, which
- * is the point. Also the empty state, for a token no row takes right now.
+ * failed. Never an address of our own in their place, which is the point. Not
+ * shown when the backend has rhino.fi off: every row is then ours, and there is
+ * nothing a retry could change. Also the empty state, for a token no row takes
+ * right now.
  */
 const RhinoNetworksNotice = ({
   notice,

@@ -143,6 +143,29 @@ describe('CardFundNetworks', () => {
     ).toBeGreaterThan(0);
   });
 
+  // The backend answers `enabled: false` without a rhino.fi key: every row is
+  // the card deposit address again, as before rhino.fi, and nothing to retry.
+  it('offers every row as our own, with no retry, while rhino.fi is off', () => {
+    mockRhino.current = { status: 'disabled', retry: mockRetry };
+    render();
+
+    expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
+    rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_NETWORK_CHIP));
+    expect(texts()).not.toContain('Couldn’t load the other networks.');
+    expect(root.root.findAllByType('Button')).toHaveLength(0);
+    act(() => root.unmount());
+
+    // USDT too, on every row our pipeline lists it on.
+    render('USDT');
+    expect(titles()).toEqual(['Polygon', 'Arbitrum', 'Fuse']);
+    act(() => root.unmount());
+
+    // BTC has no row of ours: nothing to offer, and no retry over it.
+    render('BTC');
+    expect(rows()).toHaveLength(0);
+    expect(root.root.findAllByType('Button')).toHaveLength(0);
+  });
+
   it('offers only Fuse, with a retry for the rest, when the routes cannot be had', () => {
     mockRhino.current = { status: 'unavailable', retry: mockRetry };
     render();

@@ -26,7 +26,11 @@ import type {
  *   `OWN_PIPELINE_TOKEN_CHAINS` (USDT on Base), which rhino.fi is not trusted to
  *   accept there.
  * - Every other row waits for `/deposit/rhino/assets`, and is unavailable when
- *   that fails or says rhino.fi is off (see `resolveRhinoRow`).
+ *   that fails (see `resolveRhinoRow`).
+ * - When the backend has rhino.fi off (`enabled: false`, as it answers without
+ *   an API key, or a backend that predates the endpoint), every row is our own
+ *   pipeline's again, as before rhino.fi: there is nothing to retry, and our
+ *   own addresses are what the backend is serving (see `RhinoAssetsState`).
  * - Under a screen's own rows, "More networks": the chains rhino.fi serves that
  *   the app has no row for (Tron, Solana, Avalanche, …), for the screen's token
  *   and destination only (see `getRhinoExtraChains`).
@@ -151,28 +155,54 @@ export const isRhinoDepositOffered = (
   typeof assets === 'object' && assets !== null && assets.enabled === true;
 
 /**
- * Where a screen stands on `/deposit/rhino/assets`: still waiting for it,
- * `ready` with rhino.fi on, or `unavailable`, because the request failed or the
- * backend has rhino.fi off. Only `ready` carries the assets.
+ * Where a screen stands on `/deposit/rhino/assets`:
+ *
+ * - `loading`: still waiting for it;
+ * - `ready`: rhino.fi is on, with its routes. Only this state carries them;
+ * - `unavailable`: the request failed, so which rows rhino.fi serves is not
+ *   known. The screens offer a retry;
+ * - `disabled`: the backend has rhino.fi off, so every row is our own
+ *   pipeline's, as it was before rhino.fi. Nothing to retry: asking again gets
+ *   the same answer until the backend is configured.
  */
 export type RhinoAssetsState =
-  | { status: 'loading' | 'unavailable'; assets?: undefined }
+  | { status: 'loading' | 'unavailable' | 'disabled'; assets?: undefined }
   | { status: 'ready'; assets: RhinoDepositAssetsResponse };
 
 /**
- * The state of the assets query, from what react-query reports. An answer with
- * rhino.fi on is used even while a refresh is out, so a background refetch
- * never takes the rows away; anything else being asked again (the first time,
- * or a retry) is waiting, whatever came before.
+ * Whether the backend says rhino.fi is off: it answered `enabled: false` (no
+ * API key configured), or it has no such endpoint at all (404, a backend that
+ * predates rhino.fi). Either way it is serving our own addresses alone.
+ */
+const isRhinoDepositOff = (data: RhinoDepositAssetsResponse | undefined, error: unknown): boolean =>
+  (typeof data === 'object' && data !== null && data.enabled === false) ||
+  (error as { status?: number } | null | undefined)?.status === 404;
+
+/**
+ * The state of the assets query, from what react-query reports. An answer
+ * either way is kept while a refresh is out, so a background refetch never
+ * takes the rows away; anything else being asked again (the first time, or a
+ * retry) is waiting, whatever came before.
  */
 export const getRhinoAssetsState = (
   data: RhinoDepositAssetsResponse | undefined,
-  { isFetching, isError }: { isFetching: boolean; isError: boolean },
+  { isFetching, isError, error }: { isFetching: boolean; isError: boolean; error?: unknown },
 ): RhinoAssetsState => {
   if (isRhinoDepositOffered(data)) return { status: 'ready', assets: data };
+  if (isRhinoDepositOff(data, isError ? error : undefined)) return { status: 'disabled' };
   if (isFetching || (!data && !isError)) return { status: 'loading' };
   return { status: 'unavailable' };
 };
+
+/**
+ * What a screen shows in place of rhino.fi's rows for a state of its routes: a
+ * loader while they are out, a retry when they cannot be had, and nothing once
+ * they are in or rhino.fi is off (every row is then ours, and shows itself).
+ */
+export const getRhinoAssetsNotice = (
+  status: RhinoAssetsState['status'],
+): Extract<RhinoListNotice, 'loading' | 'unavailable'> | undefined =>
+  status === 'loading' || status === 'unavailable' ? status : undefined;
 
 const routeMatches = (route: RhinoDepositRoute, filter: RhinoRouteFilter): boolean =>
   route.destinationType === filter.destinationType &&
@@ -339,11 +369,12 @@ export const getRhinoSelectionForRow = (
  *   on Fuse, as it always was, and for a token our pipeline still takes on
  *   that chain for that destination (`isOwnPipelineToken`: USDT on Base to the
  *   wallet or the card), whatever rhino.fi lists and whether or not its routes
- *   are in. The screen decides the address: the card's `RAIN_CARD` session, or
- *   for the wallet the Safe;
+ *   are in; and on every row while the backend has rhino.fi off. The screen
+ *   decides the address: the card's `RAIN_CARD` session, savings' `PROTOCOL`
+ *   one, or for the wallet `getWalletOwnAddress`'s;
  * - `rhino`: the rhino.fi address for `selection`;
  * - `loading`: not known until the assets arrive, so not offered yet;
- * - `unavailable`: the assets failed, or rhino.fi is off, so it cannot be offered;
+ * - `unavailable`: the assets failed, so it cannot be offered;
  * - `none`: rhino.fi has no route for it, so the row is not shown.
  *
  * Only `own` and `rhino` rows have an address; nothing else may be picked, and
@@ -360,7 +391,9 @@ export type RhinoRowState =
 export const resolveRhinoRow = (state: RhinoAssetsState, row: RhinoRowFilter): RhinoRowState => {
   if (
     isOwnPipelineChain(row.chainId) ||
-    isOwnPipelineToken(row.symbol, row.destinationType, row.chainId)
+    isOwnPipelineToken(row.symbol, row.destinationType, row.chainId) ||
+    // rhino.fi is off: our own pipeline serves every row, as before rhino.fi.
+    state.status === 'disabled'
   ) {
     return { kind: 'own' };
   }

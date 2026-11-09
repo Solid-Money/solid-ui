@@ -1,7 +1,10 @@
+import { base } from 'viem/chains';
+
 import { BRIDGE_TOKENS, EURC_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
 import {
   findRhinoRoute,
   getRhinoExtraChains,
+  isOwnPipelineToken,
   resolveRhinoRow,
   RhinoAssetsState,
   RhinoDepositSelection,
@@ -236,7 +239,8 @@ export const getCardFundRhinoDestination = (
  * deposit of that token on that chain would use:
  *
  * - `card`: the card deposit address (a `RAIN_CARD` session), for an own row —
- *   Fuse, and USDT on Base, which our own pipeline keeps;
+ *   Fuse, and USDT on Base, which our own pipeline keeps; and every row off
+ *   Base while the backend has rhino.fi off;
  * - `rhino`: the user's rhino.fi address for the row, with rhino.fi's limits —
  *   its wallet route, paying the Safe on Base (USDT as USDC);
  * - `loading` / `unavailable`: rhino.fi's routes are not in, or cannot be had;
@@ -259,12 +263,22 @@ export const resolveWirexMoveDestination = (
   rhino: RhinoAssetsState,
   holding: { chainId: number; symbol: string },
 ): WirexMoveDestination => {
+  const destinationType = getCardFundRhinoDestination(holding.symbol, CardProvider.WIREX);
   const row = resolveRhinoRow(rhino, {
     chainId: holding.chainId,
-    destinationType: getCardFundRhinoDestination(holding.symbol, CardProvider.WIREX),
+    destinationType,
     symbol: holding.symbol,
   });
-  if (row.kind === 'own') return { kind: 'card' };
+  if (row.kind === 'own') {
+    // With rhino.fi off every row is ours, and the card deposit address
+    // delivers a Wirex cardholder's dollars to their Safe on Base: one already
+    // there has nothing to move, as when rhino.fi would deliver it.
+    const isAlreadyDelivered =
+      rhino.status === 'disabled' &&
+      holding.chainId === base.id &&
+      !isOwnPipelineToken(holding.symbol, destinationType, holding.chainId);
+    return isAlreadyDelivered ? { kind: 'none' } : { kind: 'card' };
+  }
   if (row.kind !== 'rhino') return row;
 
   const found = findRhinoRoute(rhino.assets, row.selection);
