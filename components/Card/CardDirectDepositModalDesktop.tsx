@@ -50,7 +50,6 @@ import {
   getRhinoListNotice,
   isOfferedRhinoRow,
   resolveRhinoRow,
-  RHINO_NETWORK_CHIP,
   RhinoDepositSelection,
 } from '@/lib/rhinoDeposit';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
@@ -135,16 +134,14 @@ const CardWalletNetworks = ({
     <View className="min-h-[33rem] gap-y-2">
       <Text className="text-[1rem] font-medium text-muted-foreground">Choose a network</Text>
       <View className="gap-y-1.5">
-        {offered.map(({ row: { chainId, network }, state }) => {
+        {offered.map(({ row: { chainId, network } }) => {
           const estimatedDesc =
             chainId === 1 ? 'Estimated speed: 5 min' : 'Estimated speed: 20 min';
           return (
             <DepositNetwork
               key={network.name}
               name={network.name}
-              description={
-                state.kind === 'rhino' ? `${estimatedDesc} · ${RHINO_NETWORK_CHIP}` : estimatedDesc
-              }
+              description={estimatedDesc}
               icon={network.icon}
               isComingSoon={network.isComingSoon}
               onPress={() => onSelect(chainId)}
@@ -417,10 +414,10 @@ export default function CardDirectDepositModal({
   );
 
   // Direct-deposit path: pick the chain the stablecoin is sent from.
-  // rhino.fi on every row but Fuse's and USDT's: a row it has a card route from
-  // shows the rhino.fi address, and only an own row (Fuse, or USDT our pipeline
-  // carries) mints a direct-deposit session. The list offers nothing else, and
-  // nothing else is acted on here either.
+  // rhino.fi on every row but Base's and Fuse's: a row it has a card route from
+  // shows the rhino.fi address, and only an own row (Base, where rhino.fi pays
+  // the card out, and Fuse) mints a direct-deposit session. The list offers
+  // nothing else, and nothing else is acted on here either.
   const handleDirectNetworkSelect = useCallback(
     (chainId: number) => {
       const row = resolveRhinoRow(rhinoAssets, {

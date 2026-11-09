@@ -1,6 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, fuse, polygon } from 'viem/chains';
 
 import { useOfferedRhinoDepositAssets, useRhinoNetworkRows } from '@/hooks/useRhinoDepositAssets';
 import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
@@ -18,7 +18,7 @@ jest.mock('@/hooks/useDepositTokensAccess', () => ({
 
 const mockGetAssets = getRhinoDepositAssets as jest.MockedFunction<typeof getRhinoDepositAssets>;
 
-const ROWS = [{ chainId: mainnet.id }, { chainId: polygon.id }, { chainId: fuse.id }];
+const ROWS = [{ chainId: arbitrum.id }, { chainId: polygon.id }, { chainId: fuse.id }];
 
 type Seen = {
   offered: ReturnType<typeof useOfferedRhinoDepositAssets>;
@@ -142,7 +142,7 @@ describe('useRhinoNetworkRows', () => {
 
     expect(kinds()).toEqual(['rhino', 'none', 'own']);
     expect(latest().rows.rows[0].state).toMatchObject({
-      selection: { chain: 'ETHEREUM', chainId: mainnet.id, vault: 'soETH' },
+      selection: { chain: 'ARBITRUM', chainId: arbitrum.id, vault: 'soETH' },
     });
   });
 

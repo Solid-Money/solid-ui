@@ -3,10 +3,12 @@ import { arbitrum, base, fuse, polygon } from 'viem/chains';
 
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
-import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
+
+/** The provider tag rows no longer carry. */
+const RHINO_TAG = 'via rhino.fi';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -110,14 +112,16 @@ afterEach(() => {
 });
 
 describe('CardFundNetworks', () => {
-  it('marks every row rhino.fi serves, Base included, and keeps Fuse our own', () => {
+  // rhino.fi pays the card out on Base: a deposit sent there would only be paid
+  // back to Base, so Base is the card deposit address, as before rhino.fi.
+  it('lists every row with an address, none tagged with its provider', () => {
     render();
 
     expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
     const chips = Object.fromEntries(rows().map((row: any) => [row.props.title, row.props.chips]));
-    expect(chips.Polygon).toContain(RHINO_NETWORK_CHIP);
-    expect(chips.Base).toContain(RHINO_NETWORK_CHIP);
-    expect(chips.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+    expect(chips.Polygon).not.toContain(RHINO_TAG);
+    expect(chips.Base).not.toContain(RHINO_TAG);
+    expect(chips.Fuse).not.toContain(RHINO_TAG);
   });
 
   it('leaves out a row rhino.fi has no card route from', () => {
@@ -133,11 +137,11 @@ describe('CardFundNetworks', () => {
     expect(titles()).toEqual(['Polygon', 'Base', 'Fuse']);
   });
 
-  it('offers only Fuse, with a loader for the rest, until rhino.fi’s routes are in', () => {
+  it('offers only Base and Fuse, with a loader for the rest, until rhino.fi’s routes are in', () => {
     mockRhino.current = { status: 'loading', retry: mockRetry };
     render();
 
-    expect(titles()).toEqual(['Fuse']);
+    expect(titles()).toEqual(['Base', 'Fuse']);
     expect(
       root.root.findAll((node: any) => node.props.accessibilityLabel === 'Loading networks').length,
     ).toBeGreaterThan(0);
@@ -150,7 +154,7 @@ describe('CardFundNetworks', () => {
     render();
 
     expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
-    rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_NETWORK_CHIP));
+    rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_TAG));
     expect(texts()).not.toContain('Couldn’t load the other networks.');
     expect(root.root.findAllByType('Button')).toHaveLength(0);
     act(() => root.unmount());
@@ -166,22 +170,22 @@ describe('CardFundNetworks', () => {
     expect(root.root.findAllByType('Button')).toHaveLength(0);
   });
 
-  it('offers only Fuse, with a retry for the rest, when the routes cannot be had', () => {
+  it('offers only Base and Fuse, with a retry for the rest, when the routes cannot be had', () => {
     mockRhino.current = { status: 'unavailable', retry: mockRetry };
     render();
 
-    expect(titles()).toEqual(['Fuse']);
+    expect(titles()).toEqual(['Base', 'Fuse']);
     expect(texts()).toContain('Couldn’t load the other networks.');
     act(() => root.root.findByType('Button').props.onPress());
     expect(mockRetry).toHaveBeenCalled();
   });
 
-  // No card route takes EURC; the card address delivered it to the Safe on Base,
-  // which is what rhino.fi's wallet route pays.
-  it('takes EURC through rhino.fi’s wallet route', () => {
+  // EURC is offered on Base alone, where the card address delivers it to the
+  // Safe on Base as EURC: our own, never rhino.fi's.
+  it('takes EURC on Base through our own card address', () => {
     render('EURC');
     expect(titles()).toEqual(['Base']);
-    expect(rows()[0].props.chips).toContain(RHINO_NETWORK_CHIP);
+    expect(rows()[0].props.chips).not.toContain(RHINO_TAG);
   });
 
   // BTC has no row of the list's own: Bitcoin, under "More networks", alone.
@@ -216,8 +220,7 @@ describe('CardFundNetworks', () => {
     expect(texts()).toContain('No network takes BTC right now.');
   });
 
-  // Not Base, nor Solana under "More networks": nowhere at all.
-  it('says so when no row takes the token', () => {
+  it('keeps EURC on Base whatever rhino.fi lists, and so is never empty', () => {
     mockRhino.current = {
       ...READY,
       assets: {
@@ -229,22 +232,7 @@ describe('CardFundNetworks', () => {
     };
     render('EURC');
 
-    expect(rows()).toHaveLength(0);
-    expect(texts()).toContain('No network takes EURC right now.');
-  });
-
-  // "No network takes EURC" over a list that has Solana would contradict it.
-  it('says nothing is empty when "More networks" takes the token', () => {
-    mockRhino.current = {
-      ...READY,
-      assets: {
-        ...RHINO_ASSETS,
-        chains: RHINO_ASSETS.chains.filter(chain => chain.chain !== 'BASE'),
-      },
-    };
-    render('EURC');
-
-    expect(rows()).toHaveLength(0);
+    expect(titles()).toEqual(['Base']);
     expect(texts()).not.toContain('No network takes EURC right now.');
   });
 
@@ -258,9 +246,9 @@ describe('CardFundNetworks', () => {
       const chips = Object.fromEntries(
         rows().map((row: any) => [row.props.title, row.props.chips]),
       );
-      expect(chips.Polygon).toContain(RHINO_NETWORK_CHIP);
-      expect(chips.Arbitrum).toContain(RHINO_NETWORK_CHIP);
-      expect(chips.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+      expect(chips.Polygon).not.toContain(RHINO_TAG);
+      expect(chips.Arbitrum).not.toContain(RHINO_TAG);
+      expect(chips.Fuse).not.toContain(RHINO_TAG);
       act(() => root.unmount());
       root = undefined;
     });
@@ -309,6 +297,6 @@ describe('CardFundNetworks', () => {
     act(() => root.unmount());
 
     render('USDC', CardProvider.RAIN);
-    expect(titles()).toEqual(['Fuse']);
+    expect(titles()).toEqual(['Base', 'Fuse']);
   });
 });

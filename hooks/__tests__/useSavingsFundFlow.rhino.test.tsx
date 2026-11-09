@@ -88,15 +88,14 @@ afterEach(() => {
 });
 
 describe('useSavingsFundFlow, rhino.fi on every row but Fuse', () => {
-  // Ethereum is where soUSD pays out, and goes through rhino.fi like any other row.
   it('shows the rhino.fi address for a row rhino.fi serves, minting no session', async () => {
     mount();
-    act(() => flow().selectNetwork(mainnet.id, 'USDC'));
+    act(() => flow().selectNetwork(polygon.id, 'USDC'));
     await settle();
 
     expect(mockStore.setRhinoDeposit).toHaveBeenLastCalledWith({
-      chain: 'ETHEREUM',
-      chainId: mainnet.id,
+      chain: 'MATIC_POS',
+      chainId: polygon.id,
       tokenSymbol: 'USDC',
       destinationType: 'PROTOCOL',
       vault: 'soUSD',
@@ -105,7 +104,20 @@ describe('useSavingsFundFlow, rhino.fi on every row but Fuse', () => {
     expect(mockStore.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
     expect(track).toHaveBeenCalledWith(
       TRACKING_EVENTS.NETWORK_SELECTED,
-      expect.objectContaining({ chain_id: mainnet.id, via_rhino: true }),
+      expect.objectContaining({ chain_id: polygon.id, via_rhino: true }),
+    );
+  });
+
+  // Ethereum is where soUSD pays out: rhino.fi would only pay the USDC back
+  // there, so our own savings address puts it in the vault directly.
+  it('mints our own savings session for USDC on the vault’s chain', async () => {
+    mount();
+    act(() => flow().selectNetwork(mainnet.id, 'USDC'));
+    await settle();
+
+    expect(mockCreateSession).toHaveBeenCalledWith(mainnet.id, 'USDC', 'PROTOCOL');
+    expect(mockStore.setRhinoDeposit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ chainId: mainnet.id }),
     );
   });
 

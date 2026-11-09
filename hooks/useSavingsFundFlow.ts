@@ -42,10 +42,11 @@ const describeSessionError = (error: unknown): string => {
  * three screens - which the deposit modal renders without props - all read the
  * same state, and closing the modal clears it with the rest of the flow.
  *
- * rhino.fi is the provider on every row but Fuse, USDT included (its soUSD route
- * takes USDT as USDC): the address step for those is the user's rhino.fi
- * address (`rhinoDeposit`), as it is for a "More networks" chain, and a
- * direct-deposit session is only ever minted for a Fuse row.
+ * rhino.fi is the provider on every row but Fuse's and the vault's own (its
+ * chain, as the token the vault takes: USDC on Ethereum for soUSD), USDT
+ * included (its soUSD route takes USDT as USDC): the address step for those is
+ * the user's rhino.fi address (`rhinoDeposit`), as it is for a "More networks"
+ * chain, and a direct-deposit session is only ever minted for an own row.
  */
 export const useSavingsFundFlow = () => {
   const router = useRouter();

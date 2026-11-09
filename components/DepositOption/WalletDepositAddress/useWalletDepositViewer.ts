@@ -10,7 +10,7 @@ import { WalletDepositViewer } from './constants';
  * Who the deposit screen is for, as its lists need it: the card issuer, which
  * decides EURC and where stablecoins go, whether the tokens still being rolled
  * out are offered (`useDepositTokensAccess`), and rhino.fi's routes, which
- * decide every row but Fuse's.
+ * decide every row but Base's and Fuse's.
  */
 export const useWalletDepositViewer = (): WalletDepositViewer => {
   const { provider } = useCardProvider();

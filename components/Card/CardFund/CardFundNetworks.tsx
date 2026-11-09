@@ -20,7 +20,6 @@ import {
   getRhinoAssetsNotice,
   getRhinoListNotice,
   isOfferedRhinoRow,
-  RHINO_NETWORK_CHIP,
   RhinoDepositSelection,
 } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
@@ -36,9 +35,8 @@ type CardFundNetworksProps = {
    */
   cardProvider: CardProvider;
   /**
-   * One of the rows listed, which always has an address: rhino.fi's (marked
-   * "via rhino.fi") on every chain but Fuse, our own session on Fuse and for
-   * USDT. Every host shows the address of the row picked, and nothing else.
+   * One of the rows listed, which always has an address: rhino.fi's on every
+   * chain but Base and Fuse, our own session on Base and Fuse. Every host shows the address of the row picked, and nothing else.
    */
   onSelect: (chainId: number) => void;
   /** A "More networks" chain from the group under the list. */
@@ -86,16 +84,12 @@ const CardFundNetworks = ({
     <View className="gap-y-4">
       {offered.length ? (
         <CardFundGroup>
-          {offered.map(({ row: network, state }) => (
+          {offered.map(({ row: network }) => (
             <CardFundRow
               key={network.chainId}
               icon={<Image source={network.icon} style={NETWORK_ICON_STYLE} contentFit="cover" />}
               title={network.name}
-              chips={
-                state.kind === 'rhino'
-                  ? [CARD_FUND_ESTIMATED_TIME, RHINO_NETWORK_CHIP]
-                  : [CARD_FUND_ESTIMATED_TIME]
-              }
+              chips={[CARD_FUND_ESTIMATED_TIME]}
               chipsPosition="inline"
               onPress={() => onSelect(network.chainId)}
               disabled={

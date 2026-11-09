@@ -271,10 +271,10 @@ export default function CardDirectDepositModalMobile({
     [goToStep],
   );
 
-  // rhino.fi on every row but Fuse's and USDT's: a row it has a card route from
-  // shows the rhino.fi address, and only an own row (Fuse, or USDT our pipeline
-  // carries) mints a direct-deposit session. Nothing else has an address, so
-  // nothing else is opened here; says whether the address step was.
+  // rhino.fi on every row but Base's and Fuse's: a row it has a card route from
+  // shows the rhino.fi address, and only an own row (Base, where rhino.fi pays
+  // the card out, and Fuse) mints a direct-deposit session. Nothing else has an
+  // address, so nothing else is opened here; says whether the address step was.
   const openNetwork = useCallback(
     (chainId: number, token: string): boolean => {
       const row = resolveRhinoRow(rhinoAssets, {
@@ -321,10 +321,9 @@ export default function CardDirectDepositModalMobile({
   );
 
   // "Deposit from an external wallet": USDC on Base, the cheapest send, at the
-  // address a USDC row on Base shows — rhino.fi's, whose network row on the
-  // address step changes chain. Our own address no longer serves every chain,
-  // so there is no chain-independent address to share: while rhino.fi's routes
-  // are not in, or if Base has none, the USDC network list is where to pick.
+  // address a USDC row on Base shows — our own card session, as before rhino.fi,
+  // whose network row on the address step changes chain. Should Base offer
+  // none, the USDC network list is where to pick.
   const handleExternalWallet = useCallback(() => {
     const token = 'USDC';
     setSelectedToken(token);

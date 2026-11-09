@@ -4,7 +4,6 @@ import { base, fuse, mainnet } from 'viem/chains';
 import CardDirectDepositModalDesktop from '@/components/Card/CardDirectDepositModalDesktop';
 import CardDirectDepositModalMobile from '@/components/Card/CardDirectDepositModalMobile';
 import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
-import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 
@@ -169,29 +168,20 @@ describe('Rain card, mobile: "Deposit from an external wallet"', () => {
   const openExternalWallet = () =>
     act(() => root.root.findByType('CardFundOptions').props.onExternalWalletPress());
 
-  // Our own address no longer serves every chain, so there is no shared
-  // address to hand out: USDC on Base, at rhino.fi's card address.
-  it('shows the rhino.fi card address for USDC on Base, minting no session', () => {
-    render(<CardDirectDepositModalMobile isOpen onOpenChange={jest.fn()} />);
-    openExternalWallet();
+  // USDC on Base, where rhino.fi pays the card out: our own card session, as
+  // before rhino.fi, whether or not its routes are in.
+  it('mints the card session for USDC on Base, never a rhino.fi address', () => {
+    [READY, { status: 'loading', retry: mockRetry } as OfferedRhinoDepositAssets].forEach(state => {
+      jest.clearAllMocks();
+      mockRhino.current = state;
+      render(<CardDirectDepositModalMobile isOpen onOpenChange={jest.fn()} />);
+      openExternalWallet();
 
-    expect(root.root.findByType('RhinoDepositAddress').props.selection).toEqual({
-      chain: 'BASE',
-      chainId: base.id,
-      tokenSymbol: 'USDC',
-      destinationType: 'RAIN_CARD',
+      expect(mockPrepare).toHaveBeenCalledWith({ chainId: base.id, token: 'USDC' });
+      expect(root.root.findAllByType('RhinoDepositAddress')).toHaveLength(0);
+      act(() => root.unmount());
+      root = undefined;
     });
-    expect(mockPrepare).not.toHaveBeenCalled();
-  });
-
-  it('lists the USDC networks instead while rhino.fi’s routes are not in', () => {
-    mockRhino.current = { status: 'loading', retry: mockRetry };
-    render(<CardDirectDepositModalMobile isOpen onOpenChange={jest.fn()} />);
-    openExternalWallet();
-
-    expect(root.root.findAllByType('RhinoDepositAddress')).toHaveLength(0);
-    expect(root.root.findByType('CardFundNetworks').props.symbol).toBe('USDC');
-    expect(mockPrepare).not.toHaveBeenCalled();
   });
 
   // rhino.fi's card route takes USDT too, and pays it to the card as USDC.
@@ -244,7 +234,7 @@ describe('Rain card, desktop: the connected-wallet send', () => {
         .props.onPress(),
     );
 
-  it('lists the chains with an address, rhino.fi’s marked', async () => {
+  it('lists the chains with an address, none tagged with its provider', async () => {
     render(<CardDirectDepositModalDesktop isOpen onOpenChange={jest.fn()} />);
     await openWalletNetworks();
 
@@ -252,23 +242,41 @@ describe('Rain card, desktop: the connected-wallet send', () => {
       networks().map((node: any) => [node.props.name, node.props.description]),
     );
     expect(Object.keys(descriptions)).toEqual(expect.arrayContaining(['Ethereum', 'Base', 'Fuse']));
-    expect(descriptions.Base).toContain(RHINO_NETWORK_CHIP);
-    expect(descriptions.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+    // No row is tagged with its provider, rhino.fi's included.
+    Object.values(descriptions).forEach(description =>
+      expect(description).not.toContain('via rhino.fi'),
+    );
   });
 
-  it('sends to the rhino.fi card address off Fuse, minting no session', async () => {
+  it('sends to the rhino.fi card address off Base and Fuse, minting no session', async () => {
+    render(<CardDirectDepositModalDesktop isOpen onOpenChange={jest.fn()} />);
+    await openWalletNetworks();
+    pressNetwork('Ethereum');
+
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chain: 'ETHEREUM',
+        tokenSymbol: 'USDC',
+        destinationType: 'RAIN_CARD',
+      }),
+    );
+    const form = root.root.findByType('AddFundsToWalletForm');
+    expect(form.props.destinationAddress).toBe(RHINO_ADDRESS);
+    expect(mockPrepare).not.toHaveBeenCalled();
+    expect(mockDepositStore.setSrcChainId).toHaveBeenCalledWith(mainnet.id);
+  });
+
+  // rhino.fi would only pay a deposit sent on Base back to Base.
+  it('keeps our own session on Base', async () => {
     render(<CardDirectDepositModalDesktop isOpen onOpenChange={jest.fn()} />);
     await openWalletNetworks();
     pressNetwork('Base');
 
-    expect(mockRhinoAddress).toHaveBeenLastCalledWith(
-      expect.objectContaining({ chain: 'BASE', tokenSymbol: 'USDC', destinationType: 'RAIN_CARD' }),
+    expect(mockPrepare).toHaveBeenCalledWith({ chainId: base.id, token: 'USDC' });
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(root.root.findByType('AddFundsToWalletForm').props.destinationAddress).toBe(
+      SESSION_ADDRESS,
     );
-    const form = root.root.findByType('AddFundsToWalletForm');
-    expect(form.props.destinationAddress).toBe(RHINO_ADDRESS);
-    expect(form.props.minDeposit).toBe('10');
-    expect(mockPrepare).not.toHaveBeenCalled();
-    expect(mockDepositStore.setSrcChainId).toHaveBeenCalledWith(base.id);
   });
 
   // rhino.fi turns a deposit under its floor away.
@@ -293,12 +301,12 @@ describe('Rain card, desktop: the connected-wallet send', () => {
     );
   });
 
-  it('offers only Fuse while rhino.fi’s routes are not in', async () => {
+  it('offers only Base and Fuse while rhino.fi’s routes are not in', async () => {
     mockRhino.current = { status: 'unavailable', retry: mockRetry };
     render(<CardDirectDepositModalDesktop isOpen onOpenChange={jest.fn()} />);
     await openWalletNetworks();
 
-    expect(networks().map((node: any) => node.props.name)).toEqual(['Fuse']);
+    expect(networks().map((node: any) => node.props.name)).toEqual(['Base', 'Fuse']);
     expect(root.root.findByType('RhinoNetworksNotice').props.notice).toBe('unavailable');
   });
 });

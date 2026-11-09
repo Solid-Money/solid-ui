@@ -140,8 +140,8 @@ interface DepositState {
   savingsFundIntent: SavingsFundIntent;
   /**
    * The rhino.fi address the savings direct-deposit address step shows, for a
-   * row rhino.fi serves (every row but Fuse's, whose step shows the session
-   * instead). Not persisted, and cleared with the rest of the flow.
+   * row rhino.fi serves (every row but Fuse's and the vault's own, whose step
+   * shows the session instead). Not persisted, and cleared with the rest of the flow.
    */
   rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */

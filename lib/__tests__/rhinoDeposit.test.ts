@@ -25,6 +25,7 @@ import {
   getRhinoTokensForDestination,
   isKnownRhinoAddressType,
   isOfferedRhinoRow,
+  isOwnPayoutChain,
   isOwnPipelineChain,
   isOwnPipelineToken,
   isRhinoDepositOffered,
@@ -794,8 +795,46 @@ describe('resolveRhinoRow', () => {
       resolveRhinoRow(READY, { chainId: polygon.id, destinationType: 'RAIN_CARD', symbol: 'USDC' }),
     ).toMatchObject({ kind: 'rhino' });
     expect(
-      resolveRhinoRow(LOADING, { chainId: base.id, destinationType: 'WALLET', symbol: 'ETH' }),
+      resolveRhinoRow(LOADING, { chainId: arbitrum.id, destinationType: 'WALLET', symbol: 'ETH' }),
     ).toEqual({ kind: 'loading' });
+  });
+
+  // rhino.fi pays the wallet and the card out on Base: a deposit sent there
+  // would only be paid back to Base, so Base is our own, whatever rhino.fi
+  // lists there and whether or not it has answered.
+  it('keeps the chain the wallet and the card are paid out on our own', () => {
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
+      [READY, LOADING, UNAVAILABLE].forEach(state =>
+        ['USDC', 'ETH', 'EURC'].forEach(symbol =>
+          expect(resolveRhinoRow(state, { chainId: base.id, destinationType, symbol })).toEqual({
+            kind: 'own',
+          }),
+        ),
+      ),
+    );
+    expect(isOwnPayoutChain('WALLET', base.id)).toBe(true);
+    expect(isOwnPayoutChain('RAIN_CARD', base.id)).toBe(true);
+    expect(isOwnPayoutChain('WALLET', mainnet.id)).toBe(false);
+    // Savings is paid out on its vault's chain, which the route says.
+    expect(isOwnPayoutChain('PROTOCOL', base.id)).toBe(false);
+  });
+
+  // Savings: sent on the vault's chain, as the token the vault takes, the
+  // deposit is already where it is going; our own address puts it in the vault.
+  it('keeps a savings row our own where the route would pay it back as sent', () => {
+    expect(resolveRhinoRow(READY, row(mainnet.id))).toEqual({ kind: 'own' });
+    // Elsewhere, or as another token, rhino.fi still carries it.
+    expect(resolveRhinoRow(READY, row(polygon.id))).toMatchObject({ kind: 'rhino' });
+    expect(
+      resolveRhinoRow(READY, {
+        chainId: mainnet.id,
+        destinationType: 'PROTOCOL',
+        symbol: 'USDT',
+        vault: 'soUSD',
+      }),
+    ).toMatchObject({ kind: 'rhino' });
+    // Which route pays where is only known once the routes are in.
+    expect(resolveRhinoRow(LOADING, row(mainnet.id))).toEqual({ kind: 'loading' });
   });
 });
 
@@ -923,7 +962,7 @@ describe('a payload with lists missing', () => {
     ).toBeUndefined();
     expect(getRhinoExtraChains(noChains, filter)).toEqual([]);
     expect(
-      resolveRhinoRow({ status: 'ready', assets: noChains }, { ...filter, chainId: base.id }),
+      resolveRhinoRow({ status: 'ready', assets: noChains }, { ...filter, chainId: polygon.id }),
     ).toEqual({ kind: 'none' });
   });
 

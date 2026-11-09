@@ -262,11 +262,15 @@ describe('resolveWirexMoveDestination', () => {
     );
   });
 
-  // It already sits in the Safe on Base that rhino.fi would deliver it to.
+  // It already sits in the Safe on Base that rhino.fi would deliver it to:
+  // Base is our own, so this holds whether or not rhino.fi has answered.
   it('does not move USDC already on Base', () => {
-    expect(resolveWirexMoveDestination(READY, { chainId: base.id, symbol: 'USDC' })).toEqual({
-      kind: 'none',
-    });
+    const states: RhinoAssetsState[] = [READY, { status: 'loading' }, { status: 'unavailable' }];
+    states.forEach(state =>
+      expect(resolveWirexMoveDestination(state, { chainId: base.id, symbol: 'USDC' })).toEqual({
+        kind: 'none',
+      }),
+    );
   });
 
   // rhino.fi's wallet route pays it to the Safe on Base as USDC.

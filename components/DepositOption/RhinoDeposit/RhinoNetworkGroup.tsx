@@ -5,11 +5,7 @@ import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useRhinoExtraNetworks } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
-import {
-  getRhinoExtraSelection,
-  RHINO_NETWORK_CHIP,
-  RhinoDepositSelection,
-} from '@/lib/rhinoDeposit';
+import { getRhinoExtraSelection, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 
 import RhinoChainIcon from './RhinoChainIcon';
 
@@ -77,8 +73,6 @@ const RhinoNetworkGroup = ({
             />
           }
           title={chain.name}
-          chips={[RHINO_NETWORK_CHIP]}
-          chipsPosition="inline"
           onPress={() => select(chain)}
           disabled={disabled}
         />
