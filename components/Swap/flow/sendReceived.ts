@@ -30,7 +30,11 @@ export function receivedToken(receipt: SwapReceipt): TokenBalance {
 export function openSendWithReceived(receipt: SwapReceipt) {
   const token = receivedToken(receipt);
   const send = useSendStore.getState();
+  // A fresh send: a recipient, name or amount left from an earlier one must
+  // not ride along onto the coin the swap delivered.
+  send.clearForm();
   send.setSelectedToken(token);
   send.setCurrentTokenAddress(token.contractAddress);
+  send.setEntryModal(SEND_MODAL.OPEN_SEND_SEARCH);
   send.setModal(SEND_MODAL.OPEN_SEND_SEARCH);
 }
