@@ -17,7 +17,7 @@ describe('resolveCardPendingDestination', () => {
   const resolve = (
     cardStatus: CardStatusResponse | null | undefined,
     overrides: {
-      kycFlow?: 'card' | 'va' | 'transfi' | null;
+      kycFlow?: 'card' | 'card_migration' | 'va' | 'transfi' | null;
       hasRainVerificationCta?: boolean;
     } = {},
   ) =>
@@ -143,6 +143,17 @@ describe('resolveCardPendingDestination', () => {
       ]) {
         expect(resolve({ kycStatus }, { kycFlow: 'va' })).toBeNull();
       }
+    });
+
+    it("sends a cardholder's move to the new card back to the new-card screen", () => {
+      // Their card status describes the card they are replacing: read here, it
+      // would send them to that card instead of the move's own status screen.
+      expect(
+        resolve(
+          { status: CardStatus.ACTIVE, provider: CardProvider.RAIN },
+          { kycFlow: 'card_migration' },
+        ),
+      ).toEqual(path.CARD_NEW_CARD);
     });
 
     it('stays put while the Rain external-verification CTA is on screen', () => {

@@ -107,6 +107,10 @@ export function useSumsubSession() {
       // back where they asked for an IBAN rather than on a card page they never
       // wanted.
       if (kycFlow === 'va') return String(path.HOME);
+      // Rain sunset: a Rain cardholder's move to their new card. Every outcome
+      // is shown on the new-card screen, which reads the move's own status —
+      // the issuance flow belongs to the Rain card they still hold.
+      if (kycFlow === 'card_migration') return String(path.CARD_NEW_CARD);
       // Card. Sumsub GREEN hands off to Wirex, which then adjudicates. So:
       //  - APPROVED (Wirex approved) → activate, where the user issues the card.
       //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
@@ -161,7 +165,12 @@ export function useSumsubSession() {
   destinationRef.current =
     session.phase === 'completed' ? (session.destination ?? null) : destinationRef.current;
   const retryRedirect = useCallback(() => {
-    const fallback = kycFlow === 'va' ? path.HOME : path.CARD_ACTIVATE;
+    const fallback =
+      kycFlow === 'va'
+        ? path.HOME
+        : kycFlow === 'card_migration'
+          ? path.CARD_NEW_CARD
+          : path.CARD_ACTIVATE;
     router.replace((destinationRef.current ?? String(fallback)) as any);
   }, [kycFlow, router]);
 
@@ -323,6 +332,15 @@ export function useSumsubSession() {
        * lands them on Didit. Refusing beats minting an applicant Wirex will
        * never be told about.
        */
+      /**
+       * RAIN_MIGRATION_UNAVAILABLE (400): a Rain cardholder's move to the new
+       * card, in a country the new card partner does not serve (or the move was
+       * switched off). The new-card screen re-reads the status and explains.
+       */
+      if (e?.code === 'RAIN_MIGRATION_UNAVAILABLE') {
+        router.replace(path.CARD_NEW_CARD as any);
+        return;
+      }
       if (e?.code === 'CARD_PROVIDER_MISMATCH') {
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
           action: 'provider_mismatch',
@@ -415,7 +433,13 @@ export function useSumsubSession() {
       router.back();
       return;
     }
-    router.replace((kycFlow === 'va' ? path.HOME : path.CARD_ACTIVATE) as any);
+    router.replace(
+      (kycFlow === 'va'
+        ? path.HOME
+        : kycFlow === 'card_migration'
+          ? path.CARD_NEW_CARD
+          : path.CARD_ACTIVATE) as any,
+    );
   }, [kycFlow, router]);
 
   // `message` is the SDK's own text: reported, never shown.

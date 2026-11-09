@@ -17,7 +17,7 @@ import { getActiveCardRoute, hasCard } from './cardStatusRouting';
  * store would pull MMKV in and make it untestable under jest-expo, which is the
  * whole reason this decision lives outside the page component.
  */
-export type CardPendingKycFlow = 'card' | 'va' | 'transfi' | 'transfi_cashout';
+export type CardPendingKycFlow = 'card' | 'card_migration' | 'va' | 'transfi' | 'transfi_cashout';
 
 /**
  * Statuses that mean "the decision is still being made", i.e. the only two the
@@ -72,6 +72,11 @@ export function resolveCardPendingDestination({
   // Virtual-account KYC is not a card journey: the user re-enters through the
   // Deposit modal, so this page is their terminus.
   if (kycFlow === 'va') return null;
+
+  // Rain sunset: a cardholder's move to their new card has its own screen, which
+  // reads the move's status — this page reads their current card's, and would
+  // send them to the card they are replacing.
+  if (kycFlow === 'card_migration') return path.CARD_NEW_CARD;
 
   // Card already issued (status synced while this tab sat open).
   if (hasCard(cardStatus) && cardStatus.status !== CardStatus.PENDING) {
