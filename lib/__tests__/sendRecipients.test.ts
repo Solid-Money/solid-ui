@@ -1,4 +1,5 @@
-import { getRecentSendRecipients } from '@/lib/sendRecipients';
+import { ADDRESSES } from '@/lib/config';
+import { getRecentSendRecipients, isRecentSendActivity } from '@/lib/sendRecipients';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 
 function send(
@@ -61,5 +62,26 @@ describe('recent send recipients', () => {
         [],
       )[0].chainId,
     ).toBe(42161);
+  });
+
+  it('never offers a BridgePaymaster as a recipient, whatever the casing or chain', () => {
+    // A bridge's Fuse leg is indexed as a plain send to the paymaster; it was
+    // offered as the latest recipient and a Base send went to it.
+    const recipients = getRecentSendRecipients(
+      [
+        send(ADDRESSES.fuse.bridgePaymasterAddress.toLowerCase(), '300', { chainId: 122 }),
+        send(ADDRESSES.ethereum.bridgePaymasterAddress, '250', { chainId: 1 }),
+        send('0xabc', '100'),
+      ],
+      [],
+    );
+    expect(recipients.map(recipient => recipient.walletAddress)).toEqual(['0xabc']);
+  });
+});
+
+describe('isRecentSendActivity', () => {
+  it('accepts a successful send to someone and rejects a paymaster leg', () => {
+    expect(isRecentSendActivity(send('0xabc', '1'))).toBe(true);
+    expect(isRecentSendActivity(send(ADDRESSES.fuse.bridgePaymasterAddress, '1'))).toBe(false);
   });
 });
