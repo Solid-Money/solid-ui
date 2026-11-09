@@ -65,6 +65,13 @@ export interface CardWaitlistResponse {
   joinedAt?: Date;
 }
 
+/**
+ * Where a direct-deposit session's address delivers: savings (`PROTOCOL`), the
+ * card (`RAIN_CARD`, which for a Wirex cardholder is their Safe), or the wallet
+ * (`WALLET`: the Safe on Base).
+ */
+export type DirectDepositDestinationType = 'PROTOCOL' | 'RAIN_CARD' | 'WALLET';
+
 export interface DirectDepositSessionResponse {
   sessionId: string;
   walletAddress: string;
@@ -146,7 +153,7 @@ export interface DepositAssetsResponse {
 export type RhinoDestinationType = 'WALLET' | 'PROTOCOL' | 'RAIN_CARD';
 
 /** The address format a rhino.fi chain uses. Only `EVM` is a 0x address. */
-export type RhinoAddressType = 'EVM' | 'TRON' | 'SOL';
+export type RhinoAddressType = 'EVM' | 'TRON' | 'SOL' | 'BTC';
 
 /** What a token sent on a rhino.fi chain turns into at one destination. */
 export interface RhinoDepositRoute {

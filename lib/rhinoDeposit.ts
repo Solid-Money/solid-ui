@@ -1,4 +1,4 @@
-import { base, fuse, mainnet } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import type {
   RhinoAddressType,
@@ -12,50 +12,132 @@ import type {
 } from '@/lib/types';
 
 /**
- * rhino.fi Smart Deposit Addresses: rhino.fi first, our own pipeline as the
- * fallback.
+ * rhino.fi Smart Deposit Addresses: the deposit provider on every network row
+ * but Fuse's, and for every token but the few our own pipeline still carries.
  *
- * A network row the app already lists (Ethereum, Arbitrum, …) uses rhino.fi
- * when rhino.fi has a route from that chain (matched by `chainId`) for the
- * screen's destination, token and vault. If it has none, or the address request
- * fails, the row is what it was: the direct-deposit session or Safe. rhino.fi
- * adds no chains of its own: each network shows once, from the app's own list.
+ * - A network row the app lists (Ethereum, Polygon, Arbitrum, …) uses rhino.fi
+ *   when rhino.fi has a route from that chain (matched by `chainId`) for the
+ *   screen's destination, token and vault. A row it has no route for is not
+ *   offered: there is no address of our own to fall back to.
+ * - Except on the chain the route pays out on, for the token it pays out: the
+ *   deposit is already where it is going, so our own address takes it, free
+ *   (the wallet and card on Base, savings on the vault's chain; see
+ *   `isOwnPayoutChain` and `resolveRhinoRow`).
+ * - Fuse rows are our own pipeline's (the direct-deposit session, or the Safe),
+ *   whatever rhino.fi lists: rhino.fi does not support Fuse.
+ * - So are the wallet and card rows of a token on a chain in
+ *   `OWN_PIPELINE_TOKEN_CHAINS` (USDT on Base), which rhino.fi is not trusted to
+ *   accept there.
+ * - Every other row waits for `/deposit/rhino/assets`, and is unavailable when
+ *   that fails (see `resolveRhinoRow`).
+ * - When the backend has rhino.fi off (`enabled: false`, as it answers without
+ *   an API key, or a backend that predates the endpoint), every row is our own
+ *   pipeline's again, as before rhino.fi: there is nothing to retry, and our
+ *   own addresses are what the backend is serving (see `RhinoAssetsState`).
+ * - Under a screen's own rows, "More networks": the chains rhino.fi serves that
+ *   the app has no row for (Tron, Solana, Avalanche, …), for the screen's token
+ *   and destination only (see `getRhinoExtraChains`).
  *
- * The menu is the app's own asset lists: rhino.fi only ever carries a token the
- * screen already offers (see `RHINO_DEPOSIT_SYMBOLS`).
+ * The menu is the app's own lists: a row only ever asks for a token its screen
+ * already offers, so whatever else rhino.fi lists (USDe, PYUSD, …) never shows.
  *
  * A leaf module with no asset or React imports, so the rules are unit testable.
  * The backend decides every route; this only filters and words what
- * `/deposit/rhino/assets` returns.
+ * `/deposit/rhino/assets` returns, and treats a list missing from it as empty.
  */
 
-/** The chip on a rhino.fi chain's row, setting it apart from the chains we watch ourselves. */
+/** The chip on a row rhino.fi serves, setting it apart from the Fuse rows we watch ourselves. */
 export const RHINO_NETWORK_CHIP = 'via rhino.fi';
-
-/**
- * The tokens rhino.fi is used for: those of the app's own deposit tokens it
- * carries. Anything else rhino.fi lists (USDe, PYUSD, …) is never offered — the
- * app's asset lists are the menu.
- */
-export const RHINO_DEPOSIT_SYMBOLS: ReadonlySet<string> = new Set(['USDC', 'USDT', 'ETH', 'EURC']);
 
 /** Chains our own pipeline keeps, whatever rhino.fi offers there. */
 const OWN_PIPELINE_CHAIN_IDS: ReadonlySet<number> = new Set([fuse.id]);
 
+/**
+ * Whether a row is our own pipeline's rather than rhino.fi's: Fuse, which
+ * rhino.fi does not support, and which keeps the direct-deposit session or the
+ * Safe it always had.
+ */
+export const isOwnPipelineChain = (chainId: number): boolean => OWN_PIPELINE_CHAIN_IDS.has(chainId);
+
+/**
+ * The tokens our own pipeline still takes on the wallet and card screens, and
+ * the chains it takes them on, rather than rhino.fi: USDT sent on Base.
+ *
+ * rhino.fi takes wallet and card USDT from every other chain and pays it out as
+ * USDC on Base, since it cannot pay USDT out there for us (the backend's
+ * `WALLET_USDT` and `CARD_USDC` routes; the address screen says "Converted to
+ * USDC"). Sent on Base itself, its docs have Base USDT as "Delivery only", so
+ * it is not trusted to accept it, and the backend lists no wallet or card USDT
+ * route there. The wallet's Base row is the Safe, which spends USDT as it is;
+ * the card's is the card deposit address. Savings is not affected: rhino.fi's
+ * soUSD route takes USDT on every chain it lists, as USDC.
+ */
+export const OWN_PIPELINE_TOKEN_CHAINS: Readonly<Record<string, ReadonlySet<number>>> = {
+  USDT: new Set([base.id]),
+};
+
+/**
+ * Where the wallet and card routes pay out: Base, every token. A wallet or
+ * card deposit sent on Base is already where it is going, so our own address
+ * takes it there, free, rather than rhino.fi, which would charge its minimum,
+ * run its checks and pay it back to the same chain. Known without rhino.fi's
+ * routes, so those rows never wait for them. Savings' chain depends on the
+ * vault (and soUSD's on the deployment), so it is read from the route instead
+ * (see `resolveRhinoRow`).
+ */
+const PAYOUT_CHAIN_BY_DESTINATION: Readonly<Partial<Record<RhinoDestinationType, number>>> = {
+  WALLET: base.id,
+  RAIN_CARD: base.id,
+};
+
+/** Whether a wallet or card row is on the chain its route pays out on (Base). */
+export const isOwnPayoutChain = (destinationType: RhinoDestinationType, chainId: number): boolean =>
+  PAYOUT_CHAIN_BY_DESTINATION[destinationType] === chainId;
+
+/** The destinations `OWN_PIPELINE_TOKEN_CHAINS` applies to: the wallet's and the card's. */
+const OWN_PIPELINE_DESTINATIONS: ReadonlySet<RhinoDestinationType> = new Set<RhinoDestinationType>([
+  'WALLET',
+  'RAIN_CARD',
+]);
+
+/**
+ * Whether a token sent on a chain goes through our own pipeline for this
+ * destination, rhino.fi's routes aside: USDT on Base to the wallet or the card
+ * (see `OWN_PIPELINE_TOKEN_CHAINS`). Never a "More networks" chain: Base is
+ * one of the app's own rows.
+ */
+export const isOwnPipelineToken = (
+  symbol: string,
+  destinationType: RhinoDestinationType,
+  chainId: number,
+): boolean =>
+  OWN_PIPELINE_DESTINATIONS.has(destinationType) &&
+  (OWN_PIPELINE_TOKEN_CHAINS[symbol]?.has(chainId) ?? false);
+
+/**
+ * A list from `/deposit/rhino/assets`, or none when the payload left it out
+ * (or sent `null`): a malformed answer offers nothing rather than throwing in
+ * the middle of a render.
+ */
+const listOf = <T>(items: readonly T[] | null | undefined): readonly T[] =>
+  Array.isArray(items) ? items : [];
+
 /** One rhino.fi deposit address the user has asked to see. */
 export type RhinoDepositSelection = {
-  /** rhino.fi chain id, e.g. `TRON`. */
+  /** rhino.fi chain id, e.g. `MATIC_POS`. */
   chain: string;
+  /**
+   * The network row this address is for, an EVM chain the app lists itself. The
+   * address screen keeps that row's name and logo ("Polygon", not rhino.fi's
+   * "Polygon PoS"), so it reads as the row that was tapped. For a "More
+   * networks" chain, rhino.fi's own EVM id when it has one (Avalanche), and
+   * nothing for Tron or Solana: the screen then uses rhino.fi's name.
+   */
+  chainId?: number;
   tokenSymbol: string;
   destinationType: RhinoDestinationType;
   /** The savings vault the screen promises, for `PROTOCOL`. */
   vault?: string;
-  /**
-   * The network row this address stands in for (an EVM chain the app lists
-   * itself): a failed request falls back to that row's own address. Unset,
-   * there is nothing to fall back to.
-   */
-  fallbackChainId?: number;
 };
 
 /** Which routes a screen can use: its destination, and optionally its token and vault. */
@@ -68,14 +150,14 @@ export type RhinoRouteFilter = {
    * vault is left out, so the screen never promises soUSD and delivers soETH.
    */
   vault?: string;
-  /**
-   * Chains the screen already lists as rows of its own. Left out, so a chain
-   * never shows twice (they use rhino.fi through their own row instead).
-   */
-  excludeChainIds?: readonly number[];
 };
 
-const KNOWN_ADDRESS_TYPES: ReadonlySet<string> = new Set<RhinoAddressType>(['EVM', 'TRON', 'SOL']);
+const KNOWN_ADDRESS_TYPES: ReadonlySet<string> = new Set<RhinoAddressType>([
+  'EVM',
+  'TRON',
+  'SOL',
+  'BTC',
+]);
 
 /**
  * Whether the app knows how to show an address of this type. A chain whose
@@ -85,14 +167,63 @@ export const isKnownRhinoAddressType = (addressType: string): addressType is Rhi
   KNOWN_ADDRESS_TYPES.has(addressType);
 
 /**
- * Whether rhino.fi chains are offered at all: the new-deposit-tokens rollout
- * (`useDepositTokensAccess`) must let this user in, and the backend must have
- * rhino.fi configured.
+ * Whether the backend has rhino.fi on. Not gated on any rollout: rhino.fi is the
+ * provider for everyone the moment it answers `enabled: true`.
  */
 export const isRhinoDepositOffered = (
-  hasAccess: boolean,
-  assets?: RhinoDepositAssetsResponse,
-): boolean => hasAccess && assets?.enabled === true;
+  assets?: RhinoDepositAssetsResponse | null,
+): assets is RhinoDepositAssetsResponse =>
+  typeof assets === 'object' && assets !== null && assets.enabled === true;
+
+/**
+ * Where a screen stands on `/deposit/rhino/assets`:
+ *
+ * - `loading`: still waiting for it;
+ * - `ready`: rhino.fi is on, with its routes. Only this state carries them;
+ * - `unavailable`: the request failed, so which rows rhino.fi serves is not
+ *   known. The screens offer a retry;
+ * - `disabled`: the backend has rhino.fi off, so every row is our own
+ *   pipeline's, as it was before rhino.fi. Nothing to retry: asking again gets
+ *   the same answer until the backend is configured.
+ */
+export type RhinoAssetsState =
+  | { status: 'loading' | 'unavailable' | 'disabled'; assets?: undefined }
+  | { status: 'ready'; assets: RhinoDepositAssetsResponse };
+
+/**
+ * Whether the backend says rhino.fi is off: it answered `enabled: false` (no
+ * API key configured), or it has no such endpoint at all (404, a backend that
+ * predates rhino.fi). Either way it is serving our own addresses alone.
+ */
+const isRhinoDepositOff = (data: RhinoDepositAssetsResponse | undefined, error: unknown): boolean =>
+  (typeof data === 'object' && data !== null && data.enabled === false) ||
+  (error as { status?: number } | null | undefined)?.status === 404;
+
+/**
+ * The state of the assets query, from what react-query reports. An answer
+ * either way is kept while a refresh is out, so a background refetch never
+ * takes the rows away; anything else being asked again (the first time, or a
+ * retry) is waiting, whatever came before.
+ */
+export const getRhinoAssetsState = (
+  data: RhinoDepositAssetsResponse | undefined,
+  { isFetching, isError, error }: { isFetching: boolean; isError: boolean; error?: unknown },
+): RhinoAssetsState => {
+  if (isRhinoDepositOffered(data)) return { status: 'ready', assets: data };
+  if (isRhinoDepositOff(data, isError ? error : undefined)) return { status: 'disabled' };
+  if (isFetching || (!data && !isError)) return { status: 'loading' };
+  return { status: 'unavailable' };
+};
+
+/**
+ * What a screen shows in place of rhino.fi's rows for a state of its routes: a
+ * loader while they are out, a retry when they cannot be had, and nothing once
+ * they are in or rhino.fi is off (every row is then ours, and shows itself).
+ */
+export const getRhinoAssetsNotice = (
+  status: RhinoAssetsState['status'],
+): Extract<RhinoListNotice, 'loading' | 'unavailable'> | undefined =>
+  status === 'loading' || status === 'unavailable' ? status : undefined;
 
 const routeMatches = (route: RhinoDepositRoute, filter: RhinoRouteFilter): boolean =>
   route.destinationType === filter.destinationType &&
@@ -103,29 +234,26 @@ export const getRhinoTokensForDestination = (
   chain: RhinoDepositChain,
   filter: RhinoRouteFilter,
 ): RhinoDepositToken[] =>
-  chain.tokens.filter(
+  listOf(chain.tokens).filter(
     token =>
-      RHINO_DEPOSIT_SYMBOLS.has(token.symbol) &&
       (filter.symbol === undefined || token.symbol === filter.symbol) &&
-      token.routes.some(route => routeMatches(route, filter)),
+      listOf(token.routes).some(route => routeMatches(route, filter)),
   );
 
 /**
  * The rhino.fi chains with at least one token paying out to this destination
- * (the chosen token, when there is one), less those in `excludeChainIds` and
- * those our own pipeline keeps (Fuse). Empty when rhino.fi is off.
+ * (the chosen token, when there is one), less those our own pipeline keeps
+ * (Fuse). Empty when rhino.fi is off.
  */
 export const getRhinoChainsForDestination = (
   assets: RhinoDepositAssetsResponse | undefined,
   filter: RhinoRouteFilter,
 ): RhinoDepositChain[] => {
-  if (!assets?.enabled) return [];
-  return assets.chains.filter(
+  if (!isRhinoDepositOffered(assets)) return [];
+  return listOf(assets.chains).filter(
     chain =>
       isKnownRhinoAddressType(chain.addressType) &&
-      (chain.chainId === undefined ||
-        (!OWN_PIPELINE_CHAIN_IDS.has(chain.chainId) &&
-          !filter.excludeChainIds?.includes(chain.chainId))) &&
+      (chain.chainId === undefined || !isOwnPipelineChain(chain.chainId)) &&
       getRhinoTokensForDestination(chain, filter).length > 0,
   );
 };
@@ -133,7 +261,7 @@ export const getRhinoChainsForDestination = (
 /** The chain, token and route a selection resolves to, if it is still offered. */
 export const findRhinoRoute = (
   assets: RhinoDepositAssetsResponse | undefined,
-  selection: RhinoDepositSelection,
+  selection: Omit<RhinoDepositSelection, 'chainId'>,
 ): { chain: RhinoDepositChain; token: RhinoDepositToken; route: RhinoDepositRoute } | undefined => {
   const filter: RhinoRouteFilter = {
     destinationType: selection.destinationType,
@@ -144,9 +272,64 @@ export const findRhinoRoute = (
     item => item.chain === selection.chain,
   );
   const token = chain && getRhinoTokensForDestination(chain, filter)[0];
-  const route = token?.routes.find(item => routeMatches(item, filter));
+  const route = token && listOf(token.routes).find(item => routeMatches(item, filter));
   return chain && token && route ? { chain, token, route } : undefined;
 };
+
+/**
+ * The EVM chains the app lists as network rows of its own, on one screen or
+ * another. rhino.fi serves them behind those rows (see `resolveRhinoRow`), or
+ * not at all, and never under "More networks": a chain shows once, as its row.
+ */
+const APP_NETWORK_CHAIN_IDS: ReadonlySet<number> = new Set([
+  mainnet.id,
+  polygon.id,
+  base.id,
+  arbitrum.id,
+  optimism.id,
+  bsc.id,
+  fuse.id,
+]);
+
+/** rhino.fi chains kept out of "More networks" until the product decides on them: Arc. */
+const HELD_BACK_RHINO_CHAINS: ReadonlySet<string> = new Set(['ARC']);
+
+/**
+ * Whether a rhino.fi chain is one the app has no row for, and so belongs under
+ * "More networks": Tron, Solana, Avalanche, Celo, Gnosis, Mantle, Plasma, Kaia,
+ * Tempo, whichever the backend lists. Never an app chain, and never one held
+ * back (Arc).
+ */
+export const isRhinoExtraChain = (chain: Pick<RhinoDepositChain, 'chain' | 'chainId'>): boolean =>
+  !HELD_BACK_RHINO_CHAINS.has(chain.chain) &&
+  (chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId));
+
+/** "More networks" always serves one token, the one the screen has already chosen. */
+export type RhinoExtraChainFilter = RhinoRouteFilter & { symbol: string };
+
+/**
+ * "More networks": the rhino.fi chains the app has no row for, with a route for
+ * the screen's token, destination and vault. Only what rhino.fi lists for that
+ * destination, so a token it does not route there gets none. Wallet and card
+ * USDT included: our own pipeline keeps it on Base alone, which is never one of
+ * these. Empty when rhino.fi is off.
+ */
+export const getRhinoExtraChains = (
+  assets: RhinoDepositAssetsResponse | undefined,
+  filter: RhinoExtraChainFilter,
+): RhinoDepositChain[] => getRhinoChainsForDestination(assets, filter).filter(isRhinoExtraChain);
+
+/** The address a "More networks" chain shows for the screen's token. */
+export const getRhinoExtraSelection = (
+  chain: RhinoDepositChain,
+  filter: RhinoExtraChainFilter,
+): RhinoDepositSelection => ({
+  chain: chain.chain,
+  ...(chain.chainId !== undefined ? { chainId: chain.chainId } : {}),
+  tokenSymbol: filter.symbol,
+  destinationType: filter.destinationType,
+  ...(filter.vault !== undefined ? { vault: filter.vault } : {}),
+});
 
 /** An existing network row, as the rhino.fi matching needs it. */
 export type RhinoRowFilter = {
@@ -158,26 +341,15 @@ export type RhinoRowFilter = {
 };
 
 /**
- * Whether a wallet row may go through rhino.fi at all: the user's rule is that
- * a wallet deposit of USDC, USDT, ETH or EURC arrives in the Safe on Base. So
- * only those tokens, and never a Base row — what is sent there already lands
- * there, and stays exactly as it is today.
- */
-const isRhinoWalletRow = ({ chainId, symbol }: RhinoRowFilter): boolean =>
-  chainId !== base.id && RHINO_DEPOSIT_SYMBOLS.has(symbol);
-
-/**
- * The rhino.fi route an existing network row should use instead of our own
- * address, matched on `chainId`: undefined when rhino.fi has no route from that
- * chain for the destination, token and vault (the backend never offers one
- * where the deposit chain is the payout chain), and always for Fuse.
+ * The rhino.fi route a network row uses, matched on `chainId`: undefined when
+ * rhino.fi has no route from that chain for the destination, token and vault,
+ * and always for Fuse. The chain a route pays out on is matched like any other
+ * here; `resolveRhinoRow` then gives that row to our own address.
  */
 export const findRhinoRouteForRow = (
   assets: RhinoDepositAssetsResponse | undefined,
   row: RhinoRowFilter,
 ): { chain: RhinoDepositChain; token: RhinoDepositToken; route: RhinoDepositRoute } | undefined => {
-  if (row.destinationType === 'WALLET' && !isRhinoWalletRow(row)) return undefined;
-
   const chain = getRhinoChainsForDestination(assets, {
     destinationType: row.destinationType,
     symbol: row.symbol,
@@ -194,11 +366,7 @@ export const findRhinoRouteForRow = (
     : undefined;
 };
 
-/**
- * The rhino.fi address to show for an existing row, or undefined to keep the
- * row's own. The selection remembers the row, so a failed request can fall back
- * to it.
- */
+/** The rhino.fi address a row shows, or undefined where rhino.fi has no route for it. */
 export const getRhinoSelectionForRow = (
   assets: RhinoDepositAssetsResponse | undefined,
   row: RhinoRowFilter,
@@ -207,12 +375,92 @@ export const getRhinoSelectionForRow = (
   return found
     ? {
         chain: found.chain.chain,
+        chainId: row.chainId,
         tokenSymbol: row.symbol,
         destinationType: row.destinationType,
         ...(row.vault !== undefined ? { vault: row.vault } : {}),
-        fallbackChainId: row.chainId,
       }
     : undefined;
+};
+
+/**
+ * How one of a screen's own network rows is served:
+ *
+ * - `own`: our own pipeline's address (a direct-deposit session, or the Safe):
+ *   on Fuse, as it always was; for a token our pipeline still takes on that
+ *   chain for that destination (`isOwnPipelineToken`: USDT on Base to the
+ *   wallet or the card); on the chain a route pays out on, for the token it
+ *   pays out (Base for the wallet and card, `isOwnPayoutChain`; the vault's
+ *   chain for savings), whatever rhino.fi lists; and on every row while the
+ *   backend has rhino.fi off. The screen
+ *   decides the address: the card's `RAIN_CARD` session, savings' `PROTOCOL`
+ *   one, or for the wallet `getWalletOwnAddress`'s;
+ * - `rhino`: the rhino.fi address for `selection`;
+ * - `loading`: not known until the assets arrive, so not offered yet;
+ * - `unavailable`: the assets failed, so it cannot be offered;
+ * - `none`: rhino.fi has no route for it, so the row is not shown.
+ *
+ * Only `own` and `rhino` rows have an address; nothing else may be picked, and
+ * nothing else ever mints a direct-deposit session.
+ */
+export type RhinoRowState =
+  | { kind: 'own' }
+  | { kind: 'rhino'; selection: RhinoDepositSelection }
+  | { kind: 'loading' }
+  | { kind: 'unavailable' }
+  | { kind: 'none' };
+
+/** How a screen's own network row is served, from the state of rhino.fi's routes. */
+export const resolveRhinoRow = (state: RhinoAssetsState, row: RhinoRowFilter): RhinoRowState => {
+  if (
+    isOwnPipelineChain(row.chainId) ||
+    isOwnPipelineToken(row.symbol, row.destinationType, row.chainId) ||
+    isOwnPayoutChain(row.destinationType, row.chainId) ||
+    // rhino.fi is off: our own pipeline serves every row, as before rhino.fi.
+    state.status === 'disabled'
+  ) {
+    return { kind: 'own' };
+  }
+  if (state.status !== 'ready') return { kind: state.status };
+  const found = findRhinoRouteForRow(state.assets, row);
+  // Sent on the chain the route pays out on, as the token it would pay out: the
+  // deposit is already where it is going, and our own address takes it there
+  // for free (soETH on Ethereum, soUSD and soEURC on theirs).
+  if (
+    found &&
+    found.route.receiveChainId === row.chainId &&
+    found.route.receiveSymbol === row.symbol
+  ) {
+    return { kind: 'own' };
+  }
+  const selection = getRhinoSelectionForRow(state.assets, row);
+  return selection ? { kind: 'rhino', selection } : { kind: 'none' };
+};
+
+/**
+ * Whether a row has an address to show — ours on Fuse and for USDT on Base to
+ * the wallet or card, rhino.fi's elsewhere — and so can be picked.
+ */
+export const isOfferedRhinoRow = (
+  state: RhinoRowState,
+): state is Extract<RhinoRowState, { kind: 'own' | 'rhino' }> =>
+  state.kind === 'own' || state.kind === 'rhino';
+
+/** What a network list shows in place of the rows it cannot offer. */
+export type RhinoListNotice = 'loading' | 'unavailable' | 'empty';
+
+/**
+ * A loader while any row waits for the assets, a retry when any is unavailable,
+ * and an empty state when the answer is in and no row has an address. One
+ * notice for the list rather than one per row: which rows there will be is
+ * exactly what is not known yet. Undefined when the rows say it all.
+ */
+export const getRhinoListNotice = (
+  states: readonly RhinoRowState[],
+): RhinoListNotice | undefined => {
+  if (states.some(state => state.kind === 'loading')) return 'loading';
+  if (states.some(state => state.kind === 'unavailable')) return 'unavailable';
+  return states.some(isOfferedRhinoRow) ? undefined : 'empty';
 };
 
 const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -220,11 +468,19 @@ const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const TRON_ADDRESS = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
 /** A base58 public key: 32 bytes, so 32 to 44 characters. */
 const SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+/**
+ * Mainnet Bitcoin, in either encoding: bech32/bech32m, `bc1` and lowercase
+ * (SegWit, and Taproot's `bc1p`, which rhino.fi hands out), from bech32's
+ * alphabet, which has no 1, b, i or o; or base58, `1` (legacy) or `3` (P2SH).
+ */
+const BITCOIN_BECH32_ADDRESS = /^bc1[02-9ac-hj-np-z]{11,71}$/;
+const BITCOIN_BASE58_ADDRESS = /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/;
 
 /**
  * Whether an address is well-formed for its chain. Only EVM addresses are 0x;
- * a Tron or Solana address that came back as one (or the reverse) would be an
- * address nothing on that chain can send to, so it is treated as a failure.
+ * a Tron, Solana or Bitcoin address that came back as one (or the reverse)
+ * would be an address nothing on that chain can send to, so it is treated as a
+ * failure.
  */
 export const isValidRhinoDepositAddress = (address: string, addressType: string): boolean => {
   switch (addressType) {
@@ -234,6 +490,8 @@ export const isValidRhinoDepositAddress = (address: string, addressType: string)
       return TRON_ADDRESS.test(address);
     case 'SOL':
       return SOLANA_ADDRESS.test(address);
+    case 'BTC':
+      return BITCOIN_BECH32_ADDRESS.test(address) || BITCOIN_BASE58_ADDRESS.test(address);
     default:
       return false;
   }
@@ -241,7 +499,8 @@ export const isValidRhinoDepositAddress = (address: string, addressType: string)
 
 /**
  * Whether two deposit addresses are the same. EVM addresses are hex, so case is
- * only a checksum; Tron and Solana are base58, where case is part of the value.
+ * only a checksum; Tron, Solana and Bitcoin's base58 are case-sensitive, and
+ * bech32 is lowercase as handed out.
  */
 export const isSameDepositAddress = (a: string, b: string, addressType: string): boolean =>
   addressType === 'EVM' ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -277,6 +536,18 @@ export const formatRhinoUsdLimits = (minimumUsd?: number, maximumUsd?: number): 
   }
   return parts.join(' · ');
 };
+
+/**
+ * What a sender should know about a chain before sending on it: Bitcoin
+ * settles far slower than the rest, so the usual few minutes would mislead.
+ */
+const RHINO_CHAIN_NOTES: Record<string, string> = {
+  BITCOIN: 'Arrives after 1 Bitcoin confirmation, usually 5–20 min',
+};
+
+/** The note for a rhino.fi chain (`BITCOIN`), if it has one. */
+export const getRhinoChainNote = (chain?: string): string | undefined =>
+  chain ? RHINO_CHAIN_NOTES[chain] : undefined;
 
 const RECEIVE_CHAIN_NAMES: Record<number, string> = {
   [mainnet.id]: 'Ethereum',

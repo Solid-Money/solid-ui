@@ -1,0 +1,681 @@
+import React from 'react';
+import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+
+import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
+import { getWalletOwnAddress } from '@/components/DepositOption/WalletDepositAddress/constants';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
+import { CardProvider } from '@/lib/types';
+
+import type { WalletDepositViewer } from '@/components/DepositOption/WalletDepositAddress/constants';
+import type { RhinoDepositAddressResponse } from '@/lib/types';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { act, create } = require('react-test-renderer');
+
+jest.mock('react-native-qrcode-svg', () => 'QRCode');
+jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
+jest.mock('expo-image', () => ({ Image: 'Image' }));
+jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
+jest.mock('lucide-react-native', () => ({ ChevronRight: 'ChevronRight' }));
+jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
+jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
+jest.mock('@/components/CopyToClipboard', () => 'CopyToClipboard');
+jest.mock('@/components/Card/CardFund/DepositScanningIndicator', () => 'DepositScanningIndicator');
+jest.mock('@/components/DepositOption/WalletDepositAddress/WalletDepositSelectors', () => ({
+  __esModule: true,
+  default: 'WalletDepositSelectors',
+  WalletDepositNetworkList: 'WalletDepositNetworkList',
+}));
+jest.mock('@/lib/assets', () => ({ getAsset: (path: string) => path }));
+jest.mock('@/lib/help/links', () => ({ openHelpLink: jest.fn() }));
+jest.mock('@/lib/utils', () => ({
+  eclipseAddress: (address: string) => address,
+  cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
+}));
+// The fee notice is the real one, so the rule it applies is the one under test;
+// only the backend's quote is stood in for, charging 0.03% whenever it is asked.
+jest.mock('@/hooks/useDepositFeeQuote', () => ({
+  useDepositFeeQuote: (params: unknown) => mockFeeQuote(params),
+}));
+jest.mock('@/hooks/useCardProvider', () => ({
+  useCardProvider: () => ({ provider: 'wirex' }),
+}));
+jest.mock('@/hooks/useDepositAssets', () => ({
+  useDepositAssets: () => ({ data: undefined }),
+}));
+jest.mock('@/hooks/useEuroSpendEnablement', () => ({
+  useEuroSpendEnablement: () => ({ shouldOffer: false }),
+}));
+// Our own address, as `getWalletOwnAddress` decides it: minted (a Wirex
+// cardholder's Fuse dollars), or the Safe.
+jest.mock('@/hooks/useWalletDepositAddress', () => ({
+  useWalletDepositAddress: (
+    chainId: number,
+    symbol: string,
+    options: { enabled?: boolean; rhinoOff?: boolean },
+  ) => mockWalletAddress(chainId, symbol, options),
+}));
+jest.mock('@/components/DepositOption/WalletDepositAddress/useWalletDepositViewer', () => ({
+  useWalletDepositViewer: () => mockViewer.current,
+}));
+jest.mock('@/hooks/useDetectedDirectDeposit', () => ({
+  useDetectedDirectDeposit: (params: any) => {
+    mockDetected.params = params;
+    return { isDetected: false };
+  },
+}));
+jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/hooks/useRhinoDepositAssets', () => ({
+  useOfferedRhinoDepositAssets: () => ({ ...mockViewer.current.rhino, retry: mockRetryAssets }),
+}));
+jest.mock('@/hooks/useRhinoDepositAddress', () => ({
+  useRhinoDepositAddress: (selection: unknown) => mockRhinoAddress(selection),
+}));
+jest.mock('@/components/DepositOption/RhinoDeposit/useRhinoAddressAnalytics', () => ({
+  useRhinoAddressAnalytics: () => jest.fn(),
+}));
+jest.mock('@/components/DepositOption/RhinoDeposit/RhinoDepositStatus', () => 'RhinoDepositStatus');
+jest.mock(
+  '@/components/DepositOption/RhinoDeposit/RhinoDepositDetails',
+  () => 'RhinoDepositDetails',
+);
+jest.mock('@/components/DepositOption/RhinoDeposit/RhinoChainIcon', () => ({
+  __esModule: true,
+  default: 'RhinoChainIcon',
+  getRhinoChainIcon: () => undefined,
+}));
+jest.mock('@/store/useDepositStore', () => ({
+  useDepositStore: (selector: (state: any) => unknown) => selector(mockDeposit),
+}));
+
+const mockRouter = { push: jest.fn() };
+const mockDetected: { params?: any } = {};
+const mockDeposit = {
+  walletDeposit: { chainId: fuse.id as number, symbol: 'USDC' },
+  setModal: jest.fn(),
+  setWalletDeposit: jest.fn(),
+};
+const WIREX_READY: WalletDepositViewer = {
+  provider: CardProvider.WIREX,
+  hasNewTokens: true,
+  rhino: { status: 'ready', assets: RHINO_ASSETS },
+};
+const mockViewer: { current: WalletDepositViewer } = { current: WIREX_READY };
+const mockRetryAssets = jest.fn();
+const mockFeeQuote = jest.fn((_params: unknown) => ({
+  data: { applies: true, ratePpm: 300 },
+  isError: false,
+}));
+const FEE_LINE = '0.03% fee will be charged for deposits on this network';
+/** The quotes the notice asked the backend for. */
+const feeQuotesAsked = () =>
+  mockFeeQuote.mock.calls
+    .map(([params]) => params as { destinationType: string; enabled: boolean })
+    .filter(params => params.enabled);
+const SAFE_ADDRESS = '0x5afe000000000000000000000000000000005afe';
+const mockOwnAddress = (...args: Parameters<typeof getWalletOwnAddress>) =>
+  getWalletOwnAddress(...args);
+const mockWalletAddress = jest.fn(
+  (chainId: number, symbol: string, options: { enabled?: boolean; rhinoOff?: boolean }) => {
+    if (options?.enabled === false) return { address: undefined, isError: false, isMinted: false };
+    const own = mockOwnAddress(chainId, symbol, mockViewer.current.provider, {
+      rhinoOff: options?.rhinoOff,
+    });
+    return own?.kind === 'session'
+      ? {
+          address: '0xabc',
+          isError: false,
+          isMinted: true,
+          sessionDestination: own.destinationType,
+        }
+      : { address: own ? SAFE_ADDRESS : undefined, isError: false, isMinted: false };
+  },
+);
+const RHINO_ADDRESS = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
+const rhinoResponse = (destinationType: 'WALLET' | 'RAIN_CARD'): RhinoDepositAddressResponse => ({
+  depositAddress: RHINO_ADDRESS,
+  chain: 'BASE',
+  chainName: 'Base',
+  addressType: 'EVM',
+  tokenSymbol: 'USDC',
+  tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  destinationType,
+  receiveSymbol: 'USDC',
+  receiveChainId: base.id,
+  minimumUsd: 5,
+  maximumUsd: 100000,
+});
+const mockRhinoRefetch = jest.fn();
+const rhinoAddressFor = (selection: unknown): any =>
+  selection
+    ? {
+        address: rhinoResponse((selection as { destinationType: 'WALLET' }).destinationType),
+        isError: false,
+        isFetching: false,
+        refetch: mockRhinoRefetch,
+      }
+    : { address: undefined, isError: false, isFetching: false, refetch: mockRhinoRefetch };
+const mockRhinoAddress = jest.fn(rhinoAddressFor);
+
+let root: any;
+const render = () => {
+  act(() => {
+    root = create(<WalletDepositAddress />);
+  });
+  return root;
+};
+
+const texts = (): string[] =>
+  root.root
+    .findAll((node: any) => node.type === 'Text')
+    .map((node: any) => node.props.children)
+    .filter((child: unknown) => typeof child === 'string');
+
+const qrValues = (): string[] =>
+  root.root.findAllByType('QRCode').map((node: any) => node.props.value);
+
+/** The "Try again" in the QR's place, not "Copy address". */
+const retryButton = () =>
+  root.root.findAllByType('Button').find((node: any) => node.props.variant === 'secondary');
+
+/** Whether our own address was asked for, for any row rendered. */
+const ownAddressWasEnabled = () =>
+  mockWalletAddress.mock.calls.some(([, , options]) => options?.enabled !== false);
+
+beforeEach(() => {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  jest.clearAllMocks();
+  // A case that fails the rhino.fi address must not fail it for the next one.
+  mockRhinoAddress.mockImplementation(rhinoAddressFor);
+  mockDetected.params = undefined;
+  mockViewer.current = WIREX_READY;
+  mockDeposit.walletDeposit = { chainId: fuse.id, symbol: 'USDC' };
+});
+
+afterEach(() => {
+  act(() => root?.unmount());
+});
+
+describe('WalletDepositAddress on Fuse, our own row', () => {
+  it('watches the minted address for a deposit', () => {
+    render();
+
+    expect(mockDetected.params).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        destinationType: 'RAIN_CARD',
+        onDetected: expect.any(Function),
+      }),
+    );
+  });
+
+  it("closes the sheet and opens the deposit's progress once it is detected", () => {
+    render();
+
+    act(() => {
+      mockDetected.params.onDetected({ detected: true, clientTxId: 'direct_deposit_123' });
+    });
+
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.CLOSE);
+    expect(mockRouter.push).toHaveBeenCalledWith('/activity/direct_deposit_123');
+  });
+
+  it('stays put when the detected deposit has no activity to open', () => {
+    render();
+
+    act(() => {
+      mockDetected.params.onDetected({ detected: true });
+    });
+
+    expect(mockDeposit.setModal).not.toHaveBeenCalled();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  // Delivered to the Safe on Fuse, which the backend does not charge.
+  it('warns of no fee on the card address it mints there', () => {
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(texts()).not.toContain(FEE_LINE);
+    expect(feeQuotesAsked()).toEqual([]);
+    expect(mockFeeQuote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ destinationType: 'RAIN_CARD', chainId: fuse.id }),
+    );
+  });
+
+  it('keeps working while rhino.fi’s routes cannot be had', () => {
+    mockViewer.current = { ...WIREX_READY, rhino: { status: 'unavailable' } };
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+  });
+});
+
+/**
+ * Base is the chain the wallet route pays out on: rhino.fi would only pay a
+ * deposit sent there back to Base, so the address is our own, the Safe.
+ */
+describe('WalletDepositAddress on Base, our own row', () => {
+  beforeEach(() => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC' };
+  });
+
+  it('shows the Safe, never a rhino.fi address, with no fee', () => {
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(texts()).not.toContain(FEE_LINE);
+    expect(root.root.findAllByType('RhinoDepositDetails')).toHaveLength(0);
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
+  });
+
+  it('shows the Safe while rhino.fi’s routes are still loading', () => {
+    mockViewer.current = { ...WIREX_READY, rhino: { status: 'loading' } };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('shows the Safe while rhino.fi’s routes cannot be had, with no retry', () => {
+    mockViewer.current = { ...WIREX_READY, rhino: { status: 'unavailable' } };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(retryButton()).toBeUndefined();
+  });
+});
+
+describe('WalletDepositAddress off Fuse, rhino.fi’s row', () => {
+  beforeEach(() => {
+    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC' };
+  });
+
+  it('shows the rhino.fi address, and never our own', () => {
+    render();
+
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(texts()).not.toContain(FEE_LINE);
+    expect(root.root.findAllByType('RhinoDepositDetails')).toHaveLength(1);
+  });
+
+  // A Wirex cardholder's dollars off Fuse land in the Safe on Base, like anyone's.
+  it('takes a Wirex cardholder’s USDC through the wallet route', () => {
+    render();
+
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chain: 'ARBITRUM',
+        chainId: arbitrum.id,
+        destinationType: 'WALLET',
+      }),
+    );
+    expect(root.root.findByType('RhinoDepositDetails').props.destinationType).toBe('WALLET');
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
+  });
+
+  it('takes everyone else’s USDC through the wallet route', () => {
+    mockViewer.current = { ...WIREX_READY, provider: null };
+    render();
+
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(
+      expect.objectContaining({ destinationType: 'WALLET' }),
+    );
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
+  });
+
+  // No fallback: a failed rhino.fi address is a failure with a retry.
+  it('offers a retry when the rhino.fi address cannot be had, and no address of ours', () => {
+    mockRhinoAddress.mockImplementation(() => ({
+      address: undefined,
+      isError: true,
+      isFetching: false,
+      refetch: mockRhinoRefetch,
+    }));
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(texts()).toContain('Could not load the deposit address.');
+    expect(ownAddressWasEnabled()).toBe(false);
+    act(() => retryButton().props.onPress());
+    expect(mockRhinoRefetch).toHaveBeenCalled();
+  });
+
+  it('waits for rhino.fi’s routes rather than showing an address of ours', () => {
+    mockViewer.current = { ...WIREX_READY, rhino: { status: 'loading' } };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('offers a retry when rhino.fi’s routes cannot be had', () => {
+    mockViewer.current = { ...WIREX_READY, rhino: { status: 'unavailable' } };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(texts()).toContain('Couldn’t load this network.');
+    expect(ownAddressWasEnabled()).toBe(false);
+    act(() => retryButton().props.onPress());
+    expect(mockRetryAssets).toHaveBeenCalled();
+  });
+
+  // Main currency and AI API open the screen on a chain of their own.
+  it('moves a pairing rhino.fi has no route for to one it has', () => {
+    mockViewer.current = {
+      ...WIREX_READY,
+      rhino: {
+        status: 'ready',
+        assets: {
+          ...RHINO_ASSETS,
+          chains: RHINO_ASSETS.chains.filter(chain => chain.chain !== 'ARBITRUM'),
+        },
+      },
+    };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
+      chainId: base.id,
+      symbol: 'USDC',
+    });
+  });
+});
+
+describe('WalletDepositAddress for a token rhino.fi takes nowhere', () => {
+  it('shows the Safe on Base', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'WETH' };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('moves off any other chain to Base', () => {
+    mockDeposit.walletDeposit = { chainId: mainnet.id, symbol: 'WETH' };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ chainId: base.id, symbol: 'WETH' });
+  });
+});
+
+/**
+ * The backend answers `enabled: false` without a rhino.fi key: every row is
+ * ours, as before rhino.fi, and nothing is a retry.
+ */
+describe('WalletDepositAddress while rhino.fi is off', () => {
+  const OFF: WalletDepositViewer = { hasNewTokens: true, rhino: { status: 'disabled' } };
+
+  it('mints our own wallet address for USDC off Base, with no rhino.fi address', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockWalletAddress).toHaveBeenLastCalledWith(polygon.id, 'USDC', {
+      enabled: true,
+      rhinoOff: true,
+    });
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(texts()).not.toContain('Couldn’t load this network.');
+    expect(retryButton()).toBeUndefined();
+  });
+
+  // The card spends WETH, not ETH: our wallet deposit address on Base wraps it.
+  it('mints our own wallet address on Base for ETH, which wraps it', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(mockDetected.params).toEqual(
+      expect.objectContaining({ enabled: true, destinationType: 'WALLET' }),
+    );
+  });
+
+  // Bridged to the Safe on Base, which the backend charges whoever sends it.
+  it('warns of the fee on a wallet address off Base, priced as the wallet', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDT' };
+    render();
+
+    expect(texts()).toContain(FEE_LINE);
+    expect(feeQuotesAsked()).toEqual([
+      expect.objectContaining({ destinationType: 'WALLET', chainId: polygon.id, symbol: 'USDT' }),
+    ]);
+  });
+
+  it('warns of no fee on the Safe on Base', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(texts()).not.toContain(FEE_LINE);
+  });
+
+  it('moves ETH off a chain our pipeline does not take it on, to Base', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: mainnet.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ chainId: base.id, symbol: 'ETH' });
+  });
+});
+
+/**
+ * rhino.fi pays wallet ETH out as ETH to the user's wallet deposit address on
+ * Base, where the pipeline wraps it: watched, so its progress opens on payout.
+ * Every other wallet route pays the Safe, which nothing watches.
+ */
+describe('WalletDepositAddress for ETH through rhino.fi', () => {
+  beforeEach(() => {
+    mockRhinoAddress.mockImplementation((selection: unknown) =>
+      selection
+        ? {
+            ...rhinoAddressFor(selection),
+            address: {
+              ...rhinoResponse('WALLET'),
+              tokenSymbol: (selection as { tokenSymbol: string }).tokenSymbol,
+              receiveSymbol: (selection as { tokenSymbol: string }).tokenSymbol,
+            },
+          }
+        : rhinoAddressFor(selection),
+    );
+  });
+
+  it('watches the wallet address rhino.fi pays it to, and opens its progress', () => {
+    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
+    expect(mockDetected.params).toEqual(
+      expect.objectContaining({ enabled: true, destinationType: 'WALLET' }),
+    );
+    act(() => {
+      mockDetected.params.onDetected({ detected: true, clientTxId: 'direct_deposit_eth' });
+    });
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.CLOSE);
+    expect(mockRouter.push).toHaveBeenCalledWith('/activity/direct_deposit_eth');
+  });
+
+  // Sent on Base, rhino.fi would pay it back to the same address: ours, direct.
+  it('mints our own wallet address for ETH on Base, never rhino.fi’s', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(mockDetected.params).toEqual(
+      expect.objectContaining({ enabled: true, destinationType: 'WALLET' }),
+    );
+  });
+
+  it('watches nothing for a wallet route that pays the Safe', () => {
+    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
+  });
+});
+
+/**
+ * USDT is rhino.fi's off Base, paid to the Safe on Base as USDC; sent on Base,
+ * our own pipeline keeps it, and the address is the Safe.
+ */
+describe('WalletDepositAddress for USDT', () => {
+  [CardProvider.WIREX, null].forEach(provider => {
+    it(`shows the rhino.fi wallet address off Base, paying USDC (${provider ?? 'no card'})`, () => {
+      mockViewer.current = { ...WIREX_READY, provider };
+      mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDT' };
+      render();
+
+      expect(qrValues()).toEqual([RHINO_ADDRESS]);
+      expect(mockRhinoAddress).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          chain: 'MATIC_POS',
+          tokenSymbol: 'USDT',
+          destinationType: 'WALLET',
+        }),
+      );
+      expect(ownAddressWasEnabled()).toBe(false);
+      expect(root.root.findByType('RhinoDepositDetails').props.receiveSymbol).toBe('USDC');
+      expect(texts()).not.toContain(FEE_LINE);
+    });
+  });
+
+  it('hands out no address of ours off Base while rhino.fi’s routes cannot be had', () => {
+    mockViewer.current = { ...WIREX_READY, rhino: { status: 'unavailable' } };
+    mockDeposit.walletDeposit = { chainId: mainnet.id, symbol: 'USDT' };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(ownAddressWasEnabled()).toBe(false);
+  });
+
+  // rhino.fi is not trusted to take USDT on Base; the Safe there can spend it as it lands.
+  it('shows the Safe on Base, unwatched and with no fee', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDT' };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(texts()).not.toContain(FEE_LINE);
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
+  });
+});
+
+/** A "More networks" chain is rhino.fi's address for it, drawn with rhino.fi's name. */
+describe('WalletDepositAddress on a "More networks" chain', () => {
+  it('shows the rhino.fi address for the chain, under its own name', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC', rhinoChain: 'SOLANA' } as any;
+    render();
+
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith({
+      chain: 'SOLANA',
+      tokenSymbol: 'USDC',
+      destinationType: 'WALLET',
+    });
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(root.root.findByType('WalletDepositSelectors').props.extraChain).toMatchObject({
+      chain: 'SOLANA',
+      name: 'Solana',
+    });
+    expect(root.root.findByType('RhinoDepositDetails').props.chainName).toBe('Solana');
+  });
+
+  it('goes back to the row when the chain does not take the currency', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC', rhinoChain: 'TRON' } as any;
+    render();
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: undefined });
+  });
+
+  it('is picked from the network list', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC' };
+    render();
+
+    act(() => root.root.findByType('WalletDepositSelectors').props.onToggleNetwork());
+    act(() => root.root.findByType('WalletDepositNetworkList').props.onSelectExtra('SOLANA'));
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: 'SOLANA' });
+  });
+});
+
+describe('WalletDepositAddress for native BTC', () => {
+  const BITCOIN_ADDRESS = 'bc1pwvza3f5hz85h9xdsmar8vjznsta9un82r5m5rvdsyys56u4xg75qytn3t4';
+
+  beforeEach(() => {
+    mockViewer.current = {
+      ...WIREX_READY,
+      rhino: { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN },
+    };
+    mockRhinoAddress.mockImplementation((selection: unknown) => ({
+      address: {
+        ...rhinoResponse('WALLET'),
+        depositAddress: BITCOIN_ADDRESS,
+        chain: 'BITCOIN',
+        chainName: 'Bitcoin',
+        addressType: 'BTC',
+        tokenSymbol: 'BTC',
+        tokenAddress: '0x0000000000000000000000000000000000000000',
+        receiveSymbol: 'WBTC',
+        minimumUsd: 10,
+        maximumUsd: 50000,
+      },
+      isError: false,
+      isFetching: false,
+      refetch: mockRhinoRefetch,
+      selection,
+    }));
+  });
+
+  it('shows its Bitcoin address, what lands, and how long Bitcoin takes', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'BTC', rhinoChain: 'BITCOIN' } as any;
+    render();
+
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith({
+      chain: 'BITCOIN',
+      tokenSymbol: 'BTC',
+      destinationType: 'WALLET',
+    });
+    expect(qrValues()).toEqual([BITCOIN_ADDRESS]);
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(root.root.findByType('RhinoDepositDetails').props).toMatchObject({
+      tokenSymbol: 'BTC',
+      chain: 'BITCOIN',
+      chainName: 'Bitcoin',
+      receiveSymbol: 'WBTC',
+      minimumUsd: 10,
+      maximumUsd: 50000,
+    });
+  });
+
+  // Opened on a chain of the list's own (from elsewhere in the app, or left
+  // over): there is none for BTC, so it moves to Bitcoin rather than to USDC.
+  it('moves to Bitcoin when opened on a chain of the list’s own', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'BTC' };
+    render();
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: 'BITCOIN' });
+    expect(ownAddressWasEnabled()).toBe(false);
+  });
+
+  it('falls back to the default pairing once Bitcoin is switched off', () => {
+    mockViewer.current = WIREX_READY;
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'BTC', rhinoChain: 'BITCOIN' } as any;
+    render();
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: undefined });
+  });
+});

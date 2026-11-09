@@ -1,9 +1,7 @@
 import React from 'react';
-import { base } from 'viem/chains';
+import { base, mainnet, polygon } from 'viem/chains';
 
 import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 
 import type { RhinoDeposit, RhinoDepositAddressResponse } from '@/lib/types';
 
@@ -31,42 +29,48 @@ jest.mock('@/hooks/useDetectedDirectDeposit', () => ({
   useDetectedDirectDeposit: (params: unknown) => mockDetected(params),
 }));
 jest.mock('@/hooks/useRhinoDepositAssets', () => ({
-  useOfferedRhinoDepositAssets: () => undefined,
+  useOfferedRhinoDepositAssets: () => ({ status: 'loading', retry: jest.fn() }),
 }));
 jest.mock('@/hooks/useRhinoDepositAddress', () => ({
-  useRhinoDepositAddress: (selection: unknown, options: unknown) =>
-    mockUseAddress(selection, options),
+  useRhinoDepositAddress: (...args: unknown[]) => mockUseAddress(...args),
 }));
 jest.mock('@/hooks/useRhinoDeposits', () => ({
   useRhinoDeposits: () => ({ deposit: mockDeposit.current }),
 }));
 
 const mockDetected = jest.fn((_params: unknown) => ({ isDetected: false }));
-const mockUseAddress = jest.fn((_selection: unknown, _options: unknown) => mockAddress.current);
+const mockUseAddress = jest.fn((..._args: unknown[]) => mockAddress.current);
 const mockAddress: {
-  current: { address?: RhinoDepositAddressResponse; isError: boolean; refetch: jest.Mock };
-} = { current: { address: undefined, isError: false, refetch: jest.fn() } };
+  current: {
+    address?: RhinoDepositAddressResponse;
+    isError: boolean;
+    isFetching: boolean;
+    refetch: jest.Mock;
+  };
+} = { current: { address: undefined, isError: false, isFetching: false, refetch: jest.fn() } };
 const mockDeposit: { current: RhinoDeposit | undefined } = { current: undefined };
 
-const TRON_ADDRESS = 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE';
+const DEPOSIT_ADDRESS = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
 
-const TRON_SAVINGS: RhinoDepositAddressResponse = {
-  depositAddress: TRON_ADDRESS,
-  chain: 'TRON',
-  chainName: 'Tron',
-  addressType: 'TRON',
+const POLYGON_SAVINGS: RhinoDepositAddressResponse = {
+  depositAddress: DEPOSIT_ADDRESS,
+  chain: 'MATIC_POS',
+  chainName: 'Polygon PoS',
+  addressType: 'EVM',
   tokenSymbol: 'USDT',
-  tokenAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+  tokenAddress: '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',
   destinationType: 'PROTOCOL',
   receiveSymbol: 'USDC',
-  receiveChainId: base.id,
+  receiveChainId: mainnet.id,
   vault: 'soUSD',
   minimumUsd: 5,
   maximumUsd: 100000,
 };
 
+/** The Polygon row of the savings list, which rhino.fi serves. */
 const SELECTION = {
-  chain: 'TRON',
+  chain: 'MATIC_POS',
+  chainId: polygon.id,
   tokenSymbol: 'USDT',
   destinationType: 'PROTOCOL' as const,
   vault: 'soUSD',
@@ -92,7 +96,12 @@ const texts = (): string[] =>
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
-  mockAddress.current = { address: TRON_SAVINGS, isError: false, refetch: jest.fn() };
+  mockAddress.current = {
+    address: POLYGON_SAVINGS,
+    isError: false,
+    isFetching: false,
+    refetch: jest.fn(),
+  };
   mockDeposit.current = undefined;
 });
 
@@ -101,31 +110,30 @@ afterEach(() => {
 });
 
 describe('RhinoDepositAddress', () => {
-  it('shows a Tron address shortened, and copies and encodes it whole', () => {
+  it('shows the address shortened, and copies and encodes it whole', () => {
     render();
 
-    expect(texts()).toContain('TQn9Y2k...cbLSE');
-    expect(root.root.findByType('QRCode').props.value).toBe(TRON_ADDRESS);
-    expect(root.root.findByType('CopyToClipboard').props.text).toBe(TRON_ADDRESS);
+    expect(texts()).toContain('0x8ba1f...DBA72');
+    expect(root.root.findByType('QRCode').props.value).toBe(DEPOSIT_ADDRESS);
+    expect(root.root.findByType('CopyToClipboard').props.text).toBe(DEPOSIT_ADDRESS);
   });
 
-  it('says what to send, within which limits, and what arrives', () => {
+  // The row keeps the name it has in the list, not rhino.fi's "Polygon PoS".
+  it('says what to send, within which limits, and what arrives, naming the row as the app does', () => {
     render();
 
     expect(texts()).toEqual(
       expect.arrayContaining([
-        'Send only USDT on Tron',
+        'Send only USDT on Polygon',
         'Min $5 · Max $100,000 per deposit',
         'Converted to USDC in your savings (soUSD)',
       ]),
     );
   });
 
-  // The chain has no logo in the repo, so the QR goes without one rather than
-  // borrowing another chain's.
-  it('leaves the logo off the QR for a chain without one', () => {
+  it('puts the row’s logo on the QR', () => {
     render();
-    expect(root.root.findByType('QRCode').props.logo).toBeUndefined();
+    expect(root.root.findByType('QRCode').props.logo).toBeDefined();
   });
 
   it('hands off to the regular detection once the payout reaches savings', () => {
@@ -135,8 +143,14 @@ describe('RhinoDepositAddress', () => {
     );
   });
 
+  // rhino.fi is the only provider on the row: no address of ours stands in.
   it('offers a retry when the address could not be fetched', () => {
-    mockAddress.current = { address: undefined, isError: true, refetch: jest.fn() };
+    mockAddress.current = {
+      address: undefined,
+      isError: true,
+      isFetching: false,
+      refetch: jest.fn(),
+    };
     render();
 
     expect(root.root.findAllByType('QRCode')).toHaveLength(0);
@@ -146,61 +160,33 @@ describe('RhinoDepositAddress', () => {
       .find((node: any) => node.props.variant === 'secondary');
     act(() => retry.props.onPress());
     expect(mockAddress.current.refetch).toHaveBeenCalled();
+    // The hook toasts the failure itself; nothing asks it to stay quiet.
+    expect(mockUseAddress).toHaveBeenCalledWith(SELECTION);
   });
 
-  describe('standing in for one of the flow’s own rows', () => {
-    const ROW = { ...SELECTION, chain: 'ETHEREUM', fallbackChainId: 1 };
-
-    it('falls back to the row’s own address when the request fails, without an error', () => {
-      mockAddress.current = { address: undefined, isError: true, refetch: jest.fn() };
-      const onFallback = jest.fn();
-      render({ selection: ROW, onFallback });
-
-      expect(onFallback).toHaveBeenCalledTimes(1);
-      expect(texts()).not.toContain('Could not load the deposit address.');
-      // Asked not to toast the failure: the user is about to get a working address.
-      expect(mockUseAddress).toHaveBeenCalledWith(ROW, { notifyOnError: false });
-      expect(track).toHaveBeenCalledWith(
-        TRACKING_EVENTS.DEPOSIT_RHINO_ADDRESS_FALLBACK,
-        expect.objectContaining({ rhino_chain: 'ETHEREUM', chain_id: 1 }),
-      );
-
-      // Re-rendering the same failure does not hand off twice.
-      act(() =>
-        root.update(
-          <RhinoDepositAddress
-            selection={ROW}
-            onChangeNetwork={jest.fn()}
-            onFallback={onFallback}
-          />,
-        ),
-      );
-      expect(onFallback).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not fall back while the address is on its way or shown', () => {
-      const onFallback = jest.fn();
-      render({ selection: ROW, onFallback });
-      expect(onFallback).not.toHaveBeenCalled();
-    });
-
-    it('names the row as the app does', () => {
-      render({ selection: ROW, onFallback: jest.fn() });
-      expect(texts()).toContain('Send only USDT on Ethereum');
-    });
-  });
-
-  it('toasts the failure of a selection with no row to fall back to', () => {
-    mockAddress.current = { address: undefined, isError: true, refetch: jest.fn() };
+  it('waits on the retry it started', () => {
+    mockAddress.current = {
+      address: undefined,
+      isError: true,
+      isFetching: true,
+      refetch: jest.fn(),
+    };
     render();
-    expect(mockUseAddress).toHaveBeenCalledWith(SELECTION, { notifyOnError: true });
+
+    expect(texts()).not.toContain('Could not load the deposit address.');
+    expect(root.root.findAllByType('ActivityIndicator')).toHaveLength(1);
+  });
+
+  it('names the Base row as the app does', () => {
+    render({ selection: { ...SELECTION, chain: 'BASE', chainId: base.id } });
+    expect(texts()).toContain('Send only USDT on Base');
   });
 
   it('explains a rejected deposit', () => {
     mockDeposit.current = {
       id: 'd1',
-      chain: 'TRON',
-      depositAddress: TRON_ADDRESS,
+      chain: 'MATIC_POS',
+      depositAddress: DEPOSIT_ADDRESS,
       txHash: 'abc',
       tokenSymbol: 'USDT',
       amount: '1',

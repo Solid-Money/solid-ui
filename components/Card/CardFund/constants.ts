@@ -13,12 +13,16 @@ import {
 // under jest-expo). Re-exported here so `@/components/Card/CardFund/constants`
 // stays the single import path for the funding screens.
 export type { CardFundSections } from '@/lib/utils/cardFunding';
+export type { CardFundCryptoRow } from '@/lib/utils/cardFunding';
 export {
+  CARD_FUND_CRYPTO_SYMBOLS,
   CARD_FUND_DESTINATION_TYPE,
   CARD_FUND_EURC_SYMBOL,
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
   getCardFundChains,
+  getCardFundCryptoRows,
+  getCardFundRhinoDestination,
   getCardFundRoutes,
   getCardFundRoutesTooltip,
   getCardFundSupportedNetworkNames,
@@ -50,6 +54,8 @@ export const CARD_FUND_TOKEN_ICONS: Record<string, ImageSourcePropType> = {
   USDC: getAsset('images/deposit-crypto-usdc.png'),
   USDT: getAsset('images/deposit-crypto-usdt.png'),
   [CARD_FUND_EURC_SYMBOL]: getAsset('images/eurc.png'),
+  // The crypto rows (see `CARD_FUND_CRYPTO_SYMBOLS`).
+  BTC: getAsset('images/btc.png'),
 };
 
 /** The dollar stablecoin rows, which both issuers offer. */

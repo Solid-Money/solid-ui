@@ -26,6 +26,7 @@ import DepositCashOptions from '@/components/DepositOption/DepositCashOptions';
 import DepositCryptoOptions from '@/components/DepositOption/DepositCryptoOptions';
 import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
+import DepositDirectlyRhinoAddress from '@/components/DepositOption/DepositDirectlyRhinoAddress';
 import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
@@ -93,6 +94,7 @@ const useDepositOption = ({
     principalToken,
     bankTransfer,
     directDepositSession,
+    rhinoDeposit,
     sessionStartTime,
     setSessionStartTime,
     clearSessionStartTime,
@@ -113,6 +115,7 @@ const useDepositOption = ({
       principalToken: state.principalToken,
       bankTransfer: state.bankTransfer,
       directDepositSession: state.directDepositSession,
+      rhinoDeposit: state.rhinoDeposit,
       sessionStartTime: state.sessionStartTime,
       setSessionStartTime: state.setSessionStartTime,
       clearSessionStartTime: state.clearSessionStartTime,
@@ -184,6 +187,8 @@ const useDepositOption = ({
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
   const isDepositDirectlyTokens =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
+  // "Deposit directly" on a chain rhino.fi serves: its address, not a session's.
+  const isDepositDirectlyRhinoAddress = isDepositDirectlyAddress && !!rhinoDeposit;
   const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isVirtualAccountDetails =
     currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
@@ -397,7 +402,11 @@ const useDepositOption = ({
     }
 
     if (isDepositDirectlyAddress) {
-      return <DepositDirectlyAddress />;
+      return rhinoDeposit ? (
+        <DepositDirectlyRhinoAddress selection={rhinoDeposit} />
+      ) : (
+        <DepositDirectlyAddress />
+      );
     }
 
     if (isDepositDirectlyTokens) {
@@ -507,6 +516,7 @@ const useDepositOption = ({
   const getTitle = () => {
     // Virtual account details renders its own flag + title in the content, so the
     // header keeps only the back/close buttons (Figma 21445:3186).
+    if (isDepositDirectlyRhinoAddress) return `Deposit ${rhinoDeposit.tokenSymbol}`;
     if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress || isVirtualAccountDetails)
       return undefined;
     if (isSavingsFund) return 'Deposit to savings';
@@ -980,6 +990,7 @@ const useDepositOption = ({
   const actionButton = useMemo(() => {
     if (
       isDepositDirectlyAddress &&
+      !rhinoDeposit &&
       (directDepositSession.status === 'pending' || !directDepositSession.status)
     ) {
       return (
@@ -995,7 +1006,13 @@ const useDepositOption = ({
       );
     }
     return undefined;
-  }, [isDepositDirectlyAddress, directDepositSession.status, handleDeleteDeposit, isDeleting]);
+  }, [
+    isDepositDirectlyAddress,
+    rhinoDeposit,
+    directDepositSession.status,
+    handleDeleteDeposit,
+    isDeleting,
+  ]);
 
   /**
    * The steps that only exist because an external wallet is connected: the chain
@@ -1058,7 +1075,7 @@ const useDepositOption = ({
   // The virtual account details screen owns its ScrollView so it can overlay the
   // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
   const disableScroll =
-    (Platform.OS !== 'web' && isDepositDirectlyAddress) ||
+    (Platform.OS !== 'web' && isDepositDirectlyAddress && !isDepositDirectlyRhinoAddress) ||
     isWalletConnector ||
     isVirtualAccountDetails ||
     isVirtualAccountApply;

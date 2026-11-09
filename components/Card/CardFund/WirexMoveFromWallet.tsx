@@ -13,6 +13,7 @@ import {
   getCardFundRoutes,
   getCardFundTokenIcon,
 } from '@/components/Card/CardFund/constants';
+import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
 import Max from '@/components/Max';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -27,6 +28,8 @@ import {
 import { SWAP_CHAIN_IDS } from '@/constants/swapChains';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
+import { useRhinoDepositAddress } from '@/hooks/useRhinoDepositAddress';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
@@ -34,6 +37,7 @@ import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, formatNumber, withRefreshToken } from '@/lib/utils';
+import { resolveWirexMoveDestination } from '@/lib/utils/cardFunding';
 import {
   getMovableHoldings,
   getSwappableHoldings,
@@ -49,23 +53,44 @@ const LIFI_SWAP_CHAIN_IDS = SWAP_CHAIN_IDS.filter(chainId => chainId !== fuse.id
 /**
  * The holdings this cardholder could make spendable, richest first: the ones a
  * move carries as they are, and the ones that need a swap first.
+ *
+ * A holding is only listed with somewhere to send it (see
+ * `resolveWirexMoveDestination`): USDT to the card deposit address, USDC to
+ * the user's rhino.fi address, so the list waits for rhino.fi's routes while a
+ * USDC holding depends on them, and says so with a retry when they cannot be
+ * had. USDC already on Base, where rhino.fi delivers it, is not listed.
  */
 export const useMovableHoldings = (): {
   holdings: MovableHolding[];
   swappable: SwappableHolding[];
   isLoading: boolean;
+  /** rhino.fi's routes could not be had, so a USDC holding may be missing. */
+  isRhinoUnavailable: boolean;
+  retryRhino: () => void;
 } => {
   const { tokens, isLoading } = useBalances();
+  const rhino = useOfferedRhinoDepositAssets();
 
-  const { holdings, swappable } = useMemo(() => {
+  const { holdings, swappable, kinds } = useMemo(() => {
     const routes = getCardFundRoutes();
+    const movable = getMovableHoldings(tokens, routes, CARD_SPENDABLE_ASSETS);
+    const destinations = movable.map(holding => resolveWirexMoveDestination(rhino, holding).kind);
     return {
-      holdings: getMovableHoldings(tokens, routes, CARD_SPENDABLE_ASSETS),
+      holdings: movable.filter(
+        (_, index) => destinations[index] === 'card' || destinations[index] === 'rhino',
+      ),
       swappable: getSwappableHoldings(tokens, routes, CARD_SPENDABLE_ASSETS, LIFI_SWAP_CHAIN_IDS),
+      kinds: destinations,
     };
-  }, [tokens]);
+  }, [rhino, tokens]);
 
-  return { holdings, swappable, isLoading };
+  return {
+    holdings,
+    swappable,
+    isLoading: isLoading || kinds.includes('loading'),
+    isRhinoUnavailable: kinds.includes('unavailable'),
+    retryRhino: rhino.retry,
+  };
 };
 
 const chainName = (chainId: number): string => BRIDGE_TOKENS[chainId]?.name ?? `Chain ${chainId}`;
@@ -131,21 +156,48 @@ export const WirexMoveHoldings = ({
   isLoading,
   onSelect,
   onSwap,
+  onRetryUnavailable,
 }: {
   holdings: MovableHolding[];
   swappable?: SwappableHolding[];
   isLoading?: boolean;
   onSelect: (holding: MovableHolding) => void;
   onSwap?: (holding: SwappableHolding) => void;
+  /**
+   * Set when rhino.fi's routes could not be had, so a holding that moves
+   * through rhino.fi is missing from the list: a retry stands in for it.
+   */
+  onRetryUnavailable?: () => void;
 }) => {
   const swapFirst =
     onSwap && swappable.length ? <SwapFirstGroup swappable={swappable} onSwap={onSwap} /> : null;
+  const unavailable = onRetryUnavailable ? (
+    <RhinoNetworksNotice
+      notice="unavailable"
+      symbol=""
+      hasRows={holdings.length > 0}
+      onRetry={onRetryUnavailable}
+      className="rounded-[15px] bg-card"
+    />
+  ) : null;
 
   if (isLoading) {
     return (
       <View className="gap-y-3">
         <Skeleton className="h-[72px] rounded-[15px]" />
         <Skeleton className="h-[72px] rounded-[15px]" />
+      </View>
+    );
+  }
+
+  if (!holdings.length && unavailable) {
+    return (
+      <View className="gap-y-8">
+        {unavailable}
+        {swapFirst}
+        <View className="items-center">
+          <NeedHelp />
+        </View>
       </View>
     );
   }
@@ -191,6 +243,7 @@ export const WirexMoveHoldings = ({
           />
         ))}
       </CardFundGroup>
+      {unavailable}
       {swapFirst}
       <View className="items-center">
         <NeedHelp />
@@ -202,18 +255,21 @@ export const WirexMoveHoldings = ({
 /**
  * Step 2 of "Move from wallet": how much, then send.
  *
- * The move is one ERC-20 transfer from the cardholder's Safe to their own card
- * deposit address, and the direct-deposit pipeline takes it from there — bridging
- * to Fuse and delivering it to that same Safe as spendable stablecoin. Which is
- * to say this reuses, unchanged, the path every Wirex card deposit already takes;
- * the only new thing is that the app sends the transfer instead of the user
- * pasting an address into another wallet.
+ * The move is one ERC-20 transfer from the cardholder's Safe to the address a
+ * deposit of that token on that chain would use (see
+ * `resolveWirexMoveDestination`), and the deposit takes it from there to the
+ * same Safe on Base: rhino.fi's wallet route for USDC, and for USDT the card
+ * deposit address, which our pipeline bridges. Which is to say this reuses,
+ * unchanged, the path every Wirex card deposit already takes; the only new
+ * thing is that the app sends the transfer instead of the user pasting an
+ * address into another wallet. rhino.fi detects an ERC-20 transfer whoever
+ * sends it, the Safe included; its limits are checked here before sending,
+ * since a deposit outside them is not processed.
  *
- * Deliberately not the Rain mechanic (approve, then `POST /deposit` pulls). That
- * one delivers to Base, and pointing it at Fuse means a new branch in the
- * connect-wallet deposit workflows — three touch points in a money path with its
- * own idempotency rules, for a route that already exists and is already carrying
- * these users' deposits.
+ * Deliberately not the Rain mechanic (approve, then `POST /deposit` pulls): a
+ * new branch in the connect-wallet deposit workflows — three touch points in a
+ * money path with its own idempotency rules, for a route that already exists
+ * and is already carrying these users' deposits.
  */
 export const WirexMoveAmount = ({
   holding,
@@ -237,6 +293,14 @@ export const WirexMoveAmount = ({
     return suggestedAmount >= Number(max) ? max : String(suggestedAmount);
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Where the transfer goes. rhino.fi's address is asked for up front, so the
+  // send does not wait on it.
+  const rhino = useOfferedRhinoDepositAssets();
+  const destination = useMemo(() => resolveWirexMoveDestination(rhino, holding), [rhino, holding]);
+  const rhinoSelection = destination.kind === 'rhino' ? destination.selection : undefined;
+  const { address: rhinoAddress, refetch: refetchRhinoAddress } =
+    useRhinoDepositAddress(rhinoSelection);
 
   const { send, sendStatus, totpModal } = useSend({
     tokenAddress: holding.tokenAddress as Address,
@@ -266,11 +330,24 @@ export const WirexMoveAmount = ({
     if (wei > BigInt(holding.balance || '0')) {
       return `Amount exceeds your balance (${holdingLabel(holding)} available)`;
     }
+    // rhino.fi does not process a deposit outside its limits, which are in
+    // dollars: a stablecoin is a dollar a unit.
+    if (destination.kind === 'rhino') {
+      const value = Number(amount);
+      if (destination.minimumUsd > 0 && value < destination.minimumUsd) {
+        return `The minimum on ${chainName(holding.chainId)} is ${destination.minimumUsd} ${holding.symbol}`;
+      }
+      if (destination.maximumUsd > 0 && value > destination.maximumUsd) {
+        return `The maximum on ${chainName(holding.chainId)} is ${formatNumber(destination.maximumUsd, 0, 0)} ${holding.symbol}`;
+      }
+    }
     return null;
-  }, [amount, holding]);
+  }, [amount, destination, holding]);
+
+  const canSend = destination.kind === 'card' || destination.kind === 'rhino';
 
   const onSubmit = useCallback(async () => {
-    if (error || !amount || isSubmitting) return;
+    if (error || !amount || isSubmitting || !canSend) return;
 
     setIsSubmitting(true);
     try {
@@ -280,18 +357,25 @@ export const WirexMoveAmount = ({
         selected_token: holding.symbol,
       });
 
-      // Also what registers the address with the deposit streams, so this has to
-      // succeed before the transfer goes out: funds sent to an unwatched address
-      // sit there until the stream-sync backstop catches up.
-      const session = await withRefreshToken(() =>
-        createDirectDepositSession(holding.chainId, holding.symbol, CARD_FUND_DESTINATION_TYPE),
-      );
+      let destinationAddress: string | undefined;
+      if (destination.kind === 'rhino') {
+        destinationAddress =
+          rhinoAddress?.depositAddress ?? (await refetchRhinoAddress()).data?.depositAddress;
+      } else {
+        // Also what registers the address with the deposit streams, so this has
+        // to succeed before the transfer goes out: funds sent to an unwatched
+        // address sit there until the stream-sync backstop catches up.
+        const session = await withRefreshToken(() =>
+          createDirectDepositSession(holding.chainId, holding.symbol, CARD_FUND_DESTINATION_TYPE),
+        );
+        destinationAddress = session?.walletAddress;
+      }
 
-      if (!session?.walletAddress) {
+      if (!destinationAddress) {
         throw new Error('Could not prepare your card deposit address. Please try again.');
       }
 
-      await send(amount, session.walletAddress as Address);
+      await send(amount, destinationAddress as Address);
 
       Toast.show({
         type: 'success',
@@ -309,7 +393,18 @@ export const WirexMoveAmount = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [amount, error, holding, isSubmitting, onDone, send]);
+  }, [
+    amount,
+    canSend,
+    destination.kind,
+    error,
+    holding,
+    isSubmitting,
+    onDone,
+    refetchRhinoAddress,
+    rhinoAddress?.depositAddress,
+    send,
+  ]);
 
   const isBusy = isSubmitting || sendStatus === Status.PENDING;
 
@@ -354,7 +449,7 @@ export const WirexMoveAmount = ({
       <Button
         variant="brand"
         className="h-12 rounded-2xl"
-        disabled={isBusy || !amount || !!error}
+        disabled={isBusy || !amount || !!error || !canSend}
         onPress={onSubmit}
       >
         {isBusy ? (

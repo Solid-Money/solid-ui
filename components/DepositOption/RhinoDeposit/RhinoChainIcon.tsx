@@ -16,6 +16,7 @@ import { getAsset } from '@/lib/assets';
 const RHINO_CHAIN_ICONS: Record<string, ImageSourcePropType> = {
   OPTIMISM: getAsset('images/op.png'),
   SOLANA: getAsset('images/sol.png'),
+  BITCOIN: getAsset('images/btc.png'),
 };
 
 export const getRhinoChainIcon = (

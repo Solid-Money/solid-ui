@@ -89,6 +89,7 @@ import {
   DetectedDirectDepositResponse,
   DiditSessionResponse,
   DiditVerificationStatusResponse,
+  DirectDepositDestinationType,
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
   EphemeralKeyResponse,
@@ -4904,7 +4905,7 @@ const DIRECT_DEPOSIT_SESSION_TIMEOUT_MS = 30000;
 export const createDirectDepositSession = async (
   chainId: number,
   tokenSymbol: string,
-  destinationType?: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType?: DirectDepositDestinationType,
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
@@ -4939,7 +4940,7 @@ export const createDirectDepositSession = async (
  */
 export const getDetectedDirectDeposit = async (
   since: number,
-  destinationType?: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType?: DirectDepositDestinationType,
 ): Promise<DetectedDirectDepositResponse> => {
   const jwt = getJWTToken();
 
@@ -4969,7 +4970,7 @@ export const getDetectedDirectDeposit = async (
  * default where none is set.
  */
 export const getDepositFeeQuote = async (
-  destinationType: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType: 'PROTOCOL' | 'RAIN_CARD' | 'WALLET',
   chainId: number,
   tokenSymbol: string,
 ): Promise<DepositFeeQuote> => {

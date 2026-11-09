@@ -100,6 +100,15 @@ export type DepositProgressRow = {
 const CONFIRMED_INDEX = getDepositStepIndex('confirmed');
 const COMPLETE_INDEX = getDepositStepIndex('complete');
 
+/**
+ * A deposit rhino.fi is still carrying: sent on another chain to the user's
+ * rhino.fi address, before rhino.fi pays it out to us. Its row steps aside once
+ * the payout lands, so it never reaches the last row of its own.
+ */
+export function isRhinoDeposit(activity: ActivityEvent): boolean {
+  return activity.metadata?.provider === 'rhino';
+}
+
 /** Direct deposits are flagged by the webhook handler through metadata.description. */
 function isDirectDeposit(activity: ActivityEvent): boolean {
   const description = activity.metadata?.description;
@@ -147,6 +156,13 @@ function receivedLabel(activity: ActivityEvent, state: DepositProgressState): st
   const amount = formatStepAmount(activity.amount);
   const symbol = activity.symbol ?? '';
 
+  if (isRhinoDeposit(activity)) {
+    const chain = activity.metadata?.sourceChainName as string | undefined;
+    return state === 'complete'
+      ? `We received your ${amount} ${symbol}${chain ? ` on ${chain}` : ''}`.trim()
+      : 'Waiting for your transfer';
+  }
+
   if (isDirectDeposit(activity)) {
     return state === 'complete'
       ? `We received your ${amount} ${symbol}`.trim()
@@ -158,7 +174,15 @@ function receivedLabel(activity: ActivityEvent, state: DepositProgressState): st
     : `Sending ${amount} ${symbol} from your wallet`.trim();
 }
 
-function confirmedLabel(state: DepositProgressState): string {
+function confirmedLabel(activity: ActivityEvent, state: DepositProgressState): string {
+  // rhino.fi's leg: it confirms the deposit, then bridges it to us.
+  if (isRhinoDeposit(activity)) {
+    if (state === 'complete') return 'Bridged by rhino.fi';
+    if (state === 'failed') return 'rhino.fi couldn’t process it';
+    return activity.metadata?.delayed
+      ? 'rhino.fi is taking longer than usual'
+      : 'Bridging with rhino.fi';
+  }
   if (state === 'complete') return 'Confirmed on the network';
   if (state === 'failed') return 'Transaction failed to confirm';
   return 'Waiting for network confirmations';
@@ -199,7 +223,7 @@ export function getDepositProgressRows(activity: ActivityEvent): DepositProgress
 
   return [
     { key: 'received', label: receivedLabel(activity, receivedState), state: receivedState },
-    { key: 'confirmed', label: confirmedLabel(confirmedState), state: confirmedState },
+    { key: 'confirmed', label: confirmedLabel(activity, confirmedState), state: confirmedState },
     {
       key: 'depositing',
       label: depositingLabel(activity, depositingState),

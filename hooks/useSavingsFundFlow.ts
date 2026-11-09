@@ -12,7 +12,12 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
-import { getRhinoSelectionForRow } from '@/lib/rhinoDeposit';
+import {
+  getRhinoExtraChains,
+  isOfferedRhinoRow,
+  resolveRhinoRow,
+  RhinoDepositSelection,
+} from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -36,6 +41,12 @@ const describeSessionError = (error: unknown): string => {
  * Selection lives in the deposit store's `directDepositSession` slice, so the
  * three screens - which the deposit modal renders without props - all read the
  * same state, and closing the modal clears it with the rest of the flow.
+ *
+ * rhino.fi is the provider on every row but Fuse's and the vault's own (its
+ * chain, as the token the vault takes: USDC on Ethereum for soUSD), USDT
+ * included (its soUSD route takes USDT as USDC): the address step for those is
+ * the user's rhino.fi address (`rhinoDeposit`), as it is for a "More networks"
+ * chain, and a direct-deposit session is only ever minted for an own row.
  */
 export const useSavingsFundFlow = () => {
   const router = useRouter();
@@ -59,6 +70,18 @@ export const useSavingsFundFlow = () => {
     })),
   );
   const rhinoAssets = useOfferedRhinoDepositAssets();
+
+  /** How one of the list's rows is served, into the vault the token funds. */
+  const resolveRow = useCallback(
+    (chainId: number, token: string) =>
+      resolveRhinoRow(rhinoAssets, {
+        chainId,
+        destinationType: 'PROTOCOL',
+        symbol: token,
+        vault: getSavingsFundToken(token).vaultToken,
+      }),
+    [rhinoAssets],
+  );
 
   const selectedToken = session.selectedToken ?? 'USDC';
   const selectedChainId = session.chainId;
@@ -94,7 +117,7 @@ export const useSavingsFundFlow = () => {
     },
   });
 
-  /** The row's own address: a direct-deposit session on that chain. */
+  /** A Fuse row's address: a direct-deposit session on that chain. */
   const startDirectSession = useCallback(
     (chainId: number, token: string) => {
       setRhinoDeposit(undefined);
@@ -109,38 +132,35 @@ export const useSavingsFundFlow = () => {
   );
 
   /**
-   * One of the list's own rows. rhino.fi first: when it has a route from this
-   * chain into the vault the token funds, the address step shows the rhino.fi
-   * address (and falls back to the session if that fails). Otherwise, as
-   * before, a direct-deposit session is minted.
+   * One of the list's own rows. A row rhino.fi has a route from into the vault
+   * the token funds shows the rhino.fi address; a Fuse row mints a
+   * direct-deposit session, as before. Any other row has no address (rhino.fi's
+   * routes are not in, cannot be had, or have none from there): the list does
+   * not offer it, and nothing is minted for it here either.
    */
   const selectNetwork = useCallback(
     (chainId: number, symbol?: string) => {
       const token = symbol ?? selectedToken;
-      const rhino = getRhinoSelectionForRow(rhinoAssets, {
-        chainId,
-        destinationType: 'PROTOCOL',
-        symbol: token,
-        vault: getSavingsFundToken(token).vaultToken,
-      });
+      const row = resolveRow(chainId, token);
+      if (!isOfferedRhinoRow(row)) return;
 
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
         chain_id: chainId,
         token_symbol: token,
         deposit_type: 'savings_direct_deposit',
-        via_rhino: !!rhino,
+        via_rhino: row.kind === 'rhino',
       });
 
-      if (rhino) {
+      if (row.kind === 'rhino') {
         setDirectDepositSession({ selectedToken: token, chainId, walletAddress: undefined });
-        setRhinoDeposit(rhino);
+        setRhinoDeposit(row.selection);
       } else {
         startDirectSession(chainId, token);
       }
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
     },
     [
-      rhinoAssets,
+      resolveRow,
       selectedToken,
       setDirectDepositSession,
       setModal,
@@ -150,14 +170,29 @@ export const useSavingsFundFlow = () => {
   );
 
   /**
-   * The rhino.fi address for a row could not be had: show the row's own
-   * direct-deposit address instead, on the same step.
+   * A "More networks" chain from under the list. The address step shows the
+   * user's rhino.fi address for it, which fetches its own address; no
+   * direct-deposit session is minted.
    */
-  const fallBackFromRhino = useCallback(() => {
-    const chainId = rhinoDeposit?.fallbackChainId;
-    if (!rhinoDeposit || chainId === undefined) return;
-    startDirectSession(chainId, rhinoDeposit.tokenSymbol);
-  }, [rhinoDeposit, startDirectSession]);
+  const selectRhinoNetwork = useCallback(
+    (selection: RhinoDepositSelection) => {
+      track(TRACKING_EVENTS.NETWORK_SELECTED, {
+        chain_id: selection.chainId,
+        rhino_chain: selection.chain,
+        token_symbol: selection.tokenSymbol,
+        deposit_type: 'savings_direct_deposit',
+        via_rhino: true,
+      });
+      setDirectDepositSession({
+        selectedToken: selection.tokenSymbol,
+        chainId: undefined,
+        walletAddress: undefined,
+      });
+      setRhinoDeposit(selection);
+      setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS);
+    },
+    [setDirectDepositSession, setModal, setRhinoDeposit],
+  );
 
   const selectToken = useCallback(
     (symbol: string) => {
@@ -168,20 +203,38 @@ export const useSavingsFundFlow = () => {
         walletAddress: undefined,
       });
 
-      // Tokens that exist on a single chain (FUSE, EURC) skip the one-row
-      // chain list.
+      // Tokens sent on a single chain (WFUSE) skip the one-row chain list, once
+      // that row has an address, and unless "More networks" makes it a choice
+      // again. Until rhino.fi's routes are in, or when they cannot be had or
+      // have none, the list is where that is said.
       const networks = getSavingsFundNetworks(symbol);
-      if (networks.length === 1) {
+      const extraChains = getRhinoExtraChains(rhinoAssets.assets, {
+        destinationType: 'PROTOCOL',
+        symbol,
+        vault: getSavingsFundToken(symbol).vaultToken,
+      });
+      if (
+        networks.length === 1 &&
+        extraChains.length === 0 &&
+        isOfferedRhinoRow(resolveRow(networks[0].chainId, symbol))
+      ) {
         selectNetwork(networks[0].chainId, symbol);
         return;
       }
 
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     },
-    [selectNetwork, setDirectDepositSession, setModal, setRhinoDeposit],
+    [
+      resolveRow,
+      rhinoAssets.assets,
+      selectNetwork,
+      setDirectDepositSession,
+      setModal,
+      setRhinoDeposit,
+    ],
   );
 
-  /** Re-runs the address request for the network already chosen. */
+  /** Re-runs the session request for the Fuse row already chosen. */
   const retryPrepareSession = useCallback(() => {
     if (!selectedChainId) return;
     prepareSession({ chainId: selectedChainId, token: selectedToken });
@@ -221,7 +274,7 @@ export const useSavingsFundFlow = () => {
     hasSessionError,
     selectToken,
     selectNetwork,
-    fallBackFromRhino,
+    selectRhinoNetwork,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,

@@ -28,7 +28,7 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
     hasSessionError,
     selectToken,
     selectNetwork,
-    fallBackFromRhino,
+    selectRhinoNetwork,
     retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,
@@ -40,6 +40,7 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
       <SavingsFundNetworks
         symbol={selectedToken}
         onSelect={chainId => selectNetwork(chainId)}
+        onSelectRhino={selectRhinoNetwork}
         loadingChainId={isPreparingSession ? selectedChainId : undefined}
       />
     );
@@ -51,7 +52,6 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
         selection={rhinoDeposit}
         onChangeNetwork={() => setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS)}
         onDepositDetected={openDetectedDeposit}
-        onFallback={rhinoDeposit.fallbackChainId !== undefined ? fallBackFromRhino : undefined}
       />
     );
   }

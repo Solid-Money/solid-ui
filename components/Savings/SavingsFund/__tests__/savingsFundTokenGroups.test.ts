@@ -46,14 +46,14 @@ describe('getSavingsFundTokenGroups', () => {
     }
   });
 
-  // The backend deposits EURC that lands on Base into soEURC and refunds it from
-  // anywhere else, so the EUR vault offers EURC on Base and nothing more.
-  it('offers EURC on Base for the EUR vault, and only there', () => {
+  // rhino.fi's soEURC route takes EURC on Ethereum and Base and pays it into
+  // soEURC on Base; not Optimism or Arc, though rhino.fi lists both.
+  it('offers EURC on Ethereum and Base for the EUR vault, and only there', () => {
     const eur = getSavingsFundTokenGroups('savings', 'soEURC');
     expect(eur.stablecoins).toEqual([SAVINGS_FUND_EURC]);
     expect(eur.crypto).toEqual([]);
-    expect(SAVINGS_FUND_EURC).toMatchObject({ vaultToken: 'soEURC', chainIds: [8453] });
-    expect(getSavingsFundNetworks('EURC').map(network => network.chainId)).toEqual([8453]);
+    expect(SAVINGS_FUND_EURC).toMatchObject({ vaultToken: 'soEURC', chainIds: [1, 8453] });
+    expect(getSavingsFundNetworks('EURC').map(network => network.chainId)).toEqual([1, 8453]);
 
     // Not in the vault-less list, not at the card's soUSD gate, not on another vault.
     for (const [intent, vaultToken] of [

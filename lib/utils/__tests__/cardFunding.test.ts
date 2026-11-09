@@ -1,4 +1,4 @@
-import { base, mainnet } from 'viem/chains';
+import { arbitrum, base, bsc, mainnet, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
 import {
@@ -6,16 +6,25 @@ import {
   CARD_SPENDABLE_ASSETS,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
-import { TokenBalance, TokenType } from '@/lib/types';
+import {
+  RHINO_ASSETS,
+  RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
+  RHINO_ASSETS_WITH_BITCOIN,
+} from '@/lib/__tests__/rhinoFixtures';
+import { RhinoAssetsState } from '@/lib/rhinoDeposit';
+import { CardProvider, TokenBalance, TokenType } from '@/lib/types';
 import {
   CARD_FUND_EURC_SYMBOL,
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
   getCardFundChains,
+  getCardFundCryptoRows,
+  getCardFundRhinoDestination,
   getCardFundRoutes,
   getCardFundRoutesTooltip,
   getCardFundSupportedNetworkNames,
   RAIN_CARD_FUND_SECTIONS,
+  resolveWirexMoveDestination,
   WIREX_CARD_FUND_SECTIONS,
 } from '@/lib/utils/cardFunding';
 import { getMovableHoldings } from '@/lib/utils/cardFundMove';
@@ -208,5 +217,154 @@ describe('card fund sections', () => {
     // user looking for a row the flow will not show them.
     expect(CARD_FUND_MOVE_COPY.wirex.title).not.toMatch(/savings/i);
     expect(CARD_FUND_MOVE_COPY.rain.title).toMatch(/savings/i);
+  });
+});
+
+describe('getCardFundRhinoDestination', () => {
+  it('matches a Rain card’s dollar rows against rhino.fi’s card route', () => {
+    for (const symbol of CARD_FUND_TOKEN_SYMBOLS) {
+      expect(getCardFundRhinoDestination(symbol, CardProvider.RAIN)).toBe('RAIN_CARD');
+      expect(getCardFundRhinoDestination(symbol, null)).toBe('RAIN_CARD');
+    }
+  });
+
+  // Their card deposits off Fuse land in the Safe on Base, where the wallet route pays.
+  it('matches a Wirex card’s dollar rows against rhino.fi’s wallet route', () => {
+    for (const symbol of CARD_FUND_TOKEN_SYMBOLS) {
+      expect(getCardFundRhinoDestination(symbol, CardProvider.WIREX)).toBe('WALLET');
+    }
+  });
+
+  // No card route takes EURC, and the card address only ever delivered it to
+  // the Safe on Base, which is where rhino.fi's wallet route pays.
+  it('matches EURC against rhino.fi’s wallet route, whoever issued the card', () => {
+    expect(getCardFundRhinoDestination(CARD_FUND_EURC_SYMBOL, CardProvider.RAIN)).toBe('WALLET');
+    expect(getCardFundRhinoDestination(CARD_FUND_EURC_SYMBOL, CardProvider.WIREX)).toBe('WALLET');
+  });
+});
+
+/**
+ * "Move from wallet" sends a Wirex cardholder's holding where a deposit of it
+ * would go: rhino.fi's wallet route (USDT as USDC), the card address for USDT
+ * on Base.
+ */
+describe('resolveWirexMoveDestination', () => {
+  const READY: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS };
+
+  it('moves USDC through rhino.fi’s wallet route, with its limits', () => {
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+      expect(resolveWirexMoveDestination(READY, { chainId, symbol: 'USDC' })).toMatchObject({
+        kind: 'rhino',
+        selection: { chainId, tokenSymbol: 'USDC', destinationType: 'WALLET' },
+        minimumUsd: 5,
+        maximumUsd: 100000,
+      }),
+    );
+  });
+
+  // It already sits in the Safe on Base that rhino.fi would deliver it to:
+  // Base is our own, so this holds whether or not rhino.fi has answered.
+  it('does not move USDC already on Base', () => {
+    const states: RhinoAssetsState[] = [READY, { status: 'loading' }, { status: 'unavailable' }];
+    states.forEach(state =>
+      expect(resolveWirexMoveDestination(state, { chainId: base.id, symbol: 'USDC' })).toEqual({
+        kind: 'none',
+      }),
+    );
+  });
+
+  // rhino.fi's wallet route pays it to the Safe on Base as USDC.
+  it('moves USDT through rhino.fi’s wallet route, with its limits', () => {
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+      expect(resolveWirexMoveDestination(READY, { chainId, symbol: 'USDT' })).toMatchObject({
+        kind: 'rhino',
+        selection: { chainId, tokenSymbol: 'USDT', destinationType: 'WALLET' },
+        minimumUsd: 5,
+        maximumUsd: 100000,
+      }),
+    );
+  });
+
+  // Our own pipeline keeps USDT on Base: the card address, as before, whatever
+  // rhino.fi lists or says.
+  it('moves USDT on Base to the card deposit address', () => {
+    const states: RhinoAssetsState[] = [
+      READY,
+      { status: 'ready', assets: RHINO_ASSETS_WITH_BASE_USDT_ROUTES },
+      { status: 'loading' },
+      { status: 'unavailable' },
+    ];
+    states.forEach(state =>
+      expect(resolveWirexMoveDestination(state, { chainId: base.id, symbol: 'USDT' })).toEqual({
+        kind: 'card',
+      }),
+    );
+  });
+
+  it('waits for rhino.fi’s routes, and has nowhere to send USDC without them', () => {
+    const holding = { chainId: mainnet.id, symbol: 'USDC' };
+    expect(resolveWirexMoveDestination({ status: 'loading' }, holding)).toEqual({
+      kind: 'loading',
+    });
+    expect(resolveWirexMoveDestination({ status: 'unavailable' }, holding)).toEqual({
+      kind: 'unavailable',
+    });
+    const noEthereum: RhinoAssetsState = {
+      status: 'ready',
+      assets: {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.filter(chain => chain.chain !== 'ETHEREUM'),
+      },
+    };
+    expect(resolveWirexMoveDestination(noEthereum, holding)).toEqual({ kind: 'none' });
+  });
+
+  // As before rhino.fi: the card deposit address, which delivers to the Safe on
+  // Base, so what is already there stays put.
+  it('moves to the card deposit address while rhino.fi is off', () => {
+    const OFF: RhinoAssetsState = { status: 'disabled' };
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+      ['USDC', 'USDT'].forEach(symbol =>
+        expect(resolveWirexMoveDestination(OFF, { chainId, symbol })).toEqual({ kind: 'card' }),
+      ),
+    );
+    expect(resolveWirexMoveDestination(OFF, { chainId: base.id, symbol: 'USDC' })).toEqual({
+      kind: 'none',
+    });
+    expect(resolveWirexMoveDestination(OFF, { chainId: base.id, symbol: 'USDT' })).toEqual({
+      kind: 'card',
+    });
+  });
+});
+
+describe('getCardFundCryptoRows', () => {
+  const WITH_BITCOIN: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
+
+  it('lists BTC, sent on Bitcoin, once rhino.fi takes it to the card', () => {
+    expect(getCardFundCryptoRows(WITH_BITCOIN, true)).toEqual([
+      { symbol: 'BTC', networks: ['Bitcoin'] },
+    ]);
+  });
+
+  it('lists nothing while rhino.fi does not take it: Bitcoin off, or routes not in', () => {
+    expect(getCardFundCryptoRows({ status: 'ready', assets: RHINO_ASSETS }, true)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'loading' }, true)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'unavailable' }, true)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'disabled' }, true)).toEqual([]);
+  });
+
+  // As in the wallet: the internal team in production, everyone on qa.
+  it('lists nothing for someone not given the new deposit tokens', () => {
+    expect(getCardFundCryptoRows(WITH_BITCOIN, false)).toEqual([]);
+  });
+
+  it('is offered to Rain cards, not Wirex', () => {
+    expect(RAIN_CARD_FUND_SECTIONS.crypto).toBe(true);
+    // rhino.fi's wallet route would pay a Wirex cardholder's BTC out as WBTC.
+    expect(WIREX_CARD_FUND_SECTIONS.crypto).toBe(false);
+  });
+
+  it('is matched against the card route, which sells it for USDC', () => {
+    expect(getCardFundRhinoDestination('BTC', CardProvider.RAIN)).toBe('RAIN_CARD');
   });
 });
