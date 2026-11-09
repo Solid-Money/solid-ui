@@ -120,6 +120,27 @@ describe('WalletDepositTokens', () => {
     expect(mockRetry).toHaveBeenCalled();
   });
 
+  // The backend answers `enabled: false` without a rhino.fi key: our own rows
+  // are offered, the Safe on Base among them, and there is nothing to retry.
+  it('lists what our own rows take, with no retry, while rhino.fi is off', () => {
+    mockRhino.current = { status: 'disabled', retry: mockRetry };
+    const root = render();
+    const shown = texts(root);
+
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'cbBTC', 'FUSE']));
+    expect(shown).not.toContain('BTC');
+    expect(shown).not.toContain('PAXG');
+    expect(shown).not.toContain('Couldn’t load the other tokens.');
+    expect(root.root.findAllByType('Button')).toHaveLength(0);
+
+    // ETH has no row of ours but Base's, the Safe.
+    const eth = root.root.find((node: any) => node.props.accessibilityLabel === 'ETH, Ether');
+    act(() => eth.props.onPress());
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: 'ETH', chainId: base.id }),
+    );
+  });
+
   it('lists only what everyone is offered for someone not given the new tokens', () => {
     mockAccess.isEnabled = false;
     const root = render();

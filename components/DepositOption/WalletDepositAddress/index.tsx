@@ -86,6 +86,9 @@ const AddressRetry = ({ message, onRetry }: { message: string; onRetry: () => vo
  *   there the address is the Safe, where it lands as sent.
  * - A "More networks" chain (`rhinoChain`: Tron, Solana, …) is rhino.fi's
  *   address for it, drawn with rhino.fi's name for the chain.
+ * - While the backend has rhino.fi off, every row is ours: the Safe on Base and
+ *   Fuse, and a minted address for USDC and USDT on the chains our pipeline
+ *   bridges them to Base from. There is no retry: nothing has failed.
  *
  * Until rhino.fi's routes are in no row but Fuse's can be told apart, so the QR
  * waits; if they cannot be had, it offers a retry. Sending a currency the chosen
@@ -162,13 +165,17 @@ const WalletDepositAddress = () => {
   }, [correction, setWalletDeposit]);
 
   // Our own address, for our own rows only: the Safe, or an address the
-  // pipeline mints and watches (a Wirex cardholder's dollars on Fuse).
+  // pipeline mints and watches (a Wirex cardholder's dollars on Fuse, and
+  // dollars off Base while rhino.fi is off).
   const {
     address: walletAddress,
     isError: hasWalletAddressError,
     isMinted,
     sessionDestination,
-  } = useWalletDepositAddress(chainId, symbol, { enabled: row.kind === 'own' });
+  } = useWalletDepositAddress(chainId, symbol, {
+    enabled: row.kind === 'own',
+    rhinoOff: viewer.rhino?.status === 'disabled',
+  });
   const address =
     row.kind === 'rhino'
       ? rhinoAddress?.depositAddress

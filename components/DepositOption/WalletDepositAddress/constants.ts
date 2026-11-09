@@ -2,7 +2,7 @@ import { ImageSourcePropType } from 'react-native';
 import { formatUnits, parseUnits } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
-import { getBridgeChain } from '@/constants/bridge';
+import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
 import {
   WALLET_DEPOSIT_CHAIN_IDS,
   WALLET_DEPOSIT_TOKEN_GROUPS,
@@ -155,6 +155,18 @@ const CARD_ADDRESS_SYMBOLS: ReadonlySet<string> = new Set(['USDC', 'USDT']);
 /** The rhino.fi route every wallet row is matched against: the Safe on Base. */
 const WALLET_RHINO_DESTINATION = 'WALLET' as const;
 
+/**
+ * The chains our own pipeline bridges a wallet deposit's USDC and USDT to the
+ * Safe on Base from (the backend's `WALLET_BRIDGE_SOURCE_CHAINS`), and so the
+ * chains a `WALLET` session is offered on while rhino.fi is off.
+ */
+const WALLET_SESSION_CHAIN_IDS: ReadonlySet<number> = new Set([
+  mainnet.id,
+  polygon.id,
+  arbitrum.id,
+  bsc.id,
+]);
+
 /** EURC, which only a Wirex cardholder is offered. */
 const EURC_SYMBOL = 'EURC';
 
@@ -198,8 +210,14 @@ export type WalletOwnAddress =
  *   cardholder that address would deliver to the card, and for someone with no
  *   card there is no issuer to resolve, which is why it is Wirex's alone.
  * - Base: the Safe, where it lands as sent. That is USDT on Base, which our own
- *   pipeline keeps (`isOwnPipelineToken`) and the Safe spends as it is, and the
- *   Base row of a currency rhino.fi takes nowhere (decided by `getTokenRows`).
+ *   pipeline keeps (`isOwnPipelineToken`) and the Safe spends as it is, the
+ *   Base row of a currency rhino.fi takes nowhere (decided by `getTokenRows`),
+ *   and every Base row while rhino.fi is off.
+ * - While the backend has rhino.fi off (`rhinoOff`): the dollar stablecoins on
+ *   the chains the backend bridges them to Base from, as a `WALLET` session it
+ *   delivers to the Safe on Base (see {@link WALLET_SESSION_CHAIN_IDS}); Wirex
+ *   cardholders included, whose card spends from that Safe. Nothing elsewhere:
+ *   such a deposit would stay on the chain it was sent on.
  * - Any other row is rhino.fi's, USDT included (paid to the Safe as USDC), so
  *   there is no address of ours to give.
  */
@@ -207,13 +225,20 @@ export const getWalletOwnAddress = (
   chainId: number,
   symbol: string,
   provider: WalletDepositProvider,
+  { rhinoOff = false }: { rhinoOff?: boolean } = {},
 ): WalletOwnAddress | undefined => {
   if (isOwnPipelineChain(chainId)) {
     return provider === CardProvider.WIREX && CARD_ADDRESS_SYMBOLS.has(symbol)
       ? { kind: 'session', destinationType: 'RAIN_CARD' }
       : { kind: 'safe' };
   }
-  return chainId === base.id ? { kind: 'safe' } : undefined;
+  if (chainId === base.id) return { kind: 'safe' };
+  return rhinoOff &&
+    CARD_ADDRESS_SYMBOLS.has(symbol) &&
+    WALLET_SESSION_CHAIN_IDS.has(chainId) &&
+    !!BRIDGE_TOKENS[chainId]?.tokens?.[symbol]
+    ? { kind: 'session', destinationType: WALLET_RHINO_DESTINATION }
+    : undefined;
 };
 
 /**
@@ -311,7 +336,10 @@ const getCandidateChainIds = (
  *
  * Until rhino.fi's routes are in, every rhino.fi row is `loading`, and
  * `unavailable` if they cannot be had: which tokens rhino.fi takes is exactly
- * what decides these rows, so none of them can be offered without it.
+ * what decides these rows, so none of them can be offered without it. While
+ * the backend has rhino.fi off, every row is our own, offered wherever
+ * {@link getWalletOwnAddress} has an address: Fuse, every Base row (the Safe),
+ * and USDC and USDT on the chains our pipeline bridges them to Base from.
  */
 const getTokenRows = (
   token: WalletDepositTokenConfig,
@@ -331,7 +359,9 @@ const getTokenRows = (
     const state = resolveRhinoRow(rhino, { chainId, destinationType, symbol });
     if (state.kind === 'own') {
       // An own row with no address of ours is not offered.
-      return getWalletOwnAddress(chainId, symbol, viewer.provider)
+      return getWalletOwnAddress(chainId, symbol, viewer.provider, {
+        rhinoOff: rhino.status === 'disabled',
+      })
         ? { chainId, state }
         : { chainId, state: { kind: 'none' } };
     }
@@ -386,7 +416,8 @@ export const getWalletDepositExtraNetworks = (
  * How the address screen serves a "More networks" chain (`rhinoChain`, e.g.
  * `TRON`) for a currency: its rhino.fi address while rhino.fi still takes the
  * currency into the wallet there, `loading` or `unavailable` while its routes
- * are not in, and `none` once it does not, which the screen moves off.
+ * are not in, and `none` once it does not, or rhino.fi is off, which the
+ * screen moves off.
  */
 export const getWalletDepositExtraRow = (
   rhinoChain: string,
@@ -394,6 +425,7 @@ export const getWalletDepositExtraRow = (
   viewer: WalletDepositViewer = {},
 ): WalletDepositRow => {
   const status = viewer.rhino?.status ?? 'loading';
+  if (status === 'disabled') return { kind: 'none' };
   if (status !== 'ready') return { kind: status };
   const chain = getWalletDepositExtraNetworks(symbol, viewer).find(
     item => item.chain === rhinoChain,

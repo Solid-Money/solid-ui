@@ -23,7 +23,9 @@ export const RHINO_DEPOSIT_ASSETS_QUERY_KEY = 'rhino-deposit-assets';
  * A requirement for every network row but Fuse's: rhino.fi is the only provider
  * there, so the screens wait for this list and offer a retry when it cannot be
  * had (see `useOfferedRhinoDepositAssets`). One retry, as for `/deposit/assets`,
- * and no toast: the screens show the failure in place.
+ * and no toast: the screens show the failure in place. A backend with rhino.fi
+ * off (`enabled: false`, or no such endpoint) is not a failure: every row is
+ * then our own pipeline's.
  */
 export const useRhinoDepositAssets = () =>
   useQuery({
@@ -41,7 +43,8 @@ export type OfferedRhinoDepositAssets = RhinoAssetsState & {
 
 /**
  * rhino.fi's assets as the deposit screens need them: still loading, `ready`
- * with rhino.fi on, or `unavailable` (failed, or rhino.fi off), and a retry.
+ * with rhino.fi on, `unavailable` (failed), or `disabled` (the backend has
+ * rhino.fi off, so our own pipeline serves every row), and a retry.
  *
  * Fetched for everyone and gated on nothing but the backend's `enabled`: not on
  * the new-deposit-tokens rollout, which only decides which wallet tokens are
@@ -49,10 +52,10 @@ export type OfferedRhinoDepositAssets = RhinoAssetsState & {
  * that is what stops a row from handing out an address of ours meanwhile.
  */
 export const useOfferedRhinoDepositAssets = (): OfferedRhinoDepositAssets => {
-  const { data, isFetching, isError, refetch } = useRhinoDepositAssets();
+  const { data, isFetching, isError, error, refetch } = useRhinoDepositAssets();
   const state = useMemo(
-    () => getRhinoAssetsState(data, { isFetching, isError }),
-    [data, isFetching, isError],
+    () => getRhinoAssetsState(data, { isFetching, isError, error }),
+    [data, error, isFetching, isError],
   );
   const retry = useCallback(() => void refetch(), [refetch]);
   return useMemo(() => ({ ...state, retry }), [state, retry]);

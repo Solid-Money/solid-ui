@@ -87,21 +87,28 @@ describe('useOfferedRhinoDepositAssets', () => {
     expect(latest().offered).toMatchObject({ status: 'ready', assets: RHINO_ASSETS });
   });
 
-  it('is unavailable when rhino.fi is off, and asks again on retry', async () => {
-    mockGetAssets.mockResolvedValueOnce({ enabled: false, chains: [] });
+  // The backend answers `enabled: false` without a rhino.fi key: not a failure,
+  // and not asked again, since the answer would be the same.
+  it('is disabled when the backend has rhino.fi off', async () => {
+    mockGetAssets.mockResolvedValue({ enabled: false, chains: [] });
     await mount();
-    await settleUntil(() => latest().offered.status === 'unavailable');
-    expect(latest().offered.status).toBe('unavailable');
+    await settleUntil(() => latest().offered.status === 'disabled');
 
-    mockGetAssets.mockResolvedValue(RHINO_ASSETS);
-    await act(async () => latest().offered.retry());
-    await settleUntil(() => latest().offered.status === 'ready');
-
-    expect(seen.map(item => item.offered.status)).toContain('loading');
-    expect(latest().offered.status).toBe('ready');
+    expect(latest().offered.status).toBe('disabled');
+    expect(latest().offered.assets).toBeUndefined();
+    expect(mockGetAssets).toHaveBeenCalledTimes(1);
   });
 
-  it('is unavailable when the request fails', async () => {
+  // A backend from before rhino.fi has no such endpoint.
+  it('is disabled when the backend has no rhino.fi endpoint', async () => {
+    mockGetAssets.mockRejectedValue({ status: 404 });
+    await mount();
+    await settleUntil(() => latest().offered.status === 'disabled');
+
+    expect(latest().offered.status).toBe('disabled');
+  });
+
+  it('is unavailable when the request fails, and asks again on retry', async () => {
     mockGetAssets.mockRejectedValue(new Error('down'));
     await mount();
     await settleUntil(() => latest().offered.status === 'unavailable');
@@ -110,6 +117,13 @@ describe('useOfferedRhinoDepositAssets', () => {
     expect(latest().offered.assets).toBeUndefined();
     // Asked twice: once, and the one retry.
     expect(mockGetAssets).toHaveBeenCalledTimes(2);
+
+    mockGetAssets.mockResolvedValue(RHINO_ASSETS);
+    await act(async () => latest().offered.retry());
+    await settleUntil(() => latest().offered.status === 'ready');
+
+    expect(seen.map(item => item.offered.status)).toContain('loading');
+    expect(latest().offered.status).toBe('ready');
   });
 });
 
@@ -133,10 +147,19 @@ describe('useRhinoNetworkRows', () => {
   });
 
   it('marks every row but Fuse’s unavailable when the routes cannot be had', async () => {
-    mockGetAssets.mockResolvedValue({ enabled: false, chains: [] });
+    mockGetAssets.mockRejectedValue(new Error('down'));
     await mount();
     await settleUntil(() => latest().offered.status === 'unavailable');
 
     expect(kinds()).toEqual(['unavailable', 'unavailable', 'own']);
+  });
+
+  // As before rhino.fi: every row our own pipeline's, Polygon included.
+  it('serves every row as our own while rhino.fi is off', async () => {
+    mockGetAssets.mockResolvedValue({ enabled: false, chains: [] });
+    await mount();
+    await settleUntil(() => latest().offered.status === 'disabled');
+
+    expect(kinds()).toEqual(['own', 'own', 'own']);
   });
 });

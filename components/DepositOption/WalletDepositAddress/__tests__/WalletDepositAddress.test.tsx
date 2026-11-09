@@ -43,8 +43,11 @@ jest.mock('@/hooks/useEuroSpendEnablement', () => ({
 // Our own address, as `getWalletOwnAddress` decides it: minted (a Wirex
 // cardholder's Fuse dollars), or the Safe.
 jest.mock('@/hooks/useWalletDepositAddress', () => ({
-  useWalletDepositAddress: (chainId: number, symbol: string, options: { enabled?: boolean }) =>
-    mockWalletAddress(chainId, symbol, options),
+  useWalletDepositAddress: (
+    chainId: number,
+    symbol: string,
+    options: { enabled?: boolean; rhinoOff?: boolean },
+  ) => mockWalletAddress(chainId, symbol, options),
 }));
 jest.mock('@/components/DepositOption/WalletDepositAddress/useWalletDepositViewer', () => ({
   useWalletDepositViewer: () => mockViewer.current,
@@ -97,9 +100,11 @@ const SAFE_ADDRESS = '0x5afe000000000000000000000000000000005afe';
 const mockOwnAddress = (...args: Parameters<typeof getWalletOwnAddress>) =>
   getWalletOwnAddress(...args);
 const mockWalletAddress = jest.fn(
-  (chainId: number, symbol: string, options: { enabled?: boolean }) => {
+  (chainId: number, symbol: string, options: { enabled?: boolean; rhinoOff?: boolean }) => {
     if (options?.enabled === false) return { address: undefined, isError: false, isMinted: false };
-    const own = mockOwnAddress(chainId, symbol, mockViewer.current.provider);
+    const own = mockOwnAddress(chainId, symbol, mockViewer.current.provider, {
+      rhinoOff: options?.rhinoOff,
+    });
     return own?.kind === 'session'
       ? {
           address: '0xabc',
@@ -330,6 +335,47 @@ describe('WalletDepositAddress for a token rhino.fi takes nowhere', () => {
     expect(qrValues()).toEqual([]);
     expect(ownAddressWasEnabled()).toBe(false);
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ chainId: base.id, symbol: 'WETH' });
+  });
+});
+
+/**
+ * The backend answers `enabled: false` without a rhino.fi key: every row is
+ * ours, as before rhino.fi, and nothing is a retry.
+ */
+describe('WalletDepositAddress while rhino.fi is off', () => {
+  const OFF: WalletDepositViewer = { hasNewTokens: true, rhino: { status: 'disabled' } };
+
+  it('mints our own wallet address for USDC off Base, with no rhino.fi address', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockWalletAddress).toHaveBeenLastCalledWith(polygon.id, 'USDC', {
+      enabled: true,
+      rhinoOff: true,
+    });
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+    expect(texts()).not.toContain('Couldn’t load this network.');
+    expect(retryButton()).toBeUndefined();
+  });
+
+  it('shows the Safe on Base for ETH, which rhino.fi would otherwise carry', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('moves ETH off a chain our pipeline does not take it on, to Base', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: mainnet.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual([]);
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ chainId: base.id, symbol: 'ETH' });
   });
 });
 

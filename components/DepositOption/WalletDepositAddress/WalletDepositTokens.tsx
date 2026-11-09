@@ -8,6 +8,7 @@ import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
+import { getRhinoAssetsNotice } from '@/lib/rhinoDeposit';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -149,6 +150,9 @@ const WalletDepositTokens = () => {
   const viewer = useWalletDepositViewer();
   const { retry: retryRhino } = useOfferedRhinoDepositAssets();
   const rhinoStatus = viewer.rhino?.status ?? 'loading';
+  // Nothing in place of rhino.fi's tokens once its routes are in, or when it is
+  // off: every token then has the rows it has, ours included.
+  const rhinoNotice = getRhinoAssetsNotice(rhinoStatus);
   const tokens = useMemo(() => getAllWalletDepositTokens(viewer), [viewer]);
   const groups = useMemo(
     () =>
@@ -171,16 +175,16 @@ const WalletDepositTokens = () => {
     <View className="gap-y-5">
       <TokenSearchField value={query} onChangeText={setQuery} />
 
-      {rhinoStatus === 'ready' ? null : (
+      {rhinoNotice ? (
         <RhinoNetworksNotice
-          notice={rhinoStatus}
+          notice={rhinoNotice}
           symbol=""
           noun="tokens"
           hasRows={tokens.length > 0}
           onRetry={retryRhino}
-          className={rhinoStatus === 'loading' ? 'py-14' : 'rounded-[15px] bg-card'}
+          className={rhinoNotice === 'loading' ? 'py-14' : 'rounded-[15px] bg-card'}
         />
-      )}
+      ) : null}
 
       {rhinoStatus === 'loading' ? null : groups.length ? (
         groups.map(group => (
