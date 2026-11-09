@@ -23,14 +23,22 @@ export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
  * alone: the same call for a Rain cardholder would deliver to the card, and for
  * someone with no card there is no issuer to resolve.
  *
+ * `toSafe` overrides all of that: the Safe, for everyone. It is for a flow that
+ * funds something charged from the Safe itself, such as the AI API on Base,
+ * where a card address would carry the deposit to a balance it cannot draw on.
+ *
  * Minting a session is a POST, so a failure is not retried into a loop; the
  * caller shows the failure rather than quietly falling back to the Safe, which
  * would hand out an address the deposit would be stranded on.
  */
-export const useWalletDepositAddress = (chainId: number, symbol: string) => {
+export const useWalletDepositAddress = (
+  chainId: number,
+  symbol: string,
+  { toSafe = false }: { toSafe?: boolean } = {},
+) => {
   const { user } = useUser();
   const { provider } = useCardProvider();
-  const needsSession = usesDirectDepositAddress(symbol, provider);
+  const needsSession = !toSafe && usesDirectDepositAddress(symbol, provider);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [WALLET_DEPOSIT_ADDRESS_QUERY_KEY, chainId, symbol],

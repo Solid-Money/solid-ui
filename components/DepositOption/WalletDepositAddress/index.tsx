@@ -77,7 +77,12 @@ const WalletDepositAddress = () => {
   );
   // A Wirex cardholder's stablecoins get an address the pipeline mints and
   // watches; everything else gets the Safe, which is where it lands and stays.
-  const { address, isError: hasAddressError, isMinted } = useWalletDepositAddress(chainId, symbol);
+  // A flow funding the Safe itself (the AI API) asks for the Safe outright.
+  const {
+    address,
+    isError: hasAddressError,
+    isMinted,
+  } = useWalletDepositAddress(chainId, symbol, { toSafe: walletDeposit.toSafe });
   // Wirex cardholders and people with no card both land here, and only the
   // cardholders are charged — see `getDepositFeeRatePpm`.
   const { provider } = useCardProvider();
@@ -234,13 +239,17 @@ const WalletDepositAddress = () => {
             </Pressable>
           </View>
         ) : null}
-        <DepositFeeNotice
-          product="wallet"
-          provider={provider}
-          chainId={chainId}
-          symbol={symbol}
-          className="mt-2"
-        />
+        {/* Only a minted address is charged: the pipeline takes its fee on the
+            way through, and a transfer to the Safe never passes it. */}
+        {isMinted ? (
+          <DepositFeeNotice
+            product="wallet"
+            provider={provider}
+            chainId={chainId}
+            symbol={symbol}
+            className="mt-2"
+          />
+        ) : null}
         <Pressable
           className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
           onPress={() => openHelpLink(WALLET_DEPOSIT_LEARN_URL)}

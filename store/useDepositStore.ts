@@ -100,6 +100,16 @@ export interface WalletDepositSelection {
    * token", so the previous step alone cannot tell the two apart.
    */
   isChangingToken?: boolean;
+  /**
+   * Set when the address is opened to fund something paid from the Safe itself:
+   * the AI API, which charges the Safe on Base. The screen then shows the Safe
+   * whatever card the user holds. Without it, a Wirex cardholder's stablecoins
+   * get the address the pipeline mints for their card, which bridges them to the
+   * Safe on Fuse, where nothing that charges the Safe on Base can reach them.
+   *
+   * Lives for one open of the modal, like the rest of the selection.
+   */
+  toSafe?: boolean;
 }
 
 interface DepositState {
