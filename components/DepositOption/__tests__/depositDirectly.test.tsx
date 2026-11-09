@@ -116,15 +116,17 @@ describe('resolveDepositDirectlyRow', () => {
 });
 
 describe('DepositDirectlyNetworks', () => {
-  it('lists the chains with an address, rhino.fi’s marked, and Fuse our own', () => {
+  it('lists the chains with an address, none tagged with its provider', () => {
     render(<DepositDirectlyNetworks />);
 
     expect(names()).toEqual(['Ethereum', 'Polygon', 'Base', 'Arbitrum', 'BNB Chain', 'Fuse']);
     const descriptions = Object.fromEntries(
       networks().map((node: any) => [node.props.name, node.props.description]),
     );
-    expect(descriptions.Base).toContain('via rhino.fi');
-    expect(descriptions.Fuse).not.toContain('via rhino.fi');
+    // No row is tagged with its provider, rhino.fi's included.
+    Object.values(descriptions).forEach(description =>
+      expect(description).not.toContain('via rhino.fi'),
+    );
   });
 
   // Base carries USDC alone, so there is no token step to take.

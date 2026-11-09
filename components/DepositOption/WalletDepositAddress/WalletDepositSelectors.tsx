@@ -8,7 +8,6 @@ import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNe
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
-import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -17,7 +16,6 @@ import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
   getWalletDepositNetworksNotice,
-  getWalletDepositRow,
   getWalletDepositTokenIcon,
 } from './constants';
 import { useWalletDepositViewer } from './useWalletDepositViewer';
@@ -190,8 +188,8 @@ type WalletDepositNetworkListProps = {
  *
  * It offers only the chains carrying the chosen currency, so changing network
  * can never quietly change the currency with it, and of those only the rows
- * with an address: every row rhino.fi serves, marked "via rhino.fi", plus Fuse,
- * and Base for a currency rhino.fi does not take (see `getWalletDepositRow`).
+ * with an address: every row rhino.fi serves, plus Base and Fuse, which are our
+ * own (see `getWalletDepositRow` in `constants`).
  * While rhino.fi's routes are out, or when they cannot be had, a loader or a
  * retry stands in for its rows.
  *
@@ -217,8 +215,6 @@ export const WalletDepositNetworkList = ({
   );
   const { retry: retryRhino } = useOfferedRhinoDepositAssets();
   const notice = getWalletDepositNetworksNotice(symbol, viewer);
-  const isRhinoRow = (rowChainId: number) =>
-    getWalletDepositRow(rowChainId, symbol, viewer).kind === 'rhino';
 
   const rows = (
     <>
@@ -233,9 +229,6 @@ export const WalletDepositNetworkList = ({
         >
           <Image source={item.icon} style={ROW_ICON_STYLE} contentFit="cover" />
           <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
-          {isRhinoRow(item.chainId) ? (
-            <Text className="text-sm text-white/50">{RHINO_NETWORK_CHIP}</Text>
-          ) : null}
           {item.chainId === chainId && !rhinoChain ? <Check size={18} color="#94F27F" /> : null}
         </Pressable>
       ))}
@@ -262,7 +255,7 @@ export const WalletDepositNetworkList = ({
       {extraNetworks.map(item => (
         <Pressable
           key={item.chain}
-          accessibilityLabel={`${item.name}, ${RHINO_NETWORK_CHIP}`}
+          accessibilityLabel={item.name}
           onPress={() => onSelectExtra(item.chain)}
           className="flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover"
         >
@@ -273,7 +266,6 @@ export const WalletDepositNetworkList = ({
             size={ROW_ICON_STYLE.width}
           />
           <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
-          <Text className="text-sm text-white/50">{RHINO_NETWORK_CHIP}</Text>
           {item.chain === rhinoChain ? <Check size={18} color="#94F27F" /> : null}
         </Pressable>
       ))}

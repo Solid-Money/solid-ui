@@ -3,10 +3,12 @@ import { arbitrum, base, fuse, polygon } from 'viem/chains';
 
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
-import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
+
+/** The provider tag rows no longer carry. */
+const RHINO_TAG = 'via rhino.fi';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -112,14 +114,14 @@ afterEach(() => {
 describe('CardFundNetworks', () => {
   // rhino.fi pays the card out on Base: a deposit sent there would only be paid
   // back to Base, so Base is the card deposit address, as before rhino.fi.
-  it('marks every row rhino.fi serves, and keeps Base and Fuse our own', () => {
+  it('lists every row with an address, none tagged with its provider', () => {
     render();
 
     expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
     const chips = Object.fromEntries(rows().map((row: any) => [row.props.title, row.props.chips]));
-    expect(chips.Polygon).toContain(RHINO_NETWORK_CHIP);
-    expect(chips.Base).not.toContain(RHINO_NETWORK_CHIP);
-    expect(chips.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+    expect(chips.Polygon).not.toContain(RHINO_TAG);
+    expect(chips.Base).not.toContain(RHINO_TAG);
+    expect(chips.Fuse).not.toContain(RHINO_TAG);
   });
 
   it('leaves out a row rhino.fi has no card route from', () => {
@@ -152,7 +154,7 @@ describe('CardFundNetworks', () => {
     render();
 
     expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
-    rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_NETWORK_CHIP));
+    rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_TAG));
     expect(texts()).not.toContain('Couldn’t load the other networks.');
     expect(root.root.findAllByType('Button')).toHaveLength(0);
     act(() => root.unmount());
@@ -183,7 +185,7 @@ describe('CardFundNetworks', () => {
   it('takes EURC on Base through our own card address', () => {
     render('EURC');
     expect(titles()).toEqual(['Base']);
-    expect(rows()[0].props.chips).not.toContain(RHINO_NETWORK_CHIP);
+    expect(rows()[0].props.chips).not.toContain(RHINO_TAG);
   });
 
   // BTC has no row of the list's own: Bitcoin, under "More networks", alone.
@@ -244,9 +246,9 @@ describe('CardFundNetworks', () => {
       const chips = Object.fromEntries(
         rows().map((row: any) => [row.props.title, row.props.chips]),
       );
-      expect(chips.Polygon).toContain(RHINO_NETWORK_CHIP);
-      expect(chips.Arbitrum).toContain(RHINO_NETWORK_CHIP);
-      expect(chips.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+      expect(chips.Polygon).not.toContain(RHINO_TAG);
+      expect(chips.Arbitrum).not.toContain(RHINO_TAG);
+      expect(chips.Fuse).not.toContain(RHINO_TAG);
       act(() => root.unmount());
       root = undefined;
     });

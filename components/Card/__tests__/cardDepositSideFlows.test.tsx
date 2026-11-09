@@ -4,7 +4,6 @@ import { base, fuse, mainnet } from 'viem/chains';
 import CardDirectDepositModalDesktop from '@/components/Card/CardDirectDepositModalDesktop';
 import CardDirectDepositModalMobile from '@/components/Card/CardDirectDepositModalMobile';
 import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
-import { RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 
@@ -235,7 +234,7 @@ describe('Rain card, desktop: the connected-wallet send', () => {
         .props.onPress(),
     );
 
-  it('lists the chains with an address, rhino.fi’s marked', async () => {
+  it('lists the chains with an address, none tagged with its provider', async () => {
     render(<CardDirectDepositModalDesktop isOpen onOpenChange={jest.fn()} />);
     await openWalletNetworks();
 
@@ -243,9 +242,10 @@ describe('Rain card, desktop: the connected-wallet send', () => {
       networks().map((node: any) => [node.props.name, node.props.description]),
     );
     expect(Object.keys(descriptions)).toEqual(expect.arrayContaining(['Ethereum', 'Base', 'Fuse']));
-    expect(descriptions.Ethereum).toContain(RHINO_NETWORK_CHIP);
-    expect(descriptions.Base).not.toContain(RHINO_NETWORK_CHIP);
-    expect(descriptions.Fuse).not.toContain(RHINO_NETWORK_CHIP);
+    // No row is tagged with its provider, rhino.fi's included.
+    Object.values(descriptions).forEach(description =>
+      expect(description).not.toContain('via rhino.fi'),
+    );
   });
 
   it('sends to the rhino.fi card address off Base and Fuse, minting no session', async () => {
