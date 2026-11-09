@@ -1,3 +1,4 @@
+import { isBridgePaymasterAddress } from '@/lib/protocolAddresses';
 import {
   ActivityEvent,
   AddressBookResponse,
@@ -12,6 +13,22 @@ export interface SendRecipient {
   saved: boolean;
 }
 
+/**
+ * A successful send to someone, as a recent recipient. A bridge's source leg
+ * is indexed as a plain send to our BridgePaymaster; offering that address as
+ * a recipient sent a user's funds to it, so it never counts.
+ */
+export function isRecentSendActivity(
+  activity: ActivityEvent,
+): activity is ActivityEvent & { toAddress: string } {
+  return (
+    [TransactionType.SEND, TransactionType.CROSS_CHAIN_SEND].includes(activity.type) &&
+    activity.status === TransactionStatus.SUCCESS &&
+    !!activity.toAddress &&
+    !isBridgePaymasterAddress(activity.toAddress)
+  );
+}
+
 /** Successful sends, newest first, with case-insensitive contact matching. */
 export function getRecentSendRecipients(
   activities: ActivityEvent[],
@@ -20,11 +37,7 @@ export function getRecentSendRecipients(
   const contacts = new Map(addressBook.map(entry => [entry.walletAddress.toLowerCase(), entry]));
   const latest = new Map<string, ActivityEvent>();
   for (const activity of activities) {
-    if (
-      ![TransactionType.SEND, TransactionType.CROSS_CHAIN_SEND].includes(activity.type) ||
-      activity.status !== TransactionStatus.SUCCESS ||
-      !activity.toAddress
-    ) {
+    if (!isRecentSendActivity(activity)) {
       continue;
     }
     const key = activity.toAddress.toLowerCase();

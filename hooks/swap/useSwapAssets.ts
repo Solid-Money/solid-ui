@@ -4,6 +4,7 @@ import { Address, erc20Abi, formatUnits, zeroAddress } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { NATIVE_SWAP_ASSETS, SWAP_CHAIN_IDS, swapAssetKey } from '@/constants/swapChains';
+import { VAULTS } from '@/constants/vaults';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
 import { SWAP_TOKENS_ALL_CHAINS_KEY } from '@/hooks/useListedTokens';
 import useUser from '@/hooks/useUser';
@@ -92,45 +93,75 @@ export function useSwapAssets() {
 
     const list: SwapAsset[] = [];
     const seen = new Set<string>();
-    const add = (asset: SwapAsset) => {
+    // What the backend will quote: the swap list, every swap chain's native
+    // coin, and on Fuse whatever Algebra routes (the list plus imported tokens).
+    const swappable = new Set<string>();
+    const add = (asset: SwapAsset, listed: boolean) => {
       const key = swapAssetKey(asset);
+      if (listed) swappable.add(key);
       if (seen.has(key)) return;
       seen.add(key);
       list.push(asset);
     };
 
     for (const token of fuseTokens) {
-      add({
-        chainId: fuse.id,
-        address: token.address,
-        symbol: token.symbol,
-        name: token.name,
-        decimals: token.decimals,
-        logoURI: token.logoURI,
-        isNative: token.address === zeroAddress,
-      });
-    }
-
-    for (const chainId of SWAP_CHAIN_IDS) {
-      if (chainId === fuse.id) continue;
-      add(NATIVE_SWAP_ASSETS[chainId]);
-      for (const token of catalogue ?? []) {
-        if (token.chainId !== chainId) continue;
-        add({
-          chainId,
-          address: token.address as Address,
+      add(
+        {
+          chainId: fuse.id,
+          address: token.address,
           symbol: token.symbol,
           name: token.name,
           decimals: token.decimals,
           logoURI: token.logoURI,
-          isNative: false,
-        });
+          isNative: token.address === zeroAddress,
+        },
+        true,
+      );
+    }
+
+    for (const chainId of SWAP_CHAIN_IDS) {
+      if (chainId === fuse.id) continue;
+      add(NATIVE_SWAP_ASSETS[chainId], true);
+      for (const token of catalogue ?? []) {
+        if (token.chainId !== chainId) continue;
+        add(
+          {
+            chainId,
+            address: token.address as Address,
+            symbol: token.symbol,
+            name: token.name,
+            decimals: token.decimals,
+            logoURI: token.logoURI,
+            isNative: false,
+          },
+          true,
+        );
       }
     }
 
-    // Anything the wallet shows, the picker offers. The wallet already limits
-    // itself to catalogue tokens, so this only adds rows when the catalogue
-    // didn't load; the backend still refuses to quote an unlisted token.
+    // Earn's share tokens, so each of its products has a row on the pickers
+    // even where it can't be swapped and isn't held.
+    for (const vault of VAULTS) {
+      for (const { address, chainId } of vault.vaults) {
+        if (!SWAP_CHAIN_IDS.includes(chainId) || address === zeroAddress) continue;
+        add(
+          {
+            chainId,
+            address,
+            symbol: vault.vaultToken,
+            name: vault.vaultName ?? vault.vaultToken,
+            decimals: vault.decimals,
+            isNative: false,
+          },
+          false,
+        );
+      }
+    }
+
+    // Anything the wallet holds, the picker shows. The wallet limits itself to
+    // catalogue tokens plus what the deposit screen takes (soUSD on Base), so a
+    // row added here is off the swap list unless the catalogue didn't load, in
+    // which case there's no list to judge by and the backend has the last word.
     for (const token of walletTokens) {
       if (!SWAP_CHAIN_IDS.includes(token.chainId) || !token.contractAddress) continue;
       if (
@@ -139,15 +170,18 @@ export function useSwapAssets() {
         )?.raw ?? 0n) <= 0n
       )
         continue;
-      add({
-        chainId: token.chainId,
-        address: token.contractAddress as Address,
-        symbol: token.contractTickerSymbol,
-        name: token.contractName,
-        decimals: token.contractDecimals || 18,
-        logoURI: token.logoUrl,
-        isNative: token.contractAddress.toLowerCase() === zeroAddress,
-      });
+      add(
+        {
+          chainId: token.chainId,
+          address: token.contractAddress as Address,
+          symbol: token.contractTickerSymbol,
+          name: token.contractName,
+          decimals: token.contractDecimals || 18,
+          logoURI: token.logoUrl,
+          isNative: token.contractAddress.toLowerCase() === zeroAddress,
+        },
+        !catalogue?.length,
+      );
     }
 
     return list.map(asset => {
@@ -157,7 +191,15 @@ export function useSwapAssets() {
         asset.chainId === fuse.id ? fuseBalances?.get(asset.address.toLowerCase()) : undefined;
       const balanceRaw = live ?? held?.raw ?? 0n;
       const balance = Number(formatUnits(balanceRaw, asset.decimals));
-      return { ...asset, balance, balanceRaw, balanceUsd: balance * (held?.usdRate ?? 0) };
+      const priceUsd = held?.usdRate ?? 0;
+      return {
+        ...asset,
+        balance,
+        balanceRaw,
+        balanceUsd: balance * priceUsd,
+        priceUsd,
+        swappable: swappable.has(key),
+      };
     });
   }, [fuseTokens, catalogue, walletTokens, fuseBalances]);
 

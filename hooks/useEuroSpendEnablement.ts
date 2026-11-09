@@ -119,8 +119,17 @@ interface EuroSpendEnablement {
   ) => Promise<boolean>;
 }
 
-/** Where EURC was turned on for the card. Rides on the started event as `source`. */
-export type EuroSpendEnableSource = 'main_currency' | 'card_activation';
+/**
+ * Where Base was turned on for the card. Rides on the started event as `source`.
+ *
+ * `home_banner` and `declined_receipt` are the "Use your Base balance" entry points, for a
+ * cardholder holding dollars or crypto on Base rather than EURC — see `useUnreachableBaseBalance`.
+ */
+export type EuroSpendEnableSource =
+  | 'main_currency'
+  | 'card_activation'
+  | 'home_banner'
+  | 'declined_receipt';
 
 /**
  * The user's spend-module deployments as the backend records them.

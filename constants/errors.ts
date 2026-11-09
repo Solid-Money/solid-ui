@@ -1,3 +1,4 @@
+import { ACCOUNT_SUSPENDED_MESSAGE, isAccountSuspendedError } from '@/lib/errors/accountSuspended';
 import { getUserErrorMessage } from '@/lib/errors/classify';
 export const ERRORS = {
   USERNAME_ALREADY_EXISTS: 'Username already exists',
@@ -29,6 +30,16 @@ export const PASSKEY_ACCOUNT_NOT_FOUND_CODE = 'PASSKEY_ACCOUNT_NOT_FOUND';
  * with the same address cannot succeed; another address can.
  */
 export const EMAIL_DOMAIN_NOT_ALLOWED_CODE = 'EMAIL_DOMAIN_NOT_ALLOWED';
+
+/**
+ * The email change reached the backend without a valid passkey confirmation —
+ * or the verified code it belonged to has expired or was already used. The
+ * user has to request a new code.
+ */
+export const EMAIL_CHANGE_STEP_UP_REQUIRED_CODE = 'EMAIL_CHANGE_STEP_UP_REQUIRED';
+
+/** Turnkey did not accept the passkey's signature for the email change. */
+export const EMAIL_CHANGE_CONFIRM_FAILED_CODE = 'EMAIL_CHANGE_CONFIRM_FAILED';
 
 export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE =
   "This email provider isn't supported. Please use a different email address.";
@@ -97,6 +108,9 @@ export const loginErrorMessage = (error: unknown): string => {
   // WebAuthn reports a dismissed prompt as a failure; the platform's wording for
   // it describes the machinery, not the thing the user just chose to do.
   if (err?.name === 'NotAllowedError') return 'User cancelled login';
+
+  // An admin suspended the account: signing in again cannot help, support can.
+  if (isAccountSuspendedError(error)) return ACCOUNT_SUSPENDED_MESSAGE;
 
   if (isUnlinkedPasskeyError(error)) {
     // A typed reply names which flavour it is, and its copy is the precise one.

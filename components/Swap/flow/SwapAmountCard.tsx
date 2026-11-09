@@ -1,0 +1,138 @@
+import React, { useCallback, useRef } from 'react';
+import { Platform, Pressable, TextInput, View } from 'react-native';
+import { ChevronDown, Wallet } from 'lucide-react-native';
+
+import { MaxPill } from '@/components/Send/CrossChain/shared';
+import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
+import { Text } from '@/components/ui/text';
+import { assetDisplayName } from '@/lib/swapAssets';
+import { SwapAsset } from '@/lib/types/lifi-swap';
+import { cn } from '@/lib/utils';
+import { formatSwapUsd, groupAmountInput } from '@/lib/utils/swap/format';
+
+type SwapAmountCardProps = {
+  label: 'You pay' | 'You get';
+  asset: SwapAsset | undefined;
+  /** "18.43 USD Yield", beside the wallet icon. */
+  balanceLabel?: string;
+  onMax?: () => void;
+  /** Raw typed amount, or the formatted quote on "You get". */
+  value: string;
+  /**
+   * Present on "You pay" only; "You get" is read-only. `replacedAll` is set when
+   * the edit replaced the whole amount (typed or pasted over a full selection).
+   */
+  onChangeText?: (text: string, replacedAll: boolean) => void;
+  /** Shown in place of the amount while it loads: "Getting price…". */
+  pendingLabel?: string;
+  usd?: number;
+  /** The amount is more than the balance: shown in red. */
+  invalid?: boolean;
+  onPickAsset: () => void;
+};
+
+/** One side of the swap: the amount, its dollar value, and the coin it's in. */
+const SwapAmountCard = ({
+  label,
+  asset,
+  balanceLabel,
+  onMax,
+  value,
+  onChangeText,
+  pendingLabel,
+  usd,
+  invalid,
+  onPickAsset,
+}: SwapAmountCardProps) => {
+  const name = asset ? assetDisplayName(asset) : 'Select';
+  const shown = groupAmountInput(value);
+  // The selection before an edit, so typing over a fully selected amount reads
+  // as a new amount rather than an edit of the old one's grouping.
+  const selection = useRef<{ start: number; end: number } | undefined>(undefined);
+  const handleChangeText = useCallback(
+    (text: string) => {
+      const before = selection.current;
+      selection.current = undefined;
+      onChangeText?.(
+        text,
+        !!before && shown.length > 0 && before.start === 0 && before.end === shown.length,
+      );
+    },
+    [onChangeText, shown],
+  );
+  return (
+    <View className="gap-4">
+      <View className="flex-row items-center justify-between gap-2 px-1">
+        <Text className="text-base text-white/70">{label}</Text>
+        {balanceLabel ? (
+          <View className="flex-row items-center gap-1.5">
+            <Wallet
+              size={14}
+              color={Platform.OS === 'web' ? undefined : 'rgba(255,255,255,0.5)'}
+              className="text-white/50"
+            />
+            <Text className="text-base text-white/50">{balanceLabel}</Text>
+            {onMax ? <MaxPill tone="grey" onPress={onMax} /> : null}
+          </View>
+        ) : null}
+      </View>
+
+      <View className="flex-row items-center gap-3 rounded-[15px] bg-card px-[18px] py-4">
+        <View className="flex-1 gap-1">
+          {/* Keyed apart: reusing the "Getting price…" element for the price kept
+              its small grey style on web once the quote arrived. */}
+          {pendingLabel ? (
+            <Text key="pending" className="text-xl leading-[40px] text-white/50">
+              {pendingLabel}
+            </Text>
+          ) : onChangeText ? (
+            <TextInput
+              value={shown}
+              onChangeText={handleChangeText}
+              onSelectionChange={event => {
+                selection.current = event.nativeEvent.selection;
+              }}
+              placeholder="0"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              accessibilityLabel={`${label} amount`}
+              className={cn(
+                'text-[34px] font-semibold leading-[40px] web:focus:outline-none',
+                invalid ? 'text-red-400' : 'text-white',
+              )}
+              style={{ padding: 0 }}
+            />
+          ) : (
+            <Text
+              key="amount"
+              numberOfLines={1}
+              className={cn(
+                'text-[34px] font-semibold leading-[40px]',
+                value ? 'text-white' : 'text-white/30',
+              )}
+            >
+              {value || '0'}
+            </Text>
+          )}
+          <Text className="text-sm text-white/50">
+            {usd !== undefined ? formatSwapUsd(usd) : value && !pendingLabel ? '—' : '$0.00'}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={onPickAsset}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${name}. Change coin`}
+          className="h-[50px] flex-row items-center gap-2 rounded-full bg-[#333] pl-2 pr-3 web:hover:bg-[#3a3a3a]"
+        >
+          <SwapAssetLogo asset={asset} size={32} />
+          <Text className="text-lg font-semibold text-white">{name}</Text>
+          <ChevronDown size={20} color="white" />
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+export default SwapAmountCard;

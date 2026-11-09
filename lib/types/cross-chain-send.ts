@@ -104,7 +104,11 @@ export interface CrossChainSendConfig {
 
 export interface CrossChainSendQuote {
   quoteId: string;
+  /** Where the send leaves from: Fuse, or Ethereum, Base or BNB Chain into Fuse. */
+  srcChainId?: number;
   token: CrossChainSendToken;
+  /** Decimals of the coin sent, which every amount here is in: 18 from BNB Chain, else 6. */
+  decimals?: number;
   dstChainId: number;
   dstEid: number;
   oft: string;
@@ -124,7 +128,8 @@ export interface CrossChainSendQuote {
   nativeFee: string;
   /** nativeFee plus headroom; the paymaster reverts above it. */
   maxNativeFee: string;
-  fuseUsdPrice: number;
+  /** USD per FUSE on a send from Fuse; absent on a send from Ethereum, Base or BNB Chain. */
+  fuseUsdPrice?: number;
   /** Route credit at quote time. */
   maxAmountLD: string;
   etaMinutes: number;
@@ -147,6 +152,8 @@ export interface CrossChainSendVoucher {
 }
 
 export interface CrossChainSendAuthoriseRequest {
+  /** Fuse when left out. */
+  srcChainId?: number;
   token: CrossChainSendToken;
   dstChainId: number;
   recipient: string;

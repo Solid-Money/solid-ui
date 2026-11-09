@@ -36,6 +36,11 @@ export type HomePromptKey =
   | 'card-declined'
   /** Wirex: EURC on Base the card cannot spend until euro spending is on — "Turn on euro spending". */
   | 'euro-spending'
+  /**
+   * Wirex: dollars or crypto on Base the card cannot spend until Base is on — "Use your Base
+   * balance". The same one-time approval as euro spending, for every other Base spend token.
+   */
+  | 'base-spending'
   /** Everything done — the cashback banner, which never goes away. */
   | 'cashback';
 
@@ -69,6 +74,7 @@ export const HOME_PROMPT_SNOOZE_MS: Record<DismissibleHomePromptKey, number> = {
   // decline still shows — see `dismissedDeclines`. A day is the window the banner exists in at all.
   'card-declined': DAY_MS,
   'euro-spending': 3 * DAY_MS,
+  'base-spending': 3 * DAY_MS,
 };
 
 /**

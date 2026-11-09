@@ -11,6 +11,8 @@ import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -166,6 +168,13 @@ const useDepositFromEOAEth = (
 
       const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
+      // Every ETH deposit here is pulled by the backend, which pulls only from
+      // the user's Safe or a wallet linked to their account. Link this one, if
+      // it isn't yet, before the wrap or approval prompt.
+      await ensureWalletLinked(account, user.safeAddress, {
+        onSignRequest: () =>
+          setDepositStatus({ status: Status.PENDING, message: 'Sign to link your wallet' }),
+      });
 
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
         user_id: user?.userId,
@@ -532,6 +541,9 @@ const useDepositFromEOAEth = (
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_CHAIN)) {
         errMsg = ERRORS.ERROR_SWITCHING_CHAIN;
+      } else if (error instanceof WalletLinkError) {
+        // Linking the wallet failed: the server says why, in words meant for the user.
+        errMsg = error.message;
       }
 
       setDepositStatus({ status: Status.ERROR });

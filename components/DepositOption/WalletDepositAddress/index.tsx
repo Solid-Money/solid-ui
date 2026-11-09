@@ -89,7 +89,6 @@ const WalletDepositAddress = () => {
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
     [chainId],
   );
-
   // Wirex cardholders and people with no card both land here, and only the
   // cardholders are charged — see `getDepositFeeRatePpm`.
   const { provider } = useCardProvider();
@@ -104,8 +103,11 @@ const WalletDepositAddress = () => {
     () =>
       rhinoFallbackRow === rowKey
         ? undefined
-        : getWalletRhinoSelection(rhinoAssets, chainId, symbol, provider),
-    [symbol, rhinoFallbackRow, rowKey, rhinoAssets, chainId, provider],
+        : walletDeposit.toSafe
+          ? // A flow funding the Safe itself (the AI API) asks for the Safe outright.
+            undefined
+          : getWalletRhinoSelection(rhinoAssets, chainId, symbol, provider),
+    [symbol, rhinoFallbackRow, rowKey, rhinoAssets, chainId, provider, walletDeposit.toSafe],
   );
   const rhino = useMemo(
     () => (rhinoSelection ? findRhinoRoute(rhinoAssets, rhinoSelection) : undefined),
@@ -131,11 +133,12 @@ const WalletDepositAddress = () => {
 
   // A Wirex cardholder's stablecoins get an address the pipeline mints and
   // watches; everything else gets the Safe, which is where it lands and stays.
+  // A flow funding the Safe itself (the AI API) asks for the Safe outright.
   const {
     address: walletAddress,
     isError: hasWalletAddressError,
     isMinted,
-  } = useWalletDepositAddress(chainId, symbol);
+  } = useWalletDepositAddress(chainId, symbol, { toSafe: walletDeposit.toSafe });
   const address = rhino ? rhinoAddress?.depositAddress : walletAddress;
   // A rhino.fi failure is not shown: the effect above falls back to the row's own.
   const hasAddressError = rhino ? false : hasWalletAddressError;
@@ -205,6 +208,9 @@ const WalletDepositAddress = () => {
         symbol={symbol}
         isNetworkOpen={isNetworkOpen}
         onToggleNetwork={() => setIsNetworkOpen(open => !open)}
+        // Funding the Safe for the AI API takes its billing currency on its
+        // billing chain; the Safe anywhere else would not fund it.
+        isLocked={!!walletDeposit.toSafe}
       />
 
       {/* The card's own padding sits on each section rather than the card, so the
@@ -313,8 +319,10 @@ const WalletDepositAddress = () => {
             </Pressable>
           </View>
         ) : null}
-        {/* rhino.fi payouts pay no Solid deposit fee. */}
-        {rhino ? null : (
+        {/* Only a minted address is charged: the pipeline takes its fee on the
+            way through, and a transfer to the Safe never passes it. rhino.fi
+            payouts pay no Solid deposit fee either. */}
+        {!rhino && isMinted ? (
           <DepositFeeNotice
             product="wallet"
             provider={provider}
@@ -322,7 +330,7 @@ const WalletDepositAddress = () => {
             symbol={symbol}
             className="mt-2"
           />
-        )}
+        ) : null}
         <Pressable
           className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
           onPress={() => openHelpLink(WALLET_DEPOSIT_LEARN_URL)}
@@ -363,7 +371,7 @@ const WalletDepositAddress = () => {
       </Button>
 
       {/* Last child, so paint order puts the open list over everything above. */}
-      {isNetworkOpen ? (
+      {isNetworkOpen && !walletDeposit.toSafe ? (
         <WalletDepositNetworkList
           chainId={chainId}
           symbol={symbol}

@@ -18,6 +18,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getUserErrorMessage } from '@/lib/errors/classify';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
 import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/prices';
@@ -290,7 +291,8 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
         input_amount: trade?.inputAmount?.toSignificant(),
-        error: String(error),
+        // The raw message carries the bundler URL and its API key.
+        error: sanitizeTechnicalMessage(error),
       });
 
       Sentry.captureException(error, {
@@ -377,7 +379,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
         input_amount: inputAmount?.toSignificant(),
-        error: String(error),
+        error: sanitizeTechnicalMessage(error),
       });
 
       Sentry.captureException(error, {
@@ -497,7 +499,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
           input_currency: currencies[SwapField.INPUT]?.symbol,
           output_currency: currencies[SwapField.OUTPUT]?.symbol,
           amount: typedValue,
-          error: String(error),
+          error: sanitizeTechnicalMessage(error),
         });
 
         Sentry.captureException(error, {
@@ -565,6 +567,17 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     noRouteError ||
     quoteError;
 
+  // A disabled button says why, never "Swap" with a passkey icon it can't use.
+  const disabledLabel = isButtonDisabled
+    ? disabledButtonLabel({
+        label,
+        parentDisabled: disabled,
+        inputError: swapInputError,
+        inputSymbol: currencies[SwapField.INPUT]?.symbol,
+        priceImpactTooHigh,
+      })
+    : undefined;
+
   return (
     <View>
       {errorMessage && <ErrorMessage message={errorMessage} />}
@@ -579,12 +592,12 @@ const SwapButton: React.FC<SwapButtonProps> = ({
           <Text className="text-base font-bold">Processing Transaction...</Text>
         ) : typedValue && isLoadingRoute ? (
           <Text className="text-base font-bold">Finding Routes...</Text>
-        ) : typedValue && (!swapCallback || routeNotFound) ? (
-          <Text className="text-base font-bold">{label}</Text>
-        ) : priceImpactSeverity > 2 && !priceImpactTooHigh ? (
-          <Text className="text-base font-bold">Swap Anyway</Text>
         ) : !typedValue ? (
           <Text className="text-base font-bold">Enter an amount</Text>
+        ) : disabledLabel ? (
+          <Text className="text-base font-bold">{disabledLabel}</Text>
+        ) : priceImpactSeverity > 2 && !priceImpactTooHigh ? (
+          <Text className="text-base font-bold">Swap Anyway</Text>
         ) : (
           <View className="flex-row items-center gap-2">
             {showSecurityIcon && (
@@ -600,6 +613,32 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     </View>
   );
 };
+
+/**
+ * What a disabled swap button reads. The reason in a few words; the line
+ * above the button has the whole sentence.
+ */
+export function disabledButtonLabel({
+  label,
+  parentDisabled,
+  inputError,
+  inputSymbol,
+  priceImpactTooHigh,
+}: {
+  label: string;
+  parentDisabled: boolean;
+  inputError: string | undefined;
+  inputSymbol: string | undefined;
+  priceImpactTooHigh: boolean;
+}): string {
+  // The screen around it holds the button back (Buy FUSE before a tier is
+  // picked); its own label still names the action, just without the key.
+  if (parentDisabled) return label;
+  if (inputError?.startsWith('Not enough')) return `Not enough ${inputSymbol ?? 'funds'}`;
+  if (inputError) return inputError;
+  if (priceImpactTooHigh) return 'Price impact too high';
+  return 'Try another amount';
+}
 
 const ErrorMessage = ({ message }: { message: string }) => (
   <View className="mb-3 flex-row items-center gap-2">

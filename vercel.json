@@ -4,6 +4,12 @@
     "devCommand": "expo",
     "cleanUrls": true,
     "framework": null,
+    "rewrites": [
+        {
+            "source": "/invite/:code",
+            "destination": "/invite/[code]"
+        }
+    ],
     "headers": [
         {
             "source": "/assets/(.*)",

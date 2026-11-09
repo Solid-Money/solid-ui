@@ -5,7 +5,7 @@ import useDepositFromEOAEur, {
   EOA_DEPOSIT_NOT_CONFIGURED,
   EOA_DEPOSIT_UNAVAILABLE,
 } from '@/hooks/useDepositFromEOAEur';
-import { createDeposit } from '@/lib/api';
+import { createDeposit, createWalletLinkChallenge, getLinkedWallets, linkWallet } from '@/lib/api';
 import { Status } from '@/lib/types';
 import { checkAndSetAllowanceToken } from '@/lib/utils/contract';
 // react-test-renderer is supplied by jest-expo without bundled declarations.
@@ -15,9 +15,11 @@ const { act, create } = require('react-test-renderer');
 const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
 const EOA = '0x1111111111111111111111111111111111111111';
 const DEPOSIT_WALLET = '0x2222222222222222222222222222222222222222';
+const SAFE = '0x4d22bE2509C4c0B7902BF542E1460c6cE1f210f7';
 
 let mockSpender = DEPOSIT_WALLET;
 const mockSwitchChain = jest.fn();
+const mockSignMessage = jest.fn();
 const mockCreateActivity = jest.fn().mockResolvedValue('activity');
 const mockUpdateActivity = jest.fn();
 
@@ -30,13 +32,16 @@ jest.mock('@/lib/config', () => ({
 }));
 jest.mock('@/hooks/useUser', () => ({
   __esModule: true,
-  default: () => ({ user: { userId: 'a', safeAddress: '0xsafe', suborgId: 'org' } }),
+  default: () => ({ user: { userId: 'a', safeAddress: SAFE, suborgId: 'org' } }),
 }));
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: any) =>
     selector({
       srcChainId: 8453,
-      externalWallet: { account: { address: EOA }, wallet: { switchChain: mockSwitchChain } },
+      externalWallet: {
+        account: { address: EOA, signMessage: mockSignMessage },
+        wallet: { switchChain: mockSwitchChain },
+      },
     }),
 }));
 jest.mock('@/store/useUserStore', () => ({
@@ -56,7 +61,12 @@ jest.mock('@/lib/deposit/telemetry', () => ({
   trackDepositValidated: jest.fn(),
 }));
 jest.mock('@/lib/thirdweb', () => ({ getChain: () => ({ id: 8453 }) }));
-jest.mock('@/lib/api', () => ({ createDeposit: jest.fn() }));
+jest.mock('@/lib/api', () => ({
+  createDeposit: jest.fn(),
+  getLinkedWallets: jest.fn(),
+  createWalletLinkChallenge: jest.fn(),
+  linkWallet: jest.fn(),
+}));
 jest.mock('@/lib/utils', () => ({ withRefreshToken: (fn: () => unknown) => fn() }));
 jest.mock('@/lib/utils/contract', () => ({
   checkAndSetAllowanceToken: jest.fn(),
@@ -71,6 +81,9 @@ jest.mock('@/hooks/useActivityActions', () => ({
 
 const approve = checkAndSetAllowanceToken as jest.Mock;
 const backendDeposit = createDeposit as jest.Mock;
+const linkedWallets = getLinkedWallets as jest.Mock;
+const linkChallenge = createWalletLinkChallenge as jest.Mock;
+const link = linkWallet as jest.Mock;
 let hook: ReturnType<typeof useDepositFromEOAEur>;
 let statuses: Status[];
 let root: ReturnType<typeof create>;
@@ -86,6 +99,11 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   mockSpender = DEPOSIT_WALLET;
+  // The connected wallet is not linked yet.
+  linkedWallets.mockResolvedValue([]);
+  linkChallenge.mockResolvedValue({ message: 'Link this wallet', expiresAt: '' });
+  link.mockResolvedValue({ address: EOA, linkedAt: '' });
+  mockSignMessage.mockResolvedValue('0xsigned');
   statuses = [];
   act(() => {
     root = create(<Harness />);
@@ -105,6 +123,7 @@ it.each([
     await expect(hook.deposit('100')).rejects.toThrow(EOA_DEPOSIT_NOT_CONFIGURED);
   });
 
+  expect(mockSignMessage).not.toHaveBeenCalled();
   expect(mockSwitchChain).not.toHaveBeenCalled();
   expect(approve).not.toHaveBeenCalled();
   expect(mockCreateActivity).not.toHaveBeenCalled();
@@ -114,11 +133,42 @@ it.each([
   expect(hook.error).toBe(EOA_DEPOSIT_UNAVAILABLE);
 });
 
-it('approves the configured deposit wallet and asks the backend for a EUR deposit', async () => {
+// The backend pulls only from the user's Safe or a linked wallet, so a wallet
+// that declines to sign the link must not be asked to approve.
+it('stops before the approval when the wallet declines to link', async () => {
+  mockSignMessage.mockRejectedValue(new Error('User rejected'));
+  await act(async () => {
+    await expect(hook.deposit('100')).rejects.toThrow('User rejected');
+  });
+
+  expect(link).not.toHaveBeenCalled();
+  expect(mockSwitchChain).not.toHaveBeenCalled();
+  expect(approve).not.toHaveBeenCalled();
+  expect(backendDeposit).not.toHaveBeenCalled();
+  expect(hook.depositStatus.status).toBe(Status.ERROR);
+});
+
+it('asks for no signature when the wallet is already linked', async () => {
+  linkedWallets.mockResolvedValue([{ address: EOA, linkedAt: '' }]);
+  backendDeposit.mockResolvedValue({ transactionHash: '0xhash' });
+  await act(async () => {
+    await hook.deposit('100');
+  });
+
+  expect(mockSignMessage).not.toHaveBeenCalled();
+  expect(backendDeposit).toHaveBeenCalled();
+});
+
+it('links the wallet, approves the configured deposit wallet and asks the backend for a EUR deposit', async () => {
   backendDeposit.mockResolvedValue({ transactionHash: '0xhash' });
   await act(async () => {
     expect(await hook.deposit('100')).toBe('activity');
   });
+
+  expect(mockSignMessage).toHaveBeenCalledWith({ message: 'Link this wallet' });
+  expect(link).toHaveBeenCalledWith(EOA, '0xsigned');
+  // Linked before the wallet is asked to approve anything.
+  expect(link.mock.invocationCallOrder[0]).toBeLessThan(approve.mock.invocationCallOrder[0]);
 
   expect(mockSwitchChain).toHaveBeenCalledWith({ id: 8453 });
   expect(approve).toHaveBeenCalledWith(EURC, EOA, DEPOSIT_WALLET, 100_000_000n, 8453);

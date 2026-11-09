@@ -55,6 +55,34 @@ export interface AiApiBilling {
   walletShort: boolean;
 }
 
+/** One model on the price list. Prices are USD per million tokens. */
+export interface AiApiModel {
+  id: string;
+  name: string;
+  /** Who makes it: "Anthropic". */
+  provider: string | null;
+  /** Its logo, uploaded from the admin dashboard; null shows its initial. */
+  logoUrl: string | null;
+  /** What Solid charges. */
+  inputUsdPerMTok: number;
+  outputUsdPerMTok: number;
+  /** What Solid charges for cached input; null (or missing, on an older backend) shows none. */
+  cachedInputUsdPerMTok?: number | null;
+  /** The model maker's own list price; null when we don't show a discount. */
+  officialInputUsdPerMTok: number | null;
+  officialOutputUsdPerMTok: number | null;
+}
+
+/** One tier's AI cashback terms. */
+export interface AiApiCashbackTier {
+  /** Core, Prime or Ultra. */
+  tier: string;
+  /** 0.5 is 50%. */
+  rate: number;
+  /** USD a month. 0 means no cap. */
+  monthlyCapUsd: number;
+}
+
 export interface AiApiOverview {
   available: boolean;
   /** The user's tier's AI cashback: 0.5 is 50%. */
@@ -63,6 +91,8 @@ export interface AiApiOverview {
   cashbackMonthlyCapUsd: number;
   /** The tier those terms are for: Core, Prime or Ultra. */
   cashbackTier: string;
+  /** Every tier's terms, lowest first. Missing on an older backend. */
+  cashbackTiers?: AiApiCashbackTier[];
   /** Days each charge's cashback is held before it lands in USD Yield. */
   cashbackSettlementDays: number;
   /** Base URL without `/v1`; null means "use the API host". */
@@ -70,7 +100,9 @@ export interface AiApiOverview {
   limitOptionsUsd: number[];
   maxMonthlyLimitUsd: number;
   maxKeys: number;
-  models: { id: string; name: string }[];
+  /** The models a key can call, most used across all users first. */
+  models: AiApiModel[];
+  /** The model the setup guide suggests. */
   defaultModel: string | null;
   month: {
     key: string;

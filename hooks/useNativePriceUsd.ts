@@ -4,11 +4,11 @@ import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinPricesById, fetchTokenPriceUsd } from '@/lib/api';
 
 /**
- * How often native-token prices refresh. Polling this often costs no Prices API
- * quota of its own: the price lookups are cached for a minute, in the app and
- * by the backend's shared cache.
+ * How often native-token prices refresh. The lookups behind them are cached for
+ * a minute, in the app and by the backend's shared cache, so polling any faster
+ * than that only re-reads the same cached number.
  */
-export const NATIVE_PRICE_REFRESH_MS = 5_000;
+export const NATIVE_PRICE_REFRESH_MS = 60_000;
 
 /**
  * Native-token USD price fetcher for a chain (Alchemy first, then CoinGecko

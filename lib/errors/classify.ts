@@ -1,5 +1,10 @@
 import { onlineManager } from '@tanstack/react-query';
 
+import {
+  ACCOUNT_SUSPENDED_CODE,
+  ACCOUNT_SUSPENDED_MESSAGE,
+  ACCOUNT_SUSPENDED_TITLE,
+} from '@/lib/errors/accountSuspended';
 import { ERROR_ACTIONS, ErrorAction } from '@/lib/errors/actions';
 import { clampText, ERROR_COPY_LIMITS } from '@/lib/errors/copyLimits';
 import { isHex32 } from '@/lib/errors/errorRef';
@@ -369,6 +374,8 @@ const bodyFor = (
     case 'insufficient_funds':
       return 'You don’t have enough balance for this. Lower the amount and try again.';
     case 'rejected':
+      // Our own copy, not the server's: it has to say the one thing that helps.
+      if (code === ACCOUNT_SUSPENDED_CODE) return ACCOUNT_SUSPENDED_MESSAGE;
       if (n.name && USER_COPY_ERROR_NAMES.has(n.name) && n.serverMessage) {
         return sentence(n.serverMessage);
       }
@@ -405,7 +412,9 @@ export const describeError = (n: NormalizedError, context: ErrorContext = {}): U
   const title =
     classification.kind === 'session'
       ? 'Your session expired'
-      : (context.title ?? ERROR_ACTIONS[action].title);
+      : classification.code === ACCOUNT_SUSPENDED_CODE
+        ? ACCOUNT_SUSPENDED_TITLE
+        : (context.title ?? ERROR_ACTIONS[action].title);
 
   return {
     action,

@@ -8,7 +8,7 @@ import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
-import { buildDepositApproval } from '@/lib/deposit/allowance';
+import { buildDepositApprovals } from '@/lib/deposit/allowance';
 import {
   captureDepositError,
   depositBreadcrumb,
@@ -56,7 +56,11 @@ const useDepositFromSolidUsdc = (
   const safeAddress = user?.safeAddress as Address | undefined;
   const isCard = category === DepositCategory.CARD;
   const targetChainId = isCard ? base.id : mainnet.id;
-  const isTargetChain = srcChainId === targetChainId;
+  // Only USDC is deposited directly on the target chain. The direct deposit
+  // carries no token and the backend pulls USDC, so any other token (USDT on
+  // Ethereum) goes through the bridge deposit, which is told the token -
+  // otherwise its approval is never pulled and the deposit times out.
+  const isTargetChain = srcChainId === targetChainId && token === 'USDC';
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -164,7 +168,7 @@ const useDepositFromSolidUsdc = (
             ? base
             : ({ id: srcChainId } as any);
       const smartAccountClient = await safeAA(chain, user!.suborgId, user!.signWith);
-      const approveTransaction = await buildDepositApproval({
+      const approveTransactions = await buildDepositApprovals({
         tokenAddress,
         owner: safeAddress,
         spender,
@@ -177,7 +181,7 @@ const useDepositFromSolidUsdc = (
 
       const result = await executeTransactions(
         smartAccountClient,
-        [approveTransaction],
+        approveTransactions,
         'Approve failed',
         chain,
         userOpHash => {

@@ -25,7 +25,12 @@ export const TRACKING_EVENTS = {
   WITHDRAW_TRANSACTION_ERROR: 'withdraw_transaction_error',
 
   // Transaction Flow Events - Swap
+  /** With `entry_point`: where the swap was opened from (home, coin_page, ...). */
   SWAP_MODAL_VIEWED: 'swap_modal_viewed',
+  /** A price came back for the pair and amount on screen. Once per distinct quote. */
+  SWAP_PRICE_SHOWN: 'swap_price_shown',
+  /** No price for the pair and amount on screen, with `error_code` from lib/swapErrors. */
+  SWAP_PRICE_FAILED: 'swap_price_failed',
   SWAP_AMOUNT_ENTRY_STARTED: 'swap_amount_entry_started',
   SWAP_TOKEN_SELECTOR_OPENED: 'swap_token_selector_opened',
   SWAP_MODAL_ABANDONED: 'swap_modal_abandoned',
@@ -459,8 +464,8 @@ export const TRACKING_EVENTS = {
   CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
   CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
   // The "Not enough to pay" card on a declined receipt. Viewed carries the fix it led with
-  // (turn_on_euro | swap | add_funds) and whether the balance already covers the payment;
-  // pressed carries which button was tapped. Together with the decline push's open they make
+  // (turn_on_euro | turn_on_base | swap | add_funds) and whether the balance already covers
+  // the payment; pressed carries which button was tapped. Together with the decline push's open they make
   // "declined → fixed" a funnel instead of a guess.
   CARD_DECLINE_FIX_VIEWED: 'card_decline_fix_viewed',
   CARD_DECLINE_FIX_PRESSED: 'card_decline_fix_pressed',
@@ -624,6 +629,23 @@ export const TRACKING_EVENTS = {
   AI_API_KEY_RENAMED: 'ai_api_key_renamed',
   AI_API_KEY_DELETED: 'ai_api_key_deleted',
   AI_API_ADD_FUNDS_PRESSED: 'ai_api_add_funds_pressed',
+
+  // Referral program v4: invite bonuses paid as card credit, plus a share of what
+  // friends spend. The referrer's side first, then card credit itself, then the
+  // invited friend's side — the invite page and the code reaching signup, by
+  // whichever route it came (`source`: link / install_referrer / clipboard / manual).
+  REFERRAL_SCREEN_VIEWED: 'referral_screen_viewed',
+  REFERRAL_LINK_COPIED: 'referral_link_copied',
+  REFERRAL_LINK_SHARED: 'referral_link_shared',
+  REFERRAL_QR_SHOWN: 'referral_qr_shown',
+  REFERRAL_REWARD_SHEET_OPENED: 'referral_reward_sheet_opened',
+  REFERRAL_INVITES_VIEWED: 'referral_invites_viewed',
+  REFERRAL_FRIEND_VIEWED: 'referral_friend_viewed',
+  CARD_CREDIT_PILL_TAPPED: 'card_credit_pill_tapped',
+  CARD_CREDIT_SHEET_VIEWED: 'card_credit_sheet_viewed',
+  INVITE_SCREEN_VIEWED: 'invite_screen_viewed',
+  INVITE_CODE_APPLIED: 'invite_code_applied',
+  INVITE_CODE_INVALID: 'invite_code_invalid',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

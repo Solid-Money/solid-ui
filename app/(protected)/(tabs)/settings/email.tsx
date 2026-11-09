@@ -15,6 +15,18 @@ import { useEmailManagement } from '@/hooks/useEmailManagement';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 
+/**
+ * A changed email waits before it can recover the wallet (SEC-010), so the
+ * success screen says when — in the user's own time zone.
+ */
+const formatRecoveryAvailableAt = (date: Date) =>
+  date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
 export default function Email() {
   const { user } = useUser();
   const router = useRouter();
@@ -28,6 +40,7 @@ export default function Email() {
     isLoading,
     emailValue,
     rateLimitError,
+    recoveryAvailableAt,
     emailForm,
     otpForm,
     handleSendOtp,
@@ -99,7 +112,9 @@ export default function Email() {
               </Text>
               <Text className="mt-2 text-center text-muted-foreground">{emailValue}</Text>
               <Text className="mt-4 max-w-xs text-center text-sm text-muted-foreground">
-                This email will be used for notifications and wallet recovery.
+                {recoveryAvailableAt
+                  ? `This email will be used for notifications now, and for wallet recovery from ${formatRecoveryAvailableAt(recoveryAvailableAt)}.`
+                  : 'This email will be used for notifications and wallet recovery.'}
               </Text>
             </View>
           ) : (

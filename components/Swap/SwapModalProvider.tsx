@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -8,6 +8,7 @@ import GeoRestrictionNotice from '@/components/Compliance/GeoRestrictionNotice';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import BuyFuseScreen from '@/components/Swap/BuyFuseScreen';
+import SwapFlow, { SWAP_FLOW_STATES } from '@/components/Swap/flow/SwapFlow';
 import LifiSwapButton from '@/components/Swap/lifi/LifiSwapButton';
 import LifiSwapPair from '@/components/Swap/lifi/LifiSwapPair';
 import LifiSwapParams from '@/components/Swap/lifi/LifiSwapParams';
@@ -21,6 +22,7 @@ import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { LifiSwapInfoProvider } from '@/hooks/swap/useLifiSwapInfo';
+import { useNewSwapFlow } from '@/hooks/swap/useNewSwapFlow';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -46,41 +48,74 @@ const SwapModalProvider = () => {
     })),
   );
 
-  const { currentModal, previousModal, transaction, buyFuseTier, buyFuseUpgrade, setModal } =
-    useSwapState(
-      useShallow(state => ({
-        currentModal: state.currentModal ?? SWAP_MODAL.CLOSE,
-        previousModal: state.previousModal ?? SWAP_MODAL.CLOSE,
-        transaction: state.transaction,
-        buyFuseTier: state.buyFuseTier,
-        buyFuseUpgrade: state.buyFuseUpgrade,
-        setModal: state.actions.setModal,
-      })),
-    );
+  const {
+    currentModal,
+    previousModal,
+    transaction,
+    buyFuseTier,
+    buyFuseUpgrade,
+    setModal,
+    resetForm,
+  } = useSwapState(
+    useShallow(state => ({
+      currentModal: state.currentModal ?? SWAP_MODAL.CLOSE,
+      previousModal: state.previousModal ?? SWAP_MODAL.CLOSE,
+      transaction: state.transaction,
+      buyFuseTier: state.buyFuseTier,
+      buyFuseUpgrade: state.buyFuseUpgrade,
+      setModal: state.actions.setModal,
+      resetForm: state.actions.resetForm,
+    })),
+  );
 
   const isLifiSwap = useIsLifiSwap();
+  const liveNewSwapFlow = useNewSwapFlow();
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isLifiStatus = currentModal.name === SWAP_MODAL.OPEN_LIFI_STATUS.name;
   const isBuyFuse = currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name;
   const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
+  // Which form a swap uses is settled when the modal opens and kept until it
+  // closes, so a whitelist answer arriving mid-swap doesn't replace the form
+  // (and its guard against a second submission) under the user.
+  const [openedOnNewFlow, setOpenedOnNewFlow] = useState<boolean | null>(null);
+  if (isClose ? openedOnNewFlow !== null : openedOnNewFlow === null) {
+    setOpenedOnNewFlow(isClose ? null : liveNewSwapFlow);
+  }
+  const newSwapFlow = openedOnNewFlow ?? liveNewSwapFlow;
+  const isNewFlow = newSwapFlow && SWAP_FLOW_STATES.includes(currentModal.name);
+  const isFlowSubScreen =
+    isNewFlow &&
+    [SWAP_MODAL.OPEN_PAY_PICKER.name, SWAP_MODAL.OPEN_GET_PICKER.name].includes(currentModal.name);
+  const isFlowOutcome =
+    currentModal.name === SWAP_MODAL.OPEN_SWAPPED.name ||
+    currentModal.name === SWAP_MODAL.OPEN_ON_ITS_WAY.name;
   const isBuyFuseContent = isBuyFuse && isSwapAvailable && hasAcceptedSwapDisclaimer;
 
   const handleOpenChange = useCallback(
     (value: boolean) => {
       if (value) {
+        // Every button opens the form through `openSwap`, which records where
+        // from; only the modal's own (unused) trigger lands here.
         track(TRACKING_EVENTS.SWAP_MODAL_VIEWED, {
+          entry_point: 'unknown',
           previous_modal: previousModal.name,
         });
         setModal(SWAP_MODAL.OPEN_FORM);
       } else {
-        track(TRACKING_EVENTS.SWAP_MODAL_ABANDONED, {
-          last_modal: currentModal?.name,
-          previous_modal: previousModal.name,
-        });
+        // Leaving a finished swap isn't abandoning one; it also clears the
+        // amount the outcome screens kept on screen.
+        if (isFlowOutcome) {
+          resetForm();
+        } else {
+          track(TRACKING_EVENTS.SWAP_MODAL_ABANDONED, {
+            last_modal: currentModal?.name,
+            previous_modal: previousModal.name,
+          });
+        }
         setModal(SWAP_MODAL.CLOSE);
       }
     },
-    [setModal, currentModal, previousModal],
+    [setModal, resetForm, currentModal, previousModal, isFlowOutcome],
   );
 
   const handleTransactionStatusPress = useCallback(() => {
@@ -89,16 +124,28 @@ const SwapModalProvider = () => {
   }, [router, setModal]);
 
   const title = useMemo(() => {
-    if (isTransactionStatus || isLifiStatus) return undefined;
+    if (isTransactionStatus || isLifiStatus || isFlowOutcome) return undefined;
+    if (isNewFlow) {
+      if (currentModal.name === SWAP_MODAL.OPEN_PAY_PICKER.name) return 'You pay';
+      if (currentModal.name === SWAP_MODAL.OPEN_GET_PICKER.name) return 'You get';
+    }
     return isBuyFuse ? 'Buy FUSE' : 'Swap';
-  }, [isBuyFuse, isTransactionStatus, isLifiStatus]);
+  }, [isBuyFuse, isTransactionStatus, isLifiStatus, isFlowOutcome, isNewFlow, currentModal.name]);
 
   const contentKey = useMemo(() => {
+    // Confirm swap is a sheet over the form, which stays put underneath it.
+    if (isNewFlow) {
+      const screen =
+        currentModal.name === SWAP_MODAL.OPEN_REVIEW.name
+          ? SWAP_MODAL.OPEN_FORM.name
+          : currentModal.name;
+      return `swap-flow-${screen}`;
+    }
     if (isTransactionStatus) return 'transaction-status';
     if (isLifiStatus) return 'lifi-status';
     if (isBuyFuse) return 'buy-fuse';
     return isLifiSwap ? 'swap-form-lifi' : 'swap-form';
-  }, [isBuyFuse, isTransactionStatus, isLifiStatus, isLifiSwap]);
+  }, [isBuyFuse, isTransactionStatus, isLifiStatus, isLifiSwap, isNewFlow, currentModal.name]);
 
   const handleAcceptSwapDisclaimer = useCallback(() => {
     acceptDisclaimer('swap');
@@ -143,6 +190,8 @@ const SwapModalProvider = () => {
       return <LifiSwapStatusView onDone={handleTransactionStatusPress} />;
     }
 
+    if (isNewFlow) return <SwapFlow />;
+
     // Fuse to Fuse is quoted and routed on Algebra; a pair that touches any
     // other chain goes through LI.FI.
     if (isLifiSwap) {
@@ -178,6 +227,7 @@ const SwapModalProvider = () => {
     );
   }, [
     isLifiStatus,
+    isNewFlow,
     isLifiSwap,
     isSwapAvailable,
     hasAcceptedSwapDisclaimer,
@@ -202,8 +252,14 @@ const SwapModalProvider = () => {
         title={title}
         titleClassName="items-center w-full"
         containerClassName="w-full max-w-md"
-        showBackButton={isBuyFuse}
-        onBackPress={isBuyFuse ? () => handleOpenChange(false) : undefined}
+        showBackButton={isBuyFuse || isFlowSubScreen}
+        onBackPress={
+          isBuyFuse
+            ? () => handleOpenChange(false)
+            : isFlowSubScreen
+              ? () => setModal(SWAP_MODAL.OPEN_FORM)
+              : undefined
+        }
         contentKey={contentKey}
         disableScroll={isBuyFuseContent}
       >

@@ -120,6 +120,21 @@ export function computeSwapFee({
   };
 }
 
+/**
+ * What to type for an exact-in swap so that, once `computeSwapFee` carves its
+ * fee out, at least `swapAmount` is left to route: how an exact-out quote (fee
+ * on top) carries over to a form that takes what you pay (fee inside). At most
+ * one unit more than needed is left. `swapAmount` itself when no fee applies.
+ */
+export function grossForSwapAmount(swapAmount: bigint, rate: number | undefined): bigint {
+  if (swapAmount <= 0n || !rate || !Number.isFinite(rate) || rate <= 0) return swapAmount;
+  const scaledRate = BigInt(Math.round(Math.min(rate, 1) * Number(RATE_SCALE)));
+  // At 100% computeSwapFee drops the fee and routes everything.
+  if (scaledRate >= RATE_SCALE) return swapAmount;
+  const kept = RATE_SCALE - scaledRate;
+  return (swapAmount * RATE_SCALE + kept - 1n) / kept;
+}
+
 /** One transaction for a batch: the shape `executeTransactions` takes. */
 export interface BatchTransaction {
   to: Address;

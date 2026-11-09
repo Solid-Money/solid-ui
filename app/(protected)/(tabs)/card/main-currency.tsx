@@ -55,7 +55,7 @@ export default function MainCurrencyScreen() {
   const { mainCurrency: saved, usdPerEur, save, isSaving } = useMainCurrency();
   const euro = useEuroSpendEnablement();
   const holdsBaseEuros = useHoldsBaseEuros();
-  const { data: totalUsd } = useCardSpendableBalanceUSD();
+  const { data: totalUsd, isSoEurPricePending } = useCardSpendableBalanceUSD();
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const setDepositModal = useDepositStore(state => state.setModal);
 
@@ -77,6 +77,8 @@ export default function MainCurrencyScreen() {
   }, [picked, saved]);
 
   const balanceIn = (currency: MainCurrency) => {
+    // Held back until soEUR can be priced, so a cold open does not show the total without it.
+    if (isSoEurPricePending) return '—';
     if (currency === 'USD') return formatBalance(totalUsd, 'USD');
     return usdPerEur ? formatBalance(usdToEur(totalUsd, usdPerEur), 'EUR') : '—';
   };

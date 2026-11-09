@@ -21,6 +21,7 @@ import AiApiDashboard from './AiApiDashboard';
 import AiApiHeader, { AiApiInfoButton } from './AiApiHeader';
 import AiApiIntro from './AiApiIntro';
 import AiApiKeySheet, { type AiApiKeySheetView } from './AiApiKeySheet';
+import { AiApiModelsSheet } from './AiApiModels';
 
 import type { AiApiKey } from '@/lib/types/ai-api';
 
@@ -53,6 +54,7 @@ export default function AiApiScreen() {
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
   /** "How it works" from the dashboard: the intro again, over the dashboard. */
   const [isIntroOpen, setIsIntroOpen] = useState(false);
+  const [isModelsOpen, setIsModelsOpen] = useState(false);
 
   // Read from the latest overview, so the sheet shows a rename or a new limit
   // as soon as it is saved, and closes if the key is gone.
@@ -118,9 +120,11 @@ export default function AiApiScreen() {
         <AiApiIntro
           cashbackRate={overview.cashbackRate}
           cashbackTier={overview.cashbackTier}
+          cashbackTiers={overview.cashbackTiers}
           cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
           settlementDays={overview.cashbackSettlementDays}
-          modelCount={overview.models.length}
+          models={overview.models}
+          onOpenModels={() => setIsModelsOpen(true)}
           ctaLabel={hasKeys ? 'New key' : 'Get API key'}
           onCta={canCreateKey ? openCreate : undefined}
         />
@@ -132,14 +136,19 @@ export default function AiApiScreen() {
           onNewKey={openCreate}
           onOpenSetup={openSetup}
           onOpenHowItWorks={() => setIsIntroOpen(true)}
+          onOpenModels={() => setIsModelsOpen(true)}
           onAddFunds={() => {
             // Straight to the address that funds AI API charges — USDC on the
             // billing chain, Base — rather than the deposit chooser, whose
             // default lands money in savings, which a charge cannot draw on.
+            // `toSafe`: the Safe itself, even for a Wirex cardholder, whose
+            // stablecoins would otherwise get the card's address and be bridged
+            // to Fuse, out of reach of the charge.
             setWalletDeposit({
               symbol: 'USDC',
               chainId: overview.billing.chainId,
               isChangingToken: false,
+              toSafe: true,
             });
             setDepositModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
           }}
@@ -177,6 +186,14 @@ export default function AiApiScreen() {
               maxLimitUsd={overview.maxMonthlyLimitUsd}
               resetsAt={overview.month.resetsAt}
               onOpenSetupGuide={openSetup}
+            />
+            <AiApiModelsSheet
+              isOpen={isModelsOpen}
+              onOpenChange={setIsModelsOpen}
+              models={overview.models}
+              cashbackRate={overview.cashbackRate}
+              cashbackTiers={overview.cashbackTiers}
+              cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
             />
             <LazyDepositOptionModal trigger={null} />
           </>

@@ -27,6 +27,21 @@ jest.mock('@/hooks/swap/useLifiSwapInfo', () => ({
   LifiSwapInfoProvider: ({ children }: { children: unknown }) => children,
 }));
 jest.mock('@/components/TransactionStatus', () => 'TransactionStatus');
+jest.mock('@/components/Swap/flow/SwapFlow', () => ({
+  __esModule: true,
+  default: 'SwapFlow',
+  SWAP_FLOW_STATES: [
+    'open_form',
+    'open_pay_picker',
+    'open_get_picker',
+    'open_review',
+    'open_swapped',
+    'open_on_its_way',
+  ],
+}));
+jest.mock('@/hooks/swap/useNewSwapFlow', () => ({
+  useNewSwapFlow: () => mockNewFlow,
+}));
 jest.mock('@/hooks/useGeoCompliance', () => ({
   __esModule: true,
   default: () => ({ isSwapAvailable: mockSwapAvailable }),
@@ -47,7 +62,7 @@ jest.mock('@/store/swapStore', () => ({
       transaction: {},
       buyFuseTier: undefined,
       buyFuseUpgrade: mockBuyFuseUpgrade,
-      actions: { setModal: jest.fn() },
+      actions: { setModal: mockSetModal, resetForm: jest.fn() },
     }),
 }));
 
@@ -55,6 +70,8 @@ let mockCurrentModal = SWAP_MODAL.CLOSE;
 let mockSwapAvailable = true;
 let mockBuyFuseUpgrade: { tier: RewardsTier; depositToSavings: boolean } | undefined;
 let mockIsLifiSwap = false;
+let mockNewFlow = false;
+const mockSetModal = jest.fn();
 const originalPlatform = Platform.OS;
 
 const render = () => {
@@ -72,6 +89,8 @@ beforeEach(() => {
   mockCurrentModal = SWAP_MODAL.CLOSE;
   mockBuyFuseUpgrade = undefined;
   mockIsLifiSwap = false;
+  mockNewFlow = false;
+  mockSetModal.mockClear();
 });
 
 afterEach(() => {
@@ -126,4 +145,62 @@ it('keeps the cross-chain status watcher mounted while the modal is closed', () 
   const root = render();
   expect(root.root.findAllByType('LifiSwapStatusWatcher')).toHaveLength(1);
   act(() => root.unmount());
+});
+
+it('keeps the form a swap opened with until the modal closes', () => {
+  mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+  const root = render();
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(1);
+
+  // The whitelist answers while the swap is open: the old form stays.
+  mockNewFlow = true;
+  act(() => root.update(<SwapModalProvider />));
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(1);
+  expect(root.root.findAllByType('SwapFlow')).toHaveLength(0);
+
+  // Closed and opened again: the new flow.
+  mockCurrentModal = SWAP_MODAL.CLOSE;
+  act(() => root.update(<SwapModalProvider />));
+  mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+  act(() => root.update(<SwapModalProvider />));
+  expect(root.root.findAllByType('SwapFlow')).toHaveLength(1);
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(0);
+  act(() => root.unmount());
+});
+
+describe('with the new swap flow', () => {
+  beforeEach(() => {
+    mockNewFlow = true;
+  });
+
+  it('draws the form as the new flow, for a Fuse pair and a LI.FI one alike', () => {
+    mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+    for (const lifi of [false, true]) {
+      mockIsLifiSwap = lifi;
+      const root = render();
+      expect(root.root.findAllByType('SwapFlow')).toHaveLength(1);
+      expect(root.root.findAllByType('SwapPair')).toHaveLength(0);
+      expect(root.root.findAllByType('LifiSwapPair')).toHaveLength(0);
+      act(() => root.unmount());
+    }
+  });
+
+  it('titles a picker and takes its back button to the form', () => {
+    mockCurrentModal = SWAP_MODAL.OPEN_GET_PICKER;
+    const root = render();
+    const modal = root.root.findByType('ResponsiveModal');
+    expect(modal.props.title).toBe('You get');
+    expect(modal.props.showBackButton).toBe(true);
+    act(() => modal.props.onBackPress());
+    expect(mockSetModal).toHaveBeenCalledWith(SWAP_MODAL.OPEN_FORM);
+    act(() => root.unmount());
+  });
+
+  it('leaves Buy FUSE on its own screen', () => {
+    mockCurrentModal = SWAP_MODAL.OPEN_BUY_FUSE;
+    const root = render();
+    expect(root.root.findAllByType('BuyFuseScreen')).toHaveLength(1);
+    expect(root.root.findAllByType('SwapFlow')).toHaveLength(0);
+    act(() => root.unmount());
+  });
 });

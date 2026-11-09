@@ -59,6 +59,8 @@ import {
   CardAccessResponse,
   CardBalanceResponseDto,
   CardCollateralAvailableDto,
+  CardCreditHistoryResponse,
+  CardCreditSummary,
   CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
@@ -133,7 +135,9 @@ import {
   RainRtfStatus,
   RecordStocksFeeParams,
   RecordSwapFeeParams,
+  ReferralInviteLookup,
   ReferralSummary,
+  ReferralV4Summary,
   RegionInterestPayload,
   ResumeRainForwardResponse,
   RewardsTier,
@@ -143,6 +147,7 @@ import {
   RhinoDepositAssetsResponse,
   RhinoDepositsResponse,
   SavingsSummaryResponse,
+  SignedTurnkeyRequest,
   SourceDepositInstructions,
   StatementDownload,
   StatementFormat,
@@ -2442,6 +2447,99 @@ export const fetchReferralSummary = async (): Promise<ReferralSummary> => {
   return response.json();
 };
 
+/**
+ * Referral program v4: terms, totals, every invited friend (v4 and legacy) and
+ * the user's own invite. `terms.enabled === false` — or any failure, 404
+ * included while the endpoint is not deployed — means the app keeps today's
+ * referral program, so callers treat an error as "off", never as a blocker.
+ */
+export const fetchReferralV4Summary = async (): Promise<ReferralV4Summary> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/referral/v4/summary`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Who a referral code belongs to and what the friend gets. Public — the invite
+ * page and the signup "Invite code" field read it before there is a session —
+ * so no auth header. An unknown code is `{ valid: false }`, not a 404.
+ */
+export const fetchReferralInvite = async (code: string): Promise<ReferralInviteLookup> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/referral/invite/${encodeURIComponent(code)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** The user's card credit: what is left, what is held, and where it came from. */
+export const fetchCardCreditSummary = async (): Promise<CardCreditSummary> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-credit`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Card credit grants, holds, spends and refunds, newest first. */
+export const fetchCardCreditHistory = async (
+  params: { limit?: number; before?: string } = {},
+): Promise<CardCreditHistoryResponse> => {
+  const jwt = getJWTToken();
+  // Not `new URL()`: the base is relative on web when the API is same-origin.
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.before) query.set('before', params.before);
+  const search = query.toString();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-credit/history${search ? `?${search}` : ''}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const fetchLeaderboardUsers = async (params: {
   pageSize?: string;
   page?: string;
@@ -3131,7 +3229,25 @@ export const createBridgeTransfer = async (params: {
   return response.json();
 };
 
-export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
+/**
+ * Response of `verify-generic-otp`. From the SEC-010 backend on, a verified
+ * code no longer changes the email: `stepUpRequired` asks for the account's
+ * passkey to sign the change (see {@link confirmEmailChange}), carrying
+ * `verificationToken`. An older backend omits the flag and has already saved
+ * the address.
+ */
+export type VerifyGenericOtpResponse = {
+  success: boolean;
+  message?: string;
+  verificationToken: string;
+  stepUpRequired?: boolean;
+};
+
+export const verifyGenericOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+): Promise<VerifyGenericOtpResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -3148,7 +3264,44 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
         otpId,
         otpCode,
         email,
+        // This build finishes the change with a passkey (confirmEmailChange).
+        // The backend refuses builds that don't, before the code is spent:
+        // they would report success while the account kept its old address.
+        supportsPasskeyConfirmation: true,
       }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
+/**
+ * Last step of an in-app email change. Hands the backend the Turnkey
+ * UPDATE_USER_EMAIL that the account's passkey just signed; the backend relays
+ * it to Turnkey and only saves the address once Turnkey accepts the signature,
+ * so a session token alone can never move the recovery email.
+ *
+ * `recoveryEmailHoldUntil` is when the new address can start an account
+ * recovery — a freshly changed one waits before it can.
+ */
+export const confirmEmailChange = async (
+  otpId: string,
+  signedRequest: SignedTurnkeyRequest,
+): Promise<{ success: boolean; email: string; recoveryEmailHoldUntil?: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/confirm-email-change`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ otpId, signedRequest }),
     },
   );
   const data = await response.json();
@@ -3174,6 +3327,55 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
 
   return response.json();
 };
+
+/** An external wallet the user linked by signature; deposits may pull from it. */
+export type LinkedWallet = { address: string; linkedAt: string };
+
+const linkedWalletsRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/linked-wallets${path}`,
+    {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  // Unlinking answers 204 with no body.
+  if (response.status === 204) return undefined as T;
+  if (!response.ok) throw await response.json().catch(() => ({}));
+  // A success whose body isn't JSON rejects rather than passing as empty.
+  return (await response.json()) as T;
+};
+
+export const getLinkedWallets = async (): Promise<LinkedWallet[]> => {
+  const wallets = await linkedWalletsRequest<unknown>('');
+  if (
+    !Array.isArray(wallets) ||
+    !wallets.every(wallet => typeof (wallet as { address?: unknown })?.address === 'string')
+  ) {
+    throw new Error('Unexpected response listing linked wallets');
+  }
+  return wallets as LinkedWallet[];
+};
+
+/** The message the wallet must sign to be linked; valid for one use, for 10 minutes. */
+export const createWalletLinkChallenge = (
+  address: string,
+): Promise<{ message: string; expiresAt: string }> =>
+  linkedWalletsRequest('/challenge', { method: 'POST', body: JSON.stringify({ address }) });
+
+export const linkWallet = (address: string, signature: string): Promise<LinkedWallet> =>
+  linkedWalletsRequest('', { method: 'POST', body: JSON.stringify({ address, signature }) });
+
+export const unlinkWallet = (address: string): Promise<void> =>
+  linkedWalletsRequest(`/${address}`, { method: 'DELETE' });
 
 export const depositTransactions = async (safeAddress: string): Promise<DepositTransaction[]> => {
   const jwt = getJWTToken();

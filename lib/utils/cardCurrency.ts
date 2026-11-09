@@ -227,8 +227,11 @@ export const shortfallOf = (comparable: NonNullable<DeclinedPaymentFigures['comp
     Math.ceil(Number(((comparable.payment - comparable.available) * 100).toFixed(6))) / 100,
   );
 
-/** The one fix a declined receipt leads with — the same vocabulary as the push's `data.fix`. */
-export type DeclineFix = 'turn_on_euro' | 'swap' | 'add_funds';
+/**
+ * The one fix a declined receipt leads with — the push's `data.fix` vocabulary, plus `turn_on_base`,
+ * which only the receipt works out so far.
+ */
+export type DeclineFix = 'turn_on_euro' | 'turn_on_base' | 'swap' | 'add_funds';
 
 /** Below this a holding is dust, not a fix — the swap form's own floor. */
 const MIN_SWAP_VALUE_USD = 1;
@@ -238,14 +241,18 @@ const MIN_SWAP_VALUE_USD = 1;
  *
  *  1. **Turn on euro spending**: a euro payment their EURC on Base covers in full. One purchase
  *     draws from one balance, so EURC short of the payment would decline again once turned on.
- *  2. **Swap**: their richest "Swap first" holding, when it is worth the gap. The swap lands as
+ *  2. **Turn on Base**: any payment their other Base holdings — USDC, USDT, crypto — cover in
+ *     full, for the same reason. Ahead of a swap because it costs no swap fee and moves nothing.
+ *  3. **Swap**: their richest "Swap first" holding, when it is worth the gap. The swap lands as
  *     USDC on Fuse, which the card spends straight away.
- *  3. **Add funds**, which is never wrong.
+ *  4. **Add funds**, which is never wrong.
  */
 export const chooseDeclineFix = ({
   payment,
   merchantCurrency,
   unusableEurc,
+  unreachableBaseUsd = 0,
+  paymentUsd,
   swapValueUsd,
   shortfallUsd,
 }: {
@@ -254,6 +261,10 @@ export const chooseDeclineFix = ({
   merchantCurrency?: string;
   /** EURC on Base the card cannot reach yet; 0 once euro spending is on. */
   unusableEurc: number;
+  /** USD value of the non-euro holdings on Base the card cannot reach yet; 0 once Base is on. */
+  unreachableBaseUsd?: number;
+  /** The whole payment in dollars, when it is known. */
+  paymentUsd?: number;
   /** USD value of the richest swappable holding, if any. */
   swapValueUsd?: number;
   /** The gap in dollars, when it is known. */
@@ -262,6 +273,10 @@ export const chooseDeclineFix = ({
   const euroPayment =
     payment.currency === 'EUR' && merchantCurrency?.trim().toUpperCase() === 'EUR';
   if (euroPayment && unusableEurc > 0 && unusableEurc >= payment.amount) return 'turn_on_euro';
+
+  if (paymentUsd !== undefined && unreachableBaseUsd > 0 && unreachableBaseUsd >= paymentUsd) {
+    return 'turn_on_base';
+  }
 
   if (
     swapValueUsd !== undefined &&

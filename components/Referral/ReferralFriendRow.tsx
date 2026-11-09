@@ -163,6 +163,18 @@ interface ReferralFriendRowProps {
 export const REFERRER_REWARD_WITHHELD_NOTE =
   "Your friend got their reward; this one doesn't earn you one";
 
+/**
+ * "$10 of this went to cover a reversed reward" — under a paid reward part or
+ * all of which repaid one reversed after it was paid. Null when none of it did.
+ */
+export const debtOffsetNote = (item: ReferralRewardListItem): string | null => {
+  const offsetUsd = item.debtOffsetUsd ?? 0;
+  if (item.stage !== ReferralFriendStage.PAID || !(offsetUsd > 0)) return null;
+  return offsetUsd >= item.rewardUsd
+    ? 'All of this went to cover a reversed reward'
+    : `${formatUsdCompact(offsetUsd)} of this went to cover a reversed reward`;
+};
+
 export default function ReferralFriendRow({
   item,
   index,
@@ -310,6 +322,7 @@ export default function ReferralFriendRow({
   // The friend was paid and the referrer was not: say so, rather than leave
   // a bare "Not eligible" next to a friend who clearly qualified.
   const withheldNote = item.referrerRewardWithheld ? REFERRER_REWARD_WITHHELD_NOTE : null;
+  const offsetNote = debtOffsetNote(item);
 
   const detailChip = presentation.detail ? (
     <Chip tone={presentation.detail.tone}>{presentation.detail.label}</Chip>
@@ -372,6 +385,9 @@ export default function ReferralFriendRow({
             ) : null}
             {paidLine ? (
               <Text className="text-xs leading-[14px] text-white/50">Paid {paidLine}</Text>
+            ) : null}
+            {offsetNote ? (
+              <Text className="text-xs leading-[14px] text-white/40">{offsetNote}</Text>
             ) : null}
 
             {presentation.showProgress ? (
