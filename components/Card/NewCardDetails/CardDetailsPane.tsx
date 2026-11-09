@@ -37,6 +37,7 @@ import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/Borr
 import useCreditModeFigures from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
+import RainClosingCardNotice from '@/components/Card/RainSunset/RainClosingCardNotice';
 import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
@@ -56,6 +57,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
+import { useRainSunset } from '@/hooks/useRainSunset';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { monthlyCashbackCap } from '@/lib/cashbackProgress';
@@ -114,6 +116,9 @@ const CardDetailsPane = () => {
 
   const { data: cardDetails, refetch, dataUpdatedAt } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
+  // Rain sunset: the card-closing notice under the card art.
+  const { sunset: rainSunset } = useRainSunset();
+  const showsClosingNotice = Boolean(rainSunset?.notice && rainSunset.hasRainCard);
   const { data: customer } = useCustomer();
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
@@ -370,6 +375,13 @@ const CardDetailsPane = () => {
             // country the status endpoint reports (it's absent for test overrides).
             issuingCountryCode={cardDetails?.issuing_country ?? cardStatus?.country}
           />
+          {/* Rain sunset: right under the card art (Figma "2 · Card screen · closing
+              notice"), above the action row. */}
+          {showsClosingNotice ? (
+            <HeroEnter spec={HERO_ENTER.closingNotice} style={styles.closingNotice}>
+              <RainClosingCardNotice />
+            </HeroEnter>
+          ) : null}
           <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
             <CardActionsRow
               isCardFrozen={isCardFrozen}
@@ -583,6 +595,7 @@ const styles = StyleSheet.create({
   },
   // Figma vertical rhythm (26134:23654): 51 from the panel to the action icons, 53
   // to the spend-mode row, then 20 between each card down the stack.
+  closingNotice: { marginTop: 24 },
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
   realTimeFundingCard: { marginTop: 20 },

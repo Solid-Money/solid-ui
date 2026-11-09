@@ -314,6 +314,14 @@ export const ASSETS = {
     module: require('@/assets/images/card-apple-wallet.svg'),
     hash: '1e7e1963',
   },
+  'images/card-closing-art.svg': {
+    module: require('@/assets/images/card-closing-art.svg'),
+    hash: 'e2646519',
+  },
+  'images/card-closing-wallet.svg': {
+    module: require('@/assets/images/card-closing-wallet.svg'),
+    hash: '8ca8f050',
+  },
   'images/card-declined.tsx': {
     module: require('@/assets/images/card-declined.tsx'),
     hash: 'aca61dfe',
@@ -344,6 +352,22 @@ export const ASSETS = {
     module: require('@/assets/images/card-nav-bar-icon.tsx'),
     hash: '2bbae9c2',
   },
+  'images/card-new-card-art.svg': {
+    module: require('@/assets/images/card-new-card-art.svg'),
+    hash: 'dad09aed',
+  },
+  'images/card-new-card-euro.svg': {
+    module: require('@/assets/images/card-new-card-euro.svg'),
+    hash: 'f4840cbe',
+  },
+  'images/card-new-card-phone.svg': {
+    module: require('@/assets/images/card-new-card-phone.svg'),
+    hash: '7ba9b34d',
+  },
+  'images/card-new-card-wallet.svg': {
+    module: require('@/assets/images/card-new-card-wallet.svg'),
+    hash: '7188f842',
+  },
   'images/card-onboarding.png': {
     module: require('@/assets/images/card-onboarding.png'),
     hash: '57d7012d',
@@ -361,6 +385,10 @@ export const ASSETS = {
   'images/card-withdraw-mobile.png': {
     module: require('@/assets/images/card-withdraw-mobile.png'),
     hash: '3e7c4ee6',
+  },
+  'images/card-withdraw-success.svg': {
+    module: require('@/assets/images/card-withdraw-success.svg'),
+    hash: '527532ca',
   },
   'images/card-withdraw.png': {
     module: require('@/assets/images/card-withdraw.png'),

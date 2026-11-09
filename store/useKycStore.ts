@@ -8,7 +8,12 @@ import { KycProvider } from '@/lib/types';
  * `transfi` and `transfi_cashout` both verify for TransFi; they differ only in
  * where the user lands afterwards — the buy-crypto drawer or the cash-out one.
  */
-export type KycFlow = 'card' | 'va' | 'transfi' | 'transfi_cashout';
+/**
+ * `card_migration` is a Rain cardholder's move to their new (Wirex) card: a
+ * card Sumsub session like `card`, whose outcomes land on the new-card screen
+ * rather than the issuance flow (which belongs to the Rain card they still hold).
+ */
+export type KycFlow = 'card' | 'card_migration' | 'va' | 'transfi' | 'transfi_cashout';
 
 interface KycState {
   kycLinkId: string | null;

@@ -8,6 +8,8 @@ import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import RainClosingHomeBanner from '@/components/Card/RainSunset/RainClosingHomeBanner';
+import { RainClosingSheet } from '@/components/Card/RainSunset/RainClosingSheet';
 import EuroLaunchPopup from '@/components/Home/NewHome/EuroLaunchPopup';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
 import HomeBalancePills from '@/components/Home/NewHome/HomeBalancePills';
@@ -278,6 +280,8 @@ export default function HomeScreenNew() {
           <CardDetailsPane />
           <SpendModeModals figures={spendModeFigures} />
           <IncidentNoticeSheet />
+          {/* Rain sunset: opened from the Home banner and the card notice alike. */}
+          <RainClosingSheet />
           <EuroLaunchPopup
             isWirexCardholder={showWirexTiles}
             // Undefined until the card details answer, so the popup never guesses "not on euro".
@@ -293,6 +297,9 @@ export default function HomeScreenNew() {
         {/* A known incident (an outage, a delay) the team has posted. Renders
             nothing when there is none, which is nearly always. */}
         <HomeIncidentNotice className="px-4" />
+        {/* Rain sunset: the card-closing banner, in the same slot (Figma "1 · Home ·
+            Card closing banner"). Nothing for anyone it does not affect. */}
+        <RainClosingHomeBanner className="px-4" />
         {isBalanceSectionLoading ? (
           // Mirror the loaded wrappers and their heights so the wallet card does
           // not jump when the headline and actions replace these.

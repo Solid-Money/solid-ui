@@ -7,6 +7,9 @@ export default function CardLayout() {
       <Stack.Screen name="ready" />
       <Stack.Screen name="pending" />
       <Stack.Screen name="activate" />
+      {/* Rain sunset: the move to the new card, and emptying the closing one. */}
+      <Stack.Screen name="new-card" />
+      <Stack.Screen name="closing-withdraw" />
       {/* No screen animation: the card hero overlay plus the screen's own staggered
           entrance are the only motion, so the details screen swaps in instantly
           (opaque) while the card flies to it, instead of a fade competing with it. */}
