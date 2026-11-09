@@ -217,9 +217,19 @@ const WalletDepositAddress = () => {
     },
     [router, setDepositModal],
   );
+  // rhino.fi pays ETH out as ETH to the user's wallet deposit address on Base,
+  // where the pipeline wraps it into WETH for the Safe: watched like a minted
+  // address, so the deposit's progress opens once that payout lands, as the
+  // card and savings screens do for theirs. Every other wallet route pays the
+  // Safe itself, which the pipeline does not watch.
+  const watchesRhinoPayout =
+    row.kind === 'rhino' &&
+    !!rhinoAddress &&
+    rhinoSelection?.destinationType === 'WALLET' &&
+    (rhinoAddress.receiveSymbol ?? rhino?.route.receiveSymbol) === 'ETH';
   const { isDetected } = useDetectedDirectDeposit({
-    enabled: isScanning,
-    destinationType: sessionDestination,
+    enabled: isScanning || watchesRhinoPayout,
+    destinationType: watchesRhinoPayout ? 'WALLET' : sessionDestination,
     onDetected: openDetectedDeposit,
   });
 

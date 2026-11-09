@@ -1,5 +1,5 @@
 import React from 'react';
-import { base, fuse, mainnet, optimism, polygon } from 'viem/chains';
+import { arbitrum, base, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
 import { getWalletOwnAddress } from '@/components/DepositOption/WalletDepositAddress/constants';
@@ -330,6 +330,51 @@ describe('WalletDepositAddress for a token rhino.fi takes nowhere', () => {
     expect(qrValues()).toEqual([]);
     expect(ownAddressWasEnabled()).toBe(false);
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ chainId: base.id, symbol: 'WETH' });
+  });
+});
+
+/**
+ * rhino.fi pays wallet ETH out as ETH to the user's wallet deposit address on
+ * Base, where the pipeline wraps it: watched, so its progress opens on payout.
+ * Every other wallet route pays the Safe, which nothing watches.
+ */
+describe('WalletDepositAddress for ETH through rhino.fi', () => {
+  beforeEach(() => {
+    mockRhinoAddress.mockImplementation((selection: unknown) =>
+      selection
+        ? {
+            ...rhinoAddressFor(selection),
+            address: {
+              ...rhinoResponse('WALLET'),
+              tokenSymbol: (selection as { tokenSymbol: string }).tokenSymbol,
+              receiveSymbol: (selection as { tokenSymbol: string }).tokenSymbol,
+            },
+          }
+        : rhinoAddressFor(selection),
+    );
+  });
+
+  it('watches the wallet address rhino.fi pays it to, and opens its progress', () => {
+    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'ETH' };
+    render();
+
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
+    expect(mockDetected.params).toEqual(
+      expect.objectContaining({ enabled: true, destinationType: 'WALLET' }),
+    );
+    act(() => {
+      mockDetected.params.onDetected({ detected: true, clientTxId: 'direct_deposit_eth' });
+    });
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.CLOSE);
+    expect(mockRouter.push).toHaveBeenCalledWith('/activity/direct_deposit_eth');
+  });
+
+  it('watches nothing for a wallet route that pays the Safe', () => {
+    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
   });
 });
 
