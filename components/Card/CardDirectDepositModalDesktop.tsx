@@ -417,10 +417,10 @@ export default function CardDirectDepositModal({
   );
 
   // Direct-deposit path: pick the chain the stablecoin is sent from.
-  // rhino.fi on every row but Fuse's and USDT's: a row it has a card route from
-  // shows the rhino.fi address, and only an own row (Fuse, or USDT our pipeline
-  // carries) mints a direct-deposit session. The list offers nothing else, and
-  // nothing else is acted on here either.
+  // rhino.fi on every row but Base's and Fuse's: a row it has a card route from
+  // shows the rhino.fi address, and only an own row (Base, where rhino.fi pays
+  // the card out, and Fuse) mints a direct-deposit session. The list offers
+  // nothing else, and nothing else is acted on here either.
   const handleDirectNetworkSelect = useCallback(
     (chainId: number) => {
       const row = resolveRhinoRow(rhinoAssets, {

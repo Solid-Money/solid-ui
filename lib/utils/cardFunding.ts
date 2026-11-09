@@ -270,11 +270,10 @@ export const resolveWirexMoveDestination = (
     symbol: holding.symbol,
   });
   if (row.kind === 'own') {
-    // With rhino.fi off every row is ours, and the card deposit address
-    // delivers a Wirex cardholder's dollars to their Safe on Base: one already
-    // there has nothing to move, as when rhino.fi would deliver it.
+    // Base is always ours (and every row is while rhino.fi is off), and the
+    // card deposit address delivers a Wirex cardholder's dollars to their Safe
+    // on Base: one already there has nothing to move.
     const isAlreadyDelivered =
-      rhino.status === 'disabled' &&
       holding.chainId === base.id &&
       !isOwnPipelineToken(holding.symbol, destinationType, holding.chainId);
     return isAlreadyDelivered ? { kind: 'none' } : { kind: 'card' };

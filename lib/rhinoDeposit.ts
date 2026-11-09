@@ -15,11 +15,14 @@ import type {
  * rhino.fi Smart Deposit Addresses: the deposit provider on every network row
  * but Fuse's, and for every token but the few our own pipeline still carries.
  *
- * - A network row the app lists (Ethereum, Base, Arbitrum, …) uses rhino.fi when
- *   rhino.fi has a route from that chain (matched by `chainId`) for the screen's
- *   destination, token and vault, the chain the route pays out on included. A
- *   row it has no route for is not offered: there is no address of our own to
- *   fall back to.
+ * - A network row the app lists (Ethereum, Polygon, Arbitrum, …) uses rhino.fi
+ *   when rhino.fi has a route from that chain (matched by `chainId`) for the
+ *   screen's destination, token and vault. A row it has no route for is not
+ *   offered: there is no address of our own to fall back to.
+ * - Except on the chain the route pays out on, for the token it pays out: the
+ *   deposit is already where it is going, so our own address takes it, free
+ *   (the wallet and card on Base, savings on the vault's chain; see
+ *   `isOwnPayoutChain` and `resolveRhinoRow`).
  * - Fuse rows are our own pipeline's (the direct-deposit session, or the Safe),
  *   whatever rhino.fi lists: rhino.fi does not support Fuse.
  * - So are the wallet and card rows of a token on a chain in
@@ -72,6 +75,24 @@ export const isOwnPipelineChain = (chainId: number): boolean => OWN_PIPELINE_CHA
 export const OWN_PIPELINE_TOKEN_CHAINS: Readonly<Record<string, ReadonlySet<number>>> = {
   USDT: new Set([base.id]),
 };
+
+/**
+ * Where the wallet and card routes pay out: Base, every token. A wallet or
+ * card deposit sent on Base is already where it is going, so our own address
+ * takes it there, free, rather than rhino.fi, which would charge its minimum,
+ * run its checks and pay it back to the same chain. Known without rhino.fi's
+ * routes, so those rows never wait for them. Savings' chain depends on the
+ * vault (and soUSD's on the deployment), so it is read from the route instead
+ * (see `resolveRhinoRow`).
+ */
+const PAYOUT_CHAIN_BY_DESTINATION: Readonly<Partial<Record<RhinoDestinationType, number>>> = {
+  WALLET: base.id,
+  RAIN_CARD: base.id,
+};
+
+/** Whether a wallet or card row is on the chain its route pays out on (Base). */
+export const isOwnPayoutChain = (destinationType: RhinoDestinationType, chainId: number): boolean =>
+  PAYOUT_CHAIN_BY_DESTINATION[destinationType] === chainId;
 
 /** The destinations `OWN_PIPELINE_TOKEN_CHAINS` applies to: the wallet's and the card's. */
 const OWN_PIPELINE_DESTINATIONS: ReadonlySet<RhinoDestinationType> = new Set<RhinoDestinationType>([
@@ -323,7 +344,7 @@ export type RhinoRowFilter = {
  * The rhino.fi route a network row uses, matched on `chainId`: undefined when
  * rhino.fi has no route from that chain for the destination, token and vault,
  * and always for Fuse. The chain a route pays out on is matched like any other
- * (a Base deposit into the Safe on Base goes through rhino.fi too).
+ * here; `resolveRhinoRow` then gives that row to our own address.
  */
 export const findRhinoRouteForRow = (
   assets: RhinoDepositAssetsResponse | undefined,
@@ -366,10 +387,12 @@ export const getRhinoSelectionForRow = (
  * How one of a screen's own network rows is served:
  *
  * - `own`: our own pipeline's address (a direct-deposit session, or the Safe):
- *   on Fuse, as it always was, and for a token our pipeline still takes on
- *   that chain for that destination (`isOwnPipelineToken`: USDT on Base to the
- *   wallet or the card), whatever rhino.fi lists and whether or not its routes
- *   are in; and on every row while the backend has rhino.fi off. The screen
+ *   on Fuse, as it always was; for a token our pipeline still takes on that
+ *   chain for that destination (`isOwnPipelineToken`: USDT on Base to the
+ *   wallet or the card); on the chain a route pays out on, for the token it
+ *   pays out (Base for the wallet and card, `isOwnPayoutChain`; the vault's
+ *   chain for savings), whatever rhino.fi lists; and on every row while the
+ *   backend has rhino.fi off. The screen
  *   decides the address: the card's `RAIN_CARD` session, savings' `PROTOCOL`
  *   one, or for the wallet `getWalletOwnAddress`'s;
  * - `rhino`: the rhino.fi address for `selection`;
@@ -392,12 +415,24 @@ export const resolveRhinoRow = (state: RhinoAssetsState, row: RhinoRowFilter): R
   if (
     isOwnPipelineChain(row.chainId) ||
     isOwnPipelineToken(row.symbol, row.destinationType, row.chainId) ||
+    isOwnPayoutChain(row.destinationType, row.chainId) ||
     // rhino.fi is off: our own pipeline serves every row, as before rhino.fi.
     state.status === 'disabled'
   ) {
     return { kind: 'own' };
   }
   if (state.status !== 'ready') return { kind: state.status };
+  const found = findRhinoRouteForRow(state.assets, row);
+  // Sent on the chain the route pays out on, as the token it would pay out: the
+  // deposit is already where it is going, and our own address takes it there
+  // for free (soETH on Ethereum, soUSD and soEURC on theirs).
+  if (
+    found &&
+    found.route.receiveChainId === row.chainId &&
+    found.route.receiveSymbol === row.symbol
+  ) {
+    return { kind: 'own' };
+  }
   const selection = getRhinoSelectionForRow(state.assets, row);
   return selection ? { kind: 'rhino', selection } : { kind: 'none' };
 };

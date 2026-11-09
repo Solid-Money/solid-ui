@@ -216,9 +216,9 @@ export default function WirexCardFundModal({
     [goToStep],
   );
 
-  // rhino.fi on every row but Fuse's and USDT's: a row it has a wallet route
+  // rhino.fi on every row but Base's and Fuse's: a row it has a wallet route
   // from (see `getCardFundRhinoDestination`) shows the rhino.fi address, and
-  // only an own row (Fuse, or USDT our pipeline carries) mints the card's
+  // only an own row (Base, where rhino.fi pays out, and Fuse) mints the card's
   // direct-deposit session. The list offers nothing else, and nothing else is
   // acted on here either.
   const handleNetworkSelect = useCallback(

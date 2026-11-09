@@ -107,13 +107,16 @@ describe('WalletDepositTokens', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('lists what Fuse takes, with a retry for the rest, when the routes cannot be had', () => {
+  // Base and Fuse are our own, so they need nothing from rhino.fi.
+  it('lists what Base and Fuse take, with a retry for the rest, when the routes cannot be had', () => {
     mockRhino.current = { status: 'unavailable', retry: mockRetry };
     const root = render();
     const shown = texts(root);
 
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'FUSE', 'WFUSE']));
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(4);
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'cbBTC', 'FUSE']));
+    // Base's ten (USDC, USDT, ETH, WBTC, cbBTC, UNI, ENA, AAVE, SOL, WETH),
+    // and Fuse's FUSE and WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(12);
     expect(shown).toContain('Couldn’t load the other tokens.');
 
     act(() => root.root.findByType('Button').props.onPress());
