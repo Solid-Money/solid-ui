@@ -24,7 +24,7 @@ export const useDepositFeeQuote = ({
   provider,
   enabled,
 }: {
-  destinationType: 'PROTOCOL' | 'RAIN_CARD';
+  destinationType: 'PROTOCOL' | 'RAIN_CARD' | 'WALLET';
   chainId: number;
   symbol?: string;
   provider: CardProvider | null | undefined;

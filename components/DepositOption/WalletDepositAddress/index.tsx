@@ -116,8 +116,9 @@ const WalletDepositAddress = () => {
 
   // Who this is for, and rhino.fi's routes: together they decide the row.
   const viewer = useWalletDepositViewer();
-  // Wirex cardholders and people with no card both land here, and only the
-  // cardholders are charged — see `getDepositFeeRatePpm`.
+  // Wirex cardholders and people with no card both land here. A minted wallet
+  // address is charged the same for both; a Wirex cardholder's card address on
+  // Fuse is priced as their card — see `getDepositFeeRatePpm`.
   const { provider } = viewer;
   const { retry: retryRhinoAssets } = useOfferedRhinoDepositAssets();
 
@@ -409,6 +410,7 @@ const WalletDepositAddress = () => {
             provider={provider}
             chainId={chainId}
             symbol={symbol}
+            walletAddress={sessionDestination}
             className="mt-2"
           />
         ) : null}

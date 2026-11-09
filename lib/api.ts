@@ -4887,7 +4887,7 @@ export const getDetectedDirectDeposit = async (
  * default where none is set.
  */
 export const getDepositFeeQuote = async (
-  destinationType: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType: 'PROTOCOL' | 'RAIN_CARD' | 'WALLET',
   chainId: number,
   tokenSymbol: string,
 ): Promise<DepositFeeQuote> => {

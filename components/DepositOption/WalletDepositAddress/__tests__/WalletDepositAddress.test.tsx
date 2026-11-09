@@ -21,7 +21,6 @@ jest.mock('lucide-react-native', () => ({ ChevronRight: 'ChevronRight' }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 jest.mock('@/components/CopyToClipboard', () => 'CopyToClipboard');
-jest.mock('@/components/DepositOption/DepositFeeNotice', () => 'DepositFeeNotice');
 jest.mock('@/components/Card/CardFund/DepositScanningIndicator', () => 'DepositScanningIndicator');
 jest.mock('@/components/DepositOption/WalletDepositAddress/WalletDepositSelectors', () => ({
   __esModule: true,
@@ -30,7 +29,15 @@ jest.mock('@/components/DepositOption/WalletDepositAddress/WalletDepositSelector
 }));
 jest.mock('@/lib/assets', () => ({ getAsset: (path: string) => path }));
 jest.mock('@/lib/help/links', () => ({ openHelpLink: jest.fn() }));
-jest.mock('@/lib/utils', () => ({ eclipseAddress: (address: string) => address }));
+jest.mock('@/lib/utils', () => ({
+  eclipseAddress: (address: string) => address,
+  cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
+}));
+// The fee notice is the real one, so the rule it applies is the one under test;
+// only the backend's quote is stood in for, charging 0.03% whenever it is asked.
+jest.mock('@/hooks/useDepositFeeQuote', () => ({
+  useDepositFeeQuote: (params: unknown) => mockFeeQuote(params),
+}));
 jest.mock('@/hooks/useCardProvider', () => ({
   useCardProvider: () => ({ provider: 'wirex' }),
 }));
@@ -96,6 +103,16 @@ const WIREX_READY: WalletDepositViewer = {
 };
 const mockViewer: { current: WalletDepositViewer } = { current: WIREX_READY };
 const mockRetryAssets = jest.fn();
+const mockFeeQuote = jest.fn((_params: unknown) => ({
+  data: { applies: true, ratePpm: 300 },
+  isError: false,
+}));
+const FEE_LINE = '0.03% fee will be charged for deposits on this network';
+/** The quotes the notice asked the backend for. */
+const feeQuotesAsked = () =>
+  mockFeeQuote.mock.calls
+    .map(([params]) => params as { destinationType: string; enabled: boolean })
+    .filter(params => params.enabled);
 const SAFE_ADDRESS = '0x5afe000000000000000000000000000000005afe';
 const mockOwnAddress = (...args: Parameters<typeof getWalletOwnAddress>) =>
   getWalletOwnAddress(...args);
@@ -215,6 +232,18 @@ describe('WalletDepositAddress on Fuse, our own row', () => {
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
 
+  // Delivered to the Safe on Fuse, which the backend does not charge.
+  it('warns of no fee on the card address it mints there', () => {
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(texts()).not.toContain(FEE_LINE);
+    expect(feeQuotesAsked()).toEqual([]);
+    expect(mockFeeQuote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ destinationType: 'RAIN_CARD', chainId: fuse.id }),
+    );
+  });
+
   it('keeps working while rhino.fi’s routes cannot be had', () => {
     mockViewer.current = { ...WIREX_READY, rhino: { status: 'unavailable' } };
     render();
@@ -235,7 +264,7 @@ describe('WalletDepositAddress off Fuse, rhino.fi’s row', () => {
 
     expect(qrValues()).toEqual([RHINO_ADDRESS]);
     expect(ownAddressWasEnabled()).toBe(false);
-    expect(root.root.findAllByType('DepositFeeNotice')).toHaveLength(0);
+    expect(texts()).not.toContain(FEE_LINE);
     expect(root.root.findAllByType('RhinoDepositDetails')).toHaveLength(1);
   });
 
@@ -369,6 +398,27 @@ describe('WalletDepositAddress while rhino.fi is off', () => {
     expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
   });
 
+  // Bridged to the Safe on Base, which the backend charges whoever sends it.
+  it('warns of the fee on a wallet address off Base, priced as the wallet', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDT' };
+    render();
+
+    expect(texts()).toContain(FEE_LINE);
+    expect(feeQuotesAsked()).toEqual([
+      expect.objectContaining({ destinationType: 'WALLET', chainId: polygon.id, symbol: 'USDT' }),
+    ]);
+  });
+
+  it('warns of no fee on the Safe on Base', () => {
+    mockViewer.current = OFF;
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(texts()).not.toContain(FEE_LINE);
+  });
+
   it('moves ETH off a chain our pipeline does not take it on, to Base', () => {
     mockViewer.current = OFF;
     mockDeposit.walletDeposit = { chainId: mainnet.id, symbol: 'ETH' };
@@ -400,7 +450,7 @@ describe('WalletDepositAddress for USDT', () => {
       );
       expect(ownAddressWasEnabled()).toBe(false);
       expect(root.root.findByType('RhinoDepositDetails').props.receiveSymbol).toBe('USDC');
-      expect(root.root.findAllByType('DepositFeeNotice')).toHaveLength(0);
+      expect(texts()).not.toContain(FEE_LINE);
     });
   });
 
@@ -420,7 +470,7 @@ describe('WalletDepositAddress for USDT', () => {
 
     expect(qrValues()).toEqual([SAFE_ADDRESS]);
     expect(mockRhinoAddress).toHaveBeenLastCalledWith(undefined);
-    expect(root.root.findAllByType('DepositFeeNotice')).toHaveLength(0);
+    expect(texts()).not.toContain(FEE_LINE);
     expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
   });
 

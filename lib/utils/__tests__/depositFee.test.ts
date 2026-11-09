@@ -41,14 +41,16 @@ describe('getDepositFeeRatePpm', () => {
       );
     });
 
-    it.each(STABLECOINS)('charges a Wirex card %s deposit everywhere but Fuse', symbol => {
-      expectFreeOnlyOn([fuse.id], chainId =>
+    // A Wirex card spends from the Safe on Base, and a deposit sent on Fuse is
+    // delivered to the Safe there: both are free.
+    it.each(STABLECOINS)('charges a Wirex card %s deposit everywhere but Base and Fuse', symbol => {
+      expectFreeOnlyOn([base.id, fuse.id], chainId =>
         getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'card', chainId, symbol }),
       );
     });
 
     // EURC is delivered to the Safe on Base whoever issued the card, so Base is
-    // its home chain for both - including a Wirex holder, whose dollars go to Fuse.
+    // its home chain for both, and Fuse is not free for it.
     it.each([CardProvider.RAIN, CardProvider.WIREX, null])(
       'charges a EURC card deposit everywhere but Base (issuer %s)',
       provider => {
@@ -59,42 +61,60 @@ describe('getDepositFeeRatePpm', () => {
     );
   });
 
-  describe('wallet deposit', () => {
-    it.each(STABLECOINS)('charges a Wirex cardholder %s everywhere but Fuse', symbol => {
-      expectFreeOnlyOn([fuse.id], chainId =>
-        getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'wallet', chainId, symbol }),
-      );
+  // The backend prices the wallet's own address on the Rain card row for every
+  // program: charged when it bridges the deposit to the Safe on Base.
+  describe('wallet deposit, on a wallet address', () => {
+    describe.each([
+      ...NO_CARD,
+      ['a Rain card', CardProvider.RAIN],
+      ['a Wirex card', CardProvider.WIREX],
+    ] as const)('with %s', (_label, provider) => {
+      it.each(STABLECOINS)('charges %s everywhere but Base', symbol => {
+        expectFreeOnlyOn([base.id], chainId =>
+          getDepositFeeRatePpm({ provider, product: 'wallet', chainId, symbol }),
+        );
+      });
+
+      // Forwarded to the Safe on the chain it arrived on, not bridged.
+      it.each([...NON_STABLECOINS, 'EURC', 'WBTC'])('never charges %s', symbol => {
+        expectFreeOnlyOn(CHAIN_IDS, chainId =>
+          getDepositFeeRatePpm({ provider, product: 'wallet', chainId, symbol }),
+        );
+      });
+
+      it('never charges when the currency is not known', () => {
+        expectFreeOnlyOn(CHAIN_IDS, chainId =>
+          getDepositFeeRatePpm({ provider, product: 'wallet', chainId }),
+        );
+      });
     });
 
-    it('charges a Wirex cardholder EURC everywhere but Base, where it is delivered', () => {
-      expectFreeOnlyOn([base.id], chainId =>
+    it('is the address the wallet screen mints unless it says otherwise', () => {
+      expect(
+        getDepositFeeRatePpm({
+          provider: null,
+          product: 'wallet',
+          chainId: polygon.id,
+          symbol: 'USDT',
+          walletAddress: 'WALLET',
+        }),
+      ).toBe(DEFAULT_DEPOSIT_FEE_RATE_PPM);
+    });
+  });
+
+  // A Wirex cardholder's dollars on Fuse get a card address on the wallet
+  // screen, priced as their card.
+  describe('wallet deposit, on a card address', () => {
+    it.each(STABLECOINS)('charges a Wirex cardholder %s everywhere but Base and Fuse', symbol => {
+      expectFreeOnlyOn([base.id, fuse.id], chainId =>
         getDepositFeeRatePpm({
           provider: CardProvider.WIREX,
           product: 'wallet',
           chainId,
-          symbol: 'EURC',
+          symbol,
+          walletAddress: 'RAIN_CARD',
         }),
       );
-    });
-
-    it.each(NON_STABLECOINS)('never charges a Wirex cardholder %s', symbol => {
-      expectFreeOnlyOn(CHAIN_IDS, chainId =>
-        getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'wallet', chainId, symbol }),
-      );
-    });
-
-    it('never charges a Wirex cardholder when the currency is not known', () => {
-      expectFreeOnlyOn(CHAIN_IDS, chainId =>
-        getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'wallet', chainId }),
-      );
-    });
-
-    it.each(NO_CARD)('never charges someone with %s', (_label, provider) => {
-      for (const symbol of [...STABLECOINS, ...NON_STABLECOINS]) {
-        expectFreeOnlyOn(CHAIN_IDS, chainId =>
-          getDepositFeeRatePpm({ provider, product: 'wallet', chainId, symbol }),
-        );
-      }
     });
   });
 
@@ -140,10 +160,17 @@ describe('getDepositFeeRatePpm', () => {
 });
 
 describe('getDepositFeeDestinationType', () => {
-  it('prices savings on the savings address and every other flow on the card one', () => {
+  it('prices each flow on the address it hands out', () => {
     expect(getDepositFeeDestinationType('savings')).toBe('PROTOCOL');
     expect(getDepositFeeDestinationType('card')).toBe('RAIN_CARD');
-    expect(getDepositFeeDestinationType('wallet')).toBe('RAIN_CARD');
+    expect(getDepositFeeDestinationType('wallet')).toBe('WALLET');
+  });
+
+  it('prices a wallet deposit on the card address when that is what was minted', () => {
+    expect(getDepositFeeDestinationType('wallet', 'RAIN_CARD')).toBe('RAIN_CARD');
+    expect(getDepositFeeDestinationType('wallet', 'WALLET')).toBe('WALLET');
+    // Only the wallet screen mints more than one kind.
+    expect(getDepositFeeDestinationType('card', 'WALLET')).toBe('RAIN_CARD');
   });
 });
 
