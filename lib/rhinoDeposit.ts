@@ -3,6 +3,7 @@ import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chai
 import type {
   RhinoAddressType,
   RhinoDeposit,
+  RhinoDepositAddressResponse,
   RhinoDepositAssetsResponse,
   RhinoDepositChain,
   RhinoDepositRoute,
@@ -494,6 +495,37 @@ export const isValidRhinoDepositAddress = (address: string, addressType: string)
   }
 };
 
+/** The address type of the rhino.fi chains that are not EVM. */
+const ADDRESS_TYPE_BY_RHINO_CHAIN: Readonly<Record<string, RhinoAddressType>> = {
+  TRON: 'TRON',
+  SOLANA: 'SOL',
+  BITCOIN: 'BTC',
+};
+
+/**
+ * Whether the backend's answer is an address for the selection it was asked
+ * for: the same chain, token and destination, an address type that chain uses
+ * (EVM for a row with an EVM chain id), and an address well formed for it.
+ * Anything else would show one chain's address under another's instructions.
+ */
+export const isRhinoAddressForSelection = (
+  response: Pick<
+    RhinoDepositAddressResponse,
+    'depositAddress' | 'chain' | 'addressType' | 'tokenSymbol' | 'destinationType'
+  >,
+  selection: RhinoDepositSelection,
+): boolean => {
+  const expectedType =
+    selection.chainId !== undefined ? 'EVM' : ADDRESS_TYPE_BY_RHINO_CHAIN[selection.chain];
+  return (
+    response.chain === selection.chain &&
+    response.destinationType === selection.destinationType &&
+    response.tokenSymbol?.toUpperCase() === selection.tokenSymbol.toUpperCase() &&
+    (expectedType === undefined || response.addressType === expectedType) &&
+    isValidRhinoDepositAddress(response.depositAddress, response.addressType)
+  );
+};
+
 /**
  * Whether two deposit addresses are the same. EVM addresses are hex, so case is
  * only a checksum; Tron, Solana and Bitcoin's base58 are case-sensitive, and
@@ -662,23 +694,33 @@ export const getRhinoDepositStatusView = (
   }
 };
 
+/** Which deposit a screen's rhino.fi address is watching for. */
+export type RhinoDepositMatch = {
+  depositAddress: string;
+  chain: string;
+  addressType: string;
+  tokenSymbol: string;
+  destinationType: RhinoDestinationType;
+};
+
 /**
- * The deposit to show for an address: the newest one sent to it on that chain.
- * The endpoint returns every rhino.fi deposit the user made since the screen
- * opened, which can include other chains and destinations.
+ * The deposit to show for an address: the newest one of this token, for this
+ * destination, sent to it on that chain. The endpoint returns every rhino.fi
+ * deposit the user made since the screen opened, which can include other
+ * chains and destinations; and one address can take more than one token (the
+ * card's takes USDC, USDT and ETH alike), so a deposit of another token is
+ * another screen's.
  */
 export const pickRhinoDeposit = (
   deposits: RhinoDeposit[] | undefined,
-  {
-    depositAddress,
-    chain,
-    addressType,
-  }: { depositAddress: string; chain: string; addressType: string },
+  { depositAddress, chain, addressType, tokenSymbol, destinationType }: RhinoDepositMatch,
 ): RhinoDeposit | undefined =>
   (deposits ?? [])
     .filter(
       deposit =>
         deposit.chain === chain &&
+        deposit.tokenSymbol === tokenSymbol &&
+        deposit.destinationType === destinationType &&
         isSameDepositAddress(deposit.depositAddress, depositAddress, addressType),
     )
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];

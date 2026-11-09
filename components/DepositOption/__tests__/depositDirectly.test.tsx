@@ -211,8 +211,46 @@ describe('DepositDirectlyTokens', () => {
     await press('USDC');
 
     expect(mockStore.setRhinoDeposit).toHaveBeenCalledWith(undefined);
-    expect(mockCreateSession).toHaveBeenCalledWith(fuse.id, 'USDC');
+    expect(mockCreateSession).toHaveBeenCalledWith(fuse.id, 'USDC', {
+      isCurrent: expect.any(Function),
+    });
     expect(mockStore.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
+  });
+
+  // The user left the step while Fuse's session was being prepared: its late
+  // answer must not reopen the address screen over wherever they went.
+  it('does not act on a Fuse session that answers after the step was left', async () => {
+    mockStore.directDepositSession = { chainId: fuse.id };
+    let answer: (value: { sessionId: string; walletAddress: string }) => void = () => {};
+    mockCreateSession.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          answer = resolve;
+        }),
+    );
+    render(<DepositDirectlyTokens />);
+    const usdc = networks().find((item: any) => item.props.name === 'USDC');
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = usdc.props.onPress();
+    });
+
+    act(() => root.unmount());
+    root = undefined;
+    await act(async () => {
+      answer({ sessionId: 's1', walletAddress: '0xabc' });
+      await pending;
+    });
+
+    const [, , options] = mockCreateSession.mock.calls[0] as unknown as [
+      number,
+      string,
+      { isCurrent: () => boolean },
+    ];
+    expect(options.isCurrent()).toBe(false);
+    expect(mockStore.setModal).not.toHaveBeenCalledWith(
+      DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS,
+    );
   });
 
   it('lists no token off Fuse until rhino.fi’s routes are in', () => {

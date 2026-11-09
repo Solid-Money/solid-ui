@@ -5,6 +5,8 @@ import { getRhinoDeposits } from '@/lib/api';
 import { isTerminalRhinoStatus, pickRhinoDeposit } from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
 
+import type { RhinoDestinationType } from '@/lib/types';
+
 const POLL_INTERVAL_MS = 5000;
 
 type UseRhinoDepositsParams = {
@@ -14,6 +16,9 @@ type UseRhinoDepositsParams = {
   /** rhino.fi chain id, e.g. `TRON`. */
   chain?: string;
   addressType?: string;
+  /** The token and destination the address was shown for. */
+  tokenSymbol: string;
+  destinationType: RhinoDestinationType;
 };
 
 /**
@@ -32,6 +37,8 @@ export function useRhinoDeposits({
   depositAddress,
   chain,
   addressType,
+  tokenSymbol,
+  destinationType,
 }: UseRhinoDepositsParams) {
   const enabled = enabledParam && !!depositAddress && !!chain && !!addressType;
   const [since, setSince] = useState(() => Date.now());
@@ -46,8 +53,10 @@ export function useRhinoDeposits({
 
   const match = useMemo(
     () =>
-      depositAddress && chain && addressType ? { depositAddress, chain, addressType } : undefined,
-    [depositAddress, chain, addressType],
+      depositAddress && chain && addressType
+        ? { depositAddress, chain, addressType, tokenSymbol, destinationType }
+        : undefined,
+    [depositAddress, chain, addressType, tokenSymbol, destinationType],
   );
 
   const { data } = useQuery({

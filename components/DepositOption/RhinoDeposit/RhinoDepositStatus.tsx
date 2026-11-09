@@ -7,6 +7,8 @@ import { Text } from '@/components/ui/text';
 import { useRhinoDeposits } from '@/hooks/useRhinoDeposits';
 import { getRhinoDepositStatusView } from '@/lib/rhinoDeposit';
 
+import type { RhinoDestinationType } from '@/lib/types';
+
 type RhinoDepositStatusProps = {
   /** Watch only while the address is on screen. */
   enabled: boolean;
@@ -15,6 +17,9 @@ type RhinoDepositStatusProps = {
   chain: string;
   chainName: string;
   addressType?: string;
+  /** The token and destination the address is for: only their deposit shows. */
+  tokenSymbol: string;
+  destinationType: RhinoDestinationType;
 };
 
 const Chip = ({ label, trailing }: { label: string; trailing: React.ReactNode }) => (
@@ -35,8 +40,17 @@ const RhinoDepositStatus = ({
   chain,
   chainName,
   addressType,
+  tokenSymbol,
+  destinationType,
 }: RhinoDepositStatusProps) => {
-  const { deposit } = useRhinoDeposits({ enabled, depositAddress, chain, addressType });
+  const { deposit } = useRhinoDeposits({
+    enabled,
+    depositAddress,
+    chain,
+    addressType,
+    tokenSymbol,
+    destinationType,
+  });
 
   if (!enabled || !depositAddress) return null;
 

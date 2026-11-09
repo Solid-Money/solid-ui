@@ -8,7 +8,7 @@ import { createRhinoDepositAddress } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
 import {
   getRhinoAddressErrorBody,
-  isValidRhinoDepositAddress,
+  isRhinoAddressForSelection,
   RhinoDepositSelection,
 } from '@/lib/rhinoDeposit';
 import { withRefreshToken } from '@/lib/utils';
@@ -27,9 +27,10 @@ const describeError = (error: unknown): string => {
  *
  * A POST, but its answer does not change — one address per destination — so it
  * is cached for the session like `useWalletDepositAddress`, and a failure is
- * not retried into a loop. An address that is malformed for its chain (a 0x
- * address for Tron, say) counts as a failure: showing it would invite a
- * transfer nothing can receive.
+ * not retried into a loop. An address that is not for the selection (another
+ * chain, token or destination) or is malformed for its chain (a 0x address for
+ * Tron, say) counts as a failure: showing it would invite a transfer nothing
+ * can receive.
  *
  * A failure is tracked, and toasted once with the reason when the backend gave
  * one (400: not offered, 412: no wallet yet, 503: rhino.fi unavailable). The
@@ -45,14 +46,13 @@ export const useRhinoDepositAddress = (selection: RhinoDepositSelection | undefi
   const query = useQuery({
     queryKey: [RHINO_DEPOSIT_ADDRESS_QUERY_KEY, user?.userId, chain, tokenSymbol, destinationType],
     queryFn: async () => {
-      if (!chain || !tokenSymbol || !destinationType) throw new Error('No rhino.fi selection');
+      if (!selection || !chain || !tokenSymbol || !destinationType) {
+        throw new Error('No rhino.fi selection');
+      }
       const data = await withRefreshToken(() =>
         createRhinoDepositAddress({ chain, tokenSymbol, destinationType }),
       );
-      if (
-        !data?.depositAddress ||
-        !isValidRhinoDepositAddress(data.depositAddress, data.addressType)
-      ) {
+      if (!data?.depositAddress || !isRhinoAddressForSelection(data, selection)) {
         throw new Error(`Unexpected rhino.fi deposit address for ${chain}`);
       }
       return data;

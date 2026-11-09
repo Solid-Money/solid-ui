@@ -48,6 +48,16 @@ const DepositDirectlyTokens = () => {
   const { rhino, resolve, openRhino, clearRhino } = useDepositDirectlyRhino();
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const hasTrackedTokenView = useRef(false);
+  // The latest pick, and whether this step is still on screen: a session that
+  // answers after the user picked again, or left, is not acted on.
+  const pickRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const chainId = directDepositSession.chainId || 1;
   const network = BRIDGE_TOKENS[chainId];
@@ -90,6 +100,8 @@ const DepositDirectlyTokens = () => {
   }, [availableTokens, chainId, network?.name]);
 
   const handleTokenSelect = async (token: TokenOption) => {
+    const pick = ++pickRef.current;
+    const isCurrent = () => mountedRef.current && pickRef.current === pick;
     try {
       setSelectedToken(token.symbol);
 
@@ -125,7 +137,8 @@ const DepositDirectlyTokens = () => {
       setDirectDepositSession({ selectedToken: token.symbol });
 
       // Create direct deposit session
-      const session = await createDirectDepositSession(chainId, token.symbol);
+      const session = await createDirectDepositSession(chainId, token.symbol, { isCurrent });
+      if (!isCurrent()) return;
 
       // Track session creation
       track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -141,6 +154,7 @@ const DepositDirectlyTokens = () => {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
     } catch (error) {
       console.error('Failed to create direct deposit session:', error);
+      if (!isCurrent()) return;
       setSelectedToken(null);
 
       // Reported (with a Ref) by the shared helper; no separate capture.

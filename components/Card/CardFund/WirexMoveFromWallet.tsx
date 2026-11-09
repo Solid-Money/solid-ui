@@ -331,13 +331,22 @@ export const WirexMoveAmount = ({
       return `Amount exceeds your balance (${holdingLabel(holding)} available)`;
     }
     // rhino.fi does not process a deposit outside its limits, which are in
-    // dollars: a stablecoin is a dollar a unit.
+    // dollars: a stablecoin is a dollar a unit. Compared in the token's own
+    // units, like the balance, so an amount right at a limit is judged exactly.
     if (destination.kind === 'rhino') {
-      const value = Number(amount);
-      if (destination.minimumUsd > 0 && value < destination.minimumUsd) {
+      const limitUnits = (usd: number): bigint | undefined => {
+        try {
+          return usd > 0 ? parseUnits(String(usd), holding.decimals) : undefined;
+        } catch {
+          return undefined;
+        }
+      };
+      const minimum = limitUnits(destination.minimumUsd);
+      if (minimum !== undefined && wei < minimum) {
         return `The minimum on ${chainName(holding.chainId)} is ${destination.minimumUsd} ${holding.symbol}`;
       }
-      if (destination.maximumUsd > 0 && value > destination.maximumUsd) {
+      const maximum = limitUnits(destination.maximumUsd);
+      if (maximum !== undefined && wei > maximum) {
         return `The maximum on ${chainName(holding.chainId)} is ${formatNumber(destination.maximumUsd, 0, 0)} ${holding.symbol}`;
       }
     }

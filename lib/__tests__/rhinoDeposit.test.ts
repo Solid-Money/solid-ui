@@ -387,7 +387,13 @@ const deposit = (overrides: Partial<RhinoDeposit>): RhinoDeposit => ({
 });
 
 describe('pickRhinoDeposit', () => {
-  const match = { depositAddress: TRON_ADDRESS, chain: 'TRON', addressType: 'TRON' };
+  const match = {
+    depositAddress: TRON_ADDRESS,
+    chain: 'TRON',
+    addressType: 'TRON',
+    tokenSymbol: 'USDT',
+    destinationType: 'PROTOCOL' as const,
+  };
 
   it('picks the newest deposit to this address on this chain', () => {
     const picked = pickRhinoDeposit(
@@ -410,13 +416,28 @@ describe('pickRhinoDeposit', () => {
     expect(
       pickRhinoDeposit(
         [deposit({ chain: 'OPTIMISM', depositAddress: EVM_ADDRESS.toLowerCase() })],
-        {
-          depositAddress: EVM_ADDRESS,
-          chain: 'OPTIMISM',
-          addressType: 'EVM',
-        },
+        { ...match, depositAddress: EVM_ADDRESS, chain: 'OPTIMISM', addressType: 'EVM' },
       )?.id,
     ).toBe('d1');
+  });
+
+  // One address takes more than one token (the card's takes USDC, USDT and
+  // ETH): a newer deposit of another token, or for another destination, is
+  // another screen's, and must not decide what this one shows.
+  it('picks only a deposit of this token, for this destination', () => {
+    const picked = pickRhinoDeposit(
+      [
+        deposit({ id: 'mine', createdAt: '2026-11-02T10:00:00.000Z' }),
+        deposit({ id: 'other-token', tokenSymbol: 'USDC', createdAt: '2026-11-02T11:00:00.000Z' }),
+        deposit({
+          id: 'other-destination',
+          destinationType: 'WALLET',
+          createdAt: '2026-11-02T12:00:00.000Z',
+        }),
+      ],
+      match,
+    );
+    expect(picked?.id).toBe('mine');
   });
 
   it('finds nothing before a deposit arrives', () => {

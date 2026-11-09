@@ -105,6 +105,29 @@ describe('useRhinoDepositAddress', () => {
     expect(latest().isError).toBe(true);
   });
 
+  // A well-formed address for another route would be shown under this one's
+  // instructions: a Bitcoin address for a Polygon row, say.
+  it('treats an address for another chain, type, token or destination as a failure', async () => {
+    const BITCOIN = 'bc1pwvza3f5hz85h9xdsmar8vjznsta9un82r5m5rvdsyys56u4xg75qytn3t4';
+    const EVM = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
+    const wrong: RhinoDepositAddressResponse[] = [
+      { ...response(BITCOIN), addressType: 'BTC' },
+      { ...response(EVM), chain: 'ETHEREUM' },
+      { ...response(EVM), tokenSymbol: 'USDC' },
+      { ...response(EVM), destinationType: 'WALLET' },
+    ];
+    for (const answer of wrong) {
+      seen.length = 0;
+      mockCreate.mockResolvedValue(answer);
+      await mount();
+
+      expect(latest().address).toBeUndefined();
+      expect(latest().isError).toBe(true);
+      await act(async () => root.unmount());
+      client.clear();
+    }
+  });
+
   it('toasts a failure, with the reason the status gives', async () => {
     mockCreate.mockRejectedValue({ status: 503 });
     await mount();

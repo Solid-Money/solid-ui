@@ -1,5 +1,5 @@
 import React from 'react';
-import { base, mainnet, polygon } from 'viem/chains';
+import { base, bsc, mainnet, polygon } from 'viem/chains';
 
 import { WirexMoveAmount } from '@/components/Card/CardFund/WirexMoveFromWallet';
 import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
@@ -147,6 +147,20 @@ describe('WirexMoveAmount', () => {
     render(holding(polygon.id, 'USDC'), 2);
     expect(texts().join(' ')).toContain('The minimum on Polygon is 5 USDC');
     expect(moveButton().props.disabled).toBe(true);
+  });
+
+  // In the token's own units: an 18-decimal BNB Chain stablecoin a wei under
+  // the floor is refused, and one exactly at it is not.
+  it('judges an amount at rhino.fi’s minimum exactly, even with 18 decimals', async () => {
+    render({ ...holding(bsc.id, 'USDT'), decimals: 18, balance: '100000000000000000000' }, 20);
+    const input = root.root.find((node: any) => typeof node.props.onChangeText === 'function');
+
+    act(() => input.props.onChangeText('4.999999999999999999'));
+    expect(texts().join(' ')).toContain('The minimum on BNB Chain is 5 USDT');
+
+    act(() => input.props.onChangeText('5'));
+    expect(texts().join(' ')).not.toContain('The minimum');
+    expect(moveButton().props.disabled).toBe(false);
   });
 
   // USDC on Base already sits in the Safe on Base rhino.fi would deliver it to.
