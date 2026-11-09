@@ -46,9 +46,6 @@ import type {
  * `/deposit/rhino/assets` returns, and treats a list missing from it as empty.
  */
 
-/** The chip on a row rhino.fi serves, setting it apart from the Fuse rows we watch ourselves. */
-export const RHINO_NETWORK_CHIP = 'via rhino.fi';
-
 /** Chains our own pipeline keeps, whatever rhino.fi offers there. */
 const OWN_PIPELINE_CHAIN_IDS: ReadonlySet<number> = new Set([fuse.id]);
 

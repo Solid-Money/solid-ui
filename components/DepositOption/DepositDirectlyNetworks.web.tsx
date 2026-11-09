@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
@@ -14,7 +13,7 @@ import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { showErrorToast } from '@/lib/errors';
-import { getRhinoListNotice, isOfferedRhinoRow, RHINO_NETWORK_CHIP } from '@/lib/rhinoDeposit';
+import { getRhinoListNotice, isOfferedRhinoRow } from '@/lib/rhinoDeposit';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -143,9 +142,7 @@ const DepositDirectlyNetworks = () => {
             <DepositNetwork
               key={network.name}
               name={network.name}
-              description={
-                chainId === fuse.id ? estimatedTime : `${estimatedTime} · ${RHINO_NETWORK_CHIP}`
-              }
+              description={estimatedTime}
               icon={network.icon}
               isComingSoon={isComingSoon}
               onPress={() => handlePress(chainId)}

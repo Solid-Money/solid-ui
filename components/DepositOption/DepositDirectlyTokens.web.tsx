@@ -14,12 +14,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { showErrorToast } from '@/lib/errors';
-import {
-  getRhinoListNotice,
-  isOfferedRhinoRow,
-  RHINO_NETWORK_CHIP,
-  RhinoRowState,
-} from '@/lib/rhinoDeposit';
+import { getRhinoListNotice, isOfferedRhinoRow, RhinoRowState } from '@/lib/rhinoDeposit';
 import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -173,7 +168,7 @@ const DepositDirectlyTokens = () => {
             <DepositNetwork
               key={token.symbol}
               name={token.symbol}
-              description={token.state.kind === 'rhino' ? RHINO_NETWORK_CHIP : ''}
+              description=""
               icon={token.icon}
               onPress={() => handleTokenSelect(token)}
               isLoading={isLoading && isSelected}

@@ -13,12 +13,7 @@ import {
   SAVINGS_FUND_ESTIMATED_TIME,
 } from '@/components/Savings/SavingsFund/constants';
 import { useRhinoNetworkRows } from '@/hooks/useRhinoDepositAssets';
-import {
-  getRhinoListNotice,
-  isOfferedRhinoRow,
-  RHINO_NETWORK_CHIP,
-  RhinoDepositSelection,
-} from '@/lib/rhinoDeposit';
+import { getRhinoListNotice, isOfferedRhinoRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -35,9 +30,9 @@ type SavingsFundNetworksProps = {
 /**
  * Step 2 of the savings funding flow — pick the chain to deposit `symbol` on.
  *
- * Only the list's own chains, and of those only the ones with an address: Fuse,
- * and the chains rhino.fi has a route from into the vault the token funds,
- * marked "via rhino.fi" (see `useSavingsFundFlow.selectNetwork`). Until those
+ * Only the list's own chains, and of those only the ones with an address: Fuse
+ * and the vault's own chain, and the chains rhino.fi has a route from into the
+ * vault the token funds (see `useSavingsFundFlow.selectNetwork`). Until those
  * routes are in, or when they cannot be had, a loader or a retry stands in for
  * them rather than a direct-deposit session.
  *
@@ -63,16 +58,12 @@ const SavingsFundNetworks = ({
     <View className="gap-y-4">
       {offered.length ? (
         <CardFundGroup>
-          {offered.map(({ row: network, state }) => (
+          {offered.map(({ row: network }) => (
             <CardFundRow
               key={network.chainId}
               icon={<Image source={network.icon} style={NETWORK_ICON_STYLE} contentFit="cover" />}
               title={network.name}
-              chips={
-                state.kind === 'rhino'
-                  ? [SAVINGS_FUND_ESTIMATED_TIME, RHINO_NETWORK_CHIP]
-                  : [SAVINGS_FUND_ESTIMATED_TIME]
-              }
+              chips={[SAVINGS_FUND_ESTIMATED_TIME]}
               chipsPosition="inline"
               onPress={() => onSelect(network.chainId)}
               disabled={

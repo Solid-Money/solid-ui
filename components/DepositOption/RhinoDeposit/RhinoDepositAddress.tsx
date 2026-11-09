@@ -13,12 +13,7 @@ import { getBridgeChain } from '@/constants/bridge';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useRhinoDepositAddress } from '@/hooks/useRhinoDepositAddress';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
-import {
-  findRhinoRoute,
-  formatDepositAddress,
-  RHINO_NETWORK_CHIP,
-  RhinoDepositSelection,
-} from '@/lib/rhinoDeposit';
+import { findRhinoRoute, formatDepositAddress, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { DetectedDirectDepositResponse } from '@/lib/types';
 
 import RhinoChainIcon, { getRhinoChainIcon } from './RhinoChainIcon';
@@ -196,8 +191,6 @@ const RhinoDepositAddress = ({
             />
           }
           title={chainName}
-          chips={[RHINO_NETWORK_CHIP]}
-          chipsPosition="inline"
           trailing={<ChevronDown color="white" size={20} />}
           onPress={onChangeNetwork}
         />

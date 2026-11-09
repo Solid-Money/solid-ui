@@ -50,7 +50,6 @@ import {
   getRhinoListNotice,
   isOfferedRhinoRow,
   resolveRhinoRow,
-  RHINO_NETWORK_CHIP,
   RhinoDepositSelection,
 } from '@/lib/rhinoDeposit';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
@@ -135,16 +134,14 @@ const CardWalletNetworks = ({
     <View className="min-h-[33rem] gap-y-2">
       <Text className="text-[1rem] font-medium text-muted-foreground">Choose a network</Text>
       <View className="gap-y-1.5">
-        {offered.map(({ row: { chainId, network }, state }) => {
+        {offered.map(({ row: { chainId, network } }) => {
           const estimatedDesc =
             chainId === 1 ? 'Estimated speed: 5 min' : 'Estimated speed: 20 min';
           return (
             <DepositNetwork
               key={network.name}
               name={network.name}
-              description={
-                state.kind === 'rhino' ? `${estimatedDesc} · ${RHINO_NETWORK_CHIP}` : estimatedDesc
-              }
+              description={estimatedDesc}
               icon={network.icon}
               isComingSoon={network.isComingSoon}
               onPress={() => onSelect(chainId)}
