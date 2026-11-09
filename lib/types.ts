@@ -793,7 +793,37 @@ export interface CardActivationFailure {
   occurredAt?: string | null;
 }
 
+/**
+ * Rain sunset: the card a user holds is closing, and — where the new card
+ * partner serves them — they can get their new Solid card now. Present on
+ * `/cards/status` only for a user this affects, and gone once they have moved.
+ *
+ * Copy rule from the design: the app never names Rain. It is "your card" and
+ * "your new Solid card"; the new partner (Wirex) is named once, on the new-card
+ * screen, to explain the new identity check.
+ */
+export interface RainSunsetStatus {
+  /** They still hold the closing card (active, frozen or pending). */
+  hasRainCard: boolean;
+  /** Show the closing notice on Home and the card screen. */
+  notice: boolean;
+  /** The day the closing cards stop working (YYYY-MM-DD), or null if not announced. */
+  closesAt: string | null;
+  /** They can get the new card now. */
+  newCardAvailable: boolean;
+  /**
+   * Their new-card application once started, shaped like a card status so the
+   * Wirex onboarding screens read it unchanged. The top-level status keeps
+   * describing the closing card until the new one exists.
+   */
+  migration?: CardStatusResponse;
+  /** The most balance (USD) the new card is issued over; withdraw anything above it first. */
+  maxLeftoverUsd: number;
+}
+
 export interface CardStatusResponse {
+  /** Rain sunset — see {@link RainSunsetStatus}. */
+  rainSunset?: RainSunsetStatus;
   status?: CardStatus;
   activationBlocked?: boolean;
   activationBlockedReason?: string;

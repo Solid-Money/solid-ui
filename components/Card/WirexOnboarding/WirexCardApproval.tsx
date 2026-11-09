@@ -32,12 +32,13 @@ import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSpendDeployments, useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useMainCurrency } from '@/hooks/useMainCurrency';
+import { RAIN_SUNSET_BALANCE_KEY } from '@/hooks/useRainSunset';
 import useUser from '@/hooks/useUser';
 import { WALLET_ELIGIBILITY_KEY } from '@/hooks/useWalletEligibility';
 import { track } from '@/lib/analytics';
-import { createCard, submitCardConsents } from '@/lib/api';
+import { ApiError, createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
-import { CardStatus, KycStatus, MainCurrency } from '@/lib/types';
+import { CardStatus, CardStatusResponse, KycStatus, MainCurrency } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
 import { suggestedCardCurrency } from '@/lib/utils/wirexOnboarding';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
@@ -87,10 +88,22 @@ const CurrencyFlag = ({ currency }: { currency: MainCurrency }) => (
  * Both approvals gate the card, as they always have: nothing is created unless both landed, and a
  * second press only asks for the half that is missing.
  */
-export function WirexCardApproval() {
+export function WirexCardApproval({
+  migrationStatus,
+}: {
+  /**
+   * Rain sunset: a cardholder getting their new card. Their own card status
+   * describes the closing card they still hold, so the screen reads the new
+   * card's application from here instead, and the "already has a card" guard —
+   * which that closing card would trip — does not apply.
+   */
+  migrationStatus?: CardStatusResponse;
+} = {}) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: cardStatusResponse } = useCardStatus();
+  const { data: ownCardStatus } = useCardStatus();
+  const isMigration = Boolean(migrationStatus);
+  const cardStatusResponse = migrationStatus ?? ownCardStatus;
   const { createSignatureBatch } = useUser();
 
   const {
@@ -151,14 +164,14 @@ export function WirexCardApproval() {
 
   // Same guards as the issuance screen: one card per issuer, so a card that exists or is on its
   // way is where this applicant belongs. And only an approved applicant can be issued one.
-  if (!activating && hasCard(cardStatusResponse)) {
+  if (!activating && !isMigration && hasCard(cardStatusResponse)) {
     return <Redirect href={getActiveCardRoute(cardStatusResponse)} />;
   }
-  if (!activating && hasPendingCard(cardStatusResponse)) {
+  if (!activating && !isMigration && hasPendingCard(cardStatusResponse)) {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
   if (!activating && cardStatusResponse && cardStatusResponse.kycStatus !== KycStatus.APPROVED) {
-    return <Redirect href={path.CARD_ACTIVATE} />;
+    return <Redirect href={isMigration ? path.CARD_NEW_CARD : path.CARD_ACTIVATE} />;
   }
 
   const handlePickCurrency = (next: MainCurrency) => {
@@ -330,6 +343,11 @@ export function WirexCardApproval() {
 
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [WALLET_ELIGIBILITY_KEY] });
+      if (isMigration) {
+        // The closing card was retired with this one's issuance.
+        queryClient.invalidateQueries({ queryKey: [RAIN_SUNSET_BALANCE_KEY] });
+        queryClient.invalidateQueries({ queryKey: ['cardDetails'] });
+      }
 
       // The card-live popup, wherever the card lands.
       setShouldShowWelcomePopup(true);
@@ -345,6 +363,17 @@ export function WirexCardApproval() {
     } catch (error) {
       console.error('Error activating card:', error);
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      // Rain sunset: the new card is issued once the closing one is empty. Say so
+      // and take them to the withdrawal, rather than a generic failure.
+      if (isMigration && error instanceof ApiError && error.code === 'RAIN_BALANCE_REMAINING') {
+        Toast.show({
+          type: 'info',
+          text1: 'Withdraw your card balance first',
+          text2: error.message,
+        });
+        router.push(path.CARD_CLOSING_WITHDRAW);
+        return;
+      }
       void showErrorToast(error, { action: 'card_activate' });
     } finally {
       setProgress(null);
