@@ -75,6 +75,11 @@ describe('WalletDepositSelectors', () => {
     const onToggleNetwork = jest.fn();
     const root = render(true, onToggleNetwork);
 
+    // Still names the pairing: it is what the user has to send.
+    const labels = root.root
+      .findAll((node: any) => node.type === 'Text')
+      .map((node: any) => node.props.children);
+    expect(labels).toEqual(expect.arrayContaining(['USDC', 'Base']));
     expect(pills(root)).toHaveLength(0);
     expect(root.root.findAll((node: any) => node.type === 'ChevronDown')).toHaveLength(0);
     expect(mockDeposit.setModal).not.toHaveBeenCalled();
