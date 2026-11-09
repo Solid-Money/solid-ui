@@ -7,16 +7,30 @@ import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import {
+  EMAIL_CHANGE_CONFIRM_FAILED_CODE,
+  EMAIL_CHANGE_STEP_UP_REQUIRED_CODE,
   EMAIL_DOMAIN_NOT_ALLOWED_CODE,
   EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
 } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
+import { confirmEmailChange, initGenericOtp, verifyGenericOtp } from '@/lib/api';
 import { sanitizeTechnicalMessage, showErrorToast } from '@/lib/errors';
+import { SignedTurnkeyRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
+
+/**
+ * A code the backend has verified, waiting for the account's passkey to sign
+ * the change. Kept so a dismissed or failed passkey prompt can be retried
+ * without a new code: the code itself is spent the moment it verifies.
+ */
+interface PendingEmailConfirmation {
+  otpId: string;
+  email: string;
+  verificationToken: string;
+}
 
 const emailSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
@@ -38,6 +52,13 @@ export interface EmailManagementState {
   otpId: string;
   emailValue: string;
   rateLimitError: string | null;
+  /**
+   * When the newly saved email can be used to recover the account. A changed
+   * address waits before it can (SEC-010); absent when it already can.
+   */
+  recoveryAvailableAt: Date | null;
+  /** The code is verified and only the passkey confirmation is left. */
+  awaitingPasskey: boolean;
 }
 
 export interface EmailManagementActions {
@@ -86,6 +107,10 @@ export const useEmailManagement = (
   const [emailValue, setEmailValue] = useState('');
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [isSkip, setIsSkip] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingEmailConfirmation | null>(
+    null,
+  );
+  const [recoveryAvailableAt, setRecoveryAvailableAt] = useState<Date | null>(null);
   const { createHttpClient } = useTurnkey();
 
   const emailForm = useForm<EmailFormData>({
@@ -125,7 +150,44 @@ export const useEmailManagement = (
     }
   }, [step, hasInitializedOtp, otpForm]);
 
-  const handleUpdateUserEmail = useCallback(
+  /**
+   * Confirm the change with the account's passkey.
+   *
+   * The passkey signs Turnkey's UPDATE_USER_EMAIL, but the signed request goes
+   * to our backend rather than straight to Turnkey: the backend relays it and
+   * only saves the address once Turnkey accepts the signature. That is what
+   * stops a session token alone (a forged request, a leaked token) from moving
+   * the email an account recovers through.
+   */
+  const confirmWithPasskey = useCallback(
+    async ({ otpId: pendingOtpId, email, verificationToken }: PendingEmailConfirmation) => {
+      const passkeyClient = createHttpClient({
+        defaultStamperType: StamperType.Passkey,
+      });
+      const signed = await passkeyClient.stampUpdateUserEmail(
+        {
+          userId: user?.turnkeyUserId as string,
+          userEmail: email,
+          organizationId: user?.suborgId,
+          verificationToken,
+        },
+        StamperType.Passkey,
+      );
+      if (!signed) {
+        throw new Error('Passkey is not available on this device');
+      }
+      return withRefreshToken(() =>
+        confirmEmailChange(pendingOtpId, signed as SignedTurnkeyRequest),
+      );
+    },
+    [createHttpClient, user?.turnkeyUserId, user?.suborgId],
+  );
+
+  /**
+   * An older backend saves the address when the code verifies and never asks
+   * for a confirmation; Turnkey's copy is then moved directly, as it always was.
+   */
+  const updateTurnkeyEmailDirectly = useCallback(
     async (email: string, verificationToken: string) => {
       const passkeyClient = createHttpClient({
         defaultStamperType: StamperType.Passkey,
@@ -156,6 +218,8 @@ export const useEmailManagement = (
       const response = await withRefreshToken(() => initGenericOtp(data.email, 6, false));
       setOtpId(response.otpId);
       setEmailValue(data.email);
+      // A new code starts over: whatever an earlier one left waiting is moot.
+      setPendingConfirmation(null);
       setStep('otp');
 
       // Track email submitted successfully
@@ -217,12 +281,44 @@ export const useEmailManagement = (
 
   const handleVerifyOtp = async (data: OtpFormData) => {
     setIsLoading(true);
+    // Which half failed decides what the user is told: a wrong code, or a
+    // passkey that did not confirm a code that was right.
+    let phase: 'verify' | 'confirm' = 'verify';
     try {
-      const verifyResponse = await withRefreshToken(() =>
-        verifyGenericOtp(otpId, data.otpCode, emailValue),
-      );
+      // A code that already verified is spent; retry only the passkey half.
+      let pending =
+        pendingConfirmation?.otpId === otpId && pendingConfirmation.email === emailValue
+          ? pendingConfirmation
+          : null;
 
-      await handleUpdateUserEmail(emailValue, verifyResponse.verificationToken);
+      if (!pending) {
+        const verifyResponse = await withRefreshToken(() =>
+          verifyGenericOtp(otpId, data.otpCode, emailValue),
+        );
+
+        if (verifyResponse.stepUpRequired) {
+          pending = {
+            otpId,
+            email: emailValue,
+            verificationToken: verifyResponse.verificationToken,
+          };
+          setPendingConfirmation(pending);
+        } else {
+          // Older backend: the address is already saved.
+          phase = 'confirm';
+          await updateTurnkeyEmailDirectly(emailValue, verifyResponse.verificationToken);
+          setRecoveryAvailableAt(null);
+        }
+      }
+
+      if (pending) {
+        phase = 'confirm';
+        const confirmed = await confirmWithPasskey(pending);
+        setPendingConfirmation(null);
+        setRecoveryAvailableAt(
+          confirmed.recoveryEmailHoldUntil ? new Date(confirmed.recoveryEmailHoldUntil) : null,
+        );
+      }
 
       if (updateUser) {
         updateUser({
@@ -255,18 +351,32 @@ export const useEmailManagement = (
         safe_address: user?.safeAddress,
         email: emailValue,
         error: sanitizeTechnicalMessage(error),
-        error_type: 'otp_verification_failed',
+        error_type: phase === 'confirm' ? 'passkey_confirmation_failed' : 'otp_verification_failed',
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
 
-      const wrongPasskey = error?.toString().includes('SIGNATURE_INVALID');
-      void showErrorToast(error, {
-        action: 'account',
-        title: wrongPasskey ? 'Wrong passkey' : 'Couldn’t verify the code',
-        body: wrongPasskey
-          ? 'Use the passkey for this account, then try again.'
-          : 'Check the code and try again, or request a new one.',
-      });
+      if (phase === 'confirm') {
+        // The code was right; only the passkey half is left. A dismissed prompt
+        // stays silent (showErrorToast drops cancellations) and can be retried.
+        const expired = error?.code === EMAIL_CHANGE_STEP_UP_REQUIRED_CODE;
+        if (expired) setPendingConfirmation(null);
+        const wrongPasskey =
+          error?.code === EMAIL_CHANGE_CONFIRM_FAILED_CODE ||
+          error?.toString().includes('SIGNATURE_INVALID');
+        void showErrorToast(error, {
+          action: 'account',
+          title: wrongPasskey ? 'Wrong passkey' : 'Couldn’t confirm with your passkey',
+          body: expired
+            ? 'This confirmation expired. Request a new code and try again.'
+            : 'Use the passkey for this account, then try again.',
+        });
+      } else {
+        void showErrorToast(error, {
+          action: 'account',
+          title: 'Couldn’t verify the code',
+          body: 'Check the code and try again, or request a new one.',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -302,6 +412,10 @@ export const useEmailManagement = (
       if (isLoading) return 'Sending Code';
       return 'Send Verification Code';
     } else {
+      // The code already verified; only the passkey is left to ask for.
+      if (pendingConfirmation?.otpId === otpId && watchedOtp?.length === 6) {
+        return isLoading ? 'Confirming' : 'Confirm with Passkey';
+      }
       if (!watchedOtp) return 'Enter verification code';
       if (watchedOtp.length < 6) return 'Enter 6-digit code';
       if (isLoading) return 'Verifying';
@@ -331,6 +445,8 @@ export const useEmailManagement = (
     otpId,
     emailValue,
     rateLimitError,
+    recoveryAvailableAt,
+    awaitingPasskey: pendingConfirmation?.otpId === otpId,
     emailForm,
     otpForm,
     handleSendOtp,
