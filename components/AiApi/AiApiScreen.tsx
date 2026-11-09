@@ -141,10 +141,14 @@ export default function AiApiScreen() {
             // Straight to the address that funds AI API charges — USDC on the
             // billing chain, Base — rather than the deposit chooser, whose
             // default lands money in savings, which a charge cannot draw on.
+            // `toSafe`: the Safe itself, even for a Wirex cardholder, whose
+            // stablecoins would otherwise get the card's address and be bridged
+            // to Fuse, out of reach of the charge.
             setWalletDeposit({
               symbol: 'USDC',
               chainId: overview.billing.chainId,
               isChangingToken: false,
+              toSafe: true,
             });
             setDepositModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
           }}

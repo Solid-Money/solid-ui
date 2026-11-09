@@ -100,6 +100,22 @@ export interface WalletDepositSelection {
    * token", so the previous step alone cannot tell the two apart.
    */
   isChangingToken?: boolean;
+  /**
+   * Set when the address is opened to fund something paid from the Safe itself:
+   * the AI API, which charges the Safe on Base. The screen then shows the Safe
+   * whatever card the user holds. Without it, a Wirex cardholder's stablecoins
+   * get the address the pipeline mints for their card, which bridges them to the
+   * Safe on Fuse, where nothing that charges the Safe on Base can reach them.
+   *
+   * The chain and currency are the opener's and stay fixed while it is set:
+   * the Safe on any other chain, or in a currency the charge does not draw on,
+   * would not fund what the flow was opened for.
+   *
+   * Cleared on every close of the modal, not only by `resetDepositFlow`: some
+   * close paths skip the reset, and a flag left behind would hand a Wirex
+   * cardholder's next ordinary deposit the Safe instead of the card's address.
+   */
+  toSafe?: boolean;
 }
 
 interface DepositState {
@@ -200,8 +216,12 @@ export const useDepositStore = create<DepositState>()(
           previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
           // Several screens close the modal without resetting the whole flow;
-          // the next open should still pick the chain afresh.
-          ...(isClose && { depositSourceChosen: false }),
+          // the next open should still pick the chain afresh, and should not
+          // inherit a flow's `toSafe`.
+          ...(isClose && {
+            depositSourceChosen: false,
+            walletDeposit: { ...get().walletDeposit, toSafe: false },
+          }),
         });
       },
       setTransaction: transaction => set({ transaction }),
