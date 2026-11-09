@@ -107,7 +107,13 @@ export interface WalletDepositSelection {
    * get the address the pipeline mints for their card, which bridges them to the
    * Safe on Fuse, where nothing that charges the Safe on Base can reach them.
    *
-   * Lives for one open of the modal, like the rest of the selection.
+   * The chain and currency are the opener's and stay fixed while it is set:
+   * the Safe on any other chain, or in a currency the charge does not draw on,
+   * would not fund what the flow was opened for.
+   *
+   * Cleared on every close of the modal, not only by `resetDepositFlow`: some
+   * close paths skip the reset, and a flag left behind would hand a Wirex
+   * cardholder's next ordinary deposit the Safe instead of the card's address.
    */
   toSafe?: boolean;
 }
@@ -210,8 +216,12 @@ export const useDepositStore = create<DepositState>()(
           previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
           // Several screens close the modal without resetting the whole flow;
-          // the next open should still pick the chain afresh.
-          ...(isClose && { depositSourceChosen: false }),
+          // the next open should still pick the chain afresh, and should not
+          // inherit a flow's `toSafe`.
+          ...(isClose && {
+            depositSourceChosen: false,
+            walletDeposit: { ...get().walletDeposit, toSafe: false },
+          }),
         });
       },
       setTransaction: transaction => set({ transaction }),

@@ -38,20 +38,27 @@ const Pill = ({
   icon,
   label,
   isOpen,
+  isLocked,
   onPress,
   accessibilityLabel,
 }: {
   icon?: ImageSourcePropType;
   label: string;
   isOpen?: boolean;
+  /** Shows the choice without offering to change it: no chevron, no press. */
+  isLocked?: boolean;
   onPress: () => void;
   accessibilityLabel: string;
 }) => (
   <Pressable
-    accessibilityRole="button"
-    accessibilityLabel={accessibilityLabel}
-    onPress={onPress}
-    className="h-[35px] flex-row items-center gap-x-2 rounded-full bg-card px-3 web:transition-colors web:hover:bg-card-hover"
+    accessibilityRole={isLocked ? 'text' : 'button'}
+    accessibilityLabel={isLocked ? label : accessibilityLabel}
+    onPress={isLocked ? undefined : onPress}
+    disabled={isLocked}
+    className={cn(
+      'h-[35px] flex-row items-center gap-x-2 rounded-full bg-card px-3',
+      !isLocked && 'web:transition-colors web:hover:bg-card-hover',
+    )}
   >
     {icon ? (
       <Image source={icon} style={PILL_ICON_STYLE} contentFit="cover" />
@@ -59,11 +66,13 @@ const Pill = ({
       <View style={PILL_ICON_STYLE} />
     )}
     <Text className="text-base font-semibold leading-none text-white">{label}</Text>
-    <ChevronDown
-      size={16}
-      color="rgba(255,255,255,0.6)"
-      style={isOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
-    />
+    {isLocked ? null : (
+      <ChevronDown
+        size={16}
+        color="rgba(255,255,255,0.6)"
+        style={isOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+      />
+    )}
   </Pressable>
 );
 
@@ -72,6 +81,11 @@ type WalletDepositSelectorsProps = {
   symbol: string;
   isNetworkOpen: boolean;
   onToggleNetwork: () => void;
+  /**
+   * Fixes both pills on what the screen was opened with, for a flow that only
+   * one chain and currency can serve (see `toSafe` in the deposit store).
+   */
+  isLocked?: boolean;
 };
 
 /**
@@ -88,6 +102,7 @@ const WalletDepositSelectors = ({
   symbol,
   isNetworkOpen,
   onToggleNetwork,
+  isLocked = false,
 }: WalletDepositSelectorsProps) => {
   const setModal = useDepositStore(state => state.setModal);
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
@@ -102,6 +117,7 @@ const WalletDepositSelectors = ({
       <Pill
         icon={getWalletDepositTokenIcon(symbol)}
         label={symbol}
+        isLocked={isLocked}
         onPress={() => {
           setWalletDeposit({ isChangingToken: true });
           setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
@@ -112,6 +128,7 @@ const WalletDepositSelectors = ({
         icon={network?.icon}
         label={network?.name ?? '—'}
         isOpen={isNetworkOpen}
+        isLocked={isLocked}
         onPress={onToggleNetwork}
         accessibilityLabel="Choose network"
       />

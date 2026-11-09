@@ -148,6 +148,9 @@ const WalletDepositAddress = () => {
         symbol={symbol}
         isNetworkOpen={isNetworkOpen}
         onToggleNetwork={() => setIsNetworkOpen(open => !open)}
+        // Funding the Safe for the AI API takes its billing currency on its
+        // billing chain; the Safe anywhere else would not fund it.
+        isLocked={!!walletDeposit.toSafe}
       />
 
       {/* The card's own padding sits on each section rather than the card, so the
@@ -280,7 +283,7 @@ const WalletDepositAddress = () => {
       </Button>
 
       {/* Last child, so paint order puts the open list over everything above. */}
-      {isNetworkOpen ? (
+      {isNetworkOpen && !walletDeposit.toSafe ? (
         <WalletDepositNetworkList
           chainId={chainId}
           symbol={symbol}

@@ -125,6 +125,9 @@ const useDepositOption = ({
       externalWallet: state.externalWallet,
     })),
   );
+  // A flow that opened the address to fund the Safe itself (the AI API) starts
+  // on the address, so there is no step before it to go back to.
+  const isSafeFunding = useDepositStore(state => !!state.walletDeposit.toSafe);
   // External-wallet connection is mirrored into the store by the desktop-only
   // ThirdwebConnectionBridge; on mobile it stays disconnected (thirdweb is
   // desktop-only). Reading from the store avoids calling thirdweb hooks here,
@@ -896,6 +899,13 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.CLOSE);
       resetDepositFlow();
       clearSessionStartTime();
+    } else if (isPublicAddress && isSafeFunding) {
+      // Opened straight on the address with its chain and currency fixed. The
+      // token list behind it would let another pairing keep the Safe's address,
+      // so leaving is the only way back.
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
     } else if (isPublicAddress) {
       // Reached through the token list from the crypto branch, and directly from
       // the savings flow's own external-wallet list — each step back to where it
@@ -1030,7 +1040,7 @@ const useDepositOption = ({
     isBuyCryptoAmount ||
     isBuyCryptoCurrency ||
     isBuyCryptoPaymentMethod ||
-    isPublicAddress ||
+    (isPublicAddress && !isSafeFunding) ||
     isDepositCrypto ||
     isDepositCash ||
     isDepositToken ||
