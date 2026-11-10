@@ -3,6 +3,7 @@ import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
+import { getDepositVaultChainId, withBaseFirst } from '@/lib/utils/depositFee';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
 import type { SavingsFundIntent } from '@/lib/types';
@@ -153,12 +154,17 @@ export const getSavingsFundToken = (symbol: string): SavingsFundToken =>
 export const getSavingsFundTokenIcon = (symbol: string): ImageSourcePropType =>
   getSavingsFundToken(symbol).icon;
 
-/** Chains that can receive a savings direct deposit of `symbol`, in display order. */
+/**
+ * Chains that can receive a savings direct deposit of `symbol`, in display
+ * order: Base first for a token whose vault mints there (soUSD, soEURC), where
+ * the deposit is free (see `getDepositFeeRatePpm`); otherwise, as for ETH into
+ * soETH on Ethereum, `BRIDGE_TOKENS` order.
+ */
 export const getSavingsFundNetworks = (symbol: string): SavingsFundNetwork[] => {
   const token = SAVINGS_FUND_TOKENS.find(entry => entry.symbol === symbol);
   const depositConfig = getVaultDepositConfig();
 
-  return Object.entries(BRIDGE_TOKENS)
+  const networks = Object.entries(BRIDGE_TOKENS)
     .map(([id, chain]) => ({ chainId: Number(id), chain }))
     .filter(({ chainId }) =>
       token?.chainIds
@@ -173,6 +179,10 @@ export const getSavingsFundNetworks = (symbol: string): SavingsFundNetwork[] => 
       icon: chain.icon,
       isComingSoon: chain.isComingSoon,
     }));
+
+  return getDepositVaultChainId(token?.vaultToken) === base.id
+    ? withBaseFirst(networks, network => network.chainId)
+    : networks;
 };
 
 /**

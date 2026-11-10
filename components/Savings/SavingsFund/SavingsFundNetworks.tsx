@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { base } from 'viem/chains';
 
 // The fund-flow list primitives are shared with the card funding flow.
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
@@ -12,8 +13,10 @@ import {
   getSavingsFundToken,
   SAVINGS_FUND_ESTIMATED_TIME,
 } from '@/components/Savings/SavingsFund/constants';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useRhinoNetworkRows } from '@/hooks/useRhinoDepositAssets';
 import { getRhinoListNotice, isOfferedRhinoRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
+import { DEPOSIT_FREE_ON_BASE_LABEL, isDepositFreeOnBase } from '@/lib/utils/depositFee';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -29,6 +32,8 @@ type SavingsFundNetworksProps = {
 
 /**
  * Step 2 of the savings funding flow — pick the chain to deposit `symbol` on.
+ * Base leads where the vault mints there (see `getSavingsFundNetworks`), and is
+ * marked "Free" wherever a deposit sent there is.
  *
  * Only the list's own chains, and of those only the ones with an address: Fuse
  * and the vault's own chain, and the chains rhino.fi has a route from into the
@@ -53,6 +58,13 @@ const SavingsFundNetworks = ({
   );
   const offered = rows.filter(({ state }) => isOfferedRhinoRow(state));
   const notice = getRhinoListNotice(rows.map(({ state }) => state));
+  const { provider } = useCardProvider();
+  const isBaseFree = isDepositFreeOnBase({
+    provider,
+    product: 'savings',
+    symbol,
+    vaultToken: vault,
+  });
 
   return (
     <View className="gap-y-4">
@@ -63,7 +75,11 @@ const SavingsFundNetworks = ({
               key={network.chainId}
               icon={<Image source={network.icon} style={NETWORK_ICON_STYLE} contentFit="cover" />}
               title={network.name}
-              chips={[SAVINGS_FUND_ESTIMATED_TIME]}
+              chips={
+                isBaseFree && network.chainId === base.id
+                  ? [DEPOSIT_FREE_ON_BASE_LABEL, SAVINGS_FUND_ESTIMATED_TIME]
+                  : [SAVINGS_FUND_ESTIMATED_TIME]
+              }
               chipsPosition="inline"
               onPress={() => onSelect(network.chainId)}
               disabled={

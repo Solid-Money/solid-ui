@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { base } from 'viem/chains';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
@@ -23,6 +24,7 @@ import {
   RhinoDepositSelection,
 } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
+import { DEPOSIT_FREE_ON_BASE_LABEL, isDepositFreeOnBase } from '@/lib/utils/depositFee';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -47,6 +49,7 @@ type CardFundNetworksProps = {
 
 /**
  * Step 2 of the card funding flow — pick the chain to deposit `symbol` on.
+ * Base first, marked "Free" where the deposit is free there.
  *
  * The list's own chains, and of those only the ones with an address: Fuse, USDT
  * on each chain our pipeline takes it on, and the chains rhino.fi has a route
@@ -79,6 +82,9 @@ const CardFundNetworks = ({
       : listNotice === 'empty' && extraNetworks.length
         ? undefined
         : listNotice;
+  // Base leads the list (see `getCardFundChains`), and says so where the
+  // deposit is free there - for every card deposit, today.
+  const isBaseFree = isDepositFreeOnBase({ provider: cardProvider, product: 'card', symbol });
 
   return (
     <View className="gap-y-4">
@@ -89,7 +95,11 @@ const CardFundNetworks = ({
               key={network.chainId}
               icon={<Image source={network.icon} style={NETWORK_ICON_STYLE} contentFit="cover" />}
               title={network.name}
-              chips={[CARD_FUND_ESTIMATED_TIME]}
+              chips={
+                isBaseFree && network.chainId === base.id
+                  ? [DEPOSIT_FREE_ON_BASE_LABEL, CARD_FUND_ESTIMATED_TIME]
+                  : [CARD_FUND_ESTIMATED_TIME]
+              }
               chipsPosition="inline"
               onPress={() => onSelect(network.chainId)}
               disabled={

@@ -211,11 +211,12 @@ describe('getWalletDepositTokenIcon', () => {
 });
 
 describe('getWalletDepositNetworks', () => {
+  // Base first: the screen opens there, and a deposit sent there is free.
   it('offers only chains with a currency to deposit, in display order', () => {
     expect(chainIdsOf(getWalletDepositNetworks())).toEqual([
+      base.id,
       mainnet.id,
       polygon.id,
-      base.id,
       arbitrum.id,
       bsc.id,
       fuse.id,
@@ -520,8 +521,8 @@ describe('matchesWalletDepositSearch', () => {
 describe('getWalletDepositNetworksForToken', () => {
   it('only offers the chains that carry the currency', () => {
     expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', ALL))).toEqual([
-      mainnet.id,
       base.id,
+      mainnet.id,
       arbitrum.id,
       bsc.id,
     ]);
@@ -533,7 +534,7 @@ describe('getWalletDepositNetworksForToken', () => {
   it('offers a currency off Base only on the chains rhino.fi takes it on', () => {
     expect(
       chainIdsOf(getWalletDepositNetworksForToken('ETH', { ...ALL, rhino: withoutArbitrumEth() })),
-    ).toEqual([mainnet.id, base.id, bsc.id]);
+    ).toEqual([base.id, mainnet.id, bsc.id]);
   });
 
   it('offers a currency rhino.fi takes nowhere on Base alone, as the Safe', () => {
@@ -544,18 +545,18 @@ describe('getWalletDepositNetworksForToken', () => {
 
   it('offers every network a stablecoin is on', () => {
     expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', ALL))).toEqual([
+      base.id,
       mainnet.id,
       polygon.id,
-      base.id,
       arbitrum.id,
       bsc.id,
       fuse.id,
     ]);
     // USDT: rhino.fi's everywhere it takes it; the Safe on Base.
     expect(chainIdsOf(getWalletDepositNetworksForToken('USDT', ALL))).toEqual([
+      base.id,
       mainnet.id,
       polygon.id,
-      base.id,
       arbitrum.id,
       bsc.id,
       fuse.id,
@@ -662,9 +663,9 @@ describe('without the new deposit tokens', () => {
 
   it('offers each on the chains it was offered on, and none on Optimism', () => {
     expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', BASIC))).toEqual([
+      base.id,
       mainnet.id,
       polygon.id,
-      base.id,
       arbitrum.id,
       bsc.id,
       fuse.id,
@@ -731,8 +732,8 @@ describe('EURC', () => {
     expect(getWalletDepositRow(base.id, 'EURC', WIREX)).toEqual({ kind: 'own' });
     expect(symbolsOf(getWalletDepositTokens(mainnet.id, WIREX))).toContain('EURC');
     expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).toEqual([
-      mainnet.id,
       base.id,
+      mainnet.id,
     ]);
     expect(getWalletDepositRow(mainnet.id, 'EURC', WIREX)).toMatchObject({
       kind: 'rhino',
@@ -1154,9 +1155,9 @@ describe('with rhino.fi off', () => {
   it('offers the dollar stablecoins wherever our own pipeline takes them', () => {
     ['USDC', 'USDT'].forEach(symbol =>
       expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, OFF))).toEqual([
+        base.id,
         mainnet.id,
         polygon.id,
-        base.id,
         arbitrum.id,
         bsc.id,
         fuse.id,

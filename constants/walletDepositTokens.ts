@@ -227,12 +227,13 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
 
 /**
  * The chains a deposit can be sent on, in the order "Select network" lists them:
- * the L2s together, Fuse last.
+ * Base first, where the screen opens and a wallet deposit is free (see
+ * `getDepositFeeRatePpm`), then Ethereum and the other L2s, Fuse last.
  */
 export const WALLET_DEPOSIT_CHAIN_IDS: readonly number[] = [
+  base.id,
   mainnet.id,
   polygon.id,
-  base.id,
   arbitrum.id,
   bsc.id,
   fuse.id,

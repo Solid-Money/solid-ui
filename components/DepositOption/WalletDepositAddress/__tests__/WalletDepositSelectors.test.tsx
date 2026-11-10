@@ -1,7 +1,9 @@
 import React from 'react';
 import { base } from 'viem/chains';
 
-import WalletDepositSelectors from '@/components/DepositOption/WalletDepositAddress/WalletDepositSelectors';
+import WalletDepositSelectors, {
+  WalletDepositNetworkList,
+} from '@/components/DepositOption/WalletDepositAddress/WalletDepositSelectors';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -103,5 +105,40 @@ describe('WalletDepositSelectors', () => {
     expect(root.root.findAll((node: any) => node.type === 'ChevronDown')).toHaveLength(0);
     expect(mockDeposit.setModal).not.toHaveBeenCalled();
     expect(onToggleNetwork).not.toHaveBeenCalled();
+  });
+});
+
+describe('WalletDepositNetworkList', () => {
+  const renderList = (symbol: string) => {
+    let root: any;
+    act(() => {
+      root = create(
+        <WalletDepositNetworkList
+          chainId={base.id}
+          symbol={symbol}
+          onSelect={jest.fn()}
+          onSelectExtra={jest.fn()}
+          onDismiss={jest.fn()}
+        />,
+      );
+    });
+    return root;
+  };
+  const rowTexts = (root: any): string[] =>
+    root.root
+      .findAll((node: any) => node.type === 'Text')
+      .map((node: any) => node.props.children)
+      .filter((child: unknown) => typeof child === 'string');
+
+  // A wallet deposit sent on Base is never charged, and costs us least to take in.
+  it('leads with Base, marked free', () => {
+    ['USDC', 'ETH'].forEach(symbol => {
+      const texts = rowTexts(renderList(symbol));
+
+      expect(texts[0]).toBe('Base');
+      expect(texts[1]).toBe('Free');
+      expect(texts.filter(text => text === 'Free')).toHaveLength(1);
+      expect(texts).toContain('Ethereum');
+    });
   });
 });
