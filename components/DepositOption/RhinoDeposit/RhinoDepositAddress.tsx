@@ -165,7 +165,6 @@ const RhinoDepositAddress = ({
           chain={selection.chain}
           chainName={chainName}
           addressType={addressType}
-          tokenSymbol={selection.tokenSymbol}
           destinationType={selection.destinationType}
         />
       </View>

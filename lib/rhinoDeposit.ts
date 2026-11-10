@@ -289,17 +289,22 @@ const APP_NETWORK_CHAIN_IDS: ReadonlySet<number> = new Set([
   fuse.id,
 ]);
 
-/** rhino.fi chains kept out of "More networks" until the product decides on them: Arc. */
-const HELD_BACK_RHINO_CHAINS: ReadonlySet<string> = new Set(['ARC']);
+/**
+ * The rhino.fi chains "More networks" offers: Bitcoin alone, the one network
+ * native BTC comes in on, and only where the backend lists it (it has Bitcoin
+ * switched off on prod). The others rhino.fi takes (Tron, Solana, Avalanche,
+ * Celo, Gnosis, Mantle, Plasma, Kaia, Tempo, Arc) are not offered, by product
+ * decision (2026-11-10): a deposit on one comes to an address the app no
+ * longer hands out, though an address already handed out keeps working.
+ */
+const MORE_NETWORKS_CHAINS: ReadonlySet<string> = new Set(['BITCOIN']);
 
 /**
- * Whether a rhino.fi chain is one the app has no row for, and so belongs under
- * "More networks": Tron, Solana, Avalanche, Celo, Gnosis, Mantle, Plasma, Kaia,
- * Tempo, whichever the backend lists. Never an app chain, and never one held
- * back (Arc).
+ * Whether a rhino.fi chain belongs under "More networks": one the app has no
+ * row for, and one it offers there (see `MORE_NETWORKS_CHAINS`).
  */
 export const isRhinoExtraChain = (chain: Pick<RhinoDepositChain, 'chain' | 'chainId'>): boolean =>
-  !HELD_BACK_RHINO_CHAINS.has(chain.chain) &&
+  MORE_NETWORKS_CHAINS.has(chain.chain) &&
   (chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId));
 
 /** "More networks" always serves one token, the one the screen has already chosen. */
@@ -654,27 +659,54 @@ export type RhinoDepositStatusView = {
 };
 
 /**
- * How a deposit seen by rhino.fi is shown on the address screen. It covers only
+ * Whether rhino.fi's payout is the end of the deposit: a wallet deposit paid
+ * into the Safe itself (USDC, EURC, WBTC; USDT as USDC; BTC as WBTC). The
+ * wallet's ETH is paid to the user's wallet deposit address instead, where our
+ * pipeline wraps it for the Safe, and the card's and savings' payouts go on
+ * through our pipeline too, so for those an executed payout is only rhino.fi's
+ * leg done.
+ */
+export const isRhinoPayoutFinal = (
+  deposit: Pick<RhinoDeposit, 'destinationType' | 'receiveSymbol'>,
+): boolean => deposit.destinationType === 'WALLET' && deposit.receiveSymbol !== 'ETH';
+
+/**
+ * How a deposit seen by rhino.fi is shown on the address screen. It covers
  * rhino.fi's leg: once the payout is executed, the regular deposit pipeline and
- * the activity feed take over.
+ * the activity feed take over, except for a payout into the Safe, which
+ * completes the deposit (see `isRhinoPayoutFinal`) and is said to.
+ *
+ * It names the token and chain the deposit came in as, which need not be the
+ * ones the screen was opened for (see `pickRhinoDeposit`): `chainName` is the
+ * deposit's chain.
  */
 export const getRhinoDepositStatusView = (
-  deposit: Pick<RhinoDeposit, 'status' | 'rejectReason'>,
+  deposit: Pick<
+    RhinoDeposit,
+    'status' | 'rejectReason' | 'tokenSymbol' | 'destinationType' | 'receiveSymbol'
+  >,
   chainName: string,
 ): RhinoDepositStatusView => {
+  const received = `Received ${deposit.tokenSymbol} on ${chainName} — on its way`;
   switch (deposit.status) {
     case 'DELAYED':
       return {
         tone: 'progress',
-        title: `Received on ${chainName} — on its way`,
+        title: received,
         body: 'This is taking longer than usual.',
       };
     case 'EXECUTED':
-      return {
-        tone: 'success',
-        title: `Received on ${chainName} — on its way`,
-        body: 'It will show in your activity shortly.',
-      };
+      return isRhinoPayoutFinal(deposit)
+        ? {
+            tone: 'success',
+            title: 'Deposit complete',
+            body: `Your ${deposit.receiveSymbol} is in your wallet.`,
+          }
+        : {
+            tone: 'success',
+            title: received,
+            body: 'It will show in your activity shortly.',
+          };
     case 'REJECTED':
       return {
         tone: 'error',
@@ -690,36 +722,37 @@ export const getRhinoDepositStatusView = (
     case 'DETECTED':
     case 'ACCEPTED':
     default:
-      return { tone: 'progress', title: `Received on ${chainName} — on its way` };
+      return { tone: 'progress', title: received };
   }
 };
 
 /** Which deposit a screen's rhino.fi address is watching for. */
 export type RhinoDepositMatch = {
   depositAddress: string;
-  chain: string;
   addressType: string;
-  tokenSymbol: string;
   destinationType: RhinoDestinationType;
 };
 
 /**
- * The deposit to show for an address: the newest one of this token, for this
- * destination, sent to it on that chain. The endpoint returns every rhino.fi
- * deposit the user made since the screen opened, which can include other
- * chains and destinations; and one address can take more than one token (the
- * card's takes USDC, USDT and ETH alike), so a deposit of another token is
- * another screen's.
+ * The deposit to show for an address: the newest one sent to it, for this
+ * destination, since the screen opened. The endpoint returns every rhino.fi
+ * deposit the user made since then, which can include other addresses and
+ * destinations.
+ *
+ * Neither the token nor the chain the screen was opened for narrows it. One
+ * address takes every token its route does (the card's takes USDC, USDT, ETH
+ * and more), and an EVM address is the same on every EVM chain, so a user who
+ * picked USDT on Arbitrum and sent USDC, or sent from Polygon, has still sent
+ * to this address. rhino.fi accepts it, and the screen must say so rather than
+ * keep scanning.
  */
 export const pickRhinoDeposit = (
   deposits: RhinoDeposit[] | undefined,
-  { depositAddress, chain, addressType, tokenSymbol, destinationType }: RhinoDepositMatch,
+  { depositAddress, addressType, destinationType }: RhinoDepositMatch,
 ): RhinoDeposit | undefined =>
   (deposits ?? [])
     .filter(
       deposit =>
-        deposit.chain === chain &&
-        deposit.tokenSymbol === tokenSymbol &&
         deposit.destinationType === destinationType &&
         isSameDepositAddress(deposit.depositAddress, depositAddress, addressType),
     )

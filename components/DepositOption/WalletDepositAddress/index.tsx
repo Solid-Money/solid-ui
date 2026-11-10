@@ -444,7 +444,6 @@ const WalletDepositAddress = () => {
           chain={rhino.chain.chain}
           chainName={rhinoChainName ?? rhino.chain.name}
           addressType={rhinoAddress?.addressType ?? rhino.chain.addressType}
-          tokenSymbol={rhinoSelection.tokenSymbol}
           destinationType={rhinoSelection.destinationType}
         />
       ) : null}

@@ -2,7 +2,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
-import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
 import { getRhinoDepositAssets } from '@/lib/api';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -65,65 +65,54 @@ afterEach(async () => {
 
 /**
  * "More networks": rhino.fi's chains the app has no row for, for the token and
- * destination the screen has already chosen.
+ * destination the screen has already chosen. Of those, only Bitcoin is
+ * offered (product decision, 2026-11-10).
  */
 describe('RhinoNetworkGroup', () => {
-  // Never Ethereum, Base, Optimism or Fuse, which are rows of the app's own;
-  // never Arc, held back.
-  it('lists only the chains the app has no row for, for the token chosen', async () => {
-    await mount({ destinationType: 'RAIN_CARD', symbol: 'USDC' });
-    expect(titles()).toEqual(['Solana', 'Avalanche']);
-    expect(root.root.findByType('CardFundGroup').props.label).toBe('More networks');
+  // Tron, Solana, Avalanche and Arc are listed by the backend, with routes for
+  // these tokens, and are no longer offered: the group is not there at all.
+  it('shows no group for a token only those chains would add', async () => {
+    mockGetAssets.mockResolvedValue(RHINO_ASSETS_WITH_BITCOIN);
+    for (const props of [
+      { destinationType: 'RAIN_CARD' as const, symbol: 'USDC' },
+      { destinationType: 'RAIN_CARD' as const, symbol: 'USDT' },
+      { destinationType: 'WALLET' as const, symbol: 'USDT' },
+      { destinationType: 'PROTOCOL' as const, symbol: 'USDT', vault: 'soUSD' },
+      { destinationType: 'PROTOCOL' as const, symbol: 'EURC', vault: 'soEURC' },
+    ]) {
+      await act(async () => root?.unmount());
+      await mount(props);
+      expect(root.root.findAllByType('CardFundGroup')).toHaveLength(0);
+    }
   });
 
-  // On savings, USDT into soUSD stays rhino.fi's, Tron and all.
-  it('narrows to the vault being funded', async () => {
-    await mount({ destinationType: 'PROTOCOL', symbol: 'USDT', vault: 'soUSD' });
-    expect(titles()).toEqual(['Tron', 'Solana', 'Avalanche']);
+  it('lists Bitcoin for native BTC, where the backend has it on', async () => {
+    mockGetAssets.mockResolvedValue(RHINO_ASSETS_WITH_BITCOIN);
+    const onSelect = await mount({ destinationType: 'RAIN_CARD', symbol: 'BTC' });
+    expect(titles()).toEqual(['Bitcoin']);
+    expect(root.root.findByType('CardFundGroup').props.label).toBe('More networks');
+
+    press('Bitcoin');
+    expect(onSelect).toHaveBeenCalledWith({
+      chain: 'BITCOIN',
+      tokenSymbol: 'BTC',
+      destinationType: 'RAIN_CARD',
+    });
 
     await act(async () => root.unmount());
-    await mount({ destinationType: 'PROTOCOL', symbol: 'EURC', vault: 'soEURC' });
-    expect(titles()).toEqual(['Solana']);
-
-    await act(async () => root.unmount());
-    await mount({ destinationType: 'PROTOCOL', symbol: 'ETH', vault: 'soUSD' });
+    mockGetAssets.mockResolvedValue(RHINO_ASSETS);
+    await mount({ destinationType: 'RAIN_CARD', symbol: 'BTC' });
     expect(rows()).toHaveLength(0);
   });
 
-  // rhino.fi pays USDT to the card or the wallet out as USDC, Tron and all.
-  it('lists the chains rhino.fi takes USDT to the card or the wallet from', async () => {
-    await mount({ destinationType: 'RAIN_CARD', symbol: 'USDT' });
-    expect(titles()).toEqual(['Tron', 'Solana', 'Avalanche']);
-
-    await act(async () => root.unmount());
-    await mount({ destinationType: 'WALLET', symbol: 'USDT' });
-    expect(titles()).toEqual(['Tron', 'Solana', 'Avalanche']);
-  });
-
   it('shows nothing when rhino.fi is off, or its routes cannot be had', async () => {
-    mockGetAssets.mockResolvedValue({ ...RHINO_ASSETS, enabled: false });
-    await mount();
+    mockGetAssets.mockResolvedValue({ ...RHINO_ASSETS_WITH_BITCOIN, enabled: false });
+    await mount({ symbol: 'BTC' });
     expect(rows()).toHaveLength(0);
 
     mockGetAssets.mockRejectedValue(new Error('down'));
     await act(async () => root.unmount());
-    await mount();
+    await mount({ symbol: 'BTC' });
     expect(rows()).toHaveLength(0);
-  });
-
-  it('selects the chain’s rhino.fi address, with no app chain for Solana', async () => {
-    const onSelect = await mount({ destinationType: 'PROTOCOL', symbol: 'USDC', vault: 'soUSD' });
-    press('Solana');
-    expect(onSelect).toHaveBeenCalledWith({
-      chain: 'SOLANA',
-      tokenSymbol: 'USDC',
-      destinationType: 'PROTOCOL',
-      vault: 'soUSD',
-    });
-
-    press('Avalanche');
-    expect(onSelect).toHaveBeenLastCalledWith(
-      expect.objectContaining({ chain: 'AVALANCHE', chainId: 43114 }),
-    );
   });
 });

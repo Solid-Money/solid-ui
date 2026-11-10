@@ -1,9 +1,13 @@
 import React from 'react';
-import { base, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, mainnet, polygon } from 'viem/chains';
 
 import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 
-import type { RhinoDeposit, RhinoDepositAddressResponse } from '@/lib/types';
+import type {
+  RhinoDeposit,
+  RhinoDepositAddressResponse,
+  RhinoDepositAssetsResponse,
+} from '@/lib/types';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -29,7 +33,7 @@ jest.mock('@/hooks/useDetectedDirectDeposit', () => ({
   useDetectedDirectDeposit: (params: unknown) => mockDetected(params),
 }));
 jest.mock('@/hooks/useRhinoDepositAssets', () => ({
-  useOfferedRhinoDepositAssets: () => ({ status: 'loading', retry: jest.fn() }),
+  useOfferedRhinoDepositAssets: () => mockAssets.current,
 }));
 jest.mock('@/hooks/useRhinoDepositAddress', () => ({
   useRhinoDepositAddress: (...args: unknown[]) => mockUseAddress(...args),
@@ -49,6 +53,10 @@ const mockAddress: {
   };
 } = { current: { address: undefined, isError: false, isFetching: false, refetch: jest.fn() } };
 const mockDeposit: { current: RhinoDeposit | undefined } = { current: undefined };
+const ASSETS_LOADING = { status: 'loading', retry: jest.fn() };
+const mockAssets: {
+  current: { status: string; assets?: RhinoDepositAssetsResponse; retry: jest.Mock };
+} = { current: ASSETS_LOADING };
 
 const DEPOSIT_ADDRESS = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
 
@@ -103,6 +111,7 @@ beforeEach(() => {
     refetch: jest.fn(),
   };
   mockDeposit.current = undefined;
+  mockAssets.current = ASSETS_LOADING;
 });
 
 afterEach(() => {
@@ -180,6 +189,63 @@ describe('RhinoDepositAddress', () => {
   it('names the Base row as the app does', () => {
     render({ selection: { ...SELECTION, chain: 'BASE', chainId: base.id } });
     expect(texts()).toContain('Send only USDT on Base');
+  });
+
+  it('says a deposit was received, as the token and on the chain it came in on', () => {
+    mockDeposit.current = {
+      id: 'd1',
+      chain: 'MATIC_POS',
+      depositAddress: DEPOSIT_ADDRESS.toLowerCase(),
+      txHash: 'abc',
+      tokenSymbol: 'USDT',
+      amount: '1',
+      status: 'ACCEPTED',
+      destinationType: 'PROTOCOL',
+      receiveSymbol: 'USDC',
+      receiveChainId: base.id,
+      createdAt: '2026-11-02T10:00:00.000Z',
+      updatedAt: '2026-11-02T10:00:00.000Z',
+    };
+    render();
+    expect(texts()).toContain('Received USDT on Polygon — on its way');
+  });
+
+  // The screen was opened for USDT on Polygon; USDC was sent from Arbitrum to
+  // the same EVM address. It is named as it came in, Arbitrum as the app names
+  // it rather than rhino.fi's "Arbitrum One".
+  it('names another token and chain sent to the same address as they came in', () => {
+    mockAssets.current = {
+      status: 'ready',
+      assets: {
+        enabled: true,
+        chains: [
+          {
+            chain: 'ARBITRUM',
+            chainId: arbitrum.id,
+            name: 'Arbitrum One',
+            addressType: 'EVM',
+            tokens: [],
+          },
+        ],
+      },
+      retry: jest.fn(),
+    };
+    mockDeposit.current = {
+      id: 'd1',
+      chain: 'ARBITRUM',
+      depositAddress: DEPOSIT_ADDRESS.toLowerCase(),
+      txHash: 'abc',
+      tokenSymbol: 'USDC',
+      amount: '10',
+      status: 'EXECUTED',
+      destinationType: 'PROTOCOL',
+      receiveSymbol: 'USDC',
+      receiveChainId: base.id,
+      createdAt: '2026-11-02T10:00:00.000Z',
+      updatedAt: '2026-11-02T10:00:00.000Z',
+    };
+    render();
+    expect(texts()).toContain('Received USDC on Arbitrum — on its way');
   });
 
   it('explains a rejected deposit', () => {

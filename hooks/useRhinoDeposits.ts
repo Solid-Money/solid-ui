@@ -13,11 +13,8 @@ type UseRhinoDepositsParams = {
   /** Poll only while the screen is showing a rhino.fi address. */
   enabled: boolean;
   depositAddress?: string;
-  /** rhino.fi chain id, e.g. `TRON`. */
-  chain?: string;
   addressType?: string;
-  /** The token and destination the address was shown for. */
-  tokenSymbol: string;
+  /** The destination the address was shown for. */
   destinationType: RhinoDestinationType;
 };
 
@@ -25,22 +22,21 @@ type UseRhinoDepositsParams = {
  * Watches a rhino.fi deposit address for a transfer, modelled on
  * `useDetectedDirectDeposit`.
  *
- * `since` is pinned when the address is shown, so a deposit from an earlier
- * visit never surfaces here. Polling stops once the deposit reaches a state
- * rhino.fi will not move it on from (executed, rejected or refunded). An
- * executed payout lands at the user's Solid destination, where the regular
- * deposit pipeline and the activity feed report it — this hook does not follow
- * it any further.
+ * Any deposit to the address counts, whatever token or chain it came in as
+ * (see `pickRhinoDeposit`). `since` is pinned when the address is shown, so a
+ * deposit from an earlier visit never surfaces here. Polling stops once the
+ * deposit reaches a state rhino.fi will not move it on from (executed,
+ * rejected or refunded). An executed payout lands at the user's Solid
+ * destination, where the regular deposit pipeline and the activity feed report
+ * it — this hook does not follow it any further.
  */
 export function useRhinoDeposits({
   enabled: enabledParam,
   depositAddress,
-  chain,
   addressType,
-  tokenSymbol,
   destinationType,
 }: UseRhinoDepositsParams) {
-  const enabled = enabledParam && !!depositAddress && !!chain && !!addressType;
+  const enabled = enabledParam && !!depositAddress && !!addressType;
   const [since, setSince] = useState(() => Date.now());
   const wasEnabledRef = useRef(enabled);
 
@@ -53,10 +49,8 @@ export function useRhinoDeposits({
 
   const match = useMemo(
     () =>
-      depositAddress && chain && addressType
-        ? { depositAddress, chain, addressType, tokenSymbol, destinationType }
-        : undefined,
-    [depositAddress, chain, addressType, tokenSymbol, destinationType],
+      depositAddress && addressType ? { depositAddress, addressType, destinationType } : undefined,
+    [depositAddress, addressType, destinationType],
   );
 
   const { data } = useQuery({
