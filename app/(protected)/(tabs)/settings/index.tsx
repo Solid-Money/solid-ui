@@ -1,22 +1,25 @@
 import React, { useCallback, useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Href, router, useFocusEffect } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import ProfileAvatar from '@/components/Profile/ProfileAvatar';
 import ProfileHubIcon from '@/components/Profile/ProfileHubIcon';
-import { ProfileRow, ProfileRowGroup } from '@/components/Profile/ProfileRow';
+import { ProfileRow, ProfileRowGroup, ProfileSectionLabel } from '@/components/Profile/ProfileRow';
 import TierMembershipSheet from '@/components/Rewards/NewRewards/TierMembershipSheet';
 import TrustpilotReviewCard from '@/components/Trustpilot/TrustpilotReviewCard';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName } from '@/constants/rewards';
+import { SOCIAL_LINKS, type SocialLink } from '@/constants/social';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useTotp } from '@/hooks/useTotp';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { openHelpLink } from '@/lib/help/links';
 import { RewardsTier } from '@/lib/types';
 import { formatWholeDollars, getUserDisplayName } from '@/lib/utils';
@@ -38,6 +41,12 @@ const mobileHeader = (
 
 // In the app's help center when it can; the website otherwise.
 const openLegal = () => openHelpLink(LEGAL_URL);
+
+// x.com and t.me open the X or Telegram app when it's installed, the browser otherwise.
+const openSocial = (link: SocialLink) => {
+  track(TRACKING_EVENTS.SOCIAL_LINK_OPENED, { network: link.network, context: 'settings' });
+  Linking.openURL(link.url).catch(() => undefined);
+};
 
 /**
  * Settings hub: editable identity above compact membership, account, security
@@ -164,6 +173,24 @@ export default function Settings() {
             onPress={openLegal}
           />
         </ProfileRowGroup>
+
+        {/* Most of what we ship is announced on our socials first. */}
+        <View>
+          <ProfileSectionLabel className="mt-0 px-1">Follow us</ProfileSectionLabel>
+          <ProfileRowGroup variant="hub">
+            {SOCIAL_LINKS.map(link => (
+              <ProfileRow
+                key={link.network}
+                variant="hub"
+                icon={<ProfileHubIcon name={link.network} />}
+                title={link.label}
+                value={link.handle}
+                accessibilityLabel={`Follow Solid on ${link.label}`}
+                onPress={() => openSocial(link)}
+              />
+            ))}
+          </ProfileRowGroup>
+        </View>
 
         {/* Web/desktop only — native asks for a rating through the OS sheet. */}
         <TrustpilotReviewCard analyticsContext="settings" />

@@ -4751,8 +4751,12 @@ export const fetchAPYs = async (): Promise<APYsByAsset> => {
   return response.data;
 };
 
+/**
+ * The active What's New popup, in any format. v2 because this code can draw a
+ * single image or video: v1 hides those from older app code, which can't.
+ */
 export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/whats-new/latest`, {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v2/whats-new/latest`, {
     credentials: 'include',
     headers: {
       ...getPlatformHeaders(),

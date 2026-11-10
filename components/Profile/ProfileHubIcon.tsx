@@ -108,6 +108,20 @@ const ICONS = {
     height: 16.75,
     frame: 20,
   },
+  // The X logo from the solid.xyz footer (Figma 18236:2243).
+  x: {
+    source: getAsset('images/profile-hub/x.svg'),
+    width: 16.9356,
+    height: 17.9941,
+    frame: 24,
+  },
+  // Telegram's paper plane, drawn to the width of the other glyphs.
+  telegram: {
+    source: getAsset('images/profile-hub/telegram.svg'),
+    width: 20,
+    height: 16.5743,
+    frame: 24,
+  },
 };
 
 export default function ProfileHubIcon({

@@ -645,6 +645,16 @@ export const TRACKING_EVENTS = {
   INVITE_SCREEN_VIEWED: 'invite_screen_viewed',
   INVITE_CODE_APPLIED: 'invite_code_applied',
   INVITE_CODE_INVALID: 'invite_code_invalid',
+
+  // What's New, for both formats (the step carousel and the single image or
+  // video). `format` tells them apart; video events carry `watched_seconds`.
+  WHATS_NEW_VIEWED: 'whats_new_viewed',
+  WHATS_NEW_CLICKED: 'whats_new_clicked',
+  WHATS_NEW_DISMISSED: 'whats_new_dismissed',
+  WHATS_NEW_SOUND_ON: 'whats_new_sound_on',
+
+  // "Follow us" in Settings (`network`: x / telegram)
+  SOCIAL_LINK_OPENED: 'social_link_opened',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

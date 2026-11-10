@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { fetchLatestWhatsNew } from '@/lib/api';
 import mmkvStorage from '@/lib/mmvkStorage';
+import { canShowWhatsNew } from '@/lib/whatsNew';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
 const storage = mmkvStorage('whats-new');
@@ -23,14 +24,17 @@ const getDismissedIds = (): string[] => {
 
 export const useWhatsNew = (autoShowOnHome = false) => {
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { whatsNew, isVisible, setWhatsNew, setIsVisible } = useWhatsNewStore(
-    useShallow(state => ({
-      whatsNew: state.whatsNew,
-      isVisible: state.isVisible,
-      setWhatsNew: state.setWhatsNew,
-      setIsVisible: state.setIsVisible,
-    })),
-  );
+  const { whatsNew, isVisible, failedIds, setWhatsNew, setIsVisible, markFailed } =
+    useWhatsNewStore(
+      useShallow(state => ({
+        whatsNew: state.whatsNew,
+        isVisible: state.isVisible,
+        failedIds: state.failedIds,
+        setWhatsNew: state.setWhatsNew,
+        setIsVisible: state.setIsVisible,
+        markFailed: state.markFailed,
+      })),
+    );
 
   // Track which data ID has been processed to detect new WhatsNew content
   const processedDataIdRef = useRef<string | null>(null);
@@ -50,7 +54,8 @@ export const useWhatsNew = (autoShowOnHome = false) => {
   // Keep the latest content available to the modal and settings button.
   const handleWhatsNewData = useCallback(
     (latest: Awaited<ReturnType<typeof fetchLatestWhatsNew>>, forceShow = false) => {
-      if (latest && latest.isActive) {
+      // A format this build can't draw is skipped rather than shown broken.
+      if (latest && latest.isActive && canShowWhatsNew(latest)) {
         setWhatsNew(latest);
 
         if (forceShow) {
@@ -78,6 +83,7 @@ export const useWhatsNew = (autoShowOnHome = false) => {
       !whatsNew?.isActive ||
       !whatsNew.showOnLoad ||
       isVisible ||
+      failedIds.includes(whatsNew._id) ||
       getSeenIds().includes(whatsNew._id)
     ) {
       return;
@@ -90,7 +96,7 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [autoShowOnHome, isVisible, setIsVisible, whatsNew]);
+  }, [autoShowOnHome, failedIds, isVisible, setIsVisible, whatsNew]);
 
   const checkWhatsNew = useCallback(
     async (forceShow = false) => {
@@ -132,6 +138,17 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     setIsVisible(false);
   }, [whatsNew, markAsSeen, setIsVisible]);
 
+  /**
+   * Closes a popup that never appeared because its image or video poster failed
+   * to load. It is not marked as seen, so it comes back on the next launch.
+   */
+  const abandonWhatsNew = useCallback(() => {
+    if (whatsNew) {
+      markFailed(whatsNew._id);
+    }
+    setIsVisible(false);
+  }, [whatsNew, markFailed, setIsVisible]);
+
   const dismissButton = useCallback(() => {
     if (whatsNew) {
       markAsDismissed(whatsNew._id);
@@ -154,6 +171,7 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     isButtonDismissed,
     checkWhatsNew,
     closeWhatsNew,
+    abandonWhatsNew,
     showLatest,
     dismissButton,
   };
