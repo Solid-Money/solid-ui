@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { fetchLatestWhatsNew } from '@/lib/api';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { WhatsNew } from '@/lib/types';
+import { canShowWhatsNew } from '@/lib/whatsNew';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
 const storage = mmkvStorage('whats-new');
@@ -49,20 +50,24 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     isVisible,
     initialStep,
     request,
+    failedIds,
     setWhatsNew,
     setIsVisible,
     setInitialStep,
     clearRequest,
+    markFailed,
   } = useWhatsNewStore(
     useShallow(state => ({
       whatsNew: state.whatsNew,
       isVisible: state.isVisible,
       initialStep: state.initialStep,
       request: state.request,
+      failedIds: state.failedIds,
       setWhatsNew: state.setWhatsNew,
       setIsVisible: state.setIsVisible,
       setInitialStep: state.setInitialStep,
       clearRequest: state.clearRequest,
+      markFailed: state.markFailed,
     })),
   );
 
@@ -84,7 +89,8 @@ export const useWhatsNew = (autoShowOnHome = false) => {
   // Keep the latest content available to the modal and settings button.
   const handleWhatsNewData = useCallback(
     (latest: Awaited<ReturnType<typeof fetchLatestWhatsNew>>, forceShow = false) => {
-      if (latest && latest.isActive) {
+      // A format this build can't draw is skipped rather than shown broken.
+      if (latest && latest.isActive && canShowWhatsNew(latest)) {
         setWhatsNew(latest);
 
         if (forceShow) {
@@ -106,12 +112,19 @@ export const useWhatsNew = (autoShowOnHome = false) => {
 
   // Start the auto-open delay only when Home has finished its initial loading.
   // The settings button still opens the modal immediately via forceShow.
+  //
+  // A link's pending ask holds it back: the link is answered below, on the page
+  // it names, once the server has been asked. On a slow start that can take
+  // longer than this delay, and opening here first would show page 1 and then
+  // jump to the linked page (or show a stale announcement the link replaces).
   useEffect(() => {
     if (
       !autoShowOnHome ||
+      request ||
       !whatsNew?.isActive ||
       !whatsNew.showOnLoad ||
       isVisible ||
+      failedIds.includes(whatsNew._id) ||
       getSeenIds().includes(whatsNew._id)
     ) {
       return;
@@ -124,7 +137,7 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [autoShowOnHome, isVisible, setIsVisible, whatsNew]);
+  }, [autoShowOnHome, failedIds, isVisible, request, setIsVisible, whatsNew]);
 
   // A link asked for an announcement on a given page (`?whatsNew=<id>&whatsNewStep=<n>`,
   // see `useHomeLinkAction`). Only one announcement is active at a time, so the
@@ -132,6 +145,8 @@ export const useWhatsNew = (autoShowOnHome = false) => {
   // announcement, on its first page when it has since been replaced (the link
   // is old, the popup it promised is still the right one to show), and not at
   // all when nothing is active, rather than reviving one an admin switched off.
+  // A single image or video has no pages: it opens as it is, whatever page the
+  // link named.
   useEffect(() => {
     if (!request) return;
     let cancelled = false;
@@ -160,10 +175,15 @@ export const useWhatsNew = (autoShowOnHome = false) => {
       if (cancelled) return;
 
       clearRequest();
-      if (!latest?.isActive || latest.steps.length === 0) return;
+      // Nothing active, or a format this build can't draw: Home stays as it is.
+      if (!latest?.isActive || !canShowWhatsNew(latest)) return;
 
       setWhatsNew(latest);
-      setInitialStep(latest._id === request.id ? clampStep(request.step, latest) : 0);
+      setInitialStep(
+        latest.format !== 'single' && latest._id === request.id
+          ? clampStep(request.step, latest)
+          : 0,
+      );
       setIsVisible(true);
     };
 
@@ -215,6 +235,18 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     setInitialStep(0);
   }, [whatsNew, markAsSeen, setIsVisible, setInitialStep]);
 
+  /**
+   * Closes a popup that never appeared because its image or video poster failed
+   * to load. It is not marked as seen, so it comes back on the next launch.
+   */
+  const abandonWhatsNew = useCallback(() => {
+    if (whatsNew) {
+      markFailed(whatsNew._id);
+    }
+    setIsVisible(false);
+    setInitialStep(0);
+  }, [whatsNew, markFailed, setIsVisible, setInitialStep]);
+
   const dismissButton = useCallback(() => {
     if (whatsNew) {
       markAsDismissed(whatsNew._id);
@@ -239,6 +271,7 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     isButtonDismissed,
     checkWhatsNew,
     closeWhatsNew,
+    abandonWhatsNew,
     showLatest,
     dismissButton,
   };

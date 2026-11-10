@@ -218,7 +218,7 @@ SplashScreen.setOptions({
 function WhatsNewWrapper() {
   const pathname = usePathname();
   const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
-  const { whatsNew, isVisible, initialStep, closeWhatsNew } = useWhatsNew(
+  const { whatsNew, isVisible, initialStep, closeWhatsNew, abandonWhatsNew } = useWhatsNew(
     pathname === path.HOME && isHomeReady,
   );
 
@@ -230,6 +230,7 @@ function WhatsNewWrapper() {
       isOpen={isVisible}
       onClose={closeWhatsNew}
       initialStep={initialStep}
+      onFailed={abandonWhatsNew}
     />
   );
 }
