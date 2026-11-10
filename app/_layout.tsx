@@ -216,11 +216,20 @@ SplashScreen.setOptions({
 function WhatsNewWrapper() {
   const pathname = usePathname();
   const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
-  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew(pathname === path.HOME && isHomeReady);
+  const { whatsNew, isVisible, closeWhatsNew, abandonWhatsNew } = useWhatsNew(
+    pathname === path.HOME && isHomeReady,
+  );
 
   if (!whatsNew) return null;
 
-  return <LazyWhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
+  return (
+    <LazyWhatsNewModal
+      whatsNew={whatsNew}
+      isOpen={isVisible}
+      onClose={closeWhatsNew}
+      onFailed={abandonWhatsNew}
+    />
+  );
 }
 
 // On native, React Query's focus and online managers have no default wiring:

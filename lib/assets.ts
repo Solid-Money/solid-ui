@@ -1020,6 +1020,10 @@ export const ASSETS = {
     module: require('@/assets/images/profile-hub/sparkle.svg'),
     hash: '25b2fc7b',
   },
+  'images/profile-hub/telegram.svg': {
+    module: require('@/assets/images/profile-hub/telegram.svg'),
+    hash: 'ac2cab48',
+  },
   'images/profile-hub/user-round.svg': {
     module: require('@/assets/images/profile-hub/user-round.svg'),
     hash: '00e2f8a5',
@@ -1027,6 +1031,10 @@ export const ASSETS = {
   'images/profile-hub/users-round.svg': {
     module: require('@/assets/images/profile-hub/users-round.svg'),
     hash: '4f114b27',
+  },
+  'images/profile-hub/x.svg': {
+    module: require('@/assets/images/profile-hub/x.svg'),
+    hash: 'd9c49bd9',
   },
   'images/profile.tsx': { module: require('@/assets/images/profile.tsx'), hash: 'd9b450e5' },
   'images/public_address.png': {

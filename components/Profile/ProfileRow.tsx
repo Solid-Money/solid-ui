@@ -206,6 +206,10 @@ export const ProfileRowGroup = ({
   );
 };
 
-export const ProfileSectionLabel = ({ children }: { children: string }) => (
-  <Text className="mb-2 mt-6 text-sm text-[#8E8E8E]">{children}</Text>
-);
+export const ProfileSectionLabel = ({
+  children,
+  className,
+}: {
+  children: string;
+  className?: string;
+}) => <Text className={cn('mb-2 mt-6 text-sm text-[#8E8E8E]', className)}>{children}</Text>;

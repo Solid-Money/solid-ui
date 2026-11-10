@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
-import { Linking, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { useWindowDimensions, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Carousel from 'react-native-reanimated-carousel';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { WhatsNew, WhatsNewStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import {
+  openWhatsNewLink,
+  type WhatsNewDismissMethod,
+  whatsNewEventBase,
+  whatsNewViewedProps,
+} from '@/lib/whatsNew';
 
 // Mirrors the `--brand` design token (see global.css). lucide icons need a
 // concrete color value, so it can't be applied via the `text-brand` class.
@@ -27,19 +34,41 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
   const carouselRef = React.useRef<any>(null);
   const { width: screenWidth } = useWindowDimensions();
   const modalWidth = Math.min(screenWidth * 0.9, 560);
+  // How the dialog is being closed, for `whats_new_dismissed`. The X is the
+  // default; Esc and a press outside say so before the dialog closes.
+  const dismissMethodRef = useRef<WhatsNewDismissMethod>('close_button');
+  const closedRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen) track(TRACKING_EVENTS.WHATS_NEW_VIEWED, whatsNewViewedProps(whatsNew, 'popup'));
+  }, [isOpen, whatsNew]);
+
+  const dismiss = (method: WhatsNewDismissMethod) => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    track(TRACKING_EVENTS.WHATS_NEW_DISMISSED, {
+      ...whatsNewEventBase(whatsNew),
+      format: 'carousel',
+      method,
+      step: activeIndex + 1,
+    });
+    onClose();
+  };
 
   const handleButtonPress = (link?: string) => {
     const target = link?.trim();
     if (!target) return;
 
+    closedRef.current = true;
+    track(TRACKING_EVENTS.WHATS_NEW_CLICKED, {
+      ...whatsNewEventBase(whatsNew),
+      format: 'carousel',
+      link: target,
+      step: activeIndex + 1,
+    });
     // Close the modal first so the user lands on the destination screen.
     onClose();
-
-    if (target.startsWith('http://') || target.startsWith('https://')) {
-      void Linking.openURL(target);
-    } else {
-      router.push(target as any);
-    }
+    openWhatsNewLink(target);
   };
 
   const renderItem = ({ item }: { item: WhatsNewStep }) => {
@@ -79,7 +108,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
 
   const handleNext = () => {
     if (isLastStep) {
-      onClose();
+      dismiss('close_button');
     } else {
       carouselRef.current?.next();
     }
@@ -90,8 +119,16 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[90vw] max-w-[560px] overflow-hidden border-0 border-none bg-[#1C1C1E] p-0">
+    <Dialog open={isOpen} onOpenChange={open => !open && dismiss(dismissMethodRef.current)}>
+      <DialogContent
+        className="w-[90vw] max-w-[560px] overflow-hidden border-0 border-none bg-[#1C1C1E] p-0"
+        onEscapeKeyDown={() => {
+          dismissMethodRef.current = 'esc';
+        }}
+        onPointerDownOutside={() => {
+          dismissMethodRef.current = 'backdrop';
+        }}
+      >
         <View className="relative">
           <Carousel
             ref={carouselRef}

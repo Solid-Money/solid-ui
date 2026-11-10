@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useWhatsNew } from '@/hooks/useWhatsNew';
@@ -38,7 +38,7 @@ describe('useWhatsNew auto-open', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockStorage.clear();
-    useWhatsNewStore.setState({ whatsNew: announcement, isVisible: false });
+    useWhatsNewStore.setState({ whatsNew: announcement, isVisible: false, failedIds: [] });
     (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
   });
 
@@ -65,6 +65,18 @@ describe('useWhatsNew auto-open', () => {
     act(() => renderer!.unmount());
   });
 
+  it("doesn't retry a popup whose image failed this session", async () => {
+    useWhatsNewStore.setState({ failedIds: [announcement._id] });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+
+    act(() => jest.advanceTimersByTime(10000));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
   it('cancels the pending open when Home is left', async () => {
     let renderer: ReturnType<typeof create>;
     await act(async () => {
@@ -76,6 +88,50 @@ describe('useWhatsNew auto-open', () => {
     act(() => jest.advanceTimersByTime(5000));
 
     expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe('useWhatsNew abandon', () => {
+  const captured: { hook?: ReturnType<typeof useWhatsNew> } = {};
+  const Capture = () => {
+    const hook = useWhatsNew();
+    useEffect(() => {
+      captured.hook = hook;
+    });
+    return null;
+  };
+
+  beforeEach(() => {
+    mockStorage.clear();
+    useWhatsNewStore.setState({ whatsNew: announcement, isVisible: true, failedIds: [] });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
+  });
+
+  it('hides a popup that never showed without marking it seen', async () => {
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Capture />);
+    });
+
+    act(() => captured.hook!.abandonWhatsNew());
+
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    expect(useWhatsNewStore.getState().failedIds).toEqual([announcement._id]);
+    expect(mockStorage.get('seen_popup_ids')).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
+
+  it('marks a closed popup as seen', async () => {
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Capture />);
+    });
+
+    act(() => captured.hook!.closeWhatsNew());
+
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    expect(JSON.parse(mockStorage.get('seen_popup_ids')!)).toEqual([announcement._id]);
     act(() => renderer!.unmount());
   });
 });
