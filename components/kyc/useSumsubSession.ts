@@ -325,14 +325,6 @@ export function useSumsubSession() {
         return;
       }
       /**
-       * CARD_PROVIDER_MISMATCH (400): the user's country is known and it is not
-       * Wirex's, so Sumsub is the wrong widget for them — a stale build, or a
-       * country that has moved between issuers since this screen was routed to.
-       * Back to the country screen, which re-asks routing on the way through and
-       * lands them on Didit. Refusing beats minting an applicant Wirex will
-       * never be told about.
-       */
-      /**
        * RAIN_MIGRATION_UNAVAILABLE (400): a Rain cardholder's move to the new
        * card, in a country the new card partner does not serve (or the move was
        * switched off). The new-card screen re-reads the status and explains.
@@ -341,6 +333,14 @@ export function useSumsubSession() {
         router.replace(path.CARD_NEW_CARD as any);
         return;
       }
+      /**
+       * CARD_PROVIDER_MISMATCH (400): the user's country is known and it is not
+       * Wirex's, so Sumsub is the wrong widget for them — a stale build, or a
+       * country that has moved between issuers since this screen was routed to.
+       * Back to the country screen, which re-asks routing on the way through and
+       * lands them on Didit. Refusing beats minting an applicant Wirex will
+       * never be told about.
+       */
       if (e?.code === 'CARD_PROVIDER_MISMATCH') {
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
           action: 'provider_mismatch',

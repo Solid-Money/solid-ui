@@ -7,6 +7,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -139,6 +140,19 @@ export function RainClosingWithdraw() {
           const used = unitsToCents(units, token.decimals, 'up');
           capCents = used >= capCents ? 0n : capCents - used;
         }
+      }
+      if (movedCents === 0n) {
+        // Nothing moved — Rain is holding the whole balance against its credit
+        // line (pending payments). "In your wallet" would be wrong: stay on the
+        // review, which re-reads the card, and say why.
+        setPhase({ kind: 'review' });
+        Toast.show({
+          type: 'info',
+          text1: 'Nothing could be withdrawn yet',
+          text2: 'Your card is holding its balance for pending payments. Try again shortly.',
+          props: { badgeText: '' },
+        });
+        return;
       }
       setPhase({ kind: 'done', usd: Number(movedCents) / 100 });
     } catch (error) {
