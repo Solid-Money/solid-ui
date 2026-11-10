@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { fetchLatestWhatsNew } from '@/lib/api';
 import mmkvStorage from '@/lib/mmvkStorage';
+import { WhatsNew } from '@/lib/types';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
 const storage = mmkvStorage('whats-new');
@@ -21,14 +22,31 @@ const getDismissedIds = (): string[] => {
   return data ? JSON.parse(data) : [];
 };
 
+/** `step` as a page `whatsNew` has: a link may name a page that was since removed. */
+const clampStep = (step: number, whatsNew: WhatsNew) =>
+  Math.max(0, Math.min(step, whatsNew.steps.length - 1));
+
 export const useWhatsNew = (autoShowOnHome = false) => {
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { whatsNew, isVisible, setWhatsNew, setIsVisible } = useWhatsNewStore(
+  const {
+    whatsNew,
+    isVisible,
+    initialStep,
+    request,
+    setWhatsNew,
+    setIsVisible,
+    setInitialStep,
+    clearRequest,
+  } = useWhatsNewStore(
     useShallow(state => ({
       whatsNew: state.whatsNew,
       isVisible: state.isVisible,
+      initialStep: state.initialStep,
+      request: state.request,
       setWhatsNew: state.setWhatsNew,
       setIsVisible: state.setIsVisible,
+      setInitialStep: state.setInitialStep,
+      clearRequest: state.clearRequest,
     })),
   );
 
@@ -92,6 +110,42 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     return () => clearTimeout(timer);
   }, [autoShowOnHome, isVisible, setIsVisible, whatsNew]);
 
+  // A link asked for an announcement on a given page (`?whatsNew=<id>&whatsNewStep=<n>`,
+  // see `useHomeLinkAction`). Only one announcement is active at a time, so the
+  // ask is answered from the latest one: on the page named when it is the same
+  // announcement, on its first page when it has since been replaced (the link
+  // is old, the popup it promised is still the right one to show), and not at
+  // all when nothing is active, rather than reviving one an admin switched off.
+  useEffect(() => {
+    if (!request) return;
+    let cancelled = false;
+
+    const answer = async () => {
+      let latest = useWhatsNewStore.getState().whatsNew;
+      if (!latest || latest._id !== request.id) {
+        try {
+          const { data: fresh } = await refetch();
+          if (fresh) latest = fresh;
+        } catch (error) {
+          console.error("Failed to fetch What's New for a link:", error);
+        }
+      }
+      if (cancelled) return;
+
+      clearRequest();
+      if (!latest?.isActive || latest.steps.length === 0) return;
+
+      setWhatsNew(latest);
+      setInitialStep(latest._id === request.id ? clampStep(request.step, latest) : 0);
+      setIsVisible(true);
+    };
+
+    void answer();
+    return () => {
+      cancelled = true;
+    };
+  }, [request, refetch, clearRequest, setWhatsNew, setInitialStep, setIsVisible]);
+
   const checkWhatsNew = useCallback(
     async (forceShow = false) => {
       try {
@@ -130,7 +184,9 @@ export const useWhatsNew = (autoShowOnHome = false) => {
       markAsSeen(whatsNew._id);
     }
     setIsVisible(false);
-  }, [whatsNew, markAsSeen, setIsVisible]);
+    // A linked page is for that one opening; the next one starts at the top.
+    setInitialStep(0);
+  }, [whatsNew, markAsSeen, setIsVisible, setInitialStep]);
 
   const dismissButton = useCallback(() => {
     if (whatsNew) {
@@ -144,12 +200,14 @@ export const useWhatsNew = (autoShowOnHome = false) => {
   }, [whatsNew, markAsDismissed, setWhatsNew]);
 
   const showLatest = useCallback(() => {
+    setInitialStep(0);
     checkWhatsNew(true);
-  }, [checkWhatsNew]);
+  }, [checkWhatsNew, setInitialStep]);
 
   return {
     whatsNew,
     isVisible,
+    initialStep,
     loading,
     isButtonDismissed,
     checkWhatsNew,

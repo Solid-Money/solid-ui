@@ -5,6 +5,7 @@ import { Href, useNavigationContainerRef, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
 import { KNOWN_HOSTS } from '@/constants/deeplink';
+import { homeLinkParamsFor, parseHomeLinkAction } from '@/constants/homeLinkParams';
 import { cardThreeDsRequestPath, cardTransactionDetailPath, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
@@ -12,6 +13,7 @@ import { registerPushToken } from '@/lib/api';
 import { pushNotificationData } from '@/lib/pushNotificationData';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
+import { VaultType } from '@/lib/types';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -108,8 +110,12 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
   '/rewards/refer': path.REFER,
   '/rewards/refer/invites': path.REFER_INVITES,
   '/savings/fuse': path.SAVINGS_FUSE,
+  '/earn': path.EARN,
   '/support': path.SUPPORT,
 };
+
+/** Vaults `/savings?vault=` may open: the savings screen's own selector values. */
+const LINKABLE_VAULTS: readonly string[] = Object.values(VaultType);
 
 /**
  * The screen a push's deep link names, or undefined if it names none.
@@ -124,9 +130,13 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
  * something a user supplied is not the day to start looking for the control
  * point.
  *
- * `/rewards?referral=open` is the one path whose query changes the destination:
- * it is the referral sheet, which is its own Href. Everything else ignores the
- * query, which by then is only the campaign.
+ * Three paths read their query, because it is what picks the destination:
+ * `/rewards?referral=open` is the referral sheet; `/savings?vault=eur` is that
+ * vault's page (Euro yield); and `/` carries the one-shot Home params
+ * (`constants/homeLinkParams`) that open What's New on a given page, the
+ * deposit sheet or the spend-mode selector. Each is read through its own
+ * allowlist, and only the params it names are passed on. Everything else
+ * ignores the query, which by then is only the campaign.
  *
  * Returns undefined rather than throwing for a malformed, foreign or
  * unrecognised link so the caller falls back to the `type` switch: a link we
@@ -150,6 +160,18 @@ function routeForLink(link?: string): Href | undefined {
 
     if (pathname === '/rewards' && url.searchParams.get('referral') === 'open') {
       return path.REFERRAL_PROGRAM;
+    }
+
+    if (pathname === '/savings') {
+      const vault = url.searchParams.get('vault');
+      if (vault && LINKABLE_VAULTS.includes(vault)) {
+        return { pathname: '/savings', params: { vault } } as Href;
+      }
+    }
+
+    if (pathname === '/') {
+      const action = parseHomeLinkAction(param => url.searchParams.get(param));
+      if (action) return { pathname: '/', params: homeLinkParamsFor(action) } as Href;
     }
 
     return ROUTE_BY_LINK_PATH[pathname];

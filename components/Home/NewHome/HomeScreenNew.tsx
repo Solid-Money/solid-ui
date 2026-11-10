@@ -33,6 +33,7 @@ import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHomeLinkAction } from '@/hooks/useHomeLinkAction';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -120,6 +121,15 @@ export default function HomeScreenNew() {
     }
     router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
   }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide]);
+
+  // `?whatsNew=`, `?deposit=` and `?spendMode=` open what a push or link was
+  // about over this screen (`constants/homeLinkParams`).
+  useHomeLinkAction({
+    isCardKnown: !isCardStatusLoading,
+    hasCard: userHasCard,
+    isSpendModeKnown: !spendModeFigures.isLoading,
+    canChangeMode: spendModeFigures.canChangeMode,
+  });
 
   const {
     isLoading: isLoadingTokens,

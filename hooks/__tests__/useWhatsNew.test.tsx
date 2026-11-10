@@ -79,3 +79,109 @@ describe('useWhatsNew auto-open', () => {
     act(() => renderer!.unmount());
   });
 });
+
+describe('useWhatsNew opening a linked page', () => {
+  const ID = '6ac4df9322b1a60a4458ab80';
+  const step = (title: string) => ({ title, text: '', imageUrl: '' });
+  const active: WhatsNew = {
+    ...announcement,
+    _id: ID,
+    showOnLoad: false,
+    steps: [step('Card'), step('Euro yield'), step('Credit')],
+  };
+
+  const render = async () => {
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready={false} />);
+    });
+    return renderer!;
+  };
+
+  const request = async (id: string, page: number) => {
+    await act(async () => {
+      useWhatsNewStore.getState().requestWhatsNew(id, page);
+    });
+  };
+
+  beforeEach(() => {
+    mockStorage.clear();
+    useWhatsNewStore.setState({
+      whatsNew: active,
+      isVisible: false,
+      initialStep: 0,
+      request: null,
+    });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
+  });
+
+  it('opens the announcement on the page the link named', async () => {
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      isVisible: true,
+      initialStep: 2,
+      request: null,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens on the last page when the link names one that was since removed', async () => {
+    const renderer = await render();
+    await request(ID, 7);
+
+    expect(useWhatsNewStore.getState().initialStep).toBe(2);
+    act(() => renderer.unmount());
+  });
+
+  it('opens the announcement that replaced the linked one on its first page', async () => {
+    const replacement: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
+    const refetch = jest.fn().mockResolvedValue({ data: replacement });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+    useWhatsNewStore.setState({ whatsNew: null });
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(refetch).toHaveBeenCalled();
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: replacement,
+      isVisible: true,
+      initialStep: 0,
+      request: null,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens nothing when no announcement is active', async () => {
+    const refetch = jest.fn().mockResolvedValue({ data: null });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+    useWhatsNewStore.setState({ whatsNew: null });
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    act(() => renderer.unmount());
+  });
+
+  it('starts the next opening at the top once the linked one is closed', async () => {
+    const seen: ReturnType<typeof useWhatsNew>[] = [];
+    const Capture = () => {
+      seen.push(useWhatsNew(false));
+      return null;
+    };
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Capture />);
+    });
+    await request(ID, 1);
+    expect(useWhatsNewStore.getState().initialStep).toBe(1);
+
+    act(() => seen[seen.length - 1].closeWhatsNew());
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, initialStep: 0 });
+    act(() => renderer!.unmount());
+  });
+});
