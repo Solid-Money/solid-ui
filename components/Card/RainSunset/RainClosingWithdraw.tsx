@@ -27,9 +27,7 @@ import { getAsset } from '@/lib/assets';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
-import { formatClosingBalance, formatClosingDate } from '@/lib/utils/rainSunset';
-
-import type { CardCollateralTokenBalanceDto } from '@/lib/types';
+import { formatClosingBalance, formatClosingDate, tokenAmount } from '@/lib/utils/rainSunset';
 
 /** The token-logo pop from Figma's motion (cubic-bezier(0.22, 1, 0.36, 1), 18%→39% of 2s). */
 const POP_DELAY_MS = 360;
@@ -56,14 +54,6 @@ const TokenLogoPop = ({ symbol, index }: { symbol: string; index: number }) => {
   );
 };
 
-/** One token's withdrawable amount, as the decimal string the withdrawal takes. */
-function tokenAmount(token: CardCollateralTokenBalanceDto, capUsd: number | undefined): string {
-  const full = formatUnits(BigInt(token.rawBalance || '0'), token.decimals);
-  if (capUsd === undefined || capUsd >= token.balanceUsd) return full;
-  // Rain will not release collateral its credit line still needs: take what it allows.
-  return (Math.floor(capUsd * 100) / 100).toFixed(2);
-}
-
 type Phase =
   | { kind: 'review' }
   | { kind: 'withdrawing'; step: number }
@@ -83,7 +73,7 @@ export function RainClosingWithdraw() {
   const queryClient = useQueryClient();
   const { user } = useUser();
   const { sunset } = useRainSunset();
-  const { data: collateral, isLoading, refetch } = useCardCollateralAvailable();
+  const { data: collateral, isLoading, isError, refetch } = useCardCollateralAvailable();
   const { withdrawCollateral } = useWithdrawRainCollateral();
   const [phase, setPhase] = useState<Phase>({ kind: 'review' });
 
@@ -96,15 +86,30 @@ export function RainClosingWithdraw() {
   );
   const totalUsd = tokens.reduce((sum, token) => sum + token.balanceUsd, 0);
   const closesOn = formatClosingDate(sunset?.closesAt);
+  // No answer at all is not an empty card: say so and offer to read it again.
+  const unreadable = !collateral && isError;
 
   const goToCard = () => router.replace(path.CARD_INFO);
 
-  const withdrawAll = async () => {
+  /**
+   * Withdraw every token from `start` on. A retry after a failure resumes at
+   * the token that failed, with the cap and the total already moved carried
+   * over: the tokens before it are empty now, so starting again from the first
+   * would ask for money that is no longer there.
+   */
+  const withdrawAll = async (
+    start: { index: number; cap: number | undefined; moved: number } = {
+      index: 0,
+      cap: collateral?.spendingPowerUsd,
+      moved: 0,
+    },
+  ) => {
     if (!user?.safeAddress || tokens.length === 0) return;
-    let remainingCap = collateral?.spendingPowerUsd;
-    let moved = 0;
+    let remainingCap = start.cap;
+    let moved = start.moved;
+    let index = start.index;
     try {
-      for (let index = 0; index < tokens.length; index++) {
+      for (; index < tokens.length; index++) {
         const token = tokens[index];
         if (remainingCap !== undefined && remainingCap < 0.01) break;
         setPhase({ kind: 'withdrawing', step: index });
@@ -120,12 +125,15 @@ export function RainClosingWithdraw() {
       }
       setPhase({ kind: 'done', usd: moved });
     } catch (error) {
-      setPhase(moved > 0 ? { kind: 'done', usd: moved } : { kind: 'review' });
+      // Back to the review, which re-reads the card and shows what is still on
+      // it — never "done", which would say the whole balance is in the wallet.
+      setPhase({ kind: 'review' });
       if (!isCancelledByUser(error)) {
+        const resumeFrom = { index, cap: remainingCap, moved };
         void showFailureSheet(error, {
           action: 'card_withdraw',
           title: 'Couldn’t withdraw your card balance',
-          onRetry: () => void withdrawAll(),
+          onRetry: () => void withdrawAll(resumeFrom),
         });
       }
     } finally {
@@ -208,6 +216,10 @@ export function RainClosingWithdraw() {
             <Text className="text-[15px] text-white/60">Your card balance</Text>
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
+            ) : unreadable ? (
+              <Text className="text-center text-[17px] font-medium text-white">
+                We couldn’t read your card balance
+              </Text>
             ) : (
               <Text className="text-[48px] font-semibold text-white">
                 {formatClosingBalance(totalUsd)}
@@ -272,16 +284,18 @@ export function RainClosingWithdraw() {
           <Button
             variant="brand"
             className="h-[54px] rounded-full"
-            disabled={withdrawing || isLoading || tokens.length === 0}
-            onPress={() => void withdrawAll()}
+            disabled={withdrawing || isLoading || (!unreadable && tokens.length === 0)}
+            onPress={() => (unreadable ? void refetch() : void withdrawAll())}
           >
             {withdrawing ? (
               <ActivityIndicator color="#000000" />
             ) : (
               <Text className="text-[17px] font-semibold text-black">
-                {tokens.length === 0 && !isLoading
-                  ? 'Nothing to withdraw'
-                  : `Withdraw ${formatClosingBalance(totalUsd)}`}
+                {unreadable
+                  ? 'Try again'
+                  : tokens.length === 0 && !isLoading
+                    ? 'Nothing to withdraw'
+                    : `Withdraw ${formatClosingBalance(totalUsd)}`}
               </Text>
             )}
           </Button>

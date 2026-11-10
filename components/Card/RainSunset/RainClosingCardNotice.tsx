@@ -6,7 +6,12 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useRainSunset } from '@/hooks/useRainSunset';
-import { cardNoticeCopy, formatClosingBalance, hasClosingBalance } from '@/lib/utils/rainSunset';
+import {
+  cardNoticeCopy,
+  formatClosingBalance,
+  hasClosingBalance,
+  isClosingBalanceUnknown,
+} from '@/lib/utils/rainSunset';
 import { useRainSunsetStore } from '@/store/useRainSunsetStore';
 
 const AMBER = '#F2B544';
@@ -44,11 +49,12 @@ const NoticeButton = ({
  * Two versions, picked by the backend from the stored country: where the new
  * card partner serves the user, the notice offers the new card now; elsewhere
  * it says cards end in their country and offers the withdrawal. Withdraw shows
- * whenever there is money on the card; "What happens next" opens the sheet.
+ * whenever there is money on the card, or a balance that could not be read —
+ * never hidden as if the card were empty; "What happens next" opens the sheet.
  */
 const RainClosingCardNotice = () => {
   const router = useRouter();
-  const { sunset, cardStatus, balanceUsd } = useRainSunset();
+  const { sunset, cardStatus, balanceUsd, isBalanceLoading } = useRainSunset();
   const openSheet = useRainSunsetStore(state => state.setSheetOpen);
 
   if (!sunset?.notice || !sunset.hasRainCard) return null;
@@ -57,8 +63,13 @@ const RainClosingCardNotice = () => {
     country => country.code === cardStatus?.country?.toUpperCase(),
   )?.name;
   const { title, message } = cardNoticeCopy(sunset, balanceUsd, countryName);
-  const hasBalance = hasClosingBalance(balanceUsd);
-  const withdrawLabel = `Withdraw ${formatClosingBalance(balanceUsd ?? 0)}`;
+  // A read that failed still offers the withdrawal (its screen re-reads); one
+  // still in flight waits rather than flashing a button that may go away.
+  const balanceUnknown = isClosingBalanceUnknown(balanceUsd);
+  const hasBalance = hasClosingBalance(balanceUsd) || (balanceUnknown && !isBalanceLoading);
+  const withdrawLabel = balanceUnknown
+    ? 'Withdraw card balance'
+    : `Withdraw ${formatClosingBalance(balanceUsd ?? 0)}`;
 
   const goToNewCard = () => router.push(path.CARD_NEW_CARD);
   const goToWithdraw = () => router.push(path.CARD_CLOSING_WITHDRAW);

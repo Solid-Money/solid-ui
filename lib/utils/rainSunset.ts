@@ -1,4 +1,10 @@
-import type { CardStatusResponse, RainSunsetStatus } from '@/lib/types';
+import { formatUnits } from 'viem';
+
+import type {
+  CardCollateralTokenBalanceDto,
+  CardStatusResponse,
+  RainSunsetStatus,
+} from '@/lib/types';
 
 /**
  * Rain sunset: what the app says to a cardholder whose card is closing.
@@ -61,6 +67,16 @@ export function hasClosingBalance(balanceUsd: number | null | undefined): boolea
   return balanceUsd >= 0.01;
 }
 
+/**
+ * Whether the balance on the closing card could not be read (the collateral
+ * read failed or has not answered). Never the same as an empty card: telling a
+ * cardholder there is nothing to withdraw, and letting them close the notice,
+ * is wrong whenever there is.
+ */
+export function isClosingBalanceUnknown(balanceUsd: number | null | undefined): boolean {
+  return balanceUsd == null || !Number.isFinite(balanceUsd);
+}
+
 /** Whether the balance is high enough to block issuing the new card. */
 export function blocksNewCard(
   balanceUsd: number | null | undefined,
@@ -87,7 +103,8 @@ export function hasStartedNewCard(sunset: RainSunsetStatus | null | undefined): 
  *
  * - `new-card`: they can get the new card now — the design's "Get your new
  *   Solid card" state, offered from day one rather than after the close.
- * - `closing-balance`: no new card for them yet, and money left on the card.
+ * - `closing-balance`: no new card for them yet, and money left on the card —
+ *   or a balance that could not be read, which is never shown as empty.
  * - `closing-empty`: no new card for them yet and nothing left to withdraw.
  */
 export type RainClosingBannerState = 'new-card' | 'closing-balance' | 'closing-empty';
@@ -99,6 +116,7 @@ export function rainClosingBannerState(
   if (!sunset) return null;
   if (sunset.newCardAvailable) return 'new-card';
   if (!sunset.notice) return null;
+  if (isClosingBalanceUnknown(balanceUsd)) return 'closing-balance';
   return hasClosingBalance(balanceUsd) ? 'closing-balance' : 'closing-empty';
 }
 
@@ -144,7 +162,9 @@ export function homeBannerCopy(
     case 'closing-balance':
       return {
         title: `Your card closes ${closes}`,
-        message: `Withdraw your ${formatClosingBalance(balanceUsd ?? 0)} card balance before then.`,
+        message: isClosingBalanceUnknown(balanceUsd)
+          ? 'Withdraw your card balance before then.'
+          : `Withdraw your ${formatClosingBalance(balanceUsd ?? 0)} card balance before then.`,
       };
     case 'closing-empty':
       return {
@@ -162,9 +182,11 @@ export function cardNoticeCopy(
 ): { title: string; message: string } {
   const date = formatClosingDate(sunset.closesAt);
   const title = date ? `This card closes on ${date.long}` : 'This card is closing';
-  const balance = hasClosingBalance(balanceUsd)
-    ? `Withdraw your ${formatClosingBalance(balanceUsd ?? 0)} to your wallet before then. `
-    : '';
+  const balance = isClosingBalanceUnknown(balanceUsd)
+    ? 'Withdraw your card balance to your wallet before then. '
+    : hasClosingBalance(balanceUsd)
+      ? `Withdraw your ${formatClosingBalance(balanceUsd ?? 0)} to your wallet before then. `
+      : '';
 
   if (sunset.newCardAvailable) {
     return {
@@ -197,4 +219,29 @@ export function routesToNewCard(cardStatus: CardStatusResponse | null | undefine
   const sunset = cardStatus?.rainSunset;
   if (!sunset || sunset.hasRainCard) return false;
   return sunset.newCardAvailable || Boolean(sunset.migration);
+}
+
+/**
+ * One token's withdrawable amount, as the decimal string the withdrawal takes.
+ *
+ * When Rain caps the withdrawal below the token's balance (it will not release
+ * collateral its credit line still needs), the cap is taken in whole cents,
+ * rounded down, and scaled to the token's own units in integers — never
+ * floating-point token maths — and never past the balance. Card collateral is
+ * a dollar stablecoin, so a cent of cap is a cent of token.
+ */
+export function tokenAmount(
+  token: Pick<CardCollateralTokenBalanceDto, 'rawBalance' | 'decimals' | 'balanceUsd'>,
+  capUsd: number | undefined,
+): string {
+  const raw = BigInt(token.rawBalance || '0');
+  if (capUsd === undefined || capUsd >= token.balanceUsd) {
+    return formatUnits(raw, token.decimals);
+  }
+  const cents = BigInt(Math.max(0, Math.floor(capUsd * 100)));
+  const capped =
+    token.decimals >= 2
+      ? cents * 10n ** BigInt(token.decimals - 2)
+      : cents / 10n ** BigInt(2 - token.decimals);
+  return formatUnits(capped < raw ? capped : raw, token.decimals);
 }

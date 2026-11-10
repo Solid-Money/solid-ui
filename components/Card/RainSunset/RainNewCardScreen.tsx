@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Redirect, useRouter } from 'expo-router';
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRainSunset } from '@/hooks/useRainSunset';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
@@ -29,6 +30,9 @@ import { resolveWirexOnboardingStep } from '@/lib/utils/wirexOnboarding';
 import { useKycStore } from '@/store/useKycStore';
 
 import type { AssetPath } from '@/lib/assets';
+
+/** The activate screen's cadence: the move is waiting on Wirex, not on the user. */
+const WAITING_POLL_MS = 3000;
 
 const BENEFITS: { icon: AssetPath; title: string; description: string }[] = [
   {
@@ -147,6 +151,17 @@ export function RainNewCardScreen() {
   const migration = sunset?.migration;
   const step = migration ? resolveWirexOnboardingStep(migration) : 'verify';
 
+  // While Wirex decides or opens the card nothing on this screen asks for
+  // anything, so it re-reads the status itself — as the activate screen does —
+  // instead of sitting on the waiting screen until something else refetches.
+  const waiting = step === 'checking' || step === 'creating';
+  useCardStatus({ refetchInterval: waiting ? WAITING_POLL_MS : undefined });
+
+  // "Try again" on a failed activation: back to the approval, which submits the
+  // consents and asks for the card again (the activate screen's retry opens the
+  // same screen). Re-reading the status alone would retry nothing.
+  const [retryingActivation, setRetryingActivation] = useState(false);
+
   const tracked = useRef(false);
   useEffect(() => {
     if (tracked.current || !sunset) return;
@@ -195,12 +210,20 @@ export function RainNewCardScreen() {
     case 'support':
       return <WirexNeedsSupport onBack={goToCard} />;
     case 'activation-failed':
+      if (retryingActivation) return <WirexCardApproval migrationStatus={migration} />;
       return (
         <WirexActivationFailed
           failure={migration?.activationFailure}
           isBlocked={Boolean(migration?.activationBlocked)}
           blockedReason={migration?.activationBlockedReason ?? ''}
-          onRetry={() => router.replace(path.CARD_NEW_CARD)}
+          onRetry={() => {
+            track(TRACKING_EVENTS.CARD_ACTIVATION_RETRIED, {
+              failure_code: migration?.activationFailure?.code,
+              failure_terminal: migration?.activationFailure?.terminal,
+              rain_sunset: true,
+            });
+            setRetryingActivation(true);
+          }}
           onBack={goToCard}
         />
       );

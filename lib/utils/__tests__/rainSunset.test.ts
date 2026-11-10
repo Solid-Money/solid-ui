@@ -6,8 +6,10 @@ import {
   formatClosingDate,
   hasClosingBalance,
   homeBannerCopy,
+  isClosingBalanceUnknown,
   rainClosingBannerState,
   routesToNewCard,
+  tokenAmount,
 } from '@/lib/utils/rainSunset';
 
 import type { CardStatusResponse, RainSunsetStatus } from '@/lib/types';
@@ -75,6 +77,19 @@ describe('rainSunset', () => {
       expect(rainClosingBannerState(sunset(), 0)).toBe('closing-empty');
     });
 
+    it('never calls a balance it could not read empty', () => {
+      expect(isClosingBalanceUnknown(null)).toBe(true);
+      expect(isClosingBalanceUnknown(undefined)).toBe(true);
+      expect(isClosingBalanceUnknown(0)).toBe(false);
+      expect(rainClosingBannerState(sunset(), null)).toBe('closing-balance');
+      expect(homeBannerCopy('closing-balance', sunset(), null).message).toBe(
+        'Withdraw your card balance before then.',
+      );
+      expect(cardNoticeCopy(sunset(), null, 'Egypt').message).toContain(
+        'Withdraw your card balance to your wallet before then.',
+      );
+    });
+
     it('shows nothing when the notice is off and there is no new card', () => {
       expect(rainClosingBannerState(sunset({ notice: false }), 10)).toBeNull();
       expect(rainClosingBannerState(null, 10)).toBeNull();
@@ -124,6 +139,29 @@ describe('rainSunset', () => {
 
     it('says "closing" with no announced date', () => {
       expect(cardNoticeCopy(sunset({ closesAt: null }), 0).title).toBe('This card is closing');
+    });
+  });
+
+  describe('tokenAmount', () => {
+    const usdc = { rawBalance: '248500000', decimals: 6, balanceUsd: 248.5 };
+
+    it('takes the whole balance when nothing caps it', () => {
+      expect(tokenAmount(usdc, undefined)).toBe('248.5');
+      expect(tokenAmount(usdc, 300)).toBe('248.5');
+    });
+
+    it('takes a cap in whole cents, rounded down, in the token’s own units', () => {
+      expect(tokenAmount(usdc, 100.129)).toBe('100.12');
+      // 0.29 * 100 is 28.999… in floating point: still never above the cap.
+      expect(tokenAmount(usdc, 0.29)).toBe('0.28');
+      expect(
+        tokenAmount({ ...usdc, decimals: 18, rawBalance: '248500000000000000000' }, 12.34),
+      ).toBe('12.34');
+    });
+
+    it('never asks for more than the token holds, or less than nothing', () => {
+      expect(tokenAmount({ rawBalance: '5000', decimals: 6, balanceUsd: 10 }, 9.99)).toBe('0.005');
+      expect(tokenAmount(usdc, -1)).toBe('0');
     });
   });
 

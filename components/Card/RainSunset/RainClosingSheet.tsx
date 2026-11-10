@@ -7,7 +7,12 @@ import SheetIconButton from '@/components/Card/NewCardDetails/SpendMode/SheetIco
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useRainSunset } from '@/hooks/useRainSunset';
-import { formatClosingBalance, formatClosingDate, hasClosingBalance } from '@/lib/utils/rainSunset';
+import {
+  formatClosingBalance,
+  formatClosingDate,
+  hasClosingBalance,
+  isClosingBalanceUnknown,
+} from '@/lib/utils/rainSunset';
 import { useRainSunsetStore } from '@/store/useRainSunsetStore';
 
 import type { RainSunsetStatus } from '@/lib/types';
@@ -33,9 +38,13 @@ interface TimelineStep {
 /** The three steps, in the order they happen for this user. */
 function timeline(sunset: RainSunsetStatus, balanceUsd: number | null): TimelineStep[] {
   const date = formatClosingDate(sunset.closesAt);
-  const balance = hasClosingBalance(balanceUsd)
-    ? `Move your ${formatClosingBalance(balanceUsd ?? 0)} to your wallet.`
-    : 'There is nothing left on this card to move.';
+  // An unread balance is never "nothing left": say what to do, not how much.
+  const toMove = isClosingBalanceUnknown(balanceUsd) || hasClosingBalance(balanceUsd);
+  const balance = isClosingBalanceUnknown(balanceUsd)
+    ? 'Move your card balance to your wallet.'
+    : hasClosingBalance(balanceUsd)
+      ? `Move your ${formatClosingBalance(balanceUsd ?? 0)} to your wallet.`
+      : 'There is nothing left on this card to move.';
 
   if (sunset.newCardAvailable) {
     return [
@@ -49,9 +58,7 @@ function timeline(sunset: RainSunsetStatus, balanceUsd: number | null): Timeline
         label: date ? `Before ${date.long}` : 'Before your new card is issued',
         labelColor: AMBER,
         title: 'Withdraw your balance',
-        body: hasClosingBalance(balanceUsd)
-          ? `${balance} Your new card is issued once this one is empty.`
-          : balance,
+        body: toMove ? `${balance} Your new card is issued once this one is empty.` : balance,
       },
       {
         label: date ? date.long : 'When your new card is ready',
@@ -117,17 +124,20 @@ export const RainClosingSheet = () => {
   const router = useRouter();
   const isOpen = useRainSunsetStore(state => state.isSheetOpen);
   const setOpen = useRainSunsetStore(state => state.setSheetOpen);
-  const { sunset, balanceUsd } = useRainSunset();
+  const { sunset, balanceUsd, isBalanceLoading } = useRainSunset();
 
   if (!sunset) return null;
 
   const steps = timeline(sunset, balanceUsd);
-  const hasBalance = hasClosingBalance(balanceUsd);
+  const balanceUnknown = isClosingBalanceUnknown(balanceUsd);
+  const hasBalance = hasClosingBalance(balanceUsd) || (balanceUnknown && !isBalanceLoading);
   const primary = sunset.newCardAvailable
     ? { label: 'Get your new card', href: path.CARD_NEW_CARD }
     : hasBalance
       ? {
-          label: `Withdraw ${formatClosingBalance(balanceUsd ?? 0)}`,
+          label: balanceUnknown
+            ? 'Withdraw card balance'
+            : `Withdraw ${formatClosingBalance(balanceUsd ?? 0)}`,
           href: path.CARD_CLOSING_WITHDRAW,
         }
       : null;
