@@ -1,7 +1,7 @@
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
-import { EURC_TOKENS } from '@/constants/bridge';
+import { EURC_ETHEREUM_ADDRESS, EURC_TOKENS } from '@/constants/bridge';
 
 import type { AssetPath } from '@/lib/assets';
 
@@ -59,6 +59,13 @@ export type WalletDepositTokenConfig = {
  * A Wirex cardholder's USDC, USDT and EURC go to a minted address instead, which
  * the pipeline delivers to their Safe on Fuse (EURC: on Base).
  *
+ * rhino.fi takes these into the wallet from the other chains it has a route
+ * from, and always pays the Safe on Base: USDC, USDT (as USDC), EURC and ETH
+ * (as WETH, through our wallet deposit address on Base), each of use there. A
+ * row on Base itself is our own (see `getWalletOwnAddress`). BTC sent on Bitcoin
+ * arrives as WBTC in the Safe on Base; WBTC is retired from this list, but kept
+ * visible (see `RETIRED_DEPOSIT_CONTRACTS`), so it shows once it lands.
+ *
  * Add a token or chain here only if it is one of the two. ETH anywhere but
  * Ethereum is neither (the Base cash module takes WETH, not ETH), nor is WETH off
  * Ethereum and Base, so they are not offered. SOL and cbZEC are wrapped ERC-20s:
@@ -100,20 +107,27 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id],
   },
   {
-    // On the chains `EURC_TOKENS` lists. A Wirex cardholder's goes through the
-    // pipeline to their Safe on Base, where the card spends it on euro purchases;
-    // anyone else's lands in the Safe on Base, where soEUR takes it.
+    // On the chains `EURC_TOKENS` lists, where it lands in the Safe on Base as
+    // sent: the card spends it on euro purchases, and soEUR takes it. On
+    // Ethereum too, through rhino.fi, which pays it to the same Safe on Base;
+    // not in `EURC_TOKENS`, which would offer it to card funding and savings.
     symbol: 'EURC',
     name: 'Euro Coin',
     group: 'stablecoins',
     icon: 'images/eurc.png',
-    contracts: Object.fromEntries(
-      Object.entries(EURC_TOKENS).map(([chainId, token]) => [chainId, token.address]),
-    ),
-    releasedOn: Object.keys(EURC_TOKENS).map(Number),
+    contracts: {
+      [mainnet.id]: EURC_ETHEREUM_ADDRESS,
+      ...Object.fromEntries(
+        Object.entries(EURC_TOKENS).map(([chainId, token]) => [chainId, token.address]),
+      ),
+    },
+    releasedOn: [mainnet.id, ...Object.keys(EURC_TOKENS).map(Number)],
   },
   {
-    // On Ethereum alone, where soETH takes it.
+    // Everyone sends it on Ethereum. Sent anywhere through rhino.fi it arrives as
+    // WETH in the Safe on Base, which the card spends: Base itself goes to our
+    // wallet deposit address there, which wraps it. Base, Arbitrum and BNB Chain
+    // are for those given the new deposit tokens for now.
     symbol: 'ETH',
     name: 'Ether',
     group: 'crypto',
@@ -121,6 +135,9 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     aliases: ['Ethereum'],
     contracts: {
       [mainnet.id]: NATIVE_COIN,
+      [base.id]: NATIVE_COIN,
+      [arbitrum.id]: NATIVE_COIN,
+      [bsc.id]: NATIVE_COIN,
     },
     releasedOn: [mainnet.id],
   },
@@ -133,6 +150,16 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [fuse.id]: NATIVE_COIN,
     },
     releasedOn: [fuse.id],
+  },
+  {
+    // Native BTC, sent on Bitcoin itself. No contract on any chain the list has a
+    // row for, so it is offered under "More networks" alone, once rhino.fi takes
+    // it there: its Bitcoin address pays WBTC to the Safe on Base.
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    group: 'crypto',
+    icon: 'images/btc.png',
+    contracts: {},
   },
   {
     symbol: 'cbBTC',

@@ -20,6 +20,25 @@ jest.mock('@/hooks/useCardProvider', () => ({
 jest.mock('@/hooks/useDepositTokensAccess', () => ({
   useDepositTokensAccess: () => ({ isEnabled: true, isLoading: false }),
 }));
+// rhino.fi's routes, which decide every row off Fuse: in, so Base's USDC is offered.
+jest.mock('@/components/DepositOption/WalletDepositAddress/useWalletDepositViewer', () => {
+  const { RHINO_ASSETS } = jest.requireActual('@/lib/__tests__/rhinoFixtures');
+  return {
+    useWalletDepositViewer: () => ({
+      provider: null,
+      hasNewTokens: true,
+      rhino: { status: 'ready', assets: RHINO_ASSETS },
+    }),
+  };
+});
+jest.mock('@/hooks/useRhinoDepositAssets', () => ({
+  useOfferedRhinoDepositAssets: () => ({ status: 'ready', retry: jest.fn() }),
+}));
+jest.mock('@/components/DepositOption/RhinoDeposit/RhinoChainIcon', () => 'RhinoChainIcon');
+jest.mock(
+  '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice',
+  () => 'RhinoNetworksNotice',
+);
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: (state: any) => unknown) => selector(mockDeposit),
 }));

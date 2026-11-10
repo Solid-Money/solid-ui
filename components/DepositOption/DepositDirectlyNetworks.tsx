@@ -4,14 +4,17 @@ import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
+import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { getDepositDirectlyTokens, useDepositDirectlyRhino } from '@/hooks/useDepositDirectlyRhino';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { showErrorToast } from '@/lib/errors';
+import { getRhinoListNotice, isOfferedRhinoRow } from '@/lib/rhinoDeposit';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const ESTIMATED_TIMES: Record<number, string> = {
@@ -19,6 +22,17 @@ const ESTIMATED_TIMES: Record<number, string> = {
 };
 const DEFAULT_ESTIMATED_TIME = 'Estimated speed: 30 min';
 
+/** The stablecoins a chain carries, in the order the token step lists them. */
+const DEPOSIT_DIRECTLY_TOKENS = ['USDC', 'USDT'];
+
+/**
+ * "Deposit directly" (savings, mobile): pick the chain to send USDC or USDT on.
+ *
+ * Every chain but Fuse is rhino.fi's soUSD route, which shows the user's
+ * rhino.fi address; Fuse mints our own direct-deposit session, as before. A
+ * chain with no address for either token is not offered, and while rhino.fi's
+ * routes are not in, or cannot be had, a loader or a retry stands in for them.
+ */
 const DepositDirectlyNetworks = () => {
   const { setModal, setDirectDepositSession } = useDepositStore(
     useShallow(state => ({
@@ -28,13 +42,33 @@ const DepositDirectlyNetworks = () => {
   );
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
+  const { rhino, openRhino, clearRhino } = useDepositDirectlyRhino();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
   const hasTrackedNetworkView = useRef(false);
 
-  const sortedNetworks = useMemo(
-    () => Object.entries(BRIDGE_TOKENS).sort((a, b) => a[1].sort - b[1].sort),
-    [],
+  const rows = useMemo(
+    () =>
+      Object.entries(BRIDGE_TOKENS)
+        .sort((a, b) => a[1].sort - b[1].sort)
+        .map(([id, network]) => {
+          const chainId = Number(id);
+          const tokens = getDepositDirectlyTokens(
+            rhino,
+            chainId,
+            DEPOSIT_DIRECTLY_TOKENS.filter(token => network.tokens?.[token]),
+          );
+          return { chainId, network, tokens };
+        }),
+    [rhino],
   );
+  const sortedNetworks = useMemo(
+    () =>
+      rows
+        .filter(({ tokens }) => tokens.some(({ state }) => isOfferedRhinoRow(state)))
+        .map(({ chainId, network }) => [String(chainId), network] as const),
+    [rows],
+  );
+  const notice = getRhinoListNotice(rows.flatMap(({ tokens }) => tokens.map(({ state }) => state)));
 
   // Track when network selection screen is viewed
   useEffect(() => {
@@ -50,6 +84,9 @@ const DepositDirectlyNetworks = () => {
 
   const handlePress = async (chainId: number) => {
     const network = BRIDGE_TOKENS[chainId];
+    const offeredTokens = (rows.find(row => row.chainId === chainId)?.tokens ?? []).filter(
+      ({ state }) => isOfferedRhinoRow(state),
+    );
 
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       user_id: user?.userId,
@@ -66,7 +103,7 @@ const DepositDirectlyNetworks = () => {
       chain_id: chainId,
       network_name: network?.name,
       estimated_time: ESTIMATED_TIMES[chainId] ?? DEFAULT_ESTIMATED_TIME,
-      has_multiple_tokens: !!(network?.tokens?.USDC && network?.tokens?.USDT),
+      has_multiple_tokens: offeredTokens.length > 1,
     });
 
     try {
@@ -75,20 +112,18 @@ const DepositDirectlyNetworks = () => {
       // Store chainId in session
       setDirectDepositSession({ chainId });
 
-      // Check if this chain has multiple tokens
-      const hasMultipleTokens = network?.tokens?.USDC && network?.tokens?.USDT;
-
-      if (hasMultipleTokens) {
+      if (offeredTokens.length > 1) {
         // Navigate to token selection
         setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS);
         setSelectedChainId(null);
-      } else {
-        // Single token available - get the first available token
-        const availableToken = network?.tokens?.USDC
-          ? 'USDC'
-          : network?.tokens?.USDT
-            ? 'USDT'
-            : 'USDC';
+      } else if (offeredTokens[0]?.state.kind === 'rhino') {
+        // rhino.fi's address for it: no session to mint.
+        setSelectedChainId(null);
+        openRhino(offeredTokens[0].state.selection);
+      } else if (offeredTokens[0]) {
+        // Fuse: our own session, as before.
+        const availableToken = offeredTokens[0].token;
+        clearRhino();
 
         setDirectDepositSession({ selectedToken: availableToken });
 
@@ -106,6 +141,8 @@ const DepositDirectlyNetworks = () => {
         });
 
         setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
+      } else {
+        setSelectedChainId(null);
       }
     } catch (error) {
       console.error('Failed to create direct deposit session:', error);
@@ -138,6 +175,15 @@ const DepositDirectlyNetworks = () => {
             />
           );
         })}
+        {notice ? (
+          <RhinoNetworksNotice
+            notice={notice}
+            symbol="USDC or USDT"
+            hasRows={sortedNetworks.length > 0}
+            onRetry={rhino.retry}
+            className="rounded-[15px] bg-card"
+          />
+        ) : null}
       </View>
     </View>
   );

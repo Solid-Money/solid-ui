@@ -4,33 +4,66 @@ import {
   formatWalletDepositMinimum,
   getAllWalletDepositTokens,
   getDefaultWalletDepositSelection,
+  getWalletDepositExtraNetworks,
+  getWalletDepositExtraRow,
   getWalletDepositMinimum,
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
+  getWalletDepositNetworksNotice,
+  getWalletDepositRow,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  getWalletOwnAddress,
+  getWalletRhinoSelection,
   groupWalletDepositTokens,
   matchesWalletDepositSearch,
   resolveWalletDepositChain,
+  resolveWalletDepositExtraChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
-  usesDirectDepositAddress,
-  WalletDepositViewer,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
-import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
-import { VAULTS } from '@/constants/vaults';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { isWalletDepositContract, WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
-import { CardProvider, DepositAsset } from '@/lib/types';
+import {
+  RHINO_ASSETS,
+  RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
+  RHINO_ASSETS_WITH_BITCOIN,
+  rhinoRoute,
+  rhinoToken,
+} from '@/lib/__tests__/rhinoFixtures';
+import { RhinoAssetsState } from '@/lib/rhinoDeposit';
+import { CardProvider, DepositAsset, RhinoDepositAssetsResponse } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
 // which chains and currencies are offered and what each pairing's floor is.
 jest.mock('@/lib/assets', () => ({ getAsset: (path: string) => path }));
 
 const symbolsOf = (tokens: { symbol: string }[]) => tokens.map(token => token.symbol);
+/**
+ * rhino.fi's routes as the backend lists them (see `rhinoFixtures`): every row
+ * but Fuse's is decided by them.
+ */
+const READY: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS };
+/** Everyone on rhino.fi's routes, without the new tokens. */
+const BASIC = { rhino: READY };
 /** Someone offered the new deposit tokens, as everyone is on qa/preview builds. */
-const ALL = { hasNewTokens: true };
-const WIREX = { provider: CardProvider.WIREX, hasNewTokens: true };
-const RAIN = { provider: CardProvider.RAIN, hasNewTokens: true };
+const ALL = { hasNewTokens: true, rhino: READY };
+/** Base's currencies, each the Safe there but ETH (see `getWalletOwnAddress`). */
+const BASE_SYMBOLS = ['USDC', 'USDT', 'EURC', 'ETH', 'cbBTC', 'cbZEC', 'AAVE', 'SOL', 'WETH'];
+/** rhino.fi's routes, less its ETH on Arbitrum. */
+const withoutArbitrumEth = (): RhinoAssetsState => ({
+  status: 'ready',
+  assets: {
+    ...RHINO_ASSETS,
+    chains: RHINO_ASSETS.chains.map(chain =>
+      chain.chain === 'ARBITRUM'
+        ? { ...chain, tokens: chain.tokens.filter(token => token.symbol !== 'ETH') }
+        : chain,
+    ),
+  },
+});
+const WIREX = { provider: CardProvider.WIREX, hasNewTokens: true, rhino: READY };
+const RAIN = { provider: CardProvider.RAIN, hasNewTokens: true, rhino: READY };
 const chainIdsOf = (networks: { chainId: number }[]) => networks.map(network => network.chainId);
 
 describe('getWalletDepositMinimum', () => {
@@ -38,6 +71,7 @@ describe('getWalletDepositMinimum', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'USDC')).toBe('10');
     expect(getWalletDepositMinimum(base.id, 'USDC')).toBe('1');
     expect(getWalletDepositMinimum(arbitrum.id, 'USDT')).toBe('1');
+    expect(getWalletDepositMinimum(bsc.id, 'USDC')).toBe('1');
   });
 
   // A floor is a number of tokens, so an asset that is not worth ~$1 a unit needs
@@ -45,14 +79,14 @@ describe('getWalletDepositMinimum', () => {
   it('overrides the chain floor for currencies that are not worth ~$1 a unit', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe('0.005');
     expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe('0.005');
-    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe('0.005');
     expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe('500');
     expect(getWalletDepositMinimum(base.id, 'cbBTC')).toBe('0.00015');
     expect(getWalletDepositMinimum(base.id, 'cbZEC')).toBe('0.01');
+    expect(getWalletDepositMinimum(base.id, 'BTC')).toBe('0.00015');
   });
 
   // Each currency the screen offers has a floor of its own, so none quotes the
-  // chain's — "Send at least 1 cbBTC" on Base.
+  // chain's — "Send at least 10 cbBTC" on Ethereum.
   it('has a floor for every currency that is not a dollar or euro stablecoin', () => {
     const stablecoins = new Set(['USDC', 'USDT', 'EURC']);
     WALLET_DEPOSIT_TOKENS.filter(token => !stablecoins.has(token.symbol)).forEach(token => {
@@ -60,6 +94,13 @@ describe('getWalletDepositMinimum', () => {
         getWalletDepositMinimum(mainnet.id, 'USDC'),
       );
     });
+  });
+
+  // The same asset on a cheaper chain: the override is by symbol, so Base does
+  // not quote 1 ETH from its chain floor.
+  it('floors ETH and WETH on Base the same as on Ethereum', () => {
+    expect(getWalletDepositMinimum(base.id, 'ETH')).toBe('0.005');
+    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe('0.005');
   });
 
   it('falls back to a floor rather than none for an unlisted chain', () => {
@@ -74,7 +115,7 @@ describe('formatWalletDepositMinimum', () => {
     expect(formatWalletDepositMinimum('48.33')).toBe('48.33');
   });
 
-  // Four decimals would print 0.0001194 cbBTC as 0.0001 — under the floor.
+  // Four decimals would print 0.0001194 WBTC as 0.0001 — under the floor.
   it('keeps two significant figures for an asset worth thousands a unit', () => {
     expect(formatWalletDepositMinimum('0.0001194')).toBe('0.00012');
     expect(formatWalletDepositMinimum('0.00015')).toBe('0.00015');
@@ -104,23 +145,9 @@ describe('formatWalletDepositMinimum', () => {
 });
 
 describe('getWalletDepositTokens', () => {
+  // Off Base and Fuse, a chain carries what rhino.fi takes from it; Base and
+  // Fuse are our own, and carry every currency they have a contract for.
   it('lists the currencies the chain actually carries', () => {
-    expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual([
-      'USDC',
-      'USDT',
-      'EURC',
-      'cbBTC',
-      'cbZEC',
-      'AAVE',
-      'SOL',
-      'WETH',
-    ]);
-    expect(symbolsOf(getWalletDepositTokens(mainnet.id, ALL))).toEqual([
-      'USDC',
-      'USDT',
-      'ETH',
-      'WETH',
-    ]);
     expect(symbolsOf(getWalletDepositTokens(polygon.id, ALL))).toEqual(['USDC', 'USDT']);
     expect(symbolsOf(getWalletDepositTokens(fuse.id, ALL))).toEqual([
       'USDC',
@@ -128,23 +155,42 @@ describe('getWalletDepositTokens', () => {
       'FUSE',
       'WFUSE',
     ]);
+    // Not a chain of the list, though rhino.fi takes dollars there.
+    expect(getWalletDepositTokens(optimism.id, ALL)).toEqual([]);
+    expect(symbolsOf(getWalletDepositTokens(bsc.id, ALL))).toEqual(['USDC', 'USDT', 'ETH']);
+    expect(symbolsOf(getWalletDepositTokens(arbitrum.id, ALL))).toEqual(['USDC', 'USDT', 'ETH']);
+    // No WETH: rhino.fi takes none, and it would stay on Ethereum in the Safe.
+    expect(symbolsOf(getWalletDepositTokens(mainnet.id, ALL))).toEqual([
+      'USDC',
+      'USDT',
+      'EURC',
+      'ETH',
+    ]);
+    expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual(BASE_SYMBOLS);
   });
 
-  // They are collateral for spending on Base, which a balance on another chain
-  // cannot be.
-  it('takes the collateral tokens on Base alone', () => {
-    ['cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol => {
-      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, WIREX))).toEqual([base.id]);
-    });
-  });
-
-  // Base's USDT, WETH and the rest are offered here only: `BRIDGE_TOKENS[base.id]`
+  // Base's USDT, ETH and the rest are offered here only: `BRIDGE_TOKENS[base.id]`
   // stays USDC alone, so card funding, savings and bridging are unchanged.
   it('offers currencies beyond what BRIDGE_TOKENS lists for the chain', () => {
     expect(Object.keys(BRIDGE_TOKENS[base.id].tokens ?? {})).toEqual(['USDC']);
     expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual(
-      expect.arrayContaining(['USDC', 'USDT', 'WETH', 'cbBTC', 'SOL']),
+      expect.arrayContaining(['USDC', 'USDT', 'ETH', 'WETH', 'cbBTC', 'cbZEC', 'SOL']),
     );
+  });
+
+  // Base and Fuse are our own, so they need nothing from rhino.fi; every other
+  // chain is rhino.fi's, and waits for its routes.
+  it('lists only what Base and Fuse take until rhino.fi’s routes are in', () => {
+    expect(symbolsOf(getWalletDepositTokens(base.id, { hasNewTokens: true }))).toEqual(
+      BASE_SYMBOLS,
+    );
+    expect(symbolsOf(getWalletDepositTokens(polygon.id, { hasNewTokens: true }))).toEqual([]);
+    expect(symbolsOf(getWalletDepositTokens(fuse.id, { hasNewTokens: true }))).toEqual([
+      'USDC',
+      'USDT',
+      'FUSE',
+      'WFUSE',
+    ]);
   });
 
   it('returns nothing for a chain that is not supported', () => {
@@ -165,7 +211,7 @@ describe('getWalletDepositTokenIcon', () => {
 });
 
 describe('getWalletDepositNetworks', () => {
-  it('names every chain the screen can offer, in display order', () => {
+  it('offers only chains with a currency to deposit, in display order', () => {
     expect(chainIdsOf(getWalletDepositNetworks())).toEqual([
       mainnet.id,
       polygon.id,
@@ -175,118 +221,87 @@ describe('getWalletDepositNetworks', () => {
       fuse.id,
     ]);
   });
+
+  // rhino.fi takes deposits on Optimism, but the list has no row there.
+  it('offers no Optimism row', () => {
+    expect(chainIdsOf(getWalletDepositNetworks(ALL))).not.toContain(optimism.id);
+  });
 });
 
-/** What each chain's cash module spends from the Safe: its allowlist. */
-const CARD_SPENDABLE: Record<number, string[]> = {
-  [base.id]: ['USDC', 'USDT', 'WETH', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'],
-  [fuse.id]: ['USDC', 'USDT'],
-};
-
-/** Whether a vault's wallet deposit takes the token on the chain, as the Savings form reads it. */
-const vaultTakesFromWallet = (chainId: number, symbol: string): boolean =>
-  VAULTS.some(
-    vault =>
-      !vault.isComingSoon &&
-      !!vault.depositConfig?.methods.includes('wallet') &&
-      vault.depositConfig.supportedChains.includes(chainId) &&
-      vault.depositConfig.supportedTokens.includes(symbol) &&
-      (!!BRIDGE_TOKENS[chainId]?.tokens?.[symbol] || (symbol === 'EURC' && !!EURC_TOKENS[chainId])),
-  );
-
 /**
- * Only what is of use once it lands. Nothing moves what lands on the Safe, so it
- * is offered a token only where the card can spend it or a vault can take it
- * from the wallet; the minted address is delivered to the card's Safe, so a
- * Wirex cardholder's stablecoins may come from any chain the pipeline routes
- * from.
+ * Which address an own row hands out. The minted one is watched by the deposit
+ * pipeline and resolves by destination (and, for the card's, by issuer); the
+ * Safe is neither. Getting this wrong either strands a transfer or sends it to
+ * someone's card instead of their wallet.
  */
-describe('what lands of use', () => {
-  it('offers the Safe only what the card can spend or a vault can take there', () => {
-    const viewers: WalletDepositViewer[] = [ALL, WIREX, RAIN, {}];
-    viewers.forEach(viewer => {
-      getWalletDepositNetworks(viewer).forEach(({ chainId }) => {
-        getWalletDepositTokens(chainId, viewer)
-          .filter(({ symbol }) => !usesDirectDepositAddress(symbol, viewer.provider))
-          .forEach(({ symbol }) => {
-            const ofUse =
-              !!CARD_SPENDABLE[chainId]?.includes(symbol) || vaultTakesFromWallet(chainId, symbol);
-            expect(`${symbol} on ${chainId}: ${ofUse}`).toBe(`${symbol} on ${chainId}: true`);
-          });
+describe('getWalletOwnAddress', () => {
+  const session = (destinationType: 'WALLET' | 'RAIN_CARD') => ({
+    kind: 'session',
+    destinationType,
+  });
+
+  it('mints a card address on Fuse for a Wirex cardholder sending a dollar stablecoin', () => {
+    expect(getWalletOwnAddress(fuse.id, 'USDC', CardProvider.WIREX)).toEqual(session('RAIN_CARD'));
+    expect(getWalletOwnAddress(fuse.id, 'USDT', CardProvider.WIREX)).toEqual(session('RAIN_CARD'));
+  });
+
+  // Minting the card address resolves by issuer: for Rain it would deliver to
+  // the card, and with no card there is no issuer to resolve. Both see the Safe.
+  it('keeps the Safe on Fuse for everyone who is not a Wirex cardholder', () => {
+    [CardProvider.RAIN, null, undefined].forEach(provider => {
+      expect(getWalletOwnAddress(fuse.id, 'USDC', provider)).toEqual({ kind: 'safe' });
+      expect(getWalletOwnAddress(fuse.id, 'USDT', provider)).toEqual({ kind: 'safe' });
+    });
+  });
+
+  // FUSE and WFUSE have no route through the pipeline — they land in the Safe
+  // and stay as sent, so there the Safe is the right answer.
+  it('keeps the Safe for the Fuse currencies with no route, even for Wirex', () => {
+    ['FUSE', 'WFUSE'].forEach(symbol => {
+      expect(getWalletOwnAddress(fuse.id, symbol, CardProvider.WIREX)).toEqual({ kind: 'safe' });
+    });
+  });
+
+  // rhino.fi takes USDT off Base and pays it to the Safe as USDC: nothing of ours.
+  it('mints nothing for USDT off Base and Fuse', () => {
+    [mainnet.id, polygon.id, arbitrum.id, optimism.id, bsc.id].forEach(chainId => {
+      [null, CardProvider.RAIN, CardProvider.WIREX].forEach(provider => {
+        expect(getWalletOwnAddress(chainId, 'USDT', provider)).toBeUndefined();
       });
     });
   });
 
-  it("takes a Wirex cardholder's stablecoins on every chain the pipeline routes from", () => {
-    const pipelineChains = [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id];
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', WIREX))).toEqual(pipelineChains);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDT', WIREX))).toEqual(pipelineChains);
-  });
-
-  // soUSD takes them from the wallet on every bridge chain.
-  it('takes USDC and USDT into the Safe on every chain soUSD takes them from', () => {
-    [ALL, RAIN, {}].forEach(viewer => {
-      expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', viewer))).toEqual([
-        mainnet.id,
-        polygon.id,
-        base.id,
-        arbitrum.id,
-        bsc.id,
-        fuse.id,
-      ]);
+  // rhino.fi is not trusted to take USDT on Base, and the Safe can spend it.
+  it('shows the Safe for USDT on Base', () => {
+    [null, CardProvider.WIREX].forEach(provider => {
+      expect(getWalletOwnAddress(base.id, 'USDT', provider)).toEqual({ kind: 'safe' });
     });
   });
 
-  // soETH takes ETH on Ethereum alone, and the Base cash module takes WETH, not ETH.
-  it('takes ETH on Ethereum alone, and WETH on Ethereum and Base', () => {
-    [ALL, WIREX, RAIN, {}].forEach(viewer => {
-      expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', viewer))).toEqual([mainnet.id]);
-      expect(chainIdsOf(getWalletDepositNetworksForToken('WETH', viewer))).toEqual([
-        mainnet.id,
-        base.id,
-      ]);
+  // Every other row off Base and Fuse is rhino.fi's.
+  it('mints nothing for the rest off Base and Fuse', () => {
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId => {
+      expect(getWalletOwnAddress(chainId, 'USDC', CardProvider.WIREX)).toBeUndefined();
     });
   });
 
-  it('takes FUSE and WFUSE on Fuse, for soFUSE', () => {
-    expect(chainIdsOf(getWalletDepositNetworksForToken('FUSE', ALL))).toEqual([fuse.id]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('WFUSE', ALL))).toEqual([fuse.id]);
+  // Base is where every wallet deposit lands: rhino.fi would only pay it back
+  // there, so it is the Safe, whoever sends it and whatever rhino.fi lists.
+  it('shows the Safe on Base for every currency but ETH', () => {
+    [null, CardProvider.WIREX, CardProvider.RAIN].forEach(provider =>
+      ['USDC', 'EURC', 'cbBTC', 'WETH'].forEach(symbol =>
+        expect(getWalletOwnAddress(base.id, symbol, provider)).toEqual({ kind: 'safe' }),
+      ),
+    );
   });
 
-  it('offers nothing on Optimism, to anyone', () => {
-    [ALL, WIREX, RAIN, {}].forEach(viewer => {
-      expect(chainIdsOf(getWalletDepositNetworks(viewer))).not.toContain(optimism.id);
-      expect(getWalletDepositTokens(optimism.id, viewer)).toEqual([]);
-    });
-  });
-});
-
-/**
- * Which address the screen hands out. The minted one is watched by the deposit
- * pipeline and resolves by issuer; the Safe is neither. Getting this wrong
- * either strands a transfer or sends it to someone's card instead of their
- * wallet.
- */
-describe('usesDirectDepositAddress', () => {
-  it('mints for a Wirex cardholder sending a stablecoin', () => {
-    expect(usesDirectDepositAddress('USDC', CardProvider.WIREX)).toBe(true);
-    expect(usesDirectDepositAddress('USDT', CardProvider.WIREX)).toBe(true);
-    expect(usesDirectDepositAddress('EURC', CardProvider.WIREX)).toBe(true);
-  });
-
-  // Minting resolves by issuer: for Rain it would deliver to the card, and with
-  // no card there is no issuer to resolve. Both see the Safe, for everything.
-  it('keeps the Safe for everyone who is not a Wirex cardholder', () => {
-    expect(usesDirectDepositAddress('USDC', CardProvider.RAIN)).toBe(false);
-    expect(usesDirectDepositAddress('USDC', null)).toBe(false);
-    expect(usesDirectDepositAddress('USDC', undefined)).toBe(false);
-  });
-
-  // These have no route through the pipeline — they land in the Safe and stay as
-  // the token that was sent, so there the Safe is the right answer.
-  it('keeps the Safe for the currencies with no route, even for Wirex', () => {
-    ['ETH', 'WETH', 'FUSE', 'WFUSE', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol => {
-      expect(usesDirectDepositAddress(symbol, CardProvider.WIREX)).toBe(false);
+  // The card spends WETH, not ETH: our wallet deposit address on Base wraps it.
+  it('mints the wallet address for ETH on Base, which wraps it', () => {
+    [null, CardProvider.WIREX].forEach(provider => {
+      expect(getWalletOwnAddress(base.id, 'ETH', provider)).toEqual(session('WALLET'));
+      expect(getWalletOwnAddress(base.id, 'ETH', provider, { rhinoOff: true })).toEqual(
+        session('WALLET'),
+      );
     });
   });
 });
@@ -325,11 +340,19 @@ describe('resolveWalletDepositMinimum', () => {
     expect(resolveWalletDepositMinimum(fuse.id, 'FUSE', assets)).toBe('500');
   });
 
+  // BNB Chain has no WETH to publish: its ETH is itself a token.
+  it('takes the currency’s own entry where there is no wrapped one', () => {
+    const assets = [
+      asset({ chainId: bsc.id, chainName: 'BNB Chain', symbol: 'ETH', minimum: '0.0041' }),
+    ];
+    expect(resolveWalletDepositMinimum(bsc.id, 'ETH', assets)).toBe('0.0041');
+  });
+
   it('quotes the published floor of a currency that lands in the Safe', () => {
     const assets = [
-      asset({ chainId: base.id, chainName: 'Base', symbol: 'cbBTC', minimum: '0.0001194' }),
+      asset({ chainId: arbitrum.id, chainName: 'Arbitrum', symbol: 'WBTC', minimum: '0.0001194' }),
     ];
-    expect(resolveWalletDepositMinimum(base.id, 'cbBTC', assets)).toBe('0.0001194');
+    expect(resolveWalletDepositMinimum(arbitrum.id, 'WBTC', assets)).toBe('0.0001194');
   });
 
   it('does not take a published minimum from the wrong chain', () => {
@@ -348,19 +371,16 @@ describe('resolveWalletDepositSymbol', () => {
   it('carries a currency over to a chain that accepts it', () => {
     expect(resolveWalletDepositSymbol(base.id, 'USDC', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(base.id, 'USDT', ALL)).toBe('USDT');
-    expect(resolveWalletDepositSymbol(base.id, 'WETH', ALL)).toBe('WETH');
-    expect(resolveWalletDepositSymbol(base.id, 'cbBTC', ALL)).toBe('cbBTC');
-    expect(resolveWalletDepositSymbol(fuse.id, 'USDT', ALL)).toBe('USDT');
-    expect(resolveWalletDepositSymbol(mainnet.id, 'ETH', ALL)).toBe('ETH');
+    expect(resolveWalletDepositSymbol(base.id, 'ETH', ALL)).toBe('ETH');
+    expect(resolveWalletDepositSymbol(bsc.id, 'ETH', ALL)).toBe('ETH');
   });
 
   // Otherwise the screen would quote a minimum for a pairing that does not exist.
   it('falls back when the chain does not carry it', () => {
-    expect(resolveWalletDepositSymbol(base.id, 'ETH', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(polygon.id, 'ETH', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(base.id, 'FUSE', ALL)).toBe('USDC');
-    expect(resolveWalletDepositSymbol(fuse.id, 'WETH', ALL)).toBe('USDC');
-    expect(resolveWalletDepositSymbol(fuse.id, 'cbBTC', ALL)).toBe('USDC');
-    expect(resolveWalletDepositSymbol(arbitrum.id, 'cbBTC', WIREX)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(fuse.id, 'ETH', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(arbitrum.id, 'cbBTC', ALL)).toBe('USDC');
   });
 
   it("picks the chain's first currency when none was chosen yet", () => {
@@ -374,9 +394,8 @@ describe('resolveWalletDepositSymbol', () => {
 
 describe('getDefaultWalletDepositSelection', () => {
   /**
-   * Base: it carries every currency on offer, at a fraction of Ethereum's gas.
-   * The address shown is the user's Safe on whichever chain is picked — it is
-   * not a bridge — so a deposit made on the default lands on the default.
+   * Base: it carries nearly every currency on offer, at a fraction of
+   * Ethereum's gas. The address there is our own: the Safe.
    */
   it('opens on USDC over Base', () => {
     expect(getDefaultWalletDepositSelection()).toEqual({ chainId: base.id, symbol: 'USDC' });
@@ -412,15 +431,41 @@ describe('getAllWalletDepositTokens', () => {
     ]);
   });
 
+  // The tokens retired with the Base-only collateral list.
+  it('leaves out the retired tokens', () => {
+    const symbols = symbolsOf(getAllWalletDepositTokens(ALL));
+    ['PAXG', 'SLVx', 'ZEC', 'NEAR', 'WLD', 'ARB', 'OP', 'UNI', 'ENA', 'WBTC'].forEach(symbol =>
+      expect(symbols).not.toContain(symbol),
+    );
+  });
+
+  // The list decides what is on offer; rhino.fi only decides where.
+  it('offers no token off the list, whatever rhino.fi takes', () => {
+    const withOp: RhinoAssetsState = {
+      status: 'ready',
+      assets: {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.map(chain =>
+          chain.chain === 'OPTIMISM'
+            ? {
+                ...chain,
+                tokens: [...chain.tokens, rhinoToken('OP', [rhinoRoute('WALLET', 'OP')])],
+              }
+            : chain,
+        ),
+      },
+    };
+    expect(symbolsOf(getAllWalletDepositTokens({ ...ALL, rhino: withOp }))).not.toContain('OP');
+  });
+
   it('carries the full name each row shows under the ticker', () => {
     const names = Object.fromEntries(
       getAllWalletDepositTokens(ALL).map(token => [token.symbol, token.name]),
     );
     expect(names).toMatchObject({
       USDC: 'USD Coin',
-      cbBTC: 'Coinbase Wrapped BTC',
       cbZEC: 'Coinbase Wrapped ZEC',
-      WETH: 'Wrapped Ether',
+      cbBTC: 'Coinbase Wrapped BTC',
       WFUSE: 'Wrapped FUSE',
     });
   });
@@ -430,6 +475,7 @@ describe('groupWalletDepositTokens', () => {
   it('puts each currency under its heading, in the design’s order', () => {
     const groups = groupWalletDepositTokens(getAllWalletDepositTokens(WIREX));
 
+    // Gold and silver have no row: rhino.fi takes neither, and neither is on Base.
     expect(groups.map(group => group.label)).toEqual(['Stablecoins', 'Crypto']);
     expect(symbolsOf(groups[0].tokens)).toEqual(['USDC', 'USDT', 'EURC']);
     expect(groups[1].tokens[0].symbol).toBe('ETH');
@@ -456,11 +502,11 @@ describe('matchesWalletDepositSearch', () => {
 
   it('matches a name', () => {
     expect(search('bitcoin')).toEqual(['cbBTC']);
-    expect(search('coinbase')).toEqual(['cbBTC', 'cbZEC']);
     expect(search('solana')).toEqual(['SOL']);
   });
 
   it('matches what a person might type instead', () => {
+    expect(search('coinbase')).toEqual(['cbBTC', 'cbZEC']);
     expect(search('zcash')).toEqual(['cbZEC']);
     expect(search('ethereum')).toEqual(['ETH']);
   });
@@ -473,9 +519,71 @@ describe('matchesWalletDepositSearch', () => {
 
 describe('getWalletDepositNetworksForToken', () => {
   it('only offers the chains that carry the currency', () => {
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', ALL))).toEqual([mainnet.id]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', ALL))).toEqual([
+      mainnet.id,
+      base.id,
+      arbitrum.id,
+      bsc.id,
+    ]);
     expect(chainIdsOf(getWalletDepositNetworksForToken('FUSE', ALL))).toEqual([fuse.id]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('cbZEC', ALL))).toEqual([base.id]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('WFUSE', ALL))).toEqual([fuse.id]);
+  });
+
+  // Base is our own whatever rhino.fi lists; the rest go with its routes.
+  it('offers a currency off Base only on the chains rhino.fi takes it on', () => {
+    expect(
+      chainIdsOf(getWalletDepositNetworksForToken('ETH', { ...ALL, rhino: withoutArbitrumEth() })),
+    ).toEqual([mainnet.id, base.id, bsc.id]);
+  });
+
+  it('offers a currency rhino.fi takes nowhere on Base alone, as the Safe', () => {
+    ['WETH', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol =>
+      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, ALL))).toEqual([base.id]),
+    );
+  });
+
+  it('offers every network a stablecoin is on', () => {
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', ALL))).toEqual([
+      mainnet.id,
+      polygon.id,
+      base.id,
+      arbitrum.id,
+      bsc.id,
+      fuse.id,
+    ]);
+    // USDT: rhino.fi's everywhere it takes it; the Safe on Base.
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDT', ALL))).toEqual([
+      mainnet.id,
+      polygon.id,
+      base.id,
+      arbitrum.id,
+      bsc.id,
+      fuse.id,
+    ]);
+  });
+
+  // Off Fuse, a Wirex cardholder's dollars take rhino.fi's wallet route, like
+  // everyone's, and their USDT on Base our own pipeline's.
+  it("offers a Wirex cardholder's stablecoins on the same chains as anyone's", () => {
+    ['USDC', 'USDT'].forEach(symbol =>
+      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, WIREX))).toEqual(
+        chainIdsOf(getWalletDepositNetworksForToken(symbol, RAIN)),
+      ),
+    );
+  });
+
+  it('offers only Base and Fuse until rhino.fi’s routes are in', () => {
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', { hasNewTokens: true }))).toEqual([
+      base.id,
+      fuse.id,
+    ]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', { hasNewTokens: true }))).toEqual([
+      base.id,
+    ]);
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDT', { hasNewTokens: true }))).toEqual([
+      base.id,
+      fuse.id,
+    ]);
   });
 
   it('offers every chain when no currency is chosen', () => {
@@ -487,50 +595,73 @@ describe('resolveWalletDepositChain', () => {
   it('opens every currency Base carries on Base', () => {
     expect(resolveWalletDepositChain('USDC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('USDT', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('ETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('WETH', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('EURC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('cbBTC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('cbZEC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('AAVE', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('SOL', undefined, ALL)).toBe(base.id);
   });
 
-  it('opens the rest on the one chain carrying them', () => {
-    expect(resolveWalletDepositChain('ETH', undefined, ALL)).toBe(mainnet.id);
+  // USDC on Base is the default, and Base is our own whatever rhino.fi lists.
+  it('opens USDC on Base even when rhino.fi lists no route there', () => {
+    const noBase: RhinoAssetsState = {
+      status: 'ready',
+      assets: {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.filter(chain => chain.chain !== 'BASE'),
+      },
+    };
+    expect(resolveWalletDepositChain('USDC', undefined, { ...ALL, rhino: noBase })).toBe(base.id);
+  });
+
+  it('opens the Fuse currencies on Fuse, the only chain carrying them', () => {
     expect(resolveWalletDepositChain('FUSE', undefined, ALL)).toBe(fuse.id);
     expect(resolveWalletDepositChain('WFUSE', undefined, ALL)).toBe(fuse.id);
   });
 
   // Changing only the currency from the address screen should not move the chain.
   it('keeps the current chain when it carries the currency', () => {
-    expect(resolveWalletDepositChain('USDT', fuse.id, ALL)).toBe(fuse.id);
     expect(resolveWalletDepositChain('USDC', polygon.id, ALL)).toBe(polygon.id);
-    expect(resolveWalletDepositChain('WETH', mainnet.id, ALL)).toBe(mainnet.id);
+    expect(resolveWalletDepositChain('ETH', mainnet.id, ALL)).toBe(mainnet.id);
+    expect(resolveWalletDepositChain('ETH', bsc.id, ALL)).toBe(bsc.id);
   });
 
   it('moves to Base when the current chain does not carry the currency', () => {
-    expect(resolveWalletDepositChain('WETH', polygon.id, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('cbBTC', fuse.id, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('WETH', arbitrum.id, WIREX)).toBe(base.id);
+    expect(resolveWalletDepositChain('ETH', polygon.id, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('USDC', 999_999, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('cbBTC', arbitrum.id, ALL)).toBe(base.id);
+    expect(
+      resolveWalletDepositChain('ETH', arbitrum.id, { ...ALL, rhino: withoutArbitrumEth() }),
+    ).toBe(base.id);
   });
 });
 
 /**
- * cbBTC, cbZEC, AAVE and SOL are rolled out to the internal team first
+ * The new deposit tokens are rolled out to the internal team first
  * (`useDepositTokensAccess`). Until someone is given them, the screen offers
- * only what everyone is offered.
+ * what every user is offered (`releasedOn`), where rhino.fi or our own
+ * pipeline can take it.
  */
 describe('without the new deposit tokens', () => {
-  it('offers only the currencies everyone is offered', () => {
-    const released = ['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WETH', 'WFUSE'];
-    expect(symbolsOf(getAllWalletDepositTokens())).toEqual(released);
-    expect(symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX }))).toEqual(
-      released,
-    );
+  it('offers only the currencies everyone had', () => {
+    expect(symbolsOf(getAllWalletDepositTokens(BASIC))).toEqual([
+      'USDC',
+      'USDT',
+      'EURC',
+      'ETH',
+      'FUSE',
+      'WETH',
+      'WFUSE',
+    ]);
+    expect(
+      symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX, rhino: READY })),
+    ).toEqual(['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WETH', 'WFUSE']);
   });
 
-  it('offers each on the chains it is of use on', () => {
-    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC'))).toEqual([
+  it('offers each on the chains it was offered on, and none on Optimism', () => {
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', BASIC))).toEqual([
       mainnet.id,
       polygon.id,
       base.id,
@@ -538,20 +669,39 @@ describe('without the new deposit tokens', () => {
       bsc.id,
       fuse.id,
     ]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH'))).toEqual([mainnet.id]);
-    expect(chainIdsOf(getWalletDepositNetworksForToken('WETH'))).toEqual([mainnet.id, base.id]);
+    // ETH is everyone's on Ethereum alone, through rhino.fi.
+    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', BASIC))).toEqual([mainnet.id]);
+    // rhino.fi takes no WETH, so it is the Safe on Base alone.
+    expect(chainIdsOf(getWalletDepositNetworksForToken('WETH', BASIC))).toEqual([base.id]);
+    expect(chainIdsOf(getWalletDepositNetworks(BASIC))).not.toContain(optimism.id);
+    expect(getWalletDepositTokens(optimism.id, BASIC)).toEqual([]);
   });
 
-  it('lists per chain what lands of use there', () => {
-    expect(symbolsOf(getWalletDepositTokens(base.id))).toEqual(['USDC', 'USDT', 'EURC', 'WETH']);
-    expect(symbolsOf(getWalletDepositTokens(mainnet.id))).toEqual(['USDC', 'USDT', 'ETH', 'WETH']);
-    expect(symbolsOf(getWalletDepositTokens(polygon.id))).toEqual(['USDC', 'USDT']);
-    expect(symbolsOf(getWalletDepositTokens(fuse.id))).toEqual(['USDC', 'USDT', 'FUSE', 'WFUSE']);
+  it('lists per chain what rhino.fi takes of what the screen listed before', () => {
+    expect(symbolsOf(getWalletDepositTokens(base.id, BASIC))).toEqual([
+      'USDC',
+      'USDT',
+      'EURC',
+      'WETH',
+    ]);
+    expect(symbolsOf(getWalletDepositTokens(mainnet.id, BASIC))).toEqual([
+      'USDC',
+      'USDT',
+      'EURC',
+      'ETH',
+    ]);
+    expect(symbolsOf(getWalletDepositTokens(polygon.id, BASIC))).toEqual(['USDC', 'USDT']);
+    expect(symbolsOf(getWalletDepositTokens(fuse.id, BASIC))).toEqual([
+      'USDC',
+      'USDT',
+      'FUSE',
+      'WFUSE',
+    ]);
   });
 
-  it('moves a currency off a chain it is not offered on', () => {
-    expect(resolveWalletDepositSymbol(optimism.id, 'USDC')).toBeUndefined();
-    expect(resolveWalletDepositChain('ETH', arbitrum.id)).toBe(mainnet.id);
+  it('moves a currency off a chain it is not offered on yet', () => {
+    expect(resolveWalletDepositSymbol(optimism.id, 'USDC', BASIC)).toBeUndefined();
+    expect(resolveWalletDepositChain('ETH', arbitrum.id, BASIC)).toBe(mainnet.id);
   });
 
   it('still opens on USDC over Base', () => {
@@ -560,41 +710,66 @@ describe('without the new deposit tokens', () => {
 });
 
 /**
- * EURC is offered to everyone, on Base only. A Wirex cardholder's goes through
- * the minted address, which the pipeline delivers to their Safe on Base, where
- * the card spends it on euro purchases; anyone else's lands in the Safe on Base,
- * where soEUR takes it.
+ * EURC is offered to everyone: on Base as the Safe, and on Ethereum through
+ * rhino.fi's wallet route, which pays it to the same Safe on Base.
  */
 describe('EURC', () => {
-  it('is offered to everyone', () => {
-    [ALL, WIREX, RAIN, {}].forEach(viewer => {
-      expect(symbolsOf(getAllWalletDepositTokens(viewer))).toContain('EURC');
-      expect(symbolsOf(getWalletDepositTokens(base.id, viewer))).toContain('EURC');
-    });
-  });
-
-  it('goes through the pipeline for a Wirex cardholder alone', () => {
-    expect(usesDirectDepositAddress('EURC', CardProvider.WIREX)).toBe(true);
-    expect(usesDirectDepositAddress('EURC', CardProvider.RAIN)).toBe(false);
-    expect(usesDirectDepositAddress('EURC', null)).toBe(false);
+  it('is offered to everyone, card or none', () => {
+    [ALL, RAIN, WIREX, BASIC].forEach(viewer =>
+      expect(symbolsOf(getAllWalletDepositTokens(viewer))).toContain('EURC'),
+    );
   });
 
   it('follows the other stablecoins in "Select token"', () => {
-    [ALL, WIREX].forEach(viewer => {
-      const symbols = symbolsOf(getAllWalletDepositTokens(viewer));
-      expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'ETH']);
-    });
+    const symbols = symbolsOf(getAllWalletDepositTokens(WIREX));
+    expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'ETH']);
   });
 
-  it('is offered on Base only', () => {
-    [ALL, WIREX].forEach(viewer => {
-      expect(symbolsOf(getWalletDepositTokens(mainnet.id, viewer))).not.toContain('EURC');
-      expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', viewer))).toEqual([base.id]);
+  // Circle's EURC on Ethereum, which rhino.fi pays out as EURC on Base.
+  it('is offered on Ethereum through rhino.fi, and on Base as the Safe', () => {
+    expect(symbolsOf(getWalletDepositTokens(base.id, WIREX))).toContain('EURC');
+    expect(getWalletDepositRow(base.id, 'EURC', WIREX)).toEqual({ kind: 'own' });
+    expect(symbolsOf(getWalletDepositTokens(mainnet.id, WIREX))).toContain('EURC');
+    expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).toEqual([
+      mainnet.id,
+      base.id,
+    ]);
+    expect(getWalletDepositRow(mainnet.id, 'EURC', WIREX)).toMatchObject({
+      kind: 'rhino',
+      selection: { chain: 'ETHEREUM', tokenSymbol: 'EURC', destinationType: 'WALLET' },
+    });
+    expect(
+      WALLET_DEPOSIT_TOKENS.find(token => token.symbol === 'EURC')?.contracts[mainnet.id],
+    ).toBe('0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c');
+  });
+
+  // Not Arc, pending a product decision, nor Optimism, though rhino.fi lists both.
+  it('is not offered on Optimism or Arc', () => {
+    expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).not.toContain(optimism.id);
+    expect(getWalletDepositExtraNetworks('EURC', WIREX).map(chain => chain.chain)).toEqual([
+      'SOLANA',
+    ]);
+  });
+
+  it('is not offered on Ethereum without rhino.fi', () => {
+    const noEthereumEurc: RhinoAssetsState = {
+      status: 'ready',
+      assets: {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.map(chain =>
+          chain.chain === 'ETHEREUM'
+            ? { ...chain, tokens: chain.tokens.filter(token => token.symbol !== 'EURC') }
+            : chain,
+        ),
+      },
+    };
+    expect(getWalletDepositRow(mainnet.id, 'EURC', { ...WIREX, rhino: noEthereumEurc })).toEqual({
+      kind: 'none',
     });
   });
 
   it('opens on Base, whatever chain was showing', () => {
-    expect(resolveWalletDepositChain('EURC', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('EURC', undefined, WIREX)).toBe(base.id);
     expect(resolveWalletDepositChain('EURC', fuse.id, WIREX)).toBe(base.id);
   });
 
@@ -605,59 +780,16 @@ describe('EURC', () => {
 
 describe('isWalletDepositContract', () => {
   it('names each contract the screen offers, whatever the address case', () => {
-    expect(isWalletDepositContract(base.id, '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf')).toBe(
-      true,
-    );
-    expect(isWalletDepositContract(base.id, '0xb2000000000000000000008501b13360000cb2ec')).toBe(
-      true,
-    );
-  });
-
-  it('matches on chain as well as address', () => {
-    expect(isWalletDepositContract(bsc.id, '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf')).toBe(
-      false,
-    );
-  });
-
-  it('still names a contract the screen once offered, so what was sent then shows', () => {
-    // WETH on Arbitrum, Binance-Peg ETH, USDC on Optimism.
-    expect(isWalletDepositContract(arbitrum.id, '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')).toBe(
-      true,
-    );
-    expect(isWalletDepositContract(bsc.id, '0x2170Ed0880ac9A755fd29B2688956BD959F933F8')).toBe(
-      true,
-    );
-    expect(isWalletDepositContract(optimism.id, '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85')).toBe(
-      true,
-    );
-    // WBTC on Base and Arbitrum, OP, and PAXG on Ethereum.
-    expect(isWalletDepositContract(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(
-      true,
-    );
-    expect(isWalletDepositContract(arbitrum.id, '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f')).toBe(
+    expect(isWalletDepositContract(arbitrum.id, '0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f')).toBe(
       true,
     );
     expect(isWalletDepositContract(optimism.id, '0x4200000000000000000000000000000000000042')).toBe(
       true,
     );
-    expect(isWalletDepositContract(mainnet.id, '0x45804880De22913dAFE09f4980848ECE6EcbAf78')).toBe(
-      true,
-    );
   });
 
-  it('offers none of the contracts it only still names', () => {
-    const offered = (chainId: number, address: string) =>
-      WALLET_DEPOSIT_TOKENS.some(
-        token => token.contracts[chainId]?.toLowerCase() === address.toLowerCase(),
-      );
-    expect(offered(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(false);
-    expect(offered(arbitrum.id, '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')).toBe(false);
-    expect(offered(optimism.id, '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85')).toBe(false);
-  });
-
-  it('names no contract the screen never offered', () => {
-    // DAI on Ethereum.
-    expect(isWalletDepositContract(mainnet.id, '0x6B175474E89094C44Da98b954EedeAC495271d0F')).toBe(
+  it('matches on chain as well as address', () => {
+    expect(isWalletDepositContract(fuse.id, '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f')).toBe(
       false,
     );
   });
@@ -665,5 +797,441 @@ describe('isWalletDepositContract', () => {
   it('names no native coin, which has no contract', () => {
     expect(isWalletDepositContract(mainnet.id, 'native')).toBe(false);
     expect(isWalletDepositContract(mainnet.id, undefined)).toBe(false);
+  });
+});
+
+describe('getWalletRhinoSelection', () => {
+  it('sends a row through rhino.fi to the Safe on Base, Base itself included', () => {
+    ['USDC', 'ETH', 'EURC', 'WBTC'].forEach(symbol =>
+      expect(getWalletRhinoSelection(RHINO_ASSETS, mainnet.id, symbol)).toEqual({
+        chain: 'ETHEREUM',
+        chainId: mainnet.id,
+        tokenSymbol: symbol,
+        destinationType: 'WALLET',
+      }),
+    );
+    expect(getWalletRhinoSelection(RHINO_ASSETS, base.id, 'USDC')?.chain).toBe('BASE');
+  });
+
+  it('has none for Fuse, nor where rhino.fi has no route', () => {
+    expect(getWalletRhinoSelection(RHINO_ASSETS, fuse.id, 'USDC')).toBeUndefined();
+    expect(getWalletRhinoSelection(RHINO_ASSETS, polygon.id, 'WBTC')).toBeUndefined();
+    expect(getWalletRhinoSelection(RHINO_ASSETS, base.id, 'cbBTC')).toBeUndefined();
+    // The backend lists no wallet route for USDT sent on Base.
+    expect(getWalletRhinoSelection(RHINO_ASSETS, base.id, 'USDT')).toBeUndefined();
+  });
+
+  it('takes USDT off Base through the wallet route', () => {
+    expect(getWalletRhinoSelection(RHINO_ASSETS, arbitrum.id, 'USDT')).toEqual({
+      chain: 'ARBITRUM',
+      chainId: arbitrum.id,
+      tokenSymbol: 'USDT',
+      destinationType: 'WALLET',
+    });
+  });
+
+  it('has none while rhino.fi is not offered', () => {
+    expect(getWalletRhinoSelection(undefined, mainnet.id, 'USDC')).toBeUndefined();
+    expect(
+      getWalletRhinoSelection({ ...RHINO_ASSETS, enabled: false }, mainnet.id, 'USDC'),
+    ).toBeUndefined();
+  });
+});
+
+describe('getWalletDepositRow', () => {
+  const LOADING = { hasNewTokens: true, rhino: { status: 'loading' } as RhinoAssetsState };
+  const UNAVAILABLE = {
+    hasNewTokens: true,
+    rhino: { status: 'unavailable' } as RhinoAssetsState,
+  };
+  const withAssets = (assets: RhinoDepositAssetsResponse, provider?: CardProvider) => ({
+    provider,
+    hasNewTokens: true,
+    rhino: { status: 'ready', assets } as RhinoAssetsState,
+  });
+
+  it('keeps Fuse our own, whatever the state of rhino.fi', () => {
+    [ALL, LOADING, UNAVAILABLE, WIREX].forEach(viewer => {
+      expect(getWalletDepositRow(fuse.id, 'USDC', viewer)).toEqual({ kind: 'own' });
+      expect(getWalletDepositRow(fuse.id, 'FUSE', viewer)).toEqual({ kind: 'own' });
+    });
+  });
+
+  // rhino.fi would only pay a deposit sent on Base back to Base.
+  it('keeps Base our own, whatever rhino.fi lists there', () => {
+    [ALL, WIREX].forEach(viewer =>
+      ['USDC', 'EURC', 'ETH', 'WETH', 'cbBTC'].forEach(symbol =>
+        expect(getWalletDepositRow(base.id, symbol, viewer)).toEqual({ kind: 'own' }),
+      ),
+    );
+    const noBase = withAssets({
+      ...RHINO_ASSETS,
+      chains: RHINO_ASSETS.chains.filter(chain => chain.chain !== 'BASE'),
+    });
+    expect(getWalletDepositRow(base.id, 'USDC', noBase)).toEqual({ kind: 'own' });
+  });
+
+  it('serves every row off Base and Fuse through rhino.fi', () => {
+    expect(getWalletDepositRow(bsc.id, 'ETH', ALL)).toMatchObject({ kind: 'rhino' });
+    // A Wirex cardholder's USDC goes to the Safe on Base like everyone's.
+    [mainnet.id, arbitrum.id].forEach(chainId =>
+      expect(getWalletDepositRow(chainId, 'USDC', WIREX)).toMatchObject({
+        kind: 'rhino',
+        selection: { destinationType: 'WALLET' },
+      }),
+    );
+    expect(getWalletDepositRow(mainnet.id, 'EURC', WIREX)).toMatchObject({
+      kind: 'rhino',
+      selection: { destinationType: 'WALLET' },
+    });
+  });
+
+  // Never the Safe, and never a minted address, on a row rhino.fi does not take.
+  it('offers no row rhino.fi does not take a currency it takes elsewhere from', () => {
+    expect(
+      getWalletDepositRow(arbitrum.id, 'ETH', { ...ALL, rhino: withoutArbitrumEth() }),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('shows the Safe on Base alone for a currency rhino.fi takes nowhere', () => {
+    expect(getWalletDepositRow(base.id, 'WETH', ALL)).toEqual({ kind: 'own' });
+    expect(getWalletDepositRow(mainnet.id, 'WETH', ALL)).toEqual({ kind: 'none' });
+    expect(getWalletDepositRow(base.id, 'cbBTC', ALL)).toEqual({ kind: 'own' });
+    expect(getWalletDepositRow(mainnet.id, 'cbBTC', ALL)).toEqual({ kind: 'none' });
+  });
+
+  it('falls to the Safe on Base for a currency none of whose rows rhino.fi takes', () => {
+    const noEurc = withAssets(
+      {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.map(chain => ({
+          ...chain,
+          tokens: chain.tokens.filter(t => t.symbol !== 'EURC'),
+        })),
+      },
+      CardProvider.WIREX,
+    );
+    expect(getWalletDepositRow(base.id, 'EURC', noEurc)).toEqual({ kind: 'own' });
+    expect(getWalletDepositRow(mainnet.id, 'EURC', noEurc)).toEqual({ kind: 'none' });
+  });
+
+  // Their dollars match the wallet route now, so the card route makes no difference.
+  it('serves a Wirex cardholder’s USDC without rhino.fi’s card route', () => {
+    const noCardRoutes = withAssets(
+      {
+        ...RHINO_ASSETS,
+        chains: RHINO_ASSETS.chains.map(chain => ({
+          ...chain,
+          tokens: chain.tokens.map(t => ({
+            ...t,
+            routes: t.routes.filter(route => route.destinationType !== 'RAIN_CARD'),
+          })),
+        })),
+      },
+      CardProvider.WIREX,
+    );
+    expect(getWalletDepositRow(arbitrum.id, 'USDC', noCardRoutes)).toMatchObject({
+      kind: 'rhino',
+    });
+    expect(getWalletDepositRow(fuse.id, 'USDC', noCardRoutes)).toEqual({ kind: 'own' });
+  });
+
+  // USDT on Base and Fuse is our own, whatever rhino.fi lists and whether or not
+  // it has answered.
+  it('keeps USDT on Base and Fuse our own', () => {
+    const withBaseUsdtRoutes = withAssets(RHINO_ASSETS_WITH_BASE_USDT_ROUTES);
+    [ALL, WIREX, LOADING, UNAVAILABLE, withBaseUsdtRoutes].forEach(viewer =>
+      [base.id, fuse.id].forEach(chainId =>
+        expect(getWalletDepositRow(chainId, 'USDT', viewer)).toEqual({ kind: 'own' }),
+      ),
+    );
+  });
+
+  // Everywhere else rhino.fi's wallet route, which pays the Safe on Base as USDC.
+  it('serves USDT off Base and Fuse through rhino.fi', () => {
+    [ALL, WIREX].forEach(viewer =>
+      [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+        expect(getWalletDepositRow(chainId, 'USDT', viewer)).toMatchObject({
+          kind: 'rhino',
+          selection: { chainId, tokenSymbol: 'USDT', destinationType: 'WALLET' },
+        }),
+      ),
+    );
+    expect(getWalletDepositRow(polygon.id, 'USDT', LOADING)).toEqual({ kind: 'loading' });
+    expect(getWalletDepositRow(polygon.id, 'USDT', UNAVAILABLE)).toEqual({ kind: 'unavailable' });
+  });
+
+  it('decides no other row until rhino.fi’s routes are in, nor when they cannot be had', () => {
+    [
+      [mainnet.id, 'USDC'],
+      [mainnet.id, 'EURC'],
+      [arbitrum.id, 'ETH'],
+      [polygon.id, 'USDC'],
+    ].forEach(([chainId, symbol]) => {
+      expect(getWalletDepositRow(chainId as number, symbol as string, LOADING)).toEqual({
+        kind: 'loading',
+      });
+      expect(getWalletDepositRow(chainId as number, symbol as string, UNAVAILABLE)).toEqual({
+        kind: 'unavailable',
+      });
+    });
+    // Leaving the routes out counts as still loading.
+    expect(getWalletDepositRow(mainnet.id, 'USDC', { hasNewTokens: true })).toEqual({
+      kind: 'loading',
+    });
+    // Base is our own, and waits for nothing.
+    ['USDC', 'ETH', 'WETH', 'cbBTC'].forEach(symbol => {
+      expect(getWalletDepositRow(base.id, symbol, LOADING)).toEqual({ kind: 'own' });
+      expect(getWalletDepositRow(base.id, symbol, UNAVAILABLE)).toEqual({ kind: 'own' });
+    });
+  });
+
+  it('has no row for a pairing the person is not offered', () => {
+    expect(getWalletDepositRow(base.id, 'FUSE', ALL)).toEqual({ kind: 'none' });
+    expect(getWalletDepositRow(base.id, 'cbBTC', BASIC)).toEqual({ kind: 'none' });
+    expect(getWalletDepositRow(base.id, 'DOGE', ALL)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('getWalletDepositNetworksNotice', () => {
+  it('waits, or offers a retry, for a currency with rows off Fuse', () => {
+    expect(
+      getWalletDepositNetworksNotice('USDC', { rhino: { status: 'loading' } as RhinoAssetsState }),
+    ).toBe('loading');
+    expect(
+      getWalletDepositNetworksNotice('WETH', {
+        rhino: { status: 'unavailable' } as RhinoAssetsState,
+      }),
+    ).toBe('unavailable');
+  });
+
+  it('says nothing once the routes are in, nor for a currency only Fuse takes', () => {
+    expect(getWalletDepositNetworksNotice('USDC', ALL)).toBeUndefined();
+    expect(
+      getWalletDepositNetworksNotice('FUSE', { rhino: { status: 'loading' } as RhinoAssetsState }),
+    ).toBeUndefined();
+  });
+});
+
+/**
+ * "More networks": the chains rhino.fi lists that the app has no row for, each
+ * with only what rhino.fi takes into the wallet there.
+ */
+describe('getWalletDepositExtraNetworks', () => {
+  const chainsOf = (chains: { chain: string }[]) => chains.map(chain => chain.chain);
+
+  it('lists the chains the app has no row for, for the currency chosen', () => {
+    expect(chainsOf(getWalletDepositExtraNetworks('USDC', ALL))).toEqual(['SOLANA', 'AVALANCHE']);
+    expect(chainsOf(getWalletDepositExtraNetworks('ETH', ALL))).toEqual(['AVALANCHE']);
+    expect(chainsOf(getWalletDepositExtraNetworks('EURC', ALL))).toEqual(['SOLANA']);
+  });
+
+  // Never an app chain (Ethereum, Optimism, …), and never Arc for now.
+  it('never repeats a row of the list, and holds Arc back', () => {
+    const chains = chainsOf(getWalletDepositExtraNetworks('USDC', ALL));
+    ['ETHEREUM', 'BASE', 'OPTIMISM', 'FUSE', 'ARC'].forEach(chain =>
+      expect(chains).not.toContain(chain),
+    );
+  });
+
+  // Tron, Solana and the rest pay USDT to the Safe on Base as USDC.
+  it('lists the chains rhino.fi takes USDT into the wallet from', () => {
+    expect(chainsOf(getWalletDepositExtraNetworks('USDT', ALL))).toEqual([
+      'TRON',
+      'SOLANA',
+      'AVALANCHE',
+    ]);
+  });
+
+  it('has none for a currency off the list, nor before the routes are in', () => {
+    expect(getWalletDepositExtraNetworks('DOGE', ALL)).toEqual([]);
+    expect(getWalletDepositExtraNetworks('USDC', { rhino: { status: 'loading' } })).toEqual([]);
+    expect(getWalletDepositExtraNetworks('USDC', { rhino: { status: 'unavailable' } })).toEqual([]);
+  });
+});
+
+describe('getWalletDepositExtraRow', () => {
+  it('is the rhino.fi address for the chain, with no app chain of its own for Solana', () => {
+    expect(getWalletDepositExtraRow('SOLANA', 'USDC', ALL)).toEqual({
+      kind: 'rhino',
+      selection: { chain: 'SOLANA', tokenSymbol: 'USDC', destinationType: 'WALLET' },
+    });
+    expect(getWalletDepositExtraRow('AVALANCHE', 'ETH', ALL)).toEqual({
+      kind: 'rhino',
+      selection: {
+        chain: 'AVALANCHE',
+        chainId: 43114,
+        tokenSymbol: 'ETH',
+        destinationType: 'WALLET',
+      },
+    });
+  });
+
+  it('waits for the routes, and has none where the chain does not take the currency', () => {
+    expect(getWalletDepositExtraRow('SOLANA', 'USDC', { rhino: { status: 'loading' } })).toEqual({
+      kind: 'loading',
+    });
+    expect(
+      getWalletDepositExtraRow('SOLANA', 'USDC', { rhino: { status: 'unavailable' } }),
+    ).toEqual({ kind: 'unavailable' });
+    expect(getWalletDepositExtraRow('SOLANA', 'ETH', ALL)).toEqual({ kind: 'none' });
+    // Tron takes USDT alone.
+    expect(getWalletDepositExtraRow('TRON', 'USDC', ALL)).toEqual({ kind: 'none' });
+    expect(getWalletDepositExtraRow('ARC', 'USDC', ALL)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('native BTC', () => {
+  /** rhino.fi's routes with Bitcoin switched on for this deployment. */
+  const WITH_BITCOIN: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
+  const NEW_TOKENS = { hasNewTokens: true, rhino: WITH_BITCOIN };
+
+  it('is listed once rhino.fi takes it on Bitcoin, just before cbBTC', () => {
+    const symbols = symbolsOf(getAllWalletDepositTokens(NEW_TOKENS));
+    expect(symbols).toContain('BTC');
+    expect(symbols.indexOf('BTC')).toBe(symbols.indexOf('cbBTC') - 1);
+    // Not while rhino.fi does not list it there: Bitcoin off, or routes not in.
+    expect(symbolsOf(getAllWalletDepositTokens(ALL))).not.toContain('BTC');
+    expect(
+      symbolsOf(getAllWalletDepositTokens({ hasNewTokens: true, rhino: { status: 'loading' } })),
+    ).not.toContain('BTC');
+  });
+
+  // A new deposit token on every chain it has: the internal team in production
+  // until it is rolled out, everyone on qa/preview builds.
+  it('is offered only to those given the new deposit tokens', () => {
+    const basic = { rhino: WITH_BITCOIN };
+    expect(symbolsOf(getAllWalletDepositTokens(basic))).not.toContain('BTC');
+    expect(getWalletDepositExtraNetworks('BTC', basic)).toEqual([]);
+    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', basic)).toEqual({ kind: 'none' });
+  });
+
+  it('has no row of the list’s own, only Bitcoin under "More networks"', () => {
+    expect(getWalletDepositNetworksForToken('BTC', NEW_TOKENS)).toEqual([]);
+    expect(getWalletDepositExtraNetworks('BTC', NEW_TOKENS).map(chain => chain.chain)).toEqual([
+      'BITCOIN',
+    ]);
+    // On no chain the list has: never a stray row on Base, where nothing is.
+    expect(getWalletDepositRow(base.id, 'BTC', NEW_TOKENS)).toEqual({ kind: 'none' });
+  });
+
+  it('serves Bitcoin with its rhino.fi address, which has no EVM chain id', () => {
+    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', NEW_TOKENS)).toEqual({
+      kind: 'rhino',
+      selection: { chain: 'BITCOIN', tokenSymbol: 'BTC', destinationType: 'WALLET' },
+    });
+  });
+
+  it('opens on Bitcoin when picked, and keeps a "More networks" chain only where it fits', () => {
+    expect(resolveWalletDepositExtraChain('BTC', undefined, NEW_TOKENS)).toBe('BITCOIN');
+    // From Tron, which takes no BTC.
+    expect(resolveWalletDepositExtraChain('BTC', 'TRON', NEW_TOKENS)).toBe('BITCOIN');
+    // A currency with rows of its own goes back to them, as before.
+    expect(resolveWalletDepositExtraChain('USDC', undefined, NEW_TOKENS)).toBeUndefined();
+    expect(resolveWalletDepositExtraChain('cbBTC', 'BITCOIN', NEW_TOKENS)).toBeUndefined();
+    expect(resolveWalletDepositExtraChain('USDT', 'TRON', NEW_TOKENS)).toBe('TRON');
+    // Nowhere to open while Bitcoin is off.
+    expect(resolveWalletDepositExtraChain('BTC', undefined, ALL)).toBeUndefined();
+  });
+
+  it('is drawn with its own mark', () => {
+    expect(getWalletDepositTokenIcon('BTC')).toBe('images/btc.png');
+  });
+});
+
+/**
+ * The backend answers `enabled: false` when it has no rhino.fi key (or has no
+ * such endpoint): every row is then our own pipeline's, as before rhino.fi,
+ * rather than a retry that can never succeed.
+ */
+describe('with rhino.fi off', () => {
+  const DISABLED: RhinoAssetsState = { status: 'disabled' };
+  const OFF = { hasNewTokens: true, rhino: DISABLED };
+  const WIREX_OFF = { ...OFF, provider: CardProvider.WIREX };
+
+  // Our pipeline bridges dollars to the Safe on Base from Ethereum, Polygon,
+  // Arbitrum and BNB Chain; it does not watch Optimism.
+  it('offers the dollar stablecoins wherever our own pipeline takes them', () => {
+    ['USDC', 'USDT'].forEach(symbol =>
+      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, OFF))).toEqual([
+        mainnet.id,
+        polygon.id,
+        base.id,
+        arbitrum.id,
+        bsc.id,
+        fuse.id,
+      ]),
+    );
+  });
+
+  // ETH included, to our wallet address there; EURC loses Ethereum, rhino.fi's.
+  it('keeps Base our own for every currency with a Base contract', () => {
+    ['EURC', 'ETH', 'WETH', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol =>
+      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, OFF))).toEqual([base.id]),
+    );
+    ['FUSE', 'WFUSE'].forEach(symbol =>
+      expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, OFF))).toEqual([fuse.id]),
+    );
+  });
+
+  it('serves every row it offers as our own, with no retry', () => {
+    expect(getWalletDepositRow(polygon.id, 'USDC', OFF)).toEqual({ kind: 'own' });
+    expect(getWalletDepositRow(base.id, 'ETH', OFF)).toEqual({ kind: 'own' });
+    expect(getWalletDepositRow(base.id, 'cbBTC', OFF)).toEqual({ kind: 'own' });
+    expect(getWalletDepositRow(optimism.id, 'USDC', OFF)).toEqual({ kind: 'none' });
+    expect(getWalletDepositRow(mainnet.id, 'ETH', OFF)).toEqual({ kind: 'none' });
+    ['USDC', 'ETH', 'cbBTC', 'BTC'].forEach(symbol =>
+      expect(getWalletDepositNetworksNotice(symbol, OFF)).toBeUndefined(),
+    );
+  });
+
+  it('mints a wallet address for dollars off Base, and shows the Safe on Base', () => {
+    [mainnet.id, polygon.id, arbitrum.id, bsc.id].forEach(chainId =>
+      expect(getWalletOwnAddress(chainId, 'USDC', undefined, { rhinoOff: true })).toEqual({
+        kind: 'session',
+        destinationType: 'WALLET',
+      }),
+    );
+    // A Wirex cardholder's too: their card spends from the Safe on Base.
+    expect(getWalletOwnAddress(polygon.id, 'USDT', CardProvider.WIREX, { rhinoOff: true })).toEqual(
+      { kind: 'session', destinationType: 'WALLET' },
+    );
+    expect(getWalletOwnAddress(base.id, 'USDC', undefined, { rhinoOff: true })).toEqual({
+      kind: 'safe',
+    });
+    // Nothing that would stay on the chain it was sent on.
+    expect(getWalletOwnAddress(optimism.id, 'USDC', undefined, { rhinoOff: true })).toBeUndefined();
+    expect(getWalletOwnAddress(mainnet.id, 'ETH', undefined, { rhinoOff: true })).toBeUndefined();
+    // And nothing off Base while rhino.fi is on.
+    expect(getWalletOwnAddress(polygon.id, 'USDC', undefined)).toBeUndefined();
+  });
+
+  it('keeps Fuse as it always was', () => {
+    expect(getWalletOwnAddress(fuse.id, 'USDC', CardProvider.WIREX, { rhinoOff: true })).toEqual({
+      kind: 'session',
+      destinationType: 'RAIN_CARD',
+    });
+    expect(getWalletOwnAddress(fuse.id, 'USDC', undefined, { rhinoOff: true })).toEqual({
+      kind: 'safe',
+    });
+    expect(chainIdsOf(getWalletDepositNetworksForToken('USDC', WIREX_OFF))).toContain(fuse.id);
+  });
+
+  it('lists every currency some row of ours takes, and none only rhino.fi carries', () => {
+    const symbols = symbolsOf(getAllWalletDepositTokens(OFF));
+    expect(symbols).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'cbBTC', 'FUSE']));
+    expect(symbols).not.toContain('BTC');
+  });
+
+  it('offers no "More networks", and moves off a chain from there', () => {
+    expect(getWalletDepositExtraNetworks('USDC', OFF)).toEqual([]);
+    expect(getWalletDepositExtraRow('TRON', 'USDT', OFF)).toEqual({ kind: 'none' });
+    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', OFF)).toEqual({ kind: 'none' });
+    expect(resolveWalletDepositExtraChain('BTC', undefined, OFF)).toBeUndefined();
+  });
+
+  it('opens on USDC over Base, as it does with rhino.fi on', () => {
+    expect(resolveWalletDepositChain('USDC', undefined, OFF)).toBe(base.id);
+    expect(resolveWalletDepositChain('ETH', mainnet.id, OFF)).toBe(base.id);
   });
 });

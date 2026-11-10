@@ -17,6 +17,7 @@ import {
   TransactionStatusModal,
 } from '@/lib/types';
 
+import type { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 // Type-only imports (erased at build → no thirdweb runtime cost on mobile).
 import type { Account, Wallet } from 'thirdweb/wallets';
 
@@ -95,6 +96,14 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
+   * A "More networks" rhino.fi chain (e.g. `TRON`) picked from the network list,
+   * in place of `chainId`: the screen then shows the user's rhino.fi address for
+   * it. Cleared whenever an app chain is chosen (see `setWalletDeposit`). A row
+   * of the list never sets it: how a row is served follows from the row itself
+   * (`getWalletDepositRow`).
+   */
+  rhinoChain?: string;
+  /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
    * token", so the previous step alone cannot tell the two apart.
@@ -145,6 +154,12 @@ interface DepositState {
    * one flow and is cleared by `resetDepositFlow`.
    */
   savingsFundIntent: SavingsFundIntent;
+  /**
+   * The rhino.fi address the savings direct-deposit address step shows, for a
+   * row rhino.fi serves (every row but Fuse's and the vault's own, whose step
+   * shows the session instead). Not persisted, and cleared with the rest of the flow.
+   */
+  rhinoDeposit?: RhinoDepositSelection;
   /** Only set while the deposit chooser was opened by an upgrade Top up action. */
   upgradeTopUp?: { tier: RewardsTier; depositToSavings: boolean };
   /**
@@ -164,6 +179,7 @@ interface DepositState {
   setDepositSourceChosen: (v: boolean) => void;
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
+  setRhinoDeposit: (selection: RhinoDepositSelection | undefined) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -196,6 +212,7 @@ export const useDepositStore = create<DepositState>()(
       depositSourceChosen: false,
       savingsFundIntent: 'savings',
       upgradeTopUp: undefined,
+      rhinoDeposit: undefined,
       walletDeposit: {},
       externalWallet: {
         address: undefined,
@@ -209,6 +226,7 @@ export const useDepositStore = create<DepositState>()(
       setDepositSourceChosen: (v: boolean) => set({ depositSourceChosen: v }),
       setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
       setUpgradeTopUp: context => set({ upgradeTopUp: context }),
+      setRhinoDeposit: selection => set({ rhinoDeposit: selection }),
 
       setModal: modal => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -229,7 +247,16 @@ export const useDepositStore = create<DepositState>()(
       clearBankTransferData: () => set({ bankTransfer: {} }),
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
-      setWalletDeposit: data => set({ walletDeposit: { ...get().walletDeposit, ...data } }),
+      // A caller may name a pairing of its own (Main currency, AI API); the
+      // address screen moves off one that has no row for this user.
+      setWalletDeposit: data =>
+        set({
+          walletDeposit: {
+            ...get().walletDeposit,
+            ...('chainId' in data && !('rhinoChain' in data) ? { rhinoChain: undefined } : {}),
+            ...data,
+          },
+        }),
       setSrcChainId: srcChainId => set({ srcChainId }),
       setPrincipalToken: principalToken => set({ principalToken }),
       setDirectDepositSession: data =>
@@ -252,6 +279,7 @@ export const useDepositStore = create<DepositState>()(
           depositSourceChosen: false,
           savingsFundIntent: 'savings',
           upgradeTopUp: undefined,
+          rhinoDeposit: undefined,
           walletDeposit: {},
         }),
     }),

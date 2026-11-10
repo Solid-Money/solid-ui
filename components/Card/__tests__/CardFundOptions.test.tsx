@@ -1,6 +1,7 @@
 import React from 'react';
 
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
+import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
 import { RAIN_CARD_FUND_SECTIONS, WIREX_CARD_FUND_SECTIONS } from '@/lib/utils/cardFunding';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -37,6 +38,14 @@ jest.mock('@/components/Card/CardFund/constants', () => ({
   ],
   CARD_FUND_USD_ICON: 'usd',
   getCardFundNetworkChips: () => [],
+  getCardFundTokenIcon: (symbol: string) => symbol.toLowerCase(),
+}));
+// rhino.fi's routes, which decide the crypto rows, and the new-tokens gate.
+jest.mock('@/hooks/useRhinoDepositAssets', () => ({
+  useOfferedRhinoDepositAssets: () => mockRhino.current,
+}));
+jest.mock('@/hooks/useDepositTokensAccess', () => ({
+  useDepositTokensAccess: () => ({ isEnabled: mockAccess.isEnabled, isLoading: false }),
 }));
 jest.mock('@/components/Card/CardFund/localCurrencies', () => ({
   CARD_FUND_LOCAL_CURRENCIES: [
@@ -68,6 +77,9 @@ jest.mock('@/store/useOrchestraStore', () => ({}));
 
 type Props = React.ComponentProps<typeof CardFundOptions>;
 
+const mockRhino: { current: any } = { current: { status: 'ready', assets: RHINO_ASSETS } };
+const mockAccess = { isEnabled: true };
+
 const render = (props: Partial<Props>) => {
   let root: any;
   act(() => {
@@ -93,6 +105,8 @@ const RAIN_PROPS: Partial<Props> = {
 
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  mockRhino.current = { status: 'ready', assets: RHINO_ASSETS };
+  mockAccess.isEnabled = true;
 });
 
 it('names Cash App on the USD row instead of giving it a row at the bottom', () => {
@@ -146,4 +160,45 @@ it('offers Rain only the dollar stablecoins', () => {
   const root = render(RAIN_PROPS);
   expect(titlesOf(root)).not.toContain('EURC');
   act(() => root.unmount());
+});
+
+describe('crypto', () => {
+  const withBitcoin = () => {
+    mockRhino.current = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
+  };
+
+  it('lists BTC for Rain once rhino.fi takes it to the card from Bitcoin', () => {
+    withBitcoin();
+    const onTokenPress = jest.fn();
+    const root = render({ ...RAIN_PROPS, onTokenPress });
+
+    const btc = rowTitled(root, 'BTC');
+    expect(btc.props.chips).toEqual(['Bitcoin']);
+    // After the stablecoins.
+    expect(titlesOf(root).slice(0, 3)).toEqual(['USDC', 'USDT', 'BTC']);
+    act(() => btc.props.onPress());
+    expect(onTokenPress).toHaveBeenCalledWith('BTC');
+    act(() => root.unmount());
+  });
+
+  it('lists no BTC while rhino.fi has Bitcoin off', () => {
+    const root = render(RAIN_PROPS);
+    expect(titlesOf(root)).not.toContain('BTC');
+    act(() => root.unmount());
+  });
+
+  it('lists no BTC for someone not given the new deposit tokens', () => {
+    withBitcoin();
+    mockAccess.isEnabled = false;
+    const root = render(RAIN_PROPS);
+    expect(titlesOf(root)).not.toContain('BTC');
+    act(() => root.unmount());
+  });
+
+  it('offers Wirex no BTC', () => {
+    withBitcoin();
+    const root = render({ sections: WIREX_CARD_FUND_SECTIONS, onLocalCurrencyPress: jest.fn() });
+    expect(titlesOf(root)).not.toContain('BTC');
+    act(() => root.unmount());
+  });
 });
