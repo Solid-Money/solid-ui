@@ -669,8 +669,12 @@ describe('without the new deposit tokens', () => {
       bsc.id,
       fuse.id,
     ]);
-    // ETH is everyone's on Ethereum alone, through rhino.fi.
-    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', BASIC))).toEqual([mainnet.id]);
+    // ETH is everyone's on Ethereum, through rhino.fi, and on Base, through our
+    // wallet deposit address, which wraps it.
+    expect(chainIdsOf(getWalletDepositNetworksForToken('ETH', BASIC))).toEqual([
+      mainnet.id,
+      base.id,
+    ]);
     // rhino.fi takes no WETH, so it is the Safe on Base alone.
     expect(chainIdsOf(getWalletDepositNetworksForToken('WETH', BASIC))).toEqual([base.id]);
     expect(chainIdsOf(getWalletDepositNetworks(BASIC))).not.toContain(optimism.id);
@@ -682,6 +686,7 @@ describe('without the new deposit tokens', () => {
       'USDC',
       'USDT',
       'EURC',
+      'ETH',
       'WETH',
     ]);
     expect(symbolsOf(getWalletDepositTokens(mainnet.id, BASIC))).toEqual([
@@ -701,7 +706,8 @@ describe('without the new deposit tokens', () => {
 
   it('moves a currency off a chain it is not offered on yet', () => {
     expect(resolveWalletDepositSymbol(optimism.id, 'USDC', BASIC)).toBeUndefined();
-    expect(resolveWalletDepositChain('ETH', arbitrum.id, BASIC)).toBe(mainnet.id);
+    // To Base, where everyone is offered it, as anyone's ETH opens.
+    expect(resolveWalletDepositChain('ETH', arbitrum.id, BASIC)).toBe(base.id);
   });
 
   it('still opens on USDC over Base', () => {

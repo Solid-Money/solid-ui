@@ -124,10 +124,11 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, ...Object.keys(EURC_TOKENS).map(Number)],
   },
   {
-    // Everyone sends it on Ethereum. Sent anywhere through rhino.fi it arrives as
-    // WETH in the Safe on Base, which the card spends: Base itself goes to our
-    // wallet deposit address there, which wraps it. Base, Arbitrum and BNB Chain
-    // are for those given the new deposit tokens for now.
+    // Everyone sends it on Ethereum and Base. Sent anywhere through rhino.fi it
+    // arrives as WETH in the Safe on Base, which the card spends: Base itself
+    // goes to our wallet deposit address there, which wraps it (first seen on
+    // production 2026-11-10). Arbitrum and BNB Chain are for those given the new
+    // deposit tokens for now.
     symbol: 'ETH',
     name: 'Ether',
     group: 'crypto',
@@ -139,7 +140,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [arbitrum.id]: NATIVE_COIN,
       [bsc.id]: NATIVE_COIN,
     },
-    releasedOn: [mainnet.id],
+    releasedOn: [mainnet.id, base.id],
   },
   {
     symbol: 'FUSE',
