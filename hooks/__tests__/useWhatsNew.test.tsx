@@ -81,7 +81,7 @@ describe('useWhatsNew auto-open', () => {
 });
 
 describe('useWhatsNew opening a linked page', () => {
-  const ID = '6ac4df9322b1a60a4458ab80';
+  const ID = '000000000000000000000001';
   const step = (title: string) => ({ title, text: '', imageUrl: '' });
   const active: WhatsNew = {
     ...announcement,

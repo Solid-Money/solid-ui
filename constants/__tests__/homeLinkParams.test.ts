@@ -1,6 +1,6 @@
 import { homeLinkParamsFor, parseHomeLinkAction } from '@/constants/homeLinkParams';
 
-const ID = '6ac4df9322b1a60a4458ab80';
+const ID = '000000000000000000000001';
 
 const parse = (query: string) => {
   const params = new URLSearchParams(query);

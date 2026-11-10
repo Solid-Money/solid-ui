@@ -25,7 +25,7 @@ jest.mock('@/store/useCardPaneStore', () => ({
     select({ openSpendMode: mockOpenSpendMode, open: mockOpenCardPane }),
 }));
 
-const ID = '6ac4df9322b1a60a4458ab80';
+const ID = '000000000000000000000001';
 
 type Context = Parameters<typeof useHomeLinkAction>[0];
 const known: Context = {

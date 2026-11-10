@@ -66,7 +66,7 @@ describe('routeForLink', () => {
   });
 
   describe('paths whose query picks the destination', () => {
-    const ID = '6ac4df9322b1a60a4458ab80';
+    const ID = '000000000000000000000001';
 
     it('opens the savings vault a link names', () => {
       expect(routeForLink(link('/savings?vault=eur&utm_medium=push'))).toEqual({
