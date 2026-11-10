@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { onlineManager, useQuery } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
 import { fetchLatestWhatsNew } from '@/lib/api';
@@ -122,10 +122,16 @@ export const useWhatsNew = (autoShowOnHome = false) => {
 
     const answer = async () => {
       let latest = useWhatsNewStore.getState().whatsNew;
-      if (!latest || latest._id !== request.id) {
+      // Asked of the server even when the stored copy is the linked one: that
+      // copy is as old as the session, and an admin may have since replaced or
+      // switched it off. Offline it is all there is, and a refetch would wait
+      // for a connection with the tap unanswered.
+      if (onlineManager.isOnline()) {
         try {
-          const { data: fresh } = await refetch();
-          if (fresh) latest = fresh;
+          const result = await refetch();
+          // A failed refresh keeps the last data beside its error, so only a
+          // successful one is the server's answer, "nothing active" included.
+          if (result.isSuccess) latest = result.data;
         } catch (error) {
           console.error("Failed to fetch What's New for a link:", error);
         }

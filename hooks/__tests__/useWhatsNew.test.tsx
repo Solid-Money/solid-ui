@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { onlineManager, useQuery } from '@tanstack/react-query';
 
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { WhatsNew } from '@/lib/types';
@@ -19,7 +19,10 @@ jest.mock('@/lib/mmvkStorage', () => ({
 }));
 
 jest.mock('@/lib/api', () => ({ fetchLatestWhatsNew: jest.fn() }));
-jest.mock('@tanstack/react-query', () => ({ useQuery: jest.fn() }));
+jest.mock('@tanstack/react-query', () => ({
+  useQuery: jest.fn(),
+  onlineManager: { isOnline: jest.fn(() => true) },
+}));
 
 const announcement: WhatsNew = {
   _id: 'new-announcement',
@@ -104,6 +107,13 @@ describe('useWhatsNew opening a linked page', () => {
     });
   };
 
+  /** What the server answers a link's refetch with. */
+  const serverHas = (latest: WhatsNew | null) => {
+    const refetch = jest.fn().mockResolvedValue({ isSuccess: true, data: latest });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+    return refetch;
+  };
+
   beforeEach(() => {
     mockStorage.clear();
     useWhatsNewStore.setState({
@@ -112,7 +122,8 @@ describe('useWhatsNew opening a linked page', () => {
       initialStep: 0,
       request: null,
     });
-    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
+    (onlineManager.isOnline as jest.Mock).mockReturnValue(true);
+    serverHas(active);
   });
 
   it('opens the announcement on the page the link named', async () => {
@@ -137,8 +148,7 @@ describe('useWhatsNew opening a linked page', () => {
 
   it('opens the announcement that replaced the linked one on its first page', async () => {
     const replacement: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
-    const refetch = jest.fn().mockResolvedValue({ data: replacement });
-    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+    const refetch = serverHas(replacement);
     useWhatsNewStore.setState({ whatsNew: null });
 
     const renderer = await render();
@@ -154,15 +164,70 @@ describe('useWhatsNew opening a linked page', () => {
     act(() => renderer.unmount());
   });
 
+  it('asks the server even when the stored copy is the linked announcement', async () => {
+    // Stored this session, replaced on the server since.
+    const replacement: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
+    const refetch = serverHas(replacement);
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(refetch).toHaveBeenCalled();
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: replacement,
+      isVisible: true,
+      initialStep: 0,
+    });
+    act(() => renderer.unmount());
+  });
+
   it('opens nothing when no announcement is active', async () => {
-    const refetch = jest.fn().mockResolvedValue({ data: null });
-    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+    serverHas(null);
     useWhatsNewStore.setState({ whatsNew: null });
 
     const renderer = await render();
     await request(ID, 1);
 
     expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    act(() => renderer.unmount());
+  });
+
+  it('does not revive a stored announcement the server has switched off', async () => {
+    serverHas(null);
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    act(() => renderer.unmount());
+  });
+
+  it('opens the stored copy when the server cannot be reached', async () => {
+    const refetch = jest
+      .fn()
+      .mockResolvedValue({ isSuccess: false, isError: true, data: undefined });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: active,
+      isVisible: true,
+      initialStep: 1,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens the stored copy offline without waiting for a connection', async () => {
+    (onlineManager.isOnline as jest.Mock).mockReturnValue(false);
+    const refetch = serverHas(null);
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(refetch).not.toHaveBeenCalled();
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: true, initialStep: 2 });
     act(() => renderer.unmount());
   });
 
