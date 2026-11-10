@@ -21,7 +21,7 @@ jest.mock('@/lib/mmvkStorage', () => ({
 jest.mock('@/lib/api', () => ({ fetchLatestWhatsNew: jest.fn() }));
 jest.mock('@tanstack/react-query', () => ({
   useQuery: jest.fn(),
-  onlineManager: { isOnline: jest.fn(() => true) },
+  onlineManager: { isOnline: jest.fn(() => true), subscribe: jest.fn(() => () => {}) },
 }));
 
 const announcement: WhatsNew = {
@@ -228,6 +228,38 @@ describe('useWhatsNew opening a linked page', () => {
 
     expect(refetch).not.toHaveBeenCalled();
     expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: true, initialStep: 2 });
+    act(() => renderer.unmount());
+  });
+
+  it('opens the stored copy when the connection drops during the refresh', async () => {
+    let goOnline: ((online: boolean) => void) | undefined;
+    const unsubscribe = jest.fn();
+    (onlineManager.subscribe as jest.Mock).mockImplementation(listener => {
+      goOnline = listener;
+      return unsubscribe;
+    });
+    // Paused by React Query until the connection is back.
+    let settle: (result: unknown) => void = () => {};
+    const refetch = jest.fn(() => new Promise(resolve => (settle = resolve)));
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+
+    const renderer = await render();
+    await request(ID, 2);
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: { id: ID } });
+
+    await act(async () => goOnline!(false));
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: active,
+      isVisible: true,
+      initialStep: 2,
+      request: null,
+    });
+    expect(unsubscribe).toHaveBeenCalled();
+
+    // The paused refresh finishing later does not answer the link again.
+    act(() => useWhatsNewStore.setState({ isVisible: false }));
+    await act(async () => settle({ isSuccess: true, data: null }));
+    expect(useWhatsNewStore.getState()).toMatchObject({ whatsNew: active, isVisible: false });
     act(() => renderer.unmount());
   });
 

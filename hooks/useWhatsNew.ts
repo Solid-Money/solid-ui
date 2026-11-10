@@ -26,6 +26,22 @@ const getDismissedIds = (): string[] => {
 const clampStep = (step: number, whatsNew: WhatsNew) =>
   Math.max(0, Math.min(step, whatsNew.steps.length - 1));
 
+const OFFLINE = Symbol('offline');
+
+/**
+ * Settles once the device goes offline. A refresh that fails then is paused
+ * until the connection is back, and its promise with it.
+ */
+const whenOffline = () => {
+  let unsubscribe = () => {};
+  const offline = new Promise<typeof OFFLINE>(resolve => {
+    unsubscribe = onlineManager.subscribe(online => {
+      if (!online) resolve(OFFLINE);
+    });
+  });
+  return { offline, unsubscribe };
+};
+
 export const useWhatsNew = (autoShowOnHome = false) => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const {
@@ -125,15 +141,20 @@ export const useWhatsNew = (autoShowOnHome = false) => {
       // Asked of the server even when the stored copy is the linked one: that
       // copy is as old as the session, and an admin may have since replaced or
       // switched it off. Offline it is all there is, and a refetch would wait
-      // for a connection with the tap unanswered.
+      // for a connection with the tap unanswered, so going offline while the
+      // refresh is out answers with it too. The refresh's late result then only
+      // updates the query; this request has been answered.
       if (onlineManager.isOnline()) {
+        const { offline, unsubscribe } = whenOffline();
         try {
-          const result = await refetch();
+          const result = await Promise.race([refetch(), offline]);
           // A failed refresh keeps the last data beside its error, so only a
           // successful one is the server's answer, "nothing active" included.
-          if (result.isSuccess) latest = result.data;
+          if (result !== OFFLINE && result.isSuccess) latest = result.data;
         } catch (error) {
           console.error("Failed to fetch What's New for a link:", error);
+        } finally {
+          unsubscribe();
         }
       }
       if (cancelled) return;
