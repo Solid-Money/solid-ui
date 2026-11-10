@@ -20,6 +20,7 @@ import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
 import { openHelpLink } from '@/lib/help/links';
+import { DetectedDirectDepositResponse } from '@/lib/types';
 import { eclipseAddress } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -111,9 +112,21 @@ const WalletDepositAddress = () => {
   // The Safe is not registered with the pipeline; saying "scanning" over it would
   // be describing a poll that can never come back positive.
   const isScanning = !!address && isMinted;
+  // The pipeline has seen the transfer: hand the user to its progress screen, as the
+  // card deposit sheet does. Polling stops at detection, so staying here would leave
+  // "Deposit detected" spinning with nothing ever coming after it.
+  const openDetectedDeposit = useCallback(
+    (deposit: DetectedDirectDepositResponse) => {
+      if (!deposit.clientTxId) return;
+      setDepositModal(DEPOSIT_MODAL.CLOSE);
+      router.push(`/activity/${deposit.clientTxId}`);
+    },
+    [router, setDepositModal],
+  );
   const { isDetected } = useDetectedDirectDeposit({
     enabled: isScanning,
     destinationType: CARD_FUND_DESTINATION_TYPE,
+    onDetected: openDetectedDeposit,
   });
 
   useEffect(() => {
