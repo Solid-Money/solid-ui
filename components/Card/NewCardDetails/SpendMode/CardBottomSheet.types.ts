@@ -45,6 +45,12 @@ export interface CardBottomSheetProps {
    * with a loan on each instance; web already scrolls.
    */
   scrollable?: boolean;
+  /**
+   * Native only: how this sheet treats one already open beneath it. `push` keeps that one in
+   * place, dimmed under this sheet's backdrop — for a sheet opened from inside another, like
+   * "How collateral works" over the spend-mode picker. Gorhom's default, `switch`, hides it.
+   */
+  stackBehavior?: 'push' | 'switch' | 'replace';
   children: (body: CardSheetBody) => ReactNode;
 }
 

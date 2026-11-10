@@ -30,6 +30,7 @@ const CardBottomSheet = ({
   designTop,
   designBottom,
   scrollable = false,
+  stackBehavior,
   children,
 }: CardBottomSheetProps) => {
   const insets = useSafeAreaInsets();
@@ -65,6 +66,7 @@ const CardBottomSheet = ({
   return (
     <BottomSheetModal
       ref={sheetRef}
+      stackBehavior={stackBehavior}
       enableDynamicSizing
       enablePanDownToClose
       // The repay step has a field. Without this the sheet stays lifted after the keyboard
