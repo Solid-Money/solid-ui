@@ -253,6 +253,19 @@ export function unitsToCents(units: bigint, decimals: number, round: 'up' | 'dow
 }
 
 /**
+ * What withdrawing `units` leaves of the token on the card, in whole cents —
+ * rounded down, so the sub-cent dust a capped amount can leave is not reported
+ * as balance still on the card.
+ */
+export function remainderCents(
+  token: Pick<CardCollateralTokenBalanceDto, 'rawBalance' | 'decimals'>,
+  units: bigint,
+): bigint {
+  const raw = BigInt(token.rawBalance || '0');
+  return raw > units ? unitsToCents(raw - units, token.decimals, 'down') : 0n;
+}
+
+/**
  * One token's withdrawal: all of it, or — when Rain caps the withdrawal below
  * the token's balance, because its credit line still needs collateral — as
  * much as the cap (in whole cents) allows, never past the balance. Integer

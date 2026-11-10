@@ -9,6 +9,7 @@ import {
   homeBannerCopy,
   isClosingBalanceUnknown,
   rainClosingBannerState,
+  remainderCents,
   routesToNewCard,
   tokenWithdrawal,
   unitsToCents,
@@ -182,6 +183,24 @@ describe('rainSunset', () => {
     it('never asks for more than the token holds, or less than nothing', () => {
       expect(tokenWithdrawal({ rawBalance: '5000', decimals: 6 }, 999n).amount).toBe('0.005');
       expect(tokenWithdrawal(usdc, -1n)).toEqual({ units: 0n, amount: '0' });
+    });
+  });
+
+  describe('remainderCents', () => {
+    const usdc = { rawBalance: '248500000', decimals: 6 };
+
+    it('is what a capped withdrawal leaves on the card', () => {
+      const { units } = tokenWithdrawal(usdc, floorCents(100.12));
+      expect(remainderCents(usdc, units)).toBe(14838n);
+    });
+
+    it('is the whole balance for a token the cap never reached', () => {
+      expect(remainderCents(usdc, 0n)).toBe(24850n);
+    });
+
+    it('is nothing once the whole balance moved, dust included', () => {
+      expect(remainderCents(usdc, 248500000n)).toBe(0n);
+      expect(remainderCents({ rawBalance: '248505000', decimals: 6 }, 248500000n)).toBe(0n);
     });
   });
 

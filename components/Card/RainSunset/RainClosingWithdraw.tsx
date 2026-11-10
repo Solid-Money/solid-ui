@@ -32,6 +32,7 @@ import {
   floorCents,
   formatClosingBalance,
   formatClosingDate,
+  remainderCents,
   tokenWithdrawal,
   unitsToCents,
 } from '@/lib/utils/rainSunset';
@@ -64,7 +65,8 @@ const TokenLogoPop = ({ symbol, index }: { symbol: string; index: number }) => {
 type Phase =
   | { kind: 'review' }
   | { kind: 'withdrawing'; step: number }
-  | { kind: 'done'; usd: number };
+  /** `leftUsd`: what is still on the card — Rain's cap stopped short of it. */
+  | { kind: 'done'; usd: number; leftUsd: number };
 
 /**
  * Withdraw the whole balance on a closing card to the wallet (Figma "5 · Withdraw
@@ -107,27 +109,45 @@ export function RainClosingWithdraw() {
    * The cap (Rain's spending power) and what has moved are kept in whole
    * cents, in integers: what a token uses of the cap is rounded up, so the cap
    * left is never overstated.
+   *
+   * What the cap leaves behind — the part of a token past it, and every token
+   * after it runs out — is counted too, so a partial withdrawal is reported as
+   * one rather than as the whole card balance.
    */
   const withdrawAll = async (
-    start: { index: number; capCents: bigint | undefined; movedCents: bigint } = {
+    start: {
+      index: number;
+      capCents: bigint | undefined;
+      movedCents: bigint;
+      leftCents: bigint;
+    } = {
       index: 0,
       capCents:
         collateral?.spendingPowerUsd === undefined
           ? undefined
           : floorCents(collateral.spendingPowerUsd),
       movedCents: 0n,
+      leftCents: 0n,
     },
   ) => {
     if (!user?.safeAddress || tokens.length === 0) return;
     let capCents = start.capCents;
     let movedCents = start.movedCents;
+    let leftCents = start.leftCents;
     let index = start.index;
     try {
       for (; index < tokens.length; index++) {
         const token = tokens[index];
-        if (capCents !== undefined && capCents < 1n) break;
+        if (capCents !== undefined && capCents < 1n) {
+          // The cap is spent: this token and the rest stay on the card.
+          for (const rest of tokens.slice(index)) leftCents += remainderCents(rest, 0n);
+          break;
+        }
         const { units, amount } = tokenWithdrawal(token, capCents);
-        if (units === 0n) continue;
+        if (units === 0n) {
+          leftCents += remainderCents(token, 0n);
+          continue;
+        }
         setPhase({ kind: 'withdrawing', step: index });
         await withdrawCollateral({
           amount,
@@ -136,6 +156,7 @@ export function RainClosingWithdraw() {
           tokenAddress: token.tokenAddress,
         });
         movedCents += unitsToCents(units, token.decimals, 'down');
+        leftCents += remainderCents(token, units);
         if (capCents !== undefined) {
           const used = unitsToCents(units, token.decimals, 'up');
           capCents = used >= capCents ? 0n : capCents - used;
@@ -154,13 +175,17 @@ export function RainClosingWithdraw() {
         });
         return;
       }
-      setPhase({ kind: 'done', usd: Number(movedCents) / 100 });
+      setPhase({
+        kind: 'done',
+        usd: Number(movedCents) / 100,
+        leftUsd: Number(leftCents) / 100,
+      });
     } catch (error) {
       // Back to the review, which re-reads the card and shows what is still on
       // it — never "done", which would say the whole balance is in the wallet.
       setPhase({ kind: 'review' });
       if (!isCancelledByUser(error)) {
-        const resumeFrom = { index, capCents, movedCents };
+        const resumeFrom = { index, capCents, movedCents, leftCents };
         void showFailureSheet(error, {
           action: 'card_withdraw',
           title: 'Couldn’t withdraw your card balance',
@@ -173,6 +198,43 @@ export function RainClosingWithdraw() {
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
     }
   };
+
+  if (phase.kind === 'done' && phase.leftUsd > 0) {
+    // Rain capped the withdrawal below the card balance (it still holds some
+    // against pending payments). Say what moved and what did not, and lead
+    // back to the review, which shows what is still on the card.
+    return (
+      <PageLayout desktopOnly scrollable={false}>
+        <View className="mx-auto w-full max-w-lg flex-1 px-6">
+          <View style={styles.doneContent}>
+            <Image
+              source={getAsset('images/card-withdraw-success.svg')}
+              style={styles.success}
+              contentFit="contain"
+            />
+            <Text className="text-center text-[26px] font-semibold leading-[32px] text-white">
+              {formatClosingBalance(phase.usd)} is in your wallet
+            </Text>
+            <Text className="text-center text-[16px] leading-[22px] text-white/70">
+              {formatClosingBalance(phase.leftUsd)} is still on your card, held for pending
+              payments. Withdraw it once they settle.
+            </Text>
+          </View>
+          <View className="pb-6 pt-3">
+            <Button
+              onPress={() => setPhase({ kind: 'review' })}
+              className="mb-2 h-[54px] rounded-full bg-white"
+            >
+              <Text className="text-[17px] font-semibold text-black">Withdraw the rest</Text>
+            </Button>
+            <Button variant="ghost" onPress={goToCard} className="h-[54px] rounded-full">
+              <Text className="text-[17px] font-semibold text-white">Done</Text>
+            </Button>
+          </View>
+        </View>
+      </PageLayout>
+    );
+  }
 
   if (phase.kind === 'done') {
     return (
