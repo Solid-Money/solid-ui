@@ -29,6 +29,7 @@ import {
   isOwnPipelineChain,
   isOwnPipelineToken,
   isRhinoDepositOffered,
+  isRhinoPayoutFinal,
   isSameDepositAddress,
   isValidRhinoDepositAddress,
   OWN_PIPELINE_TOKEN_CHAINS,
@@ -389,18 +390,15 @@ const deposit = (overrides: Partial<RhinoDeposit>): RhinoDeposit => ({
 describe('pickRhinoDeposit', () => {
   const match = {
     depositAddress: TRON_ADDRESS,
-    chain: 'TRON',
     addressType: 'TRON',
-    tokenSymbol: 'USDT',
     destinationType: 'PROTOCOL' as const,
   };
 
-  it('picks the newest deposit to this address on this chain', () => {
+  it('picks the newest deposit to this address', () => {
     const picked = pickRhinoDeposit(
       [
         deposit({ id: 'old', createdAt: '2026-11-02T09:00:00.000Z' }),
         deposit({ id: 'new', createdAt: '2026-11-02T11:00:00.000Z' }),
-        deposit({ id: 'other-chain', chain: 'SOLANA', createdAt: '2026-11-02T12:00:00.000Z' }),
         deposit({
           id: 'other-address',
           depositAddress: 'TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf',
@@ -416,19 +414,55 @@ describe('pickRhinoDeposit', () => {
     expect(
       pickRhinoDeposit(
         [deposit({ chain: 'OPTIMISM', depositAddress: EVM_ADDRESS.toLowerCase() })],
-        { ...match, depositAddress: EVM_ADDRESS, chain: 'OPTIMISM', addressType: 'EVM' },
+        { ...match, depositAddress: EVM_ADDRESS, addressType: 'EVM' },
       )?.id,
     ).toBe('d1');
   });
 
-  // One address takes more than one token (the card's takes USDC, USDT and
-  // ETH): a newer deposit of another token, or for another destination, is
-  // another screen's, and must not decide what this one shows.
-  it('picks only a deposit of this token, for this destination', () => {
+  // prod, 2026-11-10: the card screen was opened for USDT on Arbitrum and 10
+  // USDC was sent to its address. rhino.fi took it, as the address takes every
+  // token its route does, and the screen kept scanning. An EVM address is also
+  // the same on every EVM chain, so a send from another one is this address's
+  // too.
+  it('picks a deposit of any token, sent on any chain, to this address', () => {
+    const cardMatch = {
+      depositAddress: EVM_ADDRESS,
+      addressType: 'EVM',
+      destinationType: 'RAIN_CARD' as const,
+    };
+    expect(
+      pickRhinoDeposit(
+        [
+          deposit({
+            id: 'usdc',
+            chain: 'ARBITRUM',
+            tokenSymbol: 'USDC',
+            depositAddress: EVM_ADDRESS.toLowerCase(),
+            destinationType: 'RAIN_CARD',
+          }),
+        ],
+        cardMatch,
+      )?.id,
+    ).toBe('usdc');
+    expect(
+      pickRhinoDeposit(
+        [
+          deposit({
+            id: 'polygon',
+            chain: 'MATIC_POS',
+            depositAddress: EVM_ADDRESS.toLowerCase(),
+            destinationType: 'RAIN_CARD',
+          }),
+        ],
+        cardMatch,
+      )?.id,
+    ).toBe('polygon');
+  });
+
+  it('leaves a deposit for another destination to that destination’s screen', () => {
     const picked = pickRhinoDeposit(
       [
         deposit({ id: 'mine', createdAt: '2026-11-02T10:00:00.000Z' }),
-        deposit({ id: 'other-token', tokenSymbol: 'USDC', createdAt: '2026-11-02T11:00:00.000Z' }),
         deposit({
           id: 'other-destination',
           destinationType: 'WALLET',
@@ -467,13 +501,68 @@ describe('getRhinoRejectMessage', () => {
   });
 });
 
+describe('isRhinoPayoutFinal', () => {
+  it('is the wallet’s payouts into the Safe, and nothing else', () => {
+    expect(isRhinoPayoutFinal({ destinationType: 'WALLET', receiveSymbol: 'USDC' })).toBe(true);
+    expect(isRhinoPayoutFinal({ destinationType: 'WALLET', receiveSymbol: 'EURC' })).toBe(true);
+    expect(isRhinoPayoutFinal({ destinationType: 'WALLET', receiveSymbol: 'WBTC' })).toBe(true);
+    expect(isRhinoPayoutFinal({ destinationType: 'WALLET', receiveSymbol: 'ETH' })).toBe(false);
+    expect(isRhinoPayoutFinal({ destinationType: 'RAIN_CARD', receiveSymbol: 'USDC' })).toBe(false);
+    expect(isRhinoPayoutFinal({ destinationType: 'PROTOCOL', receiveSymbol: 'USDC' })).toBe(false);
+  });
+});
+
 describe('getRhinoDepositStatusView', () => {
-  it('says a seen deposit is on its way', () => {
+  it('says a seen deposit is on its way, naming the token it came in as', () => {
     ['DETECTED', 'ACCEPTED', 'DELAYED', 'EXECUTED'].forEach(status => {
       expect(
         getRhinoDepositStatusView(deposit({ status: status as RhinoDeposit['status'] }), 'Tron')
           .title,
-      ).toBe('Received on Tron — on its way');
+      ).toBe('Received USDT on Tron — on its way');
+    });
+    expect(
+      getRhinoDepositStatusView(deposit({ tokenSymbol: 'USDC', chain: 'ARBITRUM' }), 'Arbitrum')
+        .title,
+    ).toBe('Received USDC on Arbitrum — on its way');
+  });
+
+  // rhino.fi pays these into the Safe itself: once it has, the deposit is done,
+  // and nothing of ours will pick it up and open its activity.
+  it('says a wallet deposit paid into the Safe is complete', () => {
+    expect(
+      getRhinoDepositStatusView(
+        deposit({ status: 'EXECUTED', destinationType: 'WALLET', receiveSymbol: 'USDC' }),
+        'Tron',
+      ),
+    ).toEqual({
+      tone: 'success',
+      title: 'Deposit complete',
+      body: 'Your USDC is in your wallet.',
+    });
+    // Not before rhino.fi has paid it out.
+    expect(
+      getRhinoDepositStatusView(
+        deposit({ status: 'ACCEPTED', destinationType: 'WALLET', receiveSymbol: 'USDC' }),
+        'Tron',
+      ).title,
+    ).toBe('Received USDT on Tron — on its way');
+  });
+
+  // The wallet's ETH, the card's and savings' payouts go on through our
+  // pipeline, whose own detection opens the deposit's activity.
+  it('says only rhino.fi’s leg is done when our pipeline carries the payout on', () => {
+    [
+      { destinationType: 'WALLET' as const, receiveSymbol: 'ETH', tokenSymbol: 'ETH' },
+      { destinationType: 'RAIN_CARD' as const, receiveSymbol: 'USDC', tokenSymbol: 'USDT' },
+      { destinationType: 'PROTOCOL' as const, receiveSymbol: 'USDC', tokenSymbol: 'USDT' },
+    ].forEach(overrides => {
+      expect(
+        getRhinoDepositStatusView(deposit({ status: 'EXECUTED', ...overrides }), 'Arbitrum'),
+      ).toEqual({
+        tone: 'success',
+        title: `Received ${overrides.tokenSymbol} on Arbitrum — on its way`,
+        body: 'It will show in your activity shortly.',
+      });
     });
   });
 
@@ -879,45 +968,22 @@ describe('isOwnPipelineToken', () => {
 
 /** "More networks": rhino.fi's chains the app has no row for. */
 describe('getRhinoExtraChains', () => {
-  // Never an app chain, which shows once as its own row, nor Arc, held back.
-  it('lists only the chains the app has no row for, Arc aside', () => {
-    expect(
-      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'USDC' })),
-    ).toEqual(['SOLANA', 'AVALANCHE']);
-    expect(
-      chainsOf(
-        getRhinoExtraChains(RHINO_ASSETS, {
-          destinationType: 'PROTOCOL',
-          symbol: 'USDT',
-          vault: 'soUSD',
-        }),
-      ),
-    ).toEqual(['TRON', 'SOLANA', 'AVALANCHE']);
-  });
+  // Product decision, 2026-11-10: of the chains the app has no row for, only
+  // Bitcoin is offered (see the native BTC tests). The backend still lists
+  // the rest, routes and all.
+  it('offers none of Tron, Solana, Avalanche or Arc, whatever rhino.fi routes', () => {
+    const offers = (filter: Parameters<typeof getRhinoExtraChains>[1]) =>
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS_WITH_BITCOIN, filter));
 
-  it('lists only what rhino.fi routes to the screen’s destination', () => {
-    expect(
-      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'WALLET', symbol: 'EURC' })),
-    ).toEqual(['SOLANA']);
-    expect(
-      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'EURC' })),
-    ).toEqual([]);
-    expect(
-      getRhinoExtraChains(RHINO_ASSETS, {
-        destinationType: 'PROTOCOL',
-        symbol: 'ETH',
-        vault: 'soUSD',
-      }),
-    ).toEqual([]);
-  });
-
-  // Tron, Solana and the rest pay wallet and card USDT out as USDC.
-  it('lists wallet and card USDT on the chains the app has no row for', () => {
-    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
-      expect(
-        chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType, symbol: 'USDT' })),
-      ).toEqual(['TRON', 'SOLANA', 'AVALANCHE']),
+    expect(chainsOf(RHINO_ASSETS_WITH_BITCOIN.chains)).toEqual(
+      expect.arrayContaining(['TRON', 'SOLANA', 'AVALANCHE', 'ARC']),
     );
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType => {
+      expect(offers({ destinationType, symbol: 'USDC' })).toEqual([]);
+      expect(offers({ destinationType, symbol: 'USDT' })).toEqual([]);
+    });
+    expect(offers({ destinationType: 'WALLET', symbol: 'EURC' })).toEqual([]);
+    expect(offers({ destinationType: 'PROTOCOL', symbol: 'USDT', vault: 'soUSD' })).toEqual([]);
   });
 
   it('has none while rhino.fi is off', () => {

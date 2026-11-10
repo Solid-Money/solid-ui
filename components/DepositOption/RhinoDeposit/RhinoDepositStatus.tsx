@@ -4,22 +4,42 @@ import { Check } from 'lucide-react-native';
 
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import { Text } from '@/components/ui/text';
+import { getBridgeChain } from '@/constants/bridge';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useRhinoDeposits } from '@/hooks/useRhinoDeposits';
 import { getRhinoDepositStatusView } from '@/lib/rhinoDeposit';
 
-import type { RhinoDestinationType } from '@/lib/types';
+import type { RhinoDepositAssetsResponse, RhinoDestinationType } from '@/lib/types';
 
 type RhinoDepositStatusProps = {
   /** Watch only while the address is on screen. */
   enabled: boolean;
   depositAddress?: string;
-  /** rhino.fi chain id, e.g. `TRON`. */
+  /** rhino.fi chain id the address was shown for, e.g. `TRON`. */
   chain: string;
+  /** That chain's name as the screen shows it. */
   chainName: string;
   addressType?: string;
-  /** The token and destination the address is for: only their deposit shows. */
-  tokenSymbol: string;
+  /** The destination the address is for: only its deposits show. */
   destinationType: RhinoDestinationType;
+};
+
+/**
+ * The name of the chain a deposit came in on. It is the screen's own when the
+ * deposit came in on the chain the screen was opened for; an EVM address takes
+ * every EVM chain, so it can be another, named as the app names its row
+ * ("Polygon"), else as rhino.fi does.
+ */
+const depositChainName = (
+  depositChain: string,
+  { chain, chainName }: { chain: string; chainName: string },
+  assets: RhinoDepositAssetsResponse | undefined,
+): string => {
+  if (depositChain === chain) return chainName;
+  const rhinoChain = assets?.chains.find(item => item.chain === depositChain);
+  const appName =
+    rhinoChain?.chainId !== undefined ? getBridgeChain(rhinoChain.chainId)?.name : undefined;
+  return appName ?? rhinoChain?.name ?? depositChain;
 };
 
 const Chip = ({ label, trailing }: { label: string; trailing: React.ReactNode }) => (
@@ -32,7 +52,9 @@ const Chip = ({ label, trailing }: { label: string; trailing: React.ReactNode })
 /**
  * rhino.fi's side of a deposit to its address: scanning until a transfer shows
  * up, then received / on its way, or why it was rejected or returned. Polls
- * `/deposit/rhino/deposits` from the moment the address is shown.
+ * `/deposit/rhino/deposits` from the moment the address is shown. Any token
+ * sent to the address, on any chain it takes, counts, and is named as it came
+ * in.
  */
 const RhinoDepositStatus = ({
   enabled,
@@ -40,17 +62,15 @@ const RhinoDepositStatus = ({
   chain,
   chainName,
   addressType,
-  tokenSymbol,
   destinationType,
 }: RhinoDepositStatusProps) => {
   const { deposit } = useRhinoDeposits({
     enabled,
     depositAddress,
-    chain,
     addressType,
-    tokenSymbol,
     destinationType,
   });
+  const { assets } = useOfferedRhinoDepositAssets();
 
   if (!enabled || !depositAddress) return null;
 
@@ -58,7 +78,10 @@ const RhinoDepositStatus = ({
     return <Chip label="Scanning for deposits" trailing={<DepositScanningIndicator />} />;
   }
 
-  const view = getRhinoDepositStatusView(deposit, chainName);
+  const view = getRhinoDepositStatusView(
+    deposit,
+    depositChainName(deposit.chain, { chain, chainName }, assets),
+  );
 
   if (view.tone === 'error' || view.tone === 'neutral') {
     const isError = view.tone === 'error';
