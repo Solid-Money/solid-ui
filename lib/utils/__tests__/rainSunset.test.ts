@@ -2,6 +2,7 @@ import {
   blocksNewCard,
   cardNoticeCopy,
   closesPhrase,
+  floorCents,
   formatClosingBalance,
   formatClosingDate,
   hasClosingBalance,
@@ -9,7 +10,8 @@ import {
   isClosingBalanceUnknown,
   rainClosingBannerState,
   routesToNewCard,
-  tokenAmount,
+  tokenWithdrawal,
+  unitsToCents,
 } from '@/lib/utils/rainSunset';
 
 import type { CardStatusResponse, RainSunsetStatus } from '@/lib/types';
@@ -142,26 +144,44 @@ describe('rainSunset', () => {
     });
   });
 
-  describe('tokenAmount', () => {
-    const usdc = { rawBalance: '248500000', decimals: 6, balanceUsd: 248.5 };
-
-    it('takes the whole balance when nothing caps it', () => {
-      expect(tokenAmount(usdc, undefined)).toBe('248.5');
-      expect(tokenAmount(usdc, 300)).toBe('248.5');
+  describe('cents', () => {
+    it('reads whole cents from the figure, never across a cent boundary', () => {
+      // (0.3 - 0.1) * 100 is exactly 20 in floating point; the figure is not.
+      expect(floorCents(0.3 - 0.1)).toBe(19n);
+      expect(floorCents(0.29)).toBe(29n);
+      expect(floorCents(100.129)).toBe(10012n);
+      expect(floorCents(248.5)).toBe(24850n);
+      expect(floorCents(1e-7)).toBe(0n);
+      expect(floorCents(-1)).toBe(0n);
+      expect(floorCents(undefined)).toBe(0n);
     });
 
-    it('takes a cap in whole cents, rounded down, in the token’s own units', () => {
-      expect(tokenAmount(usdc, 100.129)).toBe('100.12');
-      // 0.29 * 100 is 28.999… in floating point: still never above the cap.
-      expect(tokenAmount(usdc, 0.29)).toBe('0.28');
+    it('rounds a token amount up for the cap it uses, down for what moved', () => {
+      expect(unitsToCents(5000n, 6, 'up')).toBe(1n);
+      expect(unitsToCents(5000n, 6, 'down')).toBe(0n);
+      expect(unitsToCents(248500000n, 6, 'up')).toBe(24850n);
+    });
+  });
+
+  describe('tokenWithdrawal', () => {
+    const usdc = { rawBalance: '248500000', decimals: 6 };
+
+    it('takes the whole balance when nothing caps it', () => {
+      expect(tokenWithdrawal(usdc, undefined)).toEqual({ units: 248500000n, amount: '248.5' });
+      expect(tokenWithdrawal(usdc, 30000n).amount).toBe('248.5');
+    });
+
+    it('takes a capped amount in the token’s own units', () => {
+      expect(tokenWithdrawal(usdc, floorCents(100.129)).amount).toBe('100.12');
+      expect(tokenWithdrawal(usdc, floorCents(0.3 - 0.1)).amount).toBe('0.19');
       expect(
-        tokenAmount({ ...usdc, decimals: 18, rawBalance: '248500000000000000000' }, 12.34),
+        tokenWithdrawal({ decimals: 18, rawBalance: '248500000000000000000' }, 1234n).amount,
       ).toBe('12.34');
     });
 
     it('never asks for more than the token holds, or less than nothing', () => {
-      expect(tokenAmount({ rawBalance: '5000', decimals: 6, balanceUsd: 10 }, 9.99)).toBe('0.005');
-      expect(tokenAmount(usdc, -1)).toBe('0');
+      expect(tokenWithdrawal({ rawBalance: '5000', decimals: 6 }, 999n).amount).toBe('0.005');
+      expect(tokenWithdrawal(usdc, -1n)).toEqual({ units: 0n, amount: '0' });
     });
   });
 

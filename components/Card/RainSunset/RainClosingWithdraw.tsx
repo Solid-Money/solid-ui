@@ -27,7 +27,13 @@ import { getAsset } from '@/lib/assets';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
-import { formatClosingBalance, formatClosingDate, tokenAmount } from '@/lib/utils/rainSunset';
+import {
+  floorCents,
+  formatClosingBalance,
+  formatClosingDate,
+  tokenWithdrawal,
+  unitsToCents,
+} from '@/lib/utils/rainSunset';
 
 /** The token-logo pop from Figma's motion (cubic-bezier(0.22, 1, 0.36, 1), 18%→39% of 2s). */
 const POP_DELAY_MS = 360;
@@ -96,40 +102,51 @@ export function RainClosingWithdraw() {
    * the token that failed, with the cap and the total already moved carried
    * over: the tokens before it are empty now, so starting again from the first
    * would ask for money that is no longer there.
+   *
+   * The cap (Rain's spending power) and what has moved are kept in whole
+   * cents, in integers: what a token uses of the cap is rounded up, so the cap
+   * left is never overstated.
    */
   const withdrawAll = async (
-    start: { index: number; cap: number | undefined; moved: number } = {
+    start: { index: number; capCents: bigint | undefined; movedCents: bigint } = {
       index: 0,
-      cap: collateral?.spendingPowerUsd,
-      moved: 0,
+      capCents:
+        collateral?.spendingPowerUsd === undefined
+          ? undefined
+          : floorCents(collateral.spendingPowerUsd),
+      movedCents: 0n,
     },
   ) => {
     if (!user?.safeAddress || tokens.length === 0) return;
-    let remainingCap = start.cap;
-    let moved = start.moved;
+    let capCents = start.capCents;
+    let movedCents = start.movedCents;
     let index = start.index;
     try {
       for (; index < tokens.length; index++) {
         const token = tokens[index];
-        if (remainingCap !== undefined && remainingCap < 0.01) break;
+        if (capCents !== undefined && capCents < 1n) break;
+        const { units, amount } = tokenWithdrawal(token, capCents);
+        if (units === 0n) continue;
         setPhase({ kind: 'withdrawing', step: index });
         await withdrawCollateral({
-          amount: tokenAmount(token, remainingCap),
+          amount,
           recipientAddress: user.safeAddress,
           chainId: token.chainId,
           tokenAddress: token.tokenAddress,
         });
-        const usd = Math.min(token.balanceUsd, remainingCap ?? token.balanceUsd);
-        moved += usd;
-        if (remainingCap !== undefined) remainingCap -= usd;
+        movedCents += unitsToCents(units, token.decimals, 'down');
+        if (capCents !== undefined) {
+          const used = unitsToCents(units, token.decimals, 'up');
+          capCents = used >= capCents ? 0n : capCents - used;
+        }
       }
-      setPhase({ kind: 'done', usd: moved });
+      setPhase({ kind: 'done', usd: Number(movedCents) / 100 });
     } catch (error) {
       // Back to the review, which re-reads the card and shows what is still on
       // it — never "done", which would say the whole balance is in the wallet.
       setPhase({ kind: 'review' });
       if (!isCancelledByUser(error)) {
-        const resumeFrom = { index, cap: remainingCap, moved };
+        const resumeFrom = { index, capCents, movedCents };
         void showFailureSheet(error, {
           action: 'card_withdraw',
           title: 'Couldn’t withdraw your card balance',

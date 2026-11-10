@@ -222,26 +222,50 @@ export function routesToNewCard(cardStatus: CardStatusResponse | null | undefine
 }
 
 /**
- * One token's withdrawable amount, as the decimal string the withdrawal takes.
- *
- * When Rain caps the withdrawal below the token's balance (it will not release
- * collateral its credit line still needs), the cap is taken in whole cents,
- * rounded down, and scaled to the token's own units in integers — never
- * floating-point token maths — and never past the balance. Card collateral is
- * a dollar stablecoin, so a cent of cap is a cent of token.
+ * Whole cents in a dollar figure, rounded down, read from the number's own
+ * decimal digits — never `usd * 100`, which floating point can push across a
+ * cent: `(0.3 - 0.1) * 100` is exactly 20, though the figure is under 20
+ * cents. Zero for anything that is not a positive amount.
  */
-export function tokenAmount(
-  token: Pick<CardCollateralTokenBalanceDto, 'rawBalance' | 'decimals' | 'balanceUsd'>,
-  capUsd: number | undefined,
-): string {
+export function floorCents(usd: number | null | undefined): bigint {
+  if (usd == null || !Number.isFinite(usd) || usd <= 0) return 0n;
+  const text = String(usd);
+  // Exponent notation: below a cent (1e-7) or beyond any balance (1e21).
+  if (/e/i.test(text)) return usd < 1 ? 0n : BigInt(Math.floor(usd)) * 100n;
+  const [whole, fraction = ''] = text.split('.');
+  return BigInt(whole) * 100n + BigInt(`${fraction}00`.slice(0, 2));
+}
+
+/** Token units in whole cents of a dollar stablecoin. */
+function centsToUnits(cents: bigint, decimals: number): bigint {
+  return decimals >= 2 ? cents * 10n ** BigInt(decimals - 2) : cents / 10n ** BigInt(2 - decimals);
+}
+
+/**
+ * Whole cents in a token amount (a dollar stablecoin): rounded up for what it
+ * uses of a cap, so the cap left is never overstated, or down for what the
+ * screen says moved, so that is never overstated either.
+ */
+export function unitsToCents(units: bigint, decimals: number, round: 'up' | 'down'): bigint {
+  if (decimals <= 2) return units * 10n ** BigInt(2 - decimals);
+  const scale = 10n ** BigInt(decimals - 2);
+  return round === 'up' ? (units + scale - 1n) / scale : units / scale;
+}
+
+/**
+ * One token's withdrawal: all of it, or — when Rain caps the withdrawal below
+ * the token's balance, because its credit line still needs collateral — as
+ * much as the cap (in whole cents) allows, never past the balance. Integer
+ * token units throughout, and the decimal string the withdrawal takes. Card
+ * collateral is a dollar stablecoin, so a cent of cap is a cent of token.
+ */
+export function tokenWithdrawal(
+  token: Pick<CardCollateralTokenBalanceDto, 'rawBalance' | 'decimals'>,
+  capCents: bigint | undefined,
+): { units: bigint; amount: string } {
   const raw = BigInt(token.rawBalance || '0');
-  if (capUsd === undefined || capUsd >= token.balanceUsd) {
-    return formatUnits(raw, token.decimals);
-  }
-  const cents = BigInt(Math.max(0, Math.floor(capUsd * 100)));
   const capped =
-    token.decimals >= 2
-      ? cents * 10n ** BigInt(token.decimals - 2)
-      : cents / 10n ** BigInt(2 - token.decimals);
-  return formatUnits(capped < raw ? capped : raw, token.decimals);
+    capCents === undefined ? raw : centsToUnits(capCents > 0n ? capCents : 0n, token.decimals);
+  const units = capped < raw ? capped : raw;
+  return { units, amount: formatUnits(units, token.decimals) };
 }
