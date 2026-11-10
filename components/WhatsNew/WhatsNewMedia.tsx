@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -72,6 +72,8 @@ interface VideoLayerProps {
   bottomInset: number;
   /** Drawn over the video and poster, under the play and sound buttons. */
   tapTarget: ReactNode;
+  /** The frame's corners, repeated on the video itself (see below). */
+  cornerStyle: ViewStyle;
   onSoundOn?: () => void;
   watchedSecondsRef?: WatchedSecondsReader;
 }
@@ -87,6 +89,7 @@ const VideoLayer = ({
   isActive,
   bottomInset,
   tapTarget,
+  cornerStyle,
   onSoundOn,
   watchedSecondsRef,
 }: VideoLayerProps) => {
@@ -179,8 +182,10 @@ const VideoLayer = ({
       {!failed ? (
         <VideoView
           player={player}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
+          // The frame clips its corners, but a browser draws <video> on its own
+          // layer and can leave a 1px edge outside that clip; round it too.
+          style={[StyleSheet.absoluteFill, cornerStyle]}
+          contentFit="contain"
           nativeControls={false}
           playsInline
           allowsVideoFrameAnalysis={false}
@@ -196,7 +201,7 @@ const VideoLayer = ({
         <Image
           source={{ uri: media.posterUrl }}
           style={StyleSheet.absoluteFill}
-          contentFit="cover"
+          contentFit="contain"
           cachePolicy="memory-disk"
           pointerEvents="none"
           accessible={false}
@@ -293,15 +298,18 @@ const WhatsNewMedia = ({
             isActive={isActive}
             bottomInset={bottomInset}
             tapTarget={tapTarget}
+            cornerStyle={radius}
             onSoundOn={onSoundOn}
             watchedSecondsRef={watchedSecondsRef}
           />
         ) : (
           <>
+            {/* The frame already has the media's ratio; `contain` keeps it whole
+                even if the size saved with it is off. */}
             <Image
               source={{ uri: media.url }}
               style={StyleSheet.absoluteFill}
-              contentFit="cover"
+              contentFit="contain"
               cachePolicy="memory-disk"
               accessible={false}
             />
