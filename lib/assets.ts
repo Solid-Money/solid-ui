@@ -419,6 +419,18 @@ export const ASSETS = {
   'images/cards.png': { module: require('@/assets/images/cards.png'), hash: '6c671c63' },
   'images/cbbtc.png': { module: require('@/assets/images/cbbtc.png'), hash: '7524ef4e' },
   'images/checkmark.tsx': { module: require('@/assets/images/checkmark.tsx'), hash: '66caebb4' },
+  'images/collateral-help-locked.svg': {
+    module: require('@/assets/images/collateral-help-locked.svg'),
+    hash: '084f6d5d',
+  },
+  'images/collateral-help-ltv.svg': {
+    module: require('@/assets/images/collateral-help-ltv.svg'),
+    hash: '4fe5fb16',
+  },
+  'images/collateral-help-sell-point.svg': {
+    module: require('@/assets/images/collateral-help-sell-point.svg'),
+    hash: '629e77f5',
+  },
   'images/copy.tsx': { module: require('@/assets/images/copy.tsx'), hash: '25734d53' },
   'images/delete-account.tsx': {
     module: require('@/assets/images/delete-account.tsx'),
@@ -1625,6 +1637,10 @@ export const ASSETS = {
     module: require('@/assets/images/spend-mode-badge-dot.svg'),
     hash: 'ca18418a',
   },
+  'images/spend-mode-collateral-btc.svg': {
+    module: require('@/assets/images/spend-mode-collateral-btc.svg'),
+    hash: 'cb9fac79',
+  },
   'images/spend-mode-collateral-eur.svg': {
     module: require('@/assets/images/spend-mode-collateral-eur.svg'),
     hash: '8b001621',
@@ -1632,6 +1648,10 @@ export const ASSETS = {
   'images/spend-mode-collateral-usd.svg': {
     module: require('@/assets/images/spend-mode-collateral-usd.svg'),
     hash: '7a6755dc',
+  },
+  'images/spend-mode-credit-details-chevron.svg': {
+    module: require('@/assets/images/spend-mode-credit-details-chevron.svg'),
+    hash: '39b56859',
   },
   'images/spend-mode-credit-notice-badge.svg': {
     module: require('@/assets/images/spend-mode-credit-notice-badge.svg'),

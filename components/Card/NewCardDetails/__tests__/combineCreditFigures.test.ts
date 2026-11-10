@@ -1,4 +1,7 @@
-import { combineCreditFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import {
+  combineCreditFigures,
+  formatLtv,
+} from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 
 import type {
   CardCreditPositions,
@@ -26,6 +29,7 @@ const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset
   amount: 0n,
   valueUsd: 0n,
   priceUsable: true,
+  ltvWad: 900_000_000_000_000_000n,
   ...overrides,
 });
 
@@ -102,10 +106,12 @@ describe('combineCreditFigures', () => {
           icon: 'usd',
           value: '$230.00',
           usdEquivalent: undefined,
+          ltv: 'LTV 90%',
         },
       ],
       hasDebt: true,
       hasLine: true,
+      risk: 'none',
       positions: [
         {
           chainId: 122,
@@ -242,6 +248,15 @@ describe('combineCreditFigures', () => {
       });
 
       expect(figures.positions.map(position => position.risk)).toEqual(['none', 'at-risk']);
+      // The panel's chip reports the loan closest to liquidation.
+      expect(figures.risk).toBe('at-risk');
+    });
+
+    it('reads healthy when every loan is', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, { fuse: null, base: baseLoan() });
+
+      expect(figures.risk).toBe('none');
+      expect(figures.hasDebt).toBe(true);
     });
 
     it('names every collateral a loan holds', () => {
@@ -257,6 +272,38 @@ describe('combineCreditFigures', () => {
       });
 
       expect(figures.positions[0].backedBy).toBe('Bitcoin, Solana and EUR Yield');
+    });
+  });
+
+  describe('each collateral row’s LTV', () => {
+    it('shows the token’s own LTV under its name', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: instance({ collateral: [asset({})] }),
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR' }),
+            asset({
+              chainId: 8453,
+              token: CBBTC,
+              symbol: 'cbBTC',
+              amount: 1n,
+              ltvWad: 600_000_000_000_000_000n,
+            }),
+          ],
+        }),
+      });
+
+      expect(figures.collateral.map(row => [row.label, row.ltv])).toEqual([
+        ['USD Yield', 'LTV 90%'],
+        ['EUR Yield', 'LTV 90%'],
+        ['Bitcoin', 'LTV 60%'],
+      ]);
+    });
+
+    it('keeps a tenth of a percent, and leaves out an LTV the module never set', () => {
+      expect(formatLtv(725_000_000_000_000_000n)).toBe('LTV 72.5%');
+      expect(formatLtv(500_000_000_000_000_000n)).toBe('LTV 50%');
+      expect(formatLtv(0n)).toBeUndefined();
     });
   });
 

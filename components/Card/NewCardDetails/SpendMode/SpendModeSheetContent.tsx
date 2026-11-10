@@ -167,7 +167,12 @@ interface SpendModeSheetContentProps {
   /** Why the last attempt failed, or null. */
   error?: string | null;
   onDismiss: () => void;
+  /** The "?" beside the caption and beside "Spendable assets": the spend-mode intro. */
   onHelpPress: () => void;
+  /** The "?" beside "Collateral assets" on the Credit panel: "How collateral works". */
+  onCollateralHelpPress: () => void;
+  /** "View Credit details" at the foot of the Credit panel: the borrow position. */
+  onViewCreditDetails: () => void;
   onAddFunds?: () => void;
   /** Space above the heading; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
@@ -197,6 +202,8 @@ const SpendModeSheetContent = ({
   error,
   onDismiss,
   onHelpPress,
+  onCollateralHelpPress,
+  onViewCreditDetails,
   onAddFunds,
   topPadding = SPEND_MODE_SHEET_TOP,
   presentation = 'sheet',
@@ -377,7 +384,10 @@ const SpendModeSheetContent = ({
                   borrowApy={credit.borrowApy}
                   borrowedProgress={credit.borrowedProgress}
                   collateral={credit.collateral}
-                  onHelpPress={onHelpPress}
+                  risk={credit.risk}
+                  hasDebt={credit.hasDebt}
+                  onHelpPress={onCollateralHelpPress}
+                  onViewDetails={onViewCreditDetails}
                 />
               ) : (
                 <SpendModeBorrowedPanel

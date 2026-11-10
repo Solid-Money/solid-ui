@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Platform } from 'react-native';
 
+import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
 import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
@@ -34,7 +36,9 @@ const SpendModeModals = ({
   );
   const markHelpShown = useSpendModeHelpStore(state => state.markShown);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isCollateralHelpOpen, setIsCollateralHelpOpen] = useState(false);
   const [isFundOpen, setIsFundOpen] = useState(false);
+  const [isCreditDetailsOpen, setIsCreditDetailsOpen] = useState(false);
   const { data: cardDetails } = useCardDetails();
   const { data: customer } = useCustomer();
   const { provider } = useCardProvider();
@@ -48,6 +52,7 @@ const SpendModeModals = ({
   useEffect(() => {
     if (!isOpen || !figures.canChangeMode) {
       setIsHelpOpen(false);
+      setIsCollateralHelpOpen(false);
       if (isOpen) closeSpendMode();
       return;
     }
@@ -60,13 +65,15 @@ const SpendModeModals = ({
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !isOpen) return;
-    // Dismiss the selector before a hardware Back can close the card pane beneath it.
+    // Dismiss the selector before a hardware Back can close the card pane beneath it, and the
+    // collateral explainer before the selector it was opened from.
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      closeSpendMode();
+      if (isCollateralHelpOpen) setIsCollateralHelpOpen(false);
+      else closeSpendMode();
       return true;
     });
     return () => subscription.remove();
-  }, [isOpen, closeSpendMode]);
+  }, [isOpen, isCollateralHelpOpen, closeSpendMode]);
 
   const onOpenChange = useCallback(
     (open: boolean) => (open ? openSpendMode() : closeSpendMode()),
@@ -74,8 +81,16 @@ const SpendModeModals = ({
   );
   const openFunds = useCallback(() => {
     // Close the selector first so finishing the funding flow returns to its origin.
+    setIsCollateralHelpOpen(false);
     closeSpendMode();
     setIsFundOpen(true);
+  }, [closeSpendMode]);
+  const openCreditDetails = useCallback(() => {
+    // Handed over like funding: the borrow position has its own Repay steps and keyboard, and
+    // stacked over the selector it would leave two sheets to back out of.
+    setIsCollateralHelpOpen(false);
+    closeSpendMode();
+    setIsCreditDetailsOpen(true);
   }, [closeSpendMode]);
 
   return (
@@ -85,10 +100,17 @@ const SpendModeModals = ({
         onOpenChange={onOpenChange}
         activeMode={figures.mode}
         onHelpPress={() => setIsHelpOpen(true)}
+        onCollateralHelpPress={() => setIsCollateralHelpOpen(true)}
+        onViewCreditDetails={openCreditDetails}
         onAddFunds={canAddFunds ? openFunds : undefined}
       />
       <SpendModeHelpModal isOpen={isOpen && isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <CollateralHelpSheet
+        isOpen={isOpen && isCollateralHelpOpen}
+        onOpenChange={setIsCollateralHelpOpen}
+      />
       <WirexCardFundModal isOpen={isFundOpen} onOpenChange={setIsFundOpen} />
+      <BorrowPositionSheet isOpen={isCreditDetailsOpen} onOpenChange={setIsCreditDetailsOpen} />
     </>
   );
 };

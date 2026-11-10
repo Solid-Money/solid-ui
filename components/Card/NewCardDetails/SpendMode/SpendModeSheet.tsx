@@ -26,6 +26,8 @@ const SpendModeSheet = ({
   isOpen,
   onOpenChange,
   onHelpPress,
+  onCollateralHelpPress,
+  onViewCreditDetails,
   activeMode = 'cash',
   onAddFunds,
 }: SpendModeSheetProps) => {
@@ -78,6 +80,8 @@ const SpendModeSheet = ({
           error={error}
           onDismiss={dismiss}
           onHelpPress={onHelpPress}
+          onCollateralHelpPress={onCollateralHelpPress}
+          onViewCreditDetails={onViewCreditDetails}
           onAddFunds={onAddFunds}
           topPadding={topPadding}
           presentation={presentation}

@@ -42,6 +42,14 @@ jest.mock('@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal', () =>
   __esModule: true,
   default: 'SpendModeHelpModal',
 }));
+jest.mock('@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet', () => ({
+  __esModule: true,
+  default: 'BorrowPositionSheet',
+}));
+jest.mock('@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet', () => ({
+  __esModule: true,
+  default: 'CollateralHelpSheet',
+}));
 jest.mock('@/components/Card/WirexCardFundModal', () => ({
   __esModule: true,
   default: 'WirexCardFundModal',
@@ -52,6 +60,8 @@ jest.mock('@/components/Card/NewCardDetails/icons', () => ({ InlineChevronIcon: 
 let tree: any;
 const sheet = () => tree.root.findByType('SpendModeSheet').props;
 const help = () => tree.root.findByType('SpendModeHelpModal').props;
+const collateralHelp = () => tree.root.findByType('CollateralHelpSheet').props;
+const creditDetails = () => tree.root.findByType('BorrowPositionSheet').props;
 const funds = () => tree.root.findByType('WirexCardFundModal').props;
 const render = (canChangeMode = true) => {
   act(() => {
@@ -97,6 +107,61 @@ test('opens and dismisses over Home, with help only on the first opening', () =>
   expect(help().isOpen).toBe(false);
   act(() => sheet().onHelpPress());
   expect(help().isOpen).toBe(true);
+});
+
+test('the "?" beside Collateral assets opens How collateral works, not the intro', () => {
+  useSpendModeHelpStore.getState().markShown('user-a');
+  render();
+  open();
+  expect(collateralHelp().isOpen).toBe(false);
+
+  act(() => sheet().onCollateralHelpPress());
+  expect(collateralHelp().isOpen).toBe(true);
+  expect(help().isOpen).toBe(false);
+  expect(sheet().isOpen).toBe(true);
+
+  act(() => collateralHelp().onOpenChange(false));
+  expect(collateralHelp().isOpen).toBe(false);
+  expect(sheet().isOpen).toBe(true);
+
+  // Closing the selector takes the explainer with it, and it stays shut on the next opening.
+  act(() => sheet().onCollateralHelpPress());
+  act(() => sheet().onOpenChange(false));
+  expect(collateralHelp().isOpen).toBe(false);
+  open();
+  expect(collateralHelp().isOpen).toBe(false);
+});
+
+test('View Credit details hands over from the selector to the borrow position', () => {
+  useSpendModeHelpStore.getState().markShown('user-a');
+  render();
+  open();
+  expect(creditDetails().isOpen).toBe(false);
+
+  act(() => sheet().onCollateralHelpPress());
+  act(() => sheet().onViewCreditDetails());
+  expect(creditDetails().isOpen).toBe(true);
+  expect(sheet().isOpen).toBe(false);
+  expect(collateralHelp().isOpen).toBe(false);
+
+  act(() => creditDetails().onOpenChange(false));
+  expect(creditDetails().isOpen).toBe(false);
+  expect(sheet().isOpen).toBe(false);
+});
+
+test('Android Back closes How collateral works before the selector under it', () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  const addListener = jest
+    .spyOn(BackHandler, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() });
+  useSpendModeHelpStore.getState().markShown('user-a');
+  render();
+  open();
+  act(() => sheet().onCollateralHelpPress());
+  const back = addListener.mock.calls.at(-1)?.[1];
+  act(() => expect(back?.()).toBe(true));
+  expect(collateralHelp().isOpen).toBe(false);
+  expect(sheet().isOpen).toBe(true);
 });
 
 test('leaves an already open card pane and its return position intact', () => {

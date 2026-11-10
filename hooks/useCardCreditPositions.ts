@@ -30,7 +30,7 @@ import { publicClient } from '@/lib/wagmi';
  * `getTokenConfig` and the lens's `v2()`, which the app's ABIs leave out.
  *
  * The struct is `TokenConfig` from `SolidCashTypes.sol`, and both live instances — Fuse and the
- * older Base build — decode it in this layout. Only `collateral` and `tokenDecimals` are read.
+ * older Base build — decode it in this layout. Only `collateral`, `tokenDecimals` and `ltv` are read.
  */
 const TOKEN_CONFIG_ABI = [
   {
@@ -88,6 +88,8 @@ export interface CreditCollateralAsset {
   /** 6-decimal EUR, for a euro asset on an instance that prices EURC. */
   valueEur?: bigint;
   priceUsable: boolean;
+  /** The module's own LTV for this token, as a WAD: `0.6e18` is 60%. */
+  ltvWad: bigint;
 }
 
 /** One spend-module instance's credit position, from its lens. */
@@ -250,9 +252,14 @@ const readCreditInstance = async (
     const config = details[index * 2];
     // A token whose config cannot be read cannot be shown as collateral or as not: left out.
     if (config?.status !== 'success') return [];
-    const { collateral: isCollateral, tokenDecimals } = config.result as {
+    const {
+      collateral: isCollateral,
+      tokenDecimals,
+      ltv,
+    } = config.result as {
       collateral: boolean;
       tokenDecimals: number;
+      ltv: bigint;
     };
     if (!isCollateral) return [];
 
@@ -274,6 +281,7 @@ const readCreditInstance = async (
             ? (valueUsd * 1_000_000n) / eurcPriceUsd
             : undefined,
         priceUsable: entry.priceUsable,
+        ltvWad: ltv,
       },
     ];
   });

@@ -40,6 +40,8 @@ export interface CollateralRowFigures {
   value: string;
   /** "≈ $81.60" under a euro value; absent for a dollar one. */
   usdEquivalent?: string;
+  /** "LTV 90%" under the label: the token's own LTV. Absent when the module sets none. */
+  ltv?: string;
 }
 
 /** One instance's loan, as the borrow-position sheet lists it. */
@@ -58,6 +60,11 @@ export interface CreditModeFigures extends BorrowedSummaryFigures {
   collateral: CollateralRowFigures[];
   /** Debt on any instance. */
   hasDebt: boolean;
+  /**
+   * The chip beside "Borrowed": the closest any loan is to liquidation, since each instance
+   * liquidates on its own. `none` with debt reads "Healthy".
+   */
+  risk: BorrowRisk;
   /** A line worth naming on any instance, drawn or not. */
   hasLine: boolean;
   /**
@@ -111,6 +118,13 @@ const heldLabels = (collateral: readonly CreditCollateralAsset[] | undefined): s
 const backedBy = (collateral: readonly CreditCollateralAsset[] | undefined): string =>
   joinLabels(heldLabels(collateral));
 
+const RISK_ORDER: readonly BorrowRisk[] = ['none', 'caution', 'at-risk'];
+const worstRisk = (risks: readonly BorrowRisk[]): BorrowRisk =>
+  risks.reduce<BorrowRisk>(
+    (worst, risk) => (RISK_ORDER.indexOf(risk) > RISK_ORDER.indexOf(worst) ? risk : worst),
+    'none',
+  );
+
 /** The health factor of a position with no debt, as the module reports it. */
 const MAX_UINT256 = 2n ** 256n - 1n;
 
@@ -123,6 +137,18 @@ const formatMoney = (amount: bigint, currency: 'USD' | 'EUR'): string =>
     maximumFractionDigits: 2,
   });
 
+const WAD = 10n ** 18n;
+
+/**
+ * "LTV 60%" from the module's WAD LTV, to a tenth of a percent when it is not whole. The figure
+ * is the token's own `getTokenConfig(token).ltv`, before the buffer a credit spend borrows under.
+ */
+export const formatLtv = (ltvWad: bigint): string | undefined => {
+  if (ltvWad <= 0n) return undefined;
+  const percent = Number((ltvWad * 1000n) / WAD) / 10;
+  return `LTV ${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`;
+};
+
 const collateralRow = (asset: CreditCollateralAsset): CollateralRowFigures => {
   const named = COLLATERAL_LABEL[asset.symbol];
   const isEuro = asset.valueEur !== undefined;
@@ -132,6 +158,7 @@ const collateralRow = (asset: CreditCollateralAsset): CollateralRowFigures => {
     icon: named?.icon ?? (isEuro ? 'eur' : 'usd'),
     value: isEuro ? formatMoney(asset.valueEur!, 'EUR') : formatMoney(asset.valueUsd, 'USD'),
     usdEquivalent: isEuro ? `≈ ${formatMoney(asset.valueUsd, 'USD')}` : undefined,
+    ltv: formatLtv(asset.ltvWad),
   };
 };
 
@@ -172,6 +199,17 @@ export const combineCreditFigures = (
   ];
 
   const debt = instances.reduce((sum, instance) => sum + instance.debtUsd, 0n);
+  const loans = instances
+    .filter(instance => instance.debtUsd > 0n)
+    .map(instance => ({
+      chainId: instance.chainId,
+      borrowed: format(instance.debtUsd),
+      creditLimit: format(instance.creditLineUsd),
+      borrowApy: formatApy(borrowApyPercent(instance.borrowApyPerSecond)),
+      borrowedProgress: borrowedProgress(instance.debtUsd, instance.creditLineUsd),
+      backedBy: backedBy(instance.collateral),
+      risk: borrowRisk(instance.healthFactorWad, instance.debtUsd),
+    }));
   const line = instances.reduce((sum, instance) => sum + instance.creditLineUsd, 0n);
   const headroom = instances.reduce((sum, instance) => sum + instance.creditHeadroomUsd, 0n);
 
@@ -186,17 +224,8 @@ export const combineCreditFigures = (
       .map(collateralRow),
     hasDebt: debt > 0n,
     hasLine: line > 0n,
-    positions: instances
-      .filter(instance => instance.debtUsd > 0n)
-      .map(instance => ({
-        chainId: instance.chainId,
-        borrowed: format(instance.debtUsd),
-        creditLimit: format(instance.creditLineUsd),
-        borrowApy: formatApy(borrowApyPercent(instance.borrowApyPerSecond)),
-        borrowedProgress: borrowedProgress(instance.debtUsd, instance.creditLineUsd),
-        backedBy: backedBy(instance.collateral),
-        risk: borrowRisk(instance.healthFactorWad, instance.debtUsd),
-      })),
+    risk: worstRisk(loans.map(loan => loan.risk)),
+    positions: loans,
   };
 };
 
