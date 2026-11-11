@@ -46,18 +46,21 @@ const AiApiSetupGuide = ({
               accessibilityState={{ selected }}
               onPress={() => setAgent(tab.id)}
               className={cn(
-                'flex-1 items-center justify-center rounded-full py-[9px]',
+                // Sized by their names, not equal: "Claude Code" needs twice
+                // the room of "Other", and five equal tabs cut it off.
+                'flex-auto items-center justify-center rounded-full px-1 py-[9px]',
                 selected ? 'bg-white' : 'active:opacity-70',
               )}
             >
               {/* Five tabs share a phone's width, so a long name shrinks a little
-                  to fit, as the Home action pills do, rather than being cut off. */}
+                  to fit, as the Home action pills do, rather than being cut off.
+                  The web has no font shrinking, so it starts a size smaller. */}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.8}
                 className={cn(
-                  'text-[14px]',
+                  'text-[14px] web:text-[12px]',
                   selected ? 'font-semibold text-black' : 'font-medium text-white/70',
                 )}
               >

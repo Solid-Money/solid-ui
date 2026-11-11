@@ -167,22 +167,33 @@ const DetailsView = ({
       <Text className="text-[12px] text-white/45">Resets {formatAiApiShortDate(resetsAt)}</Text>
     </View>
 
-    {/* An older backend sends no split; cache writes only show once there are some. */}
+    {/* An older backend sends no split; cache writes only show once there are some.
+        One strip, like the stats above it: the sheet does not scroll, so it
+        stays short on small phones. */}
     {apiKey.tokensThisMonth ? (
-      <View className="gap-2.5 rounded-2xl bg-[#262626] px-4 py-3.5">
+      <View className="gap-2">
         <Text className="text-[12px] text-white/55">Tokens this month</Text>
-        <AiApiInfoRow label="Input" value={formatAiApiTokens(apiKey.tokensThisMonth.input)} />
-        <AiApiInfoRow
-          label="Cached input"
-          value={formatAiApiTokens(apiKey.tokensThisMonth.cachedInput)}
-        />
-        {apiKey.tokensThisMonth.cacheWrite > 0 ? (
-          <AiApiInfoRow
-            label="Cache write"
-            value={formatAiApiTokens(apiKey.tokensThisMonth.cacheWrite)}
-          />
-        ) : null}
-        <AiApiInfoRow label="Output" value={formatAiApiTokens(apiKey.tokensThisMonth.output)} />
+        <View className="flex-row rounded-2xl bg-[#262626] py-3.5">
+          {[
+            { label: 'Input', value: apiKey.tokensThisMonth.input, show: true },
+            { label: 'Cached', value: apiKey.tokensThisMonth.cachedInput, show: true },
+            {
+              label: 'Cache write',
+              value: apiKey.tokensThisMonth.cacheWrite,
+              show: apiKey.tokensThisMonth.cacheWrite > 0,
+            },
+            { label: 'Output', value: apiKey.tokensThisMonth.output, show: true },
+          ]
+            .filter(stat => stat.show)
+            .map(stat => (
+              <View key={stat.label} className="flex-1 items-center gap-1">
+                <Text className="text-[12px] text-white/55">{stat.label}</Text>
+                <Text className="text-[17px] font-semibold text-white" numberOfLines={1}>
+                  {formatAiApiTokens(stat.value)}
+                </Text>
+              </View>
+            ))}
+        </View>
       </View>
     ) : null}
 
