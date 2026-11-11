@@ -226,7 +226,8 @@ describe('buildSpendableAssetRows', () => {
 
       expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
         ['usdc', 'USDC', undefined, '$25.00', undefined],
-        ['cbbtc', 'cbBTC', 'Bitcoin', '$960.00', '0.0012 cbBTC'],
+        // 0.0012 BTC at $80,000.
+        ['cbbtc', 'cbBTC', 'Bitcoin', '$96.00', '0.0012 cbBTC'],
       ]);
       // Bitcoin counts in the balance, not as dollars.
       expect(dollarUsd).toBeCloseTo(25, 4);
