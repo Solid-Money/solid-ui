@@ -32,6 +32,7 @@ const TokenSelector: React.FC = () => {
     setDestinationChainId,
     setCrossChainQuote,
     setCrossChainEntry,
+    setRecipientChainId,
   } = useSendStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
@@ -43,6 +44,7 @@ const TokenSelector: React.FC = () => {
       setDestinationChainId: state.setDestinationChainId,
       setCrossChainQuote: state.setCrossChainQuote,
       setCrossChainEntry: state.setCrossChainEntry,
+      setRecipientChainId: state.setRecipientChainId,
     })),
   );
   // Opened from the cross-chain amount step, only the two bridgeable Fuse
@@ -122,6 +124,9 @@ const TokenSelector: React.FC = () => {
       if (!isCrossChainSendToken(token)) {
         // Not on Fuse, so no bridge: hand over to the regular send on the
         // token's own chain, keeping the recipient address already entered.
+        // The network picked for that recipient is kept so Review can warn
+        // that this send lands on the token's chain instead.
+        if (destinationChainId) setRecipientChainId(destinationChainId);
         setIsCrossChain(false);
         setDestinationChainId(null);
         setCrossChainQuote(null);
@@ -143,6 +148,7 @@ const TokenSelector: React.FC = () => {
       setDestinationChainId,
       setCrossChainQuote,
       setCrossChainEntry,
+      setRecipientChainId,
       config?.enabled,
     ],
   );
