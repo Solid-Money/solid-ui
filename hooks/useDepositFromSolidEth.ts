@@ -106,13 +106,22 @@ const useDepositFromSolidEth = (
     return clientTxId;
   };
 
+  // In wei: as numbers, 0.0099999999999999999 rounds up to a 0.01 minimum.
+  const meetsMinimum = (amount: string) => {
+    try {
+      return parseUnits(amount, 18) >= parseUnits(minimumAmount, 18);
+    } catch {
+      return false;
+    }
+  };
+
   /**
    * ETH or WETH on Base: the Safe deposits into the Base soETH teller itself, in one user
    * operation, and the shares mint straight to it, as for soEURC. Nothing goes through the
    * backend, so the deposit is complete once the operation lands.
    */
   const depositOnBase = async (amount: string) => {
-    const isSponsor = Number(amount) >= Number(minimumAmount);
+    const isSponsor = meetsMinimum(amount);
     const ctx: DepositContext = {
       user,
       amount,
@@ -227,7 +236,7 @@ const useDepositFromSolidEth = (
     if (!token || !srcChainId) return undefined;
     if (srcChainId === base.id) return depositOnBase(amount);
 
-    const isSponsor = Number(amount) >= Number(minimumAmount);
+    const isSponsor = meetsMinimum(amount);
     const ctx: DepositContext = {
       user,
       amount,

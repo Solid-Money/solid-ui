@@ -122,7 +122,11 @@ const useDepositFromEOAEth = (
     // soETH also takes ETH on Base, but only from the Solid wallet: the backend
     // pulls a connected wallet's deposit on Ethereum, so there is no Base path here.
     if (srcChainId === base.id) {
-      throw new Error('Deposit ETH on Base from your Solid wallet, or switch to Ethereum');
+      // Set the hook's own error first: the form shows that, not the rejection.
+      const message = 'Deposit ETH on Base from your Solid wallet, or switch to Ethereum';
+      setError(message);
+      setDepositStatus({ status: Status.ERROR });
+      throw new Error(message);
     }
     if (!isEthereumChain) return undefined;
 

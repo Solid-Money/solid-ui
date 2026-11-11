@@ -52,8 +52,15 @@ const baseWithdrawQueueOf = (activity: ActivityEvent) =>
     : ADDRESSES.base.boringQueue;
 
 /**
+ * Where a Base request lives in {@link useBaseWithdrawRequests}' map: its transaction hash and the
+ * queue it was read from, lowercased, so a soUSD and a soETH request can never share an entry.
+ */
+export const baseWithdrawRequestKey = (activity: ActivityEvent & { hash: string }) =>
+  `${activity.hash.toLowerCase()}@${baseWithdrawQueueOf(activity).toLowerCase()}`;
+
+/**
  * The on-chain status of every Base withdraw request among `activities`, keyed
- * by the lowercased request transaction hash. A request missing from the map
+ * by {@link baseWithdrawRequestKey} (hash and queue). A request missing from the map
  * has not been read yet, or could not be.
  *
  * A request still in the queue is re-read every minute. Once it has left the
@@ -70,16 +77,12 @@ export function useBaseWithdrawRequests(
     const unique = new Set<string>();
     for (const activity of activities) {
       if (activity && isBaseWithdrawRequest(activity)) {
-        unique.add(`${activity.hash.toLowerCase()}@${baseWithdrawQueueOf(activity).toLowerCase()}`);
+        unique.add(baseWithdrawRequestKey(activity));
       }
     }
     return [...unique].sort().join(',');
   }, [activities]);
-  const entries = useMemo(
-    () => (hashKey ? hashKey.split(',').map(entry => entry.split('@') as [string, string]) : []),
-    [hashKey],
-  );
-  const hashes = useMemo(() => entries.map(([hash]) => hash), [entries]);
+  const keys = useMemo(() => (hashKey ? hashKey.split(',') : []), [hashKey]);
 
   // Re-run only when a query's result changes or the set of requests does, so
   // the map keeps its identity between renders and useActivity's memo holds.
@@ -87,23 +90,26 @@ export function useBaseWithdrawRequests(
     (results: QueryObserverResult<BaseWithdrawRequest | null>[]) => {
       const requests: Record<string, BaseWithdrawRequest> = {};
       results.forEach((result, i) => {
-        if (result.data) requests[hashes[i]] = result.data;
+        if (result.data) requests[keys[i]] = result.data;
       });
       return requests;
     },
-    [hashes],
+    [keys],
   );
 
   return useQueries({
-    queries: entries.map(([hash, queue]) => ({
-      queryKey: [BASE_WITHDRAW_REQUEST, hash],
-      queryFn: () => readBaseWithdrawRequest(hash as Hex, queue as Address),
-      staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
-        query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
-      refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
-        query.state.data && query.state.data.status !== 'pending' ? false : PENDING_REFETCH_MS,
-      retry: 2,
-    })),
+    queries: keys.map(key => {
+      const [hash, queue] = key.split('@');
+      return {
+        queryKey: [BASE_WITHDRAW_REQUEST, hash, queue],
+        queryFn: () => readBaseWithdrawRequest(hash as Hex, queue as Address),
+        staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
+          query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
+        refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
+          query.state.data && query.state.data.status !== 'pending' ? false : PENDING_REFETCH_MS,
+        retry: 2,
+      };
+    }),
     combine,
   });
 }
@@ -145,13 +151,13 @@ export function usePendingBaseWithdrawals(): {
       if (!activity || !isBaseWithdrawRequest(activity)) continue;
       // soUSD only: these are counted in dollars, and a soETH request pays WETH.
       if ((getVaultKey(activity.symbol) ?? 'USD') !== 'USD') continue;
-      const hash = activity.hash.toLowerCase();
-      if (seen.has(hash)) continue;
-      seen.add(hash);
-      if (requests[hash]?.status !== 'pending') continue;
+      const key = baseWithdrawRequestKey(activity);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (requests[key]?.status !== 'pending') continue;
       withdrawals.push({
         clientTxId: activity.clientTxId,
-        amountUsd: requests[hash].amountUsd,
+        amountUsd: requests[key].amountUsd,
         timestamp: activity.timestamp,
       });
     }

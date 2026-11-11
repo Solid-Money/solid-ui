@@ -59,7 +59,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Can I use soETH with the card?',
       answer:
-        'Yes, on Base. Once Base spending is on, your card can spend soETH held on Base, and in Credit mode you can borrow against it without selling. ETH deposits now land on Base, so new soETH is ready to use there.',
+        'Yes, on Base. Once Base spending is on, your card can spend soETH held on Base, and in Credit mode you can borrow against it without selling. New ETH deposits land on Base, so that soETH is ready to use. soETH you already hold on Fuse or Ethereum is not spendable by the card.',
     },
   ],
   [VaultType.FUSE]: [

@@ -46,7 +46,9 @@ const useWithdrawSoEth = (chainId: SoEthWithdrawChainId): WithdrawSoEthResult =>
 
   const withdrawSoEth = async (amount: string) => {
     const amountWei = parseUnits(amount, 18);
-    const needsApproval = (allowance as bigint) < amountWei;
+    // An allowance not read yet counts as none: `undefined < amount` is false, which would skip the
+    // approve and send a request that reverts.
+    const needsApproval = allowance === undefined || allowance < amountWei;
 
     try {
       if (!user) {

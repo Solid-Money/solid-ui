@@ -145,6 +145,10 @@ const RegularWithdrawForm = () => {
     isSoEth &&
     getSoEthWithdrawChain(selectedToken?.chainId) === base.id &&
     session?.vault !== 'ETH';
+  // soETH on Base in a build with no Base soETH deployment: neither flow fits. The two-step flow
+  // below bridges the Safe's FUSE shares, not these, so it must not be offered for them.
+  const isSoEthOnBaseUnavailable =
+    isSoEth && selectedToken?.chainId === base.id && !isSoEthOnBase && session?.vault !== 'ETH';
   const soEthWithdrawChain = SOETH_WITHDRAW_CHAINS[isSoEthOnBase ? base.id : mainnet.id];
   const { data: exchangeRate } = useVaultExchangeRate(
     isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
@@ -186,8 +190,9 @@ const RegularWithdrawForm = () => {
     if (isSoEth && selectedToken?.chainId === fuse.id) {
       return { balanceWei: soEthBalanceWei ?? 0n, balanceDecimals: 18 };
     }
+    // `??`, not `||`: a read that confirms 0 must not fall back to a stale stored balance.
     if (isSoEth && selectedToken) {
-      return { balanceWei: balance || BigInt(selectedToken.balance || '0'), balanceDecimals: 18 };
+      return { balanceWei: balance ?? BigInt(selectedToken.balance || '0'), balanceDecimals: 18 };
     }
     if (!selectedToken) {
       // soUSD has 6 decimals, which a number holds exactly.
@@ -197,7 +202,7 @@ const RegularWithdrawForm = () => {
       };
     }
     return {
-      balanceWei: balance || BigInt(selectedToken.balance || '0'),
+      balanceWei: balance ?? BigInt(selectedToken.balance || '0'),
       balanceDecimals: selectedToken.contractDecimals,
     };
   }, [
@@ -869,6 +874,12 @@ const RegularWithdrawForm = () => {
                 </Button>
               </View>
             </>
+          ) : isSoEthOnBaseUnavailable ? (
+            <View className="px-5 py-6 md:p-5">
+              <Text className="text-base text-muted-foreground">
+                Withdrawing soETH held on Base isn&apos;t available in this version of the app.
+              </Text>
+            </View>
           ) : isEthVault ? (
             <>
               {/* Step 1: Bridge soETH to Ethereum */}
