@@ -10,10 +10,7 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import { track } from '@/lib/analytics';
 import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import {
-  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
-  isBridgePaymasterAddress,
-} from '@/lib/protocolAddresses';
+import { getSystemRecipientError } from '@/lib/protocolAddresses';
 import { Status, TokenType, TransactionType } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 
@@ -80,10 +77,11 @@ const useSend = ({
         throw new Error('Chain not found');
       }
 
-      // Last line of defence: no screen may hand a transfer to our bridge
-      // contract's address — it credits no one, on any chain.
-      if (isBridgePaymasterAddress(to)) {
-        throw new Error(BRIDGE_PAYMASTER_RECIPIENT_ERROR);
+      // Last line of defence: no screen may hand a transfer to one of our own
+      // system addresses (bridge, relayer, treasury) — it credits no one.
+      const systemRecipientError = getSystemRecipientError(to);
+      if (systemRecipientError) {
+        throw new Error(systemRecipientError);
       }
 
       track(TRACKING_EVENTS.SEND_TRANSACTION_INITIATED, {
