@@ -24,8 +24,23 @@ jest.mock('@/components/Card/CardFund/CardFundGroup', () => 'CardFundGroup');
 jest.mock('@/components/Card/CardFund/CardFundRow', () => 'CardFundRow');
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-// "More networks" is tested on its own; here, only what it is asked for.
-jest.mock('@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup', () => 'RhinoNetworkGroup');
+// rhino.fi's other chains are tested on their own; here, a stand-in row for
+// each, in the list with the rest.
+jest.mock('@/components/DepositOption/RhinoDeposit/useRhinoExtraNetworkRows', () => {
+  const { createElement } = jest.requireActual('react');
+  return {
+    useRhinoExtraNetworkRows: (options: { destinationType: string; symbol: string }) => {
+      const { getRhinoExtraChains } = jest.requireActual('@/lib/rhinoDeposit');
+      const chains =
+        mockRhino.current.status === 'ready'
+          ? getRhinoExtraChains(mockRhino.current.assets, options)
+          : [];
+      return chains.map((chain: { chain: string; name: string }) =>
+        createElement('RhinoExtraRow', { key: chain.chain, title: chain.name, ...options }),
+      );
+    },
+  };
+});
 // Its barrel reaches wagmi's ESM build, which does not load under jest-expo.
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
@@ -188,17 +203,32 @@ describe('CardFundNetworks', () => {
     expect(rows()[0].props.chips).not.toContain(RHINO_TAG);
   });
 
-  // BTC has no row of the list's own: Bitcoin, under "More networks", alone.
-  it('offers BTC from "More networks" alone, with no empty state over it', () => {
+  // BTC has no row of the list's own: Bitcoin alone, in the list itself.
+  it('offers BTC on Bitcoin alone, with no empty state over it', () => {
     mockRhino.current = { ...READY, assets: RHINO_ASSETS_WITH_BITCOIN };
     render('BTC');
 
     expect(rows()).toHaveLength(0);
     expect(texts()).not.toContain('No network takes BTC right now.');
-    expect(root.root.findByType('RhinoNetworkGroup').props).toMatchObject({
-      destinationType: 'RAIN_CARD',
-      symbol: 'BTC',
-    });
+    const extra = root.root.findAllByType('RhinoExtraRow');
+    expect(extra.map((row: any) => row.props.title)).toEqual(['Bitcoin']);
+    expect(extra[0].props).toMatchObject({ destinationType: 'RAIN_CARD', symbol: 'BTC' });
+    // In the same group as the list's own rows, with no section of its own.
+    expect(root.root.findAllByType('CardFundGroup')).toHaveLength(1);
+    expect(root.root.findByType('CardFundGroup').props.label).toBeUndefined();
+  });
+
+  // Tron, Solana and the rest sit after the list's own rows, in the same group.
+  it('lists rhino.fi’s other chains with the list’s own rows', () => {
+    mockRhino.current = READY;
+    render('USDT');
+
+    const group = root.root.findByType('CardFundGroup');
+    const own = group.findAllByType('CardFundRow').map((row: any) => row.props.title);
+    const extra = group.findAllByType('RhinoExtraRow').map((row: any) => row.props.title);
+    expect(own.length).toBeGreaterThan(0);
+    expect(extra).toEqual(expect.arrayContaining(['Tron', 'Solana']));
+    expect(root.root.findAllByType('CardFundGroup')).toHaveLength(1);
   });
 
   it('waits for rhino.fi’s routes for BTC, and offers a retry if they cannot be had', () => {
@@ -265,14 +295,14 @@ describe('CardFundNetworks', () => {
   it('matches a Wirex cardholder’s USDC against the wallet route, and Rain’s the card’s', () => {
     render('USDC', CardProvider.WIREX);
     expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
-    expect(root.root.findByType('RhinoNetworkGroup').props).toMatchObject({
+    expect(root.root.findAllByType('RhinoExtraRow')[0].props).toMatchObject({
       destinationType: 'WALLET',
       symbol: 'USDC',
     });
     act(() => root.unmount());
 
     render('USDC', CardProvider.RAIN);
-    expect(root.root.findByType('RhinoNetworkGroup').props).toMatchObject({
+    expect(root.root.findAllByType('RhinoExtraRow')[0].props).toMatchObject({
       destinationType: 'RAIN_CARD',
       symbol: 'USDC',
     });

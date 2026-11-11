@@ -1,7 +1,7 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
+import { useRhinoExtraNetworkRows } from '@/components/DepositOption/RhinoDeposit/useRhinoExtraNetworkRows';
 import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
 import { getRhinoDepositAssets } from '@/lib/api';
 
@@ -9,7 +9,6 @@ import { getRhinoDepositAssets } from '@/lib/api';
 const { act, create } = require('react-test-renderer');
 
 jest.mock('@/lib/api', () => ({ getRhinoDepositAssets: jest.fn() }));
-jest.mock('@/components/Card/CardFund/CardFundGroup', () => 'CardFundGroup');
 jest.mock('@/components/Card/CardFund/CardFundRow', () => 'CardFundRow');
 jest.mock('@/components/DepositOption/RhinoDeposit/RhinoChainIcon', () => 'RhinoChainIcon');
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
@@ -24,7 +23,12 @@ const settle = () =>
 let client: QueryClient;
 let root: any;
 
-const mount = async (props: Partial<React.ComponentProps<typeof RhinoNetworkGroup>> = {}) => {
+type Options = Parameters<typeof useRhinoExtraNetworkRows>[0];
+
+/** The rows, as a funding flow puts them in its own list. */
+const Host = (options: Options) => <>{useRhinoExtraNetworkRows(options)}</>;
+
+const mount = async (props: Partial<Options> = {}) => {
   const onSelect = jest.fn();
   client?.clear();
   // No garbage-collection timer, which would hold jest open for five minutes.
@@ -32,12 +36,7 @@ const mount = async (props: Partial<React.ComponentProps<typeof RhinoNetworkGrou
   await act(async () => {
     root = create(
       <QueryClientProvider client={client}>
-        <RhinoNetworkGroup
-          destinationType="RAIN_CARD"
-          symbol="USDC"
-          onSelect={onSelect}
-          {...props}
-        />
+        <Host destinationType="RAIN_CARD" symbol="USDC" onSelect={onSelect} {...props} />
       </QueryClientProvider>,
     );
   });
@@ -64,16 +63,15 @@ afterEach(async () => {
 });
 
 /**
- * "More networks": rhino.fi's chains the app has no row for, for the token and
- * destination the screen has already chosen.
+ * rhino.fi's chains the app has no row for, for the token and destination the
+ * screen has already chosen, as rows for the screen's own network list.
  */
-describe('RhinoNetworkGroup', () => {
+describe('useRhinoExtraNetworkRows', () => {
   // Never Ethereum, Base, Optimism or Fuse, which are rows of the app's own;
   // never Arc, held back.
   it('lists only the chains the app has no row for, for the token chosen', async () => {
     await mount({ destinationType: 'RAIN_CARD', symbol: 'USDC' });
     expect(titles()).toEqual(['Solana', 'Avalanche']);
-    expect(root.root.findByType('CardFundGroup').props.label).toBe('More networks');
   });
 
   // On savings, USDT into soUSD stays rhino.fi's, Tron and all.
