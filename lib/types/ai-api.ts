@@ -4,6 +4,17 @@ export type AiApiPauseReason = 'wallet_empty' | 'billing_mandate' | 'admin';
 /** What a key reads as on the dashboard. */
 export type AiApiKeyStatus = 'active' | 'limit_reached' | 'paused' | 'disabled';
 
+/** Tokens used, split the way they are priced. */
+export interface AiApiTokenSplit {
+  /** Input read at the full price. */
+  input: number;
+  /** Input read from the provider's prompt cache. */
+  cachedInput: number;
+  /** Input written to the provider's prompt cache. */
+  cacheWrite: number;
+  output: number;
+}
+
 export interface AiApiKey {
   id: string;
   name: string;
@@ -13,6 +24,8 @@ export interface AiApiKey {
   spentThisMonthUsd: number;
   cashbackThisMonthUsd: number;
   requestsThisMonth: number;
+  /** This month's tokens on this key. Missing on an older backend. */
+  tokensThisMonth?: AiApiTokenSplit;
   status: AiApiKeyStatus;
   lastUsedAt: string | null;
   createdAt: string;
@@ -71,6 +84,16 @@ export interface AiApiModel {
   /** The model maker's own list price; null when we don't show a discount. */
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
+  /**
+   * Average output speed over the last ~24h of streamed requests, in tokens a
+   * second. Null when too few requests were seen; missing on an older backend.
+   */
+  tokensPerSecond?: number | null;
+  /**
+   * Average time to the first token over the same requests, in milliseconds.
+   * Null when too few requests were seen; missing on an older backend.
+   */
+  timeToFirstTokenMs?: number | null;
 }
 
 /** One tier's AI cashback terms. */
@@ -110,6 +133,8 @@ export interface AiApiOverview {
     cashbackUsd: number;
     requests: number;
     resetsAt: string;
+    /** This month's tokens across every key. Missing on an older backend. */
+    tokens?: AiApiTokenSplit;
   };
   /** One entry per day of the month so far, today last. */
   daily: { day: string; spentUsd: number }[];

@@ -44,6 +44,30 @@ export const formatAiApiTokens = (tokens: number): string => {
 };
 
 /**
+ * A model's measured speed for the price sheet: `~85 tokens/s · first token
+ * in 1.2 s`, either half on its own, or null when neither was measured — too
+ * few recent requests, or an older backend that doesn't send them.
+ */
+export const formatAiApiModelSpeed = (model: {
+  tokensPerSecond?: number | null;
+  timeToFirstTokenMs?: number | null;
+}): string | null => {
+  const { tokensPerSecond: perSecond, timeToFirstTokenMs: firstMs } = model;
+  const speed =
+    perSecond != null && Number.isFinite(perSecond) && Math.round(perSecond) >= 1
+      ? `~${whole.format(Math.round(perSecond))} tokens/s`
+      : null;
+  // One decimal, and never `0.0 s` for a first token under 50 ms.
+  const firstToken =
+    firstMs != null && Number.isFinite(firstMs) && firstMs > 0
+      ? `${Math.max(0.1, Math.round(firstMs / 100) / 10).toFixed(1)} s`
+      : null;
+  if (speed && firstToken) return `${speed} · first token in ${firstToken}`;
+  if (speed) return speed;
+  return firstToken ? `First token in ${firstToken}` : null;
+};
+
+/**
  * A per-million-token price, the way Figma's price sheet writes it: `$1.14`
  * and `$0.27` in cents, `$0.072` and `$0.004` in tenths of a cent below
  * $0.10, and `Free` for a model we don't charge for.

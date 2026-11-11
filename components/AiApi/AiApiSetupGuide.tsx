@@ -21,15 +21,18 @@ const AiApiSetupGuide = ({
   baseUrl,
   apiKey,
   model,
+  models,
   initialAgent = 'claude-code',
 }: {
   baseUrl: string;
   apiKey: string;
   model: string;
+  /** Every model the key can call, for agents whose config lists them. */
+  models: { id: string; name: string }[];
   initialAgent?: AiApiAgent;
 }) => {
   const [agent, setAgent] = useState<AiApiAgent>(initialAgent);
-  const guide = buildAiApiSetupGuide({ agent, baseUrl, apiKey, model });
+  const guide = buildAiApiSetupGuide({ agent, baseUrl, apiKey, model, models });
 
   return (
     <View className="w-full gap-3">
@@ -47,8 +50,12 @@ const AiApiSetupGuide = ({
                 selected ? 'bg-white' : 'active:opacity-70',
               )}
             >
+              {/* Five tabs share a phone's width, so a long name shrinks a little
+                  to fit, as the Home action pills do, rather than being cut off. */}
               <Text
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 className={cn(
                   'text-[14px]',
                   selected ? 'font-semibold text-black' : 'font-medium text-white/70',
