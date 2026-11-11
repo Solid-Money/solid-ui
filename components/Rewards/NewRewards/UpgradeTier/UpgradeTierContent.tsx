@@ -58,7 +58,7 @@ interface UpgradeTierContentProps {
   onRouteSelected?: (route: TierUpgradeRoute, changed: boolean) => void;
 }
 
-/** Where "Learn more" and "How to earn points?" send the user. */
+/** Where "Learn more" sends the user. */
 export const MEMBERSHIP_HELP_URL =
   'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
 

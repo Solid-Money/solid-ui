@@ -105,8 +105,8 @@ const TierTrialPill = ({ trial }: { trial?: TierTrial | null }) => {
             )}
 
             <Text className="mt-4 text-white/70" style={BODY_STYLE}>
-              Enjoy {tierName} until your trial ends. Then your tier will be based on your points
-              and FUSE Savings balance.
+              Enjoy {tierName} until your trial ends. Then you return to the tier your FUSE lock or
+              membership gives you. Lock FUSE or start a membership anytime to keep {tierName}.
             </Text>
 
             <Button

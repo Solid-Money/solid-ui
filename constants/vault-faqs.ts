@@ -78,14 +78,14 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
         'Yes. soFUSE tracks FUSE. FUSE Yield adds yield in FUSE terms; the dollar value still moves with the market.',
     },
     {
-      question: 'Is this the same as Skip the Line staking?',
+      question: 'Does FUSE Yield upgrade my tier?',
       answer:
-        'Yes. Your FUSE Yield deposit is what counts for Skip the Line. Hold 50,000 FUSE in FUSE Yield to unlock Prime, or 400,000 to unlock Ultra. You earn yield and unlock your tier with the same deposit.',
+        'Only when you lock it. Holding FUSE in FUSE Yield no longer upgrades your tier on its own. Lock FUSE from FUSE Yield to unlock Prime or Ultra; the Rewards screen shows how much each tier needs today. You can also upgrade with an annual membership instead.',
     },
     {
       question: 'Why put FUSE in FUSE Yield rather than just holding it?',
       answer:
-        'Idle FUSE earns nothing. The same FUSE in FUSE Yield earns network rewards plus the treasury boost, keeps earning Solid Rewards points, and counts toward Prime or Ultra through Skip the Line. One deposit, three benefits.',
+        'Idle FUSE earns nothing. The same FUSE in FUSE Yield earns network rewards plus the treasury boost, and it is the FUSE you can lock to unlock Prime or Ultra.',
     },
   ],
   // TODO(soEURC): product to review and move this copy to the Monday board above.

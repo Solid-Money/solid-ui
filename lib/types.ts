@@ -2248,10 +2248,22 @@ export interface SubscriptionCategoryRate {
 }
 
 export interface RewardsUserData {
+  /**
+   * The tier the user holds. Upgraded only by locking FUSE or an annual
+   * membership; points no longer count toward any tier.
+   */
   currentTier: RewardsTier;
+  /** Points total. Informational: points are deprecated and reach no tier. */
   totalPoints: number;
+  /** @deprecated The retired points threshold of the next tier. Do not show. */
   nextTierPoints: number;
   nextTier: RewardsTier | null;
+  /**
+   * FUSE still to lock to reach the next tier, or null when there is no next
+   * tier or the lock route cannot take the user there. Absent on older
+   * backends.
+   */
+  fuseToNextTier?: number | null;
   /**
    * The cashback % this user actually earns — their tier's rate, unless support
    * has put them on one of their own.
@@ -2305,9 +2317,16 @@ export interface RewardsUserData {
   hasOptedIn?: boolean;
   /** The user's old Solid Points total prior to conversion. */
   legacyPoints?: number;
-  /** Legacy Carryover Credit granted from old points under the new economy. */
+  /**
+   * Legacy Carryover Credit granted from old points.
+   *
+   * @deprecated Points no longer count toward a tier, so neither does this.
+   */
   legacyCarryoverPoints?: number;
-  /** Tier the user starts in after carryover is applied (Core or Prime). */
+  /**
+   * The tier the user starts the program at: the tier they hold. Older
+   * backends priced it from the carryover alone — prefer `currentTier`.
+   */
   startingTier?: RewardsTier;
   /**
    * Extra APY the current tier adds on top of the base savings yield, in
@@ -2386,8 +2405,8 @@ export type TierTrialStatus = 'pending_activation' | 'active' | 'expired' | 'rev
 
 /**
  * A temporary tier upgrade: the user holds `tier` for `durationDays` from the
- * moment they activate it, then returns to the tier their points and FUSE
- * balance earn them. Neither of those is touched to grant it.
+ * moment they activate it, then returns to the tier their FUSE lock or
+ * membership gives them (Core if none). Neither is touched to grant it.
  */
 export interface TierTrial {
   id: string;
@@ -2422,9 +2441,10 @@ export interface FuseSkipLineTier {
 }
 
 /**
- * "Skip the line": FUSE held in savings unlocks a membership tier outright,
- * bypassing the points ladder. The tier is held only while the balance stays
- * above the threshold.
+ * "Skip the line": the retired route where FUSE held in savings unlocked a
+ * membership tier. It no longer upgrades anyone — it only keeps grandfathered
+ * users at the tier they held at v3 launch, while the balance stays above the
+ * threshold — and the backend sends `enabled: false` to everyone else.
  */
 export interface FuseSkipLine {
   /** Whether the mechanic is switched on. False hides the section. */
@@ -4522,9 +4542,11 @@ export interface TierMembershipState {
   /** Whether either purchase route is available. False hides the upgrade UI. */
   enabled: boolean;
   /**
-   * Whether points can still take this user to a higher tier. Per user: false
-   * once the ladder is switched off, for anyone not on the grandfather list,
-   * and for a grandfathered user already at the tier the list caps them at.
+   * Whether points can still take this user to a higher tier. Always false:
+   * points are deprecated, and a tier is upgraded only by locking FUSE or an
+   * annual membership.
+   *
+   * @deprecated Do not branch on it. Kept because older backends still send it.
    */
   pointsUnlockEnabled: boolean;
   offers: TierOffer[];

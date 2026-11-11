@@ -53,8 +53,10 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
     {
       key: 'tier',
       icon: Award,
-      title: 'Counts for your tier',
-      body: 'Your FUSE Yield deposit counts toward Prime or Ultra through Skip the Line.',
+      // Holding FUSE here no longer upgrades a tier on its own (Skip the Line
+      // is retired); locking it does.
+      title: 'Lock it for a tier',
+      body: 'Lock your FUSE Yield deposit to unlock Prime or Ultra.',
     },
     {
       key: 'exposure',

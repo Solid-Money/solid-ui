@@ -17,15 +17,21 @@ interface RewardsWelcomePopupProps {
   isOpen: boolean;
   onClose: () => void;
   onAgree: () => void;
-  /** 'new' for users with no legacy points, 'existing' for users whose old points carry over. */
+  /** 'new' for users with no legacy points, 'existing' for users who have some. */
   variant: RewardsWelcomeVariant;
   /** Disables the join button while the opt-in request is in flight. */
   isJoining?: boolean;
-  /** Existing-user only: the user's old Solid Points total before conversion. */
+  /** Existing-user only: the user's old Solid Points total. */
   oldPoints?: number;
-  /** Existing-user only: the Legacy Carryover Credit granted in the new program. */
+  /**
+   * @deprecated No longer shown: points, and so the carryover credit, no
+   * longer count toward a tier. Accepted so existing callers keep compiling.
+   */
   legacyCarryoverPoints?: number;
-  /** Existing-user only: the tier the user starts in after carryover (Core or Prime). */
+  /**
+   * The tier the user starts at: the tier they hold. Points no longer decide
+   * it — only a FUSE lock or an annual membership upgrades a tier.
+   */
   startingTier?: RewardsTier;
 }
 
@@ -61,7 +67,6 @@ const RewardsWelcomePopup = ({
   variant,
   isJoining = false,
   oldPoints = 0,
-  legacyCarryoverPoints = 0,
   startingTier = RewardsTier.CORE,
 }: RewardsWelcomePopupProps) => {
   return (
@@ -86,11 +91,15 @@ const RewardsWelcomePopup = ({
                 Welcome to the rewards program
               </Text>
 
+              {/* Points are deprecated: they no longer move anyone between
+                  tiers. A tier is upgraded only by locking FUSE or an annual
+                  membership, so nothing here promises points toward one. */}
               {variant === 'new' ? (
                 <View className="mt-[17px] gap-6">
                   <Text className="text-white/70" style={BODY_STYLE}>
-                    Earn points when you save, spend, swap, and invite friends. Start in Core, then
-                    build toward Prime and Ultra for better rewards and perks.
+                    Earn cashback when you spend and yield when you save. You start in{' '}
+                    {getTierDisplayName(startingTier)}, and can upgrade anytime by locking FUSE or
+                    with an annual membership.
                   </Text>
                   <Text className="text-white/70" style={BODY_STYLE}>
                     In clicking the button below you are agreeing to the Solid Rewards Terms and
@@ -100,21 +109,15 @@ const RewardsWelcomePopup = ({
               ) : (
                 <View className="mt-[17px] gap-6">
                   <Text className="text-white/70" style={BODY_STYLE}>
-                    {
-                      "Your old Solid Points are moving into Solid Rewards. We're converting your previous points into a Legacy Carryover Credit so your progress counts in the new rewards program."
-                    }
+                    Solid Points are retired. Your points stay on your account, but they no longer
+                    count toward a tier. Upgrade anytime by locking FUSE or with an annual
+                    membership.
                   </Text>
                   <View className="gap-1">
                     <Text className="text-white/70" style={BODY_STYLE}>
-                      Old points:{' '}
+                      Your points:{' '}
                       <Text className="font-semibold text-white">
                         {formatNumber(oldPoints, 0, 0)}
-                      </Text>
-                    </Text>
-                    <Text className="text-white/70" style={BODY_STYLE}>
-                      Carryover credit:{' '}
-                      <Text className="font-semibold text-white">
-                        {formatNumber(legacyCarryoverPoints, 0, 0)}
                       </Text>
                     </Text>
                     <Text className="text-white/70" style={BODY_STYLE}>

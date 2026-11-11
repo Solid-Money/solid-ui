@@ -18,9 +18,9 @@ import { useUserStore } from '@/store/useUserStore';
  * The tier-upgrade celebration, shown once per observed promotion.
  *
  * Mounted on the protected layout rather than on the rewards screen, because a
- * tier can arrive from anywhere: a points milestone reached while spending, a
- * FUSE deposit confirming in Savings, or a trial the user just activated from a
- * banner on the wallet screen. Whichever it was, `useRewardsUpgradeStore`
+ * tier can arrive from anywhere: a FUSE lock or a membership confirming, a
+ * grandfathered FUSE balance confirming in Savings, or a trial the user just
+ * activated from a banner on the wallet screen. Whichever it was, `useRewardsUpgradeStore`
  * notices `currentTier` rising between two reads of the rewards payload and
  * hands it here — so all three routes get the same celebration and none of them
  * has to open it itself.
