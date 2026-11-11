@@ -7,10 +7,15 @@ import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import {
+  BOT_CHECK_FAILED_CODE,
+  BOT_CHECK_FAILED_MESSAGE,
+  EMAIL_ALREADY_LINKED_CODE,
+  EMAIL_ALREADY_LINKED_MESSAGE,
   EMAIL_CHANGE_CONFIRM_FAILED_CODE,
   EMAIL_CHANGE_STEP_UP_REQUIRED_CODE,
   EMAIL_DOMAIN_NOT_ALLOWED_CODE,
   EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
+  isRateLimitedError,
 } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
@@ -252,6 +257,7 @@ export const useEmailManagement = (
       });
 
       const isRateLimitError =
+        isRateLimitedError(error) ||
         errorMessage.includes('Max number of OTPs have been initiated') ||
         errorMessage.includes('please wait and try again') ||
         errorMessage.includes('Turnkey error 3');
@@ -261,6 +267,19 @@ export const useEmailManagement = (
           action: 'account',
           title: 'Use a different email',
           body: EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
+        });
+      } else if (error?.code === EMAIL_ALREADY_LINKED_CODE) {
+        // Refused before a code was sent; another address can work.
+        void showErrorToast(error, {
+          action: 'account',
+          title: 'Use a different email',
+          body: EMAIL_ALREADY_LINKED_MESSAGE,
+        });
+      } else if (error?.code === BOT_CHECK_FAILED_CODE) {
+        void showErrorToast(error, {
+          action: 'account',
+          title: 'Couldn’t send the code',
+          body: BOT_CHECK_FAILED_MESSAGE,
         });
       } else if (isRateLimitError) {
         setRateLimitError(
