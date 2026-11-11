@@ -59,9 +59,44 @@ describe('routeForLink', () => {
     ['/rewards/refer', path.REFER],
     ['/rewards/refer/invites', path.REFER_INVITES],
     ['/savings/fuse', path.SAVINGS_FUSE],
+    ['/earn', path.EARN],
     ['/support', path.SUPPORT],
   ])('maps %s to its screen', (p, expected) => {
     expect(routeForLink(link(p))).toEqual(expected);
+  });
+
+  describe('paths whose query picks the destination', () => {
+    const ID = '000000000000000000000001';
+
+    it('opens the savings vault a link names', () => {
+      expect(routeForLink(link('/savings?vault=eur&utm_medium=push'))).toEqual({
+        pathname: '/savings',
+        params: { vault: 'eur' },
+      });
+    });
+
+    it('opens the savings screen for a vault it does not know', () => {
+      expect(routeForLink(link('/savings?vault=doge'))).toEqual(path.SAVINGS);
+    });
+
+    it('opens What’s New on the page a campaign chose, passing on only those params', () => {
+      expect(
+        routeForLink(link(`/?whatsNew=${ID}&whatsNewStep=2&utm_source=x_a&utm_campaign=x`)),
+      ).toEqual({ pathname: '/', params: { whatsNew: ID, whatsNewStep: '2' } });
+    });
+
+    it.each([
+      ['/?deposit=open', { deposit: 'open' }],
+      ['/?deposit=cash', { deposit: 'cash' }],
+      ['/?spendMode=open', { spendMode: 'open' }],
+    ])('opens %s over Home', (p, params) => {
+      expect(routeForLink(link(p))).toEqual({ pathname: '/', params });
+    });
+
+    it('opens plain Home for Home params it cannot read', () => {
+      expect(routeForLink(link('/?deposit=crypto&screen=card-info'))).toEqual(path.HOME);
+      expect(routeForLink(link('/?whatsNew=not-an-id'))).toEqual(path.HOME);
+    });
   });
 
   it('ignores the campaign query', () => {
@@ -176,6 +211,22 @@ describe('getNotificationRoute', () => {
           link: link('/rewards?referral=open&utm_medium=push'),
         }),
       ).toEqual(path.REFERRAL_PROGRAM);
+    });
+
+    it('sends a portal campaign push where its variant points', () => {
+      expect(
+        getNotificationRoute({
+          type: 'campaign-euro_yield_nov-b',
+          link: link('/?deposit=cash&utm_source=euro_yield_nov_b&utm_medium=push'),
+        }),
+      ).toEqual({ pathname: '/', params: { deposit: 'cash' } });
+
+      expect(
+        getNotificationRoute({
+          type: 'campaign-test',
+          link: link('/savings?vault=eur&utm_source=test_a&utm_medium=push'),
+        }),
+      ).toEqual({ pathname: '/savings', params: { vault: 'eur' } });
     });
   });
 
