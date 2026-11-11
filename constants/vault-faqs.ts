@@ -8,8 +8,9 @@ import { Faq, VaultType } from '@/lib/types';
  * didn't receive 1 soUSD per USDC. Each vault answers for itself here instead.
  *
  * Copy is product-owned (Monday 12943830277) and reproduced verbatim — edit it
- * there, not here. The EUR vault's copy is the exception: it was written with the
- * vault's launch and is not on that board yet.
+ * there, not here. The exceptions are the EUR vault's copy, written with the
+ * vault's launch, and the soETH card answer, rewritten when soETH became
+ * spendable on Base: neither is on that board yet.
  */
 const VAULT_FAQS: Record<VaultType, Faq[]> = {
   [VaultType.USDC]: [
@@ -58,7 +59,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Can I use soETH with the card?',
       answer:
-        'Not directly today. Card spending is powered by your USD balance. You can withdraw ETH and swap to USDC in-app whenever you want to spend it.',
+        'Yes, on Base. Once Base spending is on, your card can spend soETH held on Base, and in Credit mode you can borrow against it without selling. ETH deposits now land on Base, so new soETH is ready to use there.',
     },
   ],
   [VaultType.FUSE]: [

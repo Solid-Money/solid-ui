@@ -37,7 +37,8 @@ export interface VaultMeta {
   /**
    * Whether reaching the destination requires bridging off Fuse first (a 2-step
    * flow): to Base or Ethereum for soUSD, Ethereum for soETH. soFUSE withdraws
-   * directly on Fuse and soEURC directly on Base, each in a single step.
+   * directly on Fuse and soEURC directly on Base, each in a single step, and so
+   * do soUSD and soETH already held on Base or Ethereum.
    */
   requiresBridge: boolean;
 }
