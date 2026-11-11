@@ -11,12 +11,15 @@
  *
  * Never throws and never holds a request up for long: when App Check can't
  * produce a token — a binary built before this module was added (it can still
- * receive this bundle over the air), a simulator without a debug token, a slow
- * first attestation — the request goes without one and the backend decides
- * (monitor mode logs it, enforce refuses it).
+ * receive this bundle over the air), a simulator whose debug token isn't
+ * registered, a slow first attestation — the request goes without one and the
+ * backend decides (monitor mode logs it, enforce refuses it).
+ *
+ * Development builds use the debug provider. On first launch it logs a debug
+ * token to the device console; register that in the Firebase console (App
+ * Check → Manage debug tokens). The token is a credential, so it is never
+ * read from an EXPO_PUBLIC_ variable, which would ship it in the bundle.
  */
-import { EXPO_PUBLIC_APP_CHECK_DEBUG_TOKEN } from '@/lib/config';
-
 export const APP_CHECK_HEADER = 'X-Firebase-AppCheck';
 
 /** The first App Attest / Play Integrity round trip can take a few seconds. */
@@ -36,15 +39,11 @@ function initializeAppCheck() {
       // can receive this bundle over the air) fails here, not at app start.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const module: AppCheckModule = require('@react-native-firebase/app-check');
-      const debugToken = EXPO_PUBLIC_APP_CHECK_DEBUG_TOKEN || undefined;
       const instance = await module.initializeAppCheck(undefined, {
         provider: {
           providerOptions: {
-            android: { provider: __DEV__ ? 'debug' : 'playIntegrity', debugToken },
-            apple: {
-              provider: __DEV__ ? 'debug' : 'appAttestWithDeviceCheckFallback',
-              debugToken,
-            },
+            android: { provider: __DEV__ ? 'debug' : 'playIntegrity' },
+            apple: { provider: __DEV__ ? 'debug' : 'appAttestWithDeviceCheckFallback' },
           },
         },
         // Tokens are fetched only when a protected request needs one. Background
@@ -61,8 +60,13 @@ function initializeAppCheck() {
   return appCheckReady;
 }
 
-const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | null> =>
-  Promise.race([promise, new Promise<null>(resolve => setTimeout(() => resolve(null), ms))]);
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | null> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>(resolve => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
 
 /** Headers proving this request comes from the app; `{}` when App Check can't say. */
 export async function getBotProtectionHeaders(): Promise<Record<string, string>> {

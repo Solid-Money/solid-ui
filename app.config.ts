@@ -263,7 +263,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     '@react-native-firebase/app',
     '@react-native-firebase/messaging',
     // Activates App Check in AppDelegate before Firebase configures. See
-    // lib/botProtection.ts.
+    // lib/botProtection.ts. EAS always prebuilds from scratch (ios/ is
+    // ignored), which is the order this plugin expects. A local ios/ generated
+    // before this plugin was added needs one `npx expo prebuild --clean`:
+    // incrementally, the plugin appends a second FirebaseApp.configure() after
+    // the existing one instead of going ahead of it.
     '@react-native-firebase/app-check',
     // Adds the iOS Notification Service Extension so rich-push images render.
     './plugins/withIosNotificationServiceExtension',

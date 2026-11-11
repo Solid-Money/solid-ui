@@ -44,6 +44,10 @@ describe('getBotProtectionHeaders (native, App Check)', () => {
     // Development builds can't attest; they use the debug provider.
     expect(options.provider.providerOptions.apple.provider).toBe('debug');
     expect(options.provider.providerOptions.android.provider).toBe('debug');
+    // The debug token is a credential: the provider makes one per device, and
+    // none is shipped in the bundle.
+    expect(options.provider.providerOptions.apple).not.toHaveProperty('debugToken');
+    expect(options.provider.providerOptions.android).not.toHaveProperty('debugToken');
   });
 
   it('sends nothing when this build has no App Check', async () => {

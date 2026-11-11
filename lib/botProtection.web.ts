@@ -22,6 +22,11 @@ export const TURNSTILE_HEADER = 'X-Turnstile-Token';
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 /** Long enough for the occasional visitor asked to tick the box. */
 const TOKEN_TIMEOUT_MS = 30_000;
+/**
+ * A stalled script download fires neither onload nor onerror; without a limit
+ * it would hold this request, and every one queued behind it, forever.
+ */
+const SCRIPT_TIMEOUT_MS = 10_000;
 
 interface TurnstileApi {
   render(container: HTMLElement, options: Record<string, unknown>): string | undefined;
@@ -43,14 +48,23 @@ function loadTurnstile(): Promise<TurnstileApi> {
 
   scriptLoading ??= new Promise<TurnstileApi>((resolve, reject) => {
     const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      script.onload = null;
+      script.onerror = null;
+      reject(new Error('Turnstile script timed out'));
+    }, SCRIPT_TIMEOUT_MS);
     script.src = SCRIPT_SRC;
     script.async = true;
     script.onload = () => {
+      clearTimeout(timer);
       const api = (window as TurnstileWindow).turnstile;
       if (api) resolve(api);
       else reject(new Error('Turnstile script loaded without its API'));
     };
-    script.onerror = () => reject(new Error('Turnstile script failed to load'));
+    script.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('Turnstile script failed to load'));
+    };
     document.head.appendChild(script);
   }).catch(error => {
     // A blocked script (ad blocker, offline) is retried on the next request.

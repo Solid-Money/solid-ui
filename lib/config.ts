@@ -90,13 +90,6 @@ export const EXPO_PUBLIC_SHARED_REVIEW_ACCESS_EMAIL =
  * See lib/botProtection.web.ts.
  */
 export const EXPO_PUBLIC_TURNSTILE_SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '';
-/**
- * Firebase App Check debug token for development builds and simulators, which
- * can't attest. Register it in the Firebase console (App Check → Manage debug
- * tokens). Never set in a store build. See lib/botProtection.ts.
- */
-export const EXPO_PUBLIC_APP_CHECK_DEBUG_TOKEN =
-  process.env.EXPO_PUBLIC_APP_CHECK_DEBUG_TOKEN ?? '';
 export const EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS =
   process.env.EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS ?? '';
 export const EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL =

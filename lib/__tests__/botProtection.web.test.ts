@@ -115,4 +115,28 @@ describe('getBotProtectionHeaders (web, Turnstile)', () => {
 
     await expect(headers).resolves.toEqual({});
   });
+
+  it('gives up on a stalled script download, and tries again on the next request', async () => {
+    jest.useFakeTimers();
+    const turnstile = (globals.window as { turnstile?: unknown }).turnstile;
+    delete (globals.window as { turnstile?: unknown }).turnstile;
+    const scripts: { onload: (() => void) | null }[] = [];
+    (globals.document as { head: { appendChild: jest.Mock } }).head.appendChild = jest.fn(script =>
+      scripts.push(script),
+    );
+
+    // The download never finishes: neither onload nor onerror fires.
+    const stalled = getBotProtectionHeaders();
+    await jest.advanceTimersByTimeAsync(10_000);
+    await expect(stalled).resolves.toEqual({});
+
+    // The next request loads the script afresh, and this time it arrives.
+    const retried = getBotProtectionHeaders();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(scripts).toHaveLength(2);
+    (globals.window as { turnstile?: unknown }).turnstile = turnstile;
+    scripts[1].onload?.();
+
+    await expect(retried).resolves.toEqual({ [TURNSTILE_HEADER]: 'turnstile-1' });
+  });
 });
