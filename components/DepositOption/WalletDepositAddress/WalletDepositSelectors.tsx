@@ -27,7 +27,7 @@ const LIST_TOP = 35 + 12;
 /** Tall enough to cover the QR card the open list floats over. */
 const BACKDROP_HEIGHT = 900;
 /**
- * About eight rows. Only applied once "More networks" lengthens the list: it
+ * About eight rows. Only applied once rhino.fi's other chains lengthen the list: it
  * floats over the screen rather than in its flow, so rows past the end of the
  * content beneath could never be scrolled to.
  */
@@ -153,10 +153,10 @@ const WalletDepositSelectors = ({
 type WalletDepositNetworkListProps = {
   chainId: number;
   symbol: string;
-  /** The "More networks" rhino.fi chain selected instead of `chainId`, if any. */
+  /** The rhino.fi chain the app has no row for selected instead of `chainId`, if any. */
   rhinoChain?: string;
   onSelect: (chainId: number) => void;
-  /** A "More networks" rhino.fi chain, by rhino.fi's id (`TRON`). */
+  /** A rhino.fi chain the app has no row for, by rhino.fi's id (`TRON`). */
   onSelectExtra: (chain: string) => void;
   onDismiss: () => void;
 };
@@ -176,8 +176,8 @@ type WalletDepositNetworkListProps = {
  * While rhino.fi's routes are out, or when they cannot be had, a loader or a
  * retry stands in for its rows.
  *
- * Under the rows, "More networks": the chains the app has no row for that
- * rhino.fi takes the currency into the wallet from (Tron, Solana, …).
+ * After them, in the same list: the chains the app has no row for that rhino.fi
+ * takes the currency into the wallet from (Tron, Solana, Bitcoin, …).
  */
 export const WalletDepositNetworkList = ({
   chainId,
@@ -215,32 +215,15 @@ export const WalletDepositNetworkList = ({
           {item.chainId === chainId && !rhinoChain ? <Check size={18} color="#94F27F" /> : null}
         </Pressable>
       ))}
-      {notice ? (
-        <RhinoNetworksNotice
-          notice={notice}
-          symbol={symbol}
-          hasRows={networks.length > 0}
-          onRetry={retryRhino}
-          className={cn('py-4', networks.length > 0 && 'border-t border-white/[0.06]')}
-        />
-      ) : null}
-      {extraNetworks.length ? (
-        <Text
-          className={cn(
-            'px-[18px] pb-1 pt-3 text-sm font-medium text-white/50',
-            // Nothing above it to divide from for a currency only these carry (BTC).
-            (networks.length > 0 || notice) && 'border-t border-white/[0.06]',
-          )}
-        >
-          More networks
-        </Text>
-      ) : null}
-      {extraNetworks.map(item => (
+      {extraNetworks.map((item, index) => (
         <Pressable
           key={item.chain}
           accessibilityLabel={item.name}
           onPress={() => onSelectExtra(item.chain)}
-          className="flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover"
+          className={cn(
+            'flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover',
+            (networks.length > 0 || index > 0) && 'border-t border-white/[0.06]',
+          )}
         >
           <RhinoChainIcon
             chain={item.chain}
@@ -252,6 +235,18 @@ export const WalletDepositNetworkList = ({
           {item.chain === rhinoChain ? <Check size={18} color="#94F27F" /> : null}
         </Pressable>
       ))}
+      {notice ? (
+        <RhinoNetworksNotice
+          notice={notice}
+          symbol={symbol}
+          hasRows={networks.length > 0}
+          onRetry={retryRhino}
+          className={cn(
+            'py-4',
+            (networks.length > 0 || extraNetworks.length > 0) && 'border-t border-white/[0.06]',
+          )}
+        />
+      ) : null}
     </>
   );
 

@@ -5,8 +5,8 @@ import { Image } from 'expo-image';
 // The fund-flow list primitives are shared with the card funding flow.
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
-import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
 import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
+import { useRhinoExtraNetworkRows } from '@/components/DepositOption/RhinoDeposit/useRhinoExtraNetworkRows';
 import {
   getSavingsFundNetworks,
   getSavingsFundToken,
@@ -21,7 +21,7 @@ type SavingsFundNetworksProps = {
   /** Token chosen on the previous step — scopes the chain list. */
   symbol: string;
   onSelect: (chainId: number) => void;
-  /** A "More networks" chain from the group under the list. */
+  /** A rhino.fi chain the app has no row of its own for (Tron, Solana, …). */
   onSelectRhino: (selection: RhinoDepositSelection) => void;
   /** Chain whose deposit address is currently being prepared. */
   loadingChainId?: number;
@@ -36,8 +36,8 @@ type SavingsFundNetworksProps = {
  * routes are in, or when they cannot be had, a loader or a retry stands in for
  * them rather than a direct-deposit session.
  *
- * Under the list, "More networks": the chains the app has no row for that
- * rhino.fi takes the token from into the same vault (Tron USDT into soUSD, …).
+ * After them, in the same list: the chains the app has no row for that rhino.fi
+ * takes the token from into the same vault (Tron USDT into soUSD, …).
  */
 const SavingsFundNetworks = ({
   symbol,
@@ -51,12 +51,21 @@ const SavingsFundNetworks = ({
     { destinationType: 'PROTOCOL', symbol, vault },
     networks,
   );
+  const extraRows = useRhinoExtraNetworkRows({
+    destinationType: 'PROTOCOL',
+    symbol,
+    vault,
+    onSelect: onSelectRhino,
+    disabled: !!loadingChainId,
+  });
   const offered = rows.filter(({ state }) => isOfferedRhinoRow(state));
-  const notice = getRhinoListNotice(rows.map(({ state }) => state));
+  const listNotice = getRhinoListNotice(rows.map(({ state }) => state));
+  // A list with rhino.fi's other chains in it is not empty.
+  const notice = listNotice === 'empty' && extraRows.length ? undefined : listNotice;
 
   return (
     <View className="gap-y-4">
-      {offered.length ? (
+      {offered.length || extraRows.length ? (
         <CardFundGroup>
           {offered.map(({ row: network }) => (
             <CardFundRow
@@ -72,6 +81,7 @@ const SavingsFundNetworks = ({
               isLoading={loadingChainId === network.chainId}
             />
           ))}
+          {extraRows}
         </CardFundGroup>
       ) : null}
       {notice ? (
@@ -83,13 +93,6 @@ const SavingsFundNetworks = ({
           className="rounded-[15px] bg-card"
         />
       ) : null}
-      <RhinoNetworkGroup
-        destinationType="PROTOCOL"
-        symbol={symbol}
-        vault={vault}
-        onSelect={onSelectRhino}
-        disabled={!!loadingChainId}
-      />
     </View>
   );
 };
