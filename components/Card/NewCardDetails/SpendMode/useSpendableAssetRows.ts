@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { formatUnits } from 'viem';
+import { base } from 'viem/chains';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
@@ -9,13 +10,17 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { TokenBalance } from '@/lib/types';
 import { matchesAsset, soEurUsdPerShare } from '@/lib/utils/cardSpendable';
 
-/** Which logo a "Spendable assets" row draws. The last five are the crypto Base can sell. */
+/**
+ * Which logo a "Spendable assets" row draws: the stables, the yield shares (soUSD, soEUR, soETH)
+ * and, last, the five crypto Base can sell.
+ */
 export type SpendableAssetIcon =
   | 'usdc'
   | 'usdt'
   | 'sousd'
   | 'eurc'
   | 'soeur'
+  | 'soeth'
   | 'cbbtc'
   | 'weth'
   | 'sol'
@@ -28,7 +33,7 @@ export interface SpendableAssetRow {
   icon: SpendableAssetIcon;
   /** "USDC", "soUSD", "EURC". */
   name: string;
-  /** "USD Yield", "Euro purchases"; absent on a plain stablecoin. */
+  /** "USD Yield", "ETH Yield", "Euro purchases"; absent on a plain stablecoin. */
   subtitle?: string;
   /** "$100.00", or "€74.20" for a euro asset. */
   value: string;
@@ -38,7 +43,7 @@ export interface SpendableAssetRow {
   usd: number;
   /**
    * Whether it is a dollar asset — USDC, USDT and soUSD on either chain — rather than a euro one
-   * or crypto, which a dollar purchase reaches only once the dollars are spent.
+   * or crypto (soETH included), which a dollar purchase reaches only once the dollars are spent.
    */
   isDollar: boolean;
 }
@@ -47,7 +52,7 @@ export interface SpendableAssetBreakdown {
   rows: SpendableAssetRow[];
   /** "Your balance": every row, euro assets included at their dollar value. */
   totalUsd: number;
-  /** What a dollar purchase can draw on: the Fuse set alone, which is what Cash spends. */
+  /** What a dollar purchase can draw on: the dollar rows (USDC, USDT, soUSD on Fuse and on Base). */
   dollarUsd: number;
 }
 
@@ -75,6 +80,7 @@ const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {
   soUSD: 'sousd',
   EURC: 'eurc',
   soEUR: 'soeur',
+  soETH: 'soeth',
   cbBTC: 'cbbtc',
   WETH: 'weth',
   SOL: 'sol',
@@ -140,7 +146,8 @@ export const buildSpendableAssetRows = (
             key,
             icon,
             name: 'soUSD',
-            subtitle: 'USD Yield',
+            // soUSD can be held on Fuse and on Base at once, as two rows: name the Base one.
+            subtitle: asset.chainIds?.includes(base.id) ? 'USD Yield on Base' : 'USD Yield',
             value: money(usd, 'USD'),
             detail: `${amount.toFixed(2)} soUSD`,
             usd,
@@ -177,6 +184,22 @@ export const buildSpendableAssetRows = (
             subtitle: CRYPTO_NAME[asset.symbol!],
             value: money(usd, 'USD'),
             detail: `${coinAmount(amount)} ${asset.symbol}`,
+            usd,
+            isDollar: false,
+          },
+        ];
+      }
+      case 'soeth': {
+        // Priced like any soETH: its accountant rate times ETH, in `quoteRate`.
+        const usd = matching.reduce((sum, token) => sum + usdOf(token), 0);
+        return [
+          {
+            key,
+            icon,
+            name: 'soETH',
+            subtitle: 'ETH Yield',
+            value: money(usd, 'USD'),
+            detail: `${coinAmount(amount)} soETH`,
             usd,
             isDollar: false,
           },

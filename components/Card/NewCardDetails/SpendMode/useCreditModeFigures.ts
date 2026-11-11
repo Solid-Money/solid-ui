@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { formatUnits } from 'viem';
-import { fuse as fuseChain } from 'viem/chains';
+import { base, fuse as fuseChain } from 'viem/chains';
 
 import { formatUsd } from '@/constants/cardSpendModule';
 import {
@@ -28,7 +28,7 @@ import type { BorrowedSummaryFigures } from '@/components/Card/NewCardDetails/Sp
  * A collateral row's mark: the yield glyphs for Solid's own shares, the token's logo for the
  * crypto Base takes as collateral.
  */
-export type CollateralIcon = 'usd' | 'eur' | 'cbbtc' | 'weth' | 'sol' | 'aave' | 'zec';
+export type CollateralIcon = 'usd' | 'eur' | 'eth' | 'cbbtc' | 'weth' | 'sol' | 'aave' | 'zec';
 
 /** One "Collateral assets" row (Figma 29123:9528, 29123:9541). */
 export interface CollateralRowFigures {
@@ -82,6 +82,7 @@ export interface CreditModeFigures extends BorrowedSummaryFigures {
 const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> = {
   soUSD: { label: 'USD Yield', icon: 'usd' },
   soEUR: { label: 'EUR Yield', icon: 'eur' },
+  soETH: { label: 'ETH Yield', icon: 'eth' },
   cbBTC: { label: 'Bitcoin', icon: 'cbbtc' },
   WETH: { label: 'Ethereum', icon: 'weth' },
   SOL: { label: 'Solana', icon: 'sol' },
@@ -89,16 +90,20 @@ const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> 
   cbZEC: { label: 'Zcash', icon: 'zec' },
 };
 
+const isBase = (asset: CreditCollateralAsset): boolean => asset.chainId === base.id;
+
 /** Solid's yield shares: listed even at zero, since they are what the line is built on. */
 const YIELD_SYMBOLS: readonly string[] = ['soUSD', 'soEUR'];
 
 /**
- * Whether a collateral asset gets a row. The yield shares always do, as before; the crypto Base
- * accepts only when the Safe holds some — four rows of "$0.00" for coins nobody deposited would
- * bury the ones that matter.
+ * Whether a collateral asset gets a row. soUSD on Fuse and soEUR always do, as before; everything
+ * else only when the Safe holds some — four rows of "$0.00" for coins nobody deposited would bury
+ * the ones that matter. That includes soUSD on Base, which would otherwise be a second "$0.00" USD
+ * Yield row beside Fuse's, and soETH, which backs the line only for whoever holds it.
  */
 const listsCollateral = (asset: CreditCollateralAsset): boolean =>
-  YIELD_SYMBOLS.includes(asset.symbol) || asset.amount > 0n;
+  (YIELD_SYMBOLS.includes(asset.symbol) && !(asset.symbol === 'soUSD' && isBase(asset))) ||
+  asset.amount > 0n;
 
 /** "USD Yield", "Bitcoin and USD Yield", "Bitcoin, Solana and USD Yield". */
 const joinLabels = (labels: string[]): string =>
@@ -154,7 +159,11 @@ const collateralRow = (asset: CreditCollateralAsset): CollateralRowFigures => {
   const isEuro = asset.valueEur !== undefined;
   return {
     key: `${asset.chainId}:${asset.token}`,
-    label: named?.label ?? (asset.symbol || 'Collateral'),
+    // soUSD backs a line on Fuse and on Base: name the Base one, which can sit beside it.
+    label:
+      asset.symbol === 'soUSD' && isBase(asset)
+        ? 'USD Yield on Base'
+        : (named?.label ?? (asset.symbol || 'Collateral')),
     icon: named?.icon ?? (isEuro ? 'eur' : 'usd'),
     value: isEuro ? formatMoney(asset.valueEur!, 'EUR') : formatMoney(asset.valueUsd, 'USD'),
     usdEquivalent: isEuro ? `≈ ${formatMoney(asset.valueUsd, 'USD')}` : undefined,
