@@ -2,7 +2,6 @@ import { useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { erc20Abi, maxUint256, TransactionReceipt } from 'viem';
-import { mainnet } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useReadContract } from 'wagmi';
 
@@ -11,8 +10,8 @@ import { WITHDRAW_SECONDS_TO_DEADLINE } from '@/constants/withdraw';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
-import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { SOETH_WITHDRAW_CHAINS, type SoEthWithdrawChainId } from '@/lib/soEthWithdraw';
 import { Status, TransactionType } from '@/lib/types';
 
 import useUser from './useUser';
@@ -23,18 +22,23 @@ type WithdrawSoEthResult = {
   error: string | null;
 };
 
-const useWithdrawSoEth = (): WithdrawSoEthResult => {
+/**
+ * Requests a soETH withdrawal on `chainId`'s queue, for that chain's WETH: Ethereum (shares on
+ * Ethereum, or bridged there from Fuse) or Base (shares on Base, paid from the Base vault).
+ */
+const useWithdrawSoEth = (chainId: SoEthWithdrawChainId): WithdrawSoEthResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
   const [withdrawSoEthStatus, setWithdrawSoEthStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
+  const { chain, vault, boringQueue, weth } = SOETH_WITHDRAW_CHAINS[chainId];
 
   const { data: allowance } = useReadContract({
     abi: erc20Abi,
-    address: ADDRESSES.ethereum.soEthVault,
+    address: vault,
     functionName: 'allowance',
-    args: [user?.safeAddress as Address, ADDRESSES.ethereum.soEthBoringQueue],
-    chainId: mainnet.id,
+    args: [user?.safeAddress as Address, boringQueue],
+    chainId: chain.id,
     query: {
       enabled: !!user?.safeAddress,
     },
@@ -63,27 +67,27 @@ const useWithdrawSoEth = (): WithdrawSoEthResult => {
 
       if (needsApproval) {
         transactions.push({
-          to: ADDRESSES.ethereum.soEthVault,
+          to: vault,
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: 'approve',
-            args: [ADDRESSES.ethereum.soEthBoringQueue, maxUint256],
+            args: [boringQueue, maxUint256],
           }),
           value: 0n,
         });
       }
 
       transactions.push({
-        to: ADDRESSES.ethereum.soEthBoringQueue,
+        to: boringQueue,
         data: encodeFunctionData({
           abi: BoringQueue_ABI,
           functionName: 'requestOnChainWithdraw',
-          args: [ADDRESSES.ethereum.weth, amountWei, 1, WITHDRAW_SECONDS_TO_DEADLINE],
+          args: [weth, amountWei, 1, WITHDRAW_SECONDS_TO_DEADLINE],
         }),
         value: 0n,
       });
 
-      const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
+      const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
       const result = await trackTransaction(
         {
@@ -92,13 +96,13 @@ const useWithdrawSoEth = (): WithdrawSoEthResult => {
           shortTitle: `Withdraw ${amount}`,
           amount,
           symbol: 'soETH',
-          chainId: mainnet.id,
+          chainId: chain.id,
           fromAddress: user.safeAddress,
-          toAddress: ADDRESSES.ethereum.soEthBoringQueue,
+          toAddress: boringQueue,
           metadata: {
             description: `Withdraw ${amount} soETH`,
             needsApproval,
-            tokenAddress: ADDRESSES.ethereum.soEthVault,
+            tokenAddress: vault,
           },
         },
         onUserOpHash =>
@@ -106,7 +110,7 @@ const useWithdrawSoEth = (): WithdrawSoEthResult => {
             smartAccountClient,
             transactions,
             'Withdraw soETH failed',
-            mainnet,
+            chain,
             onUserOpHash,
           ),
       );

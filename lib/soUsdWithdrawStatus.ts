@@ -1,4 +1,4 @@
-import { decodeEventLog, formatUnits, Hex, isAddressEqual } from 'viem';
+import { type Address, decodeEventLog, formatUnits, Hex, isAddressEqual } from 'viem';
 import { base } from 'viem/chains';
 
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
@@ -6,7 +6,7 @@ import { ADDRESSES } from '@/lib/config';
 import { publicClient } from '@/lib/wagmi';
 
 /**
- * Where a soUSD withdraw request on the Base queue stands.
+ * Where a soUSD or soETH withdraw request on a Base queue stands.
  *
  * The mainnet queue's requests are tracked by the subgraph. Base has none, so
  * this reads the queue itself: a request is pending while its id is still in
@@ -24,7 +24,7 @@ export type BaseWithdrawRequest = {
   status: BaseWithdrawRequestStatus;
   /**
    * The USDC the request pays out, fixed when it was made. Undefined if it asked
-   * for another asset. A plain number so the query stays JSON-safe.
+   * for another asset (soETH's WETH). A plain number so the query stays JSON-safe.
    */
   amountUsd?: number;
 };
@@ -33,15 +33,16 @@ export type BaseWithdrawRequest = {
 const USDC_DECIMALS = 6;
 
 /**
- * The request a withdraw transaction made on the Base queue, and its status.
+ * The request a withdraw transaction made on a Base queue (soUSD's by default, or
+ * soETH's), and its status.
  *
- * Returns null when the transaction made no request on the Base queue.
+ * Returns null when the transaction made no request on that queue.
  */
 export async function readBaseWithdrawRequest(
   requestTxHash: Hex,
+  queue: Address = ADDRESSES.base.boringQueue,
 ): Promise<BaseWithdrawRequest | null> {
   const client = publicClient(base.id);
-  const queue = ADDRESSES.base.boringQueue;
 
   const receipt = await client.getTransactionReceipt({ hash: requestTxHash });
   let requestId: Hex | undefined;

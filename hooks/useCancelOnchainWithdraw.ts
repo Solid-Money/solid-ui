@@ -12,6 +12,7 @@ import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { getSoUsdWithdrawChain, SOUSD_WITHDRAW_CHAINS } from '@/lib/soUsdWithdraw';
 import { Status, TransactionType } from '@/lib/types';
 
@@ -65,6 +66,19 @@ const soUsdCancelTarget = (chainId: number | undefined): CancelWithdrawTarget =>
 };
 
 /**
+ * soETH's queue on Base, for a request made on Base (shares held there). Its
+ * `cancelOnChainWithdrawUsingRequestId` is public, as on the soEURC queue.
+ */
+const SOETH_BASE_CANCEL_TARGET: CancelWithdrawTarget | undefined = isSoEthBaseConfigured
+  ? {
+      chain: base,
+      queue: ADDRESSES.base.soEthBoringQueue,
+      shareSymbol: 'soETH',
+      shareAddress: ADDRESSES.base.soEthVault,
+    }
+  : undefined;
+
+/**
  * Where a withdraw activity's request can be cancelled, from the share symbol it
  * was recorded with and the chain it was queued on. An activity whose symbol
  * names no vault keeps the old soUSD behaviour, which is what every cancellable
@@ -76,7 +90,9 @@ export const getCancelWithdrawTarget = (
   chainId?: number,
 ): CancelWithdrawTarget | undefined => {
   const key = getVaultKey(symbol) ?? 'USD';
-  return key === 'USD' ? soUsdCancelTarget(chainId) : CANCEL_TARGETS[key];
+  if (key === 'USD') return soUsdCancelTarget(chainId);
+  if (key === 'ETH' && chainId === base.id) return SOETH_BASE_CANCEL_TARGET;
+  return CANCEL_TARGETS[key];
 };
 
 type CancelOnChainWithdrawResult = {
