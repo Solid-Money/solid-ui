@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
-import { fetchProductFeeRates, recordSwapFee } from '@/lib/api';
+import { fetchFeePromotions, fetchProductFeeRates, recordSwapFee } from '@/lib/api';
 import { FeeProduct, RecordSwapFeeParams } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { eurDepositPromotion } from '@/lib/utils/feePromotion';
 import { useUserStore } from '@/store/useUserStore';
 
 const PRODUCT_FEES = 'productFees';
@@ -34,6 +35,36 @@ export const useProductFeeRates = () => {
     // Only meaningful for a signed-in user; an anonymous session has no tier.
     enabled: Boolean(userId),
   });
+};
+
+/**
+ * The fee promotions running for this user — what the euro account screen
+ * reads to say their next SEPA deposits are free.
+ *
+ * Short-lived like the rates: a promotion an admin switches off should stop
+ * being advertised within a minute, and a deposit that used a free slot should
+ * bring the count down by the time the user looks again.
+ */
+export const useFeePromotions = () => {
+  const userId = useSelectedUserId();
+
+  return useQuery({
+    queryKey: [PRODUCT_FEES, 'promotions', userId],
+    queryFn: async () => withRefreshToken(() => fetchFeePromotions()),
+    staleTime: secondsToMilliseconds(60),
+    gcTime: minutesToMilliseconds(5),
+    enabled: Boolean(userId),
+  });
+};
+
+/**
+ * The promotion making this user's next SEPA deposits to the euro account
+ * free, or null — none running, none left, or not loaded yet. A failed load
+ * reads as none: the screen then simply doesn't advertise it.
+ */
+export const useEurDepositPromotion = () => {
+  const { data } = useFeePromotions();
+  return eurDepositPromotion(data ?? null);
 };
 
 /**

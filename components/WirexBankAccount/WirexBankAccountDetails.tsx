@@ -10,6 +10,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useConfirmResidence } from '@/hooks/useConfirmResidence';
+import { useEurDepositPromotion } from '@/hooks/useProductFees';
 import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
@@ -20,6 +21,7 @@ import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
+import { FeePromotionNotice } from './FeePromotionNotice';
 import {
   detailRows,
   RAIL_PRESENTATION,
@@ -157,6 +159,8 @@ export const WirexBankAccountDetails = ({
   const { data: overview, isLoading, refetch } = useWirexBankOverview();
   const activate = useActivateWirexBankAccount();
   const walletLink = useWirexWalletLink();
+  // Free SEPA deposits, while a promotion runs and the user has some left.
+  const eurPromotion = useEurDepositPromotion();
   const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
   const countrySource = useCountryStore(state => state.countryInfo?.source);
@@ -417,6 +421,11 @@ export const WirexBankAccountDetails = ({
       blurb={presentation.blurb}
       rows={detailRows(activeRail)}
       header={switcher}
+      notice={
+        activeRail.accountType === WirexBankAccountType.SEPA && eurPromotion ? (
+          <FeePromotionNotice promotion={eurPromotion} />
+        ) : null
+      }
       footer={renderFooter?.(activeRail)}
       // The field name says whether the user is being paid or setting up a
       // standing order; the value itself is never sent.
