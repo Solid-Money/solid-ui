@@ -13,6 +13,7 @@ import {
   hasPendingCard,
 } from '@/lib/utils';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
+import { routesToNewCard } from '@/lib/utils/rainSunset';
 
 /**
  * `/card` is deprecated as a destination — it used to render the standalone card
@@ -27,6 +28,12 @@ export default function Card() {
 
   if (isLoading) {
     return <PageLayout isLoading>{null}</PageLayout>;
+  }
+
+  // Rain sunset: a Rain application that can no longer become a card, where the
+  // new card is available — the new-card screen, not the Rain issuance flow.
+  if (routesToNewCard(cardStatus)) {
+    return <Redirect href={path.CARD_NEW_CARD} />;
   }
 
   // BD users who haven't met the minimum card deposit are sent to the issuance
