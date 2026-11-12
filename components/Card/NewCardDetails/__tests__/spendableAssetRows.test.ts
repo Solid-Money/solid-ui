@@ -10,6 +10,22 @@ jest.mock('@/hooks/useBalances', () => ({ useBalances: jest.fn() }));
 jest.mock('@/hooks/useCardSpendableBalance', () => ({ useCardSpendableAssets: jest.fn() }));
 jest.mock('@/hooks/useVaultExchangeRate', () => ({ useVaultExchangeRate: jest.fn() }));
 jest.mock('@/hooks/useMainCurrency', () => ({ useMainCurrency: jest.fn() }));
+// A test build has no Base soUSD or soETH vault configured; give it production's, as a
+// production build names them.
+jest.mock('@/lib/config', () => {
+  const actual = jest.requireActual('@/lib/config');
+  return {
+    ...actual,
+    ADDRESSES: {
+      ...actual.ADDRESSES,
+      base: {
+        ...actual.ADDRESSES.base,
+        vault: actual.PRODUCTION_VAULT_ADDRESSES.base.vault,
+        soEthVault: actual.PRODUCTION_VAULT_ADDRESSES.base.soEthVault,
+      },
+    },
+  };
+});
 
 const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
 const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -19,6 +35,8 @@ const WETH = '0x4200000000000000000000000000000000000006';
 const SOL = '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82';
 const AAVE = '0x63706e401c06ac8513145b7687A14804d17f814b';
 const CBZEC = '0xB2000000000000000000008501b13360000cb2EC';
+const BASE_SOUSD = '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31';
+const BASE_SOETH = '0x9b0e0EFA48C00eBEeA845AeA197F0bB71529D235';
 
 const token = (overrides: Partial<TokenBalance>): TokenBalance => ({
   contractTickerSymbol: 'USDC',
@@ -158,6 +176,8 @@ describe('buildSpendableAssetRows', () => {
         BASE_USDT,
         EURC,
         ADDRESSES.base.soEurcVault,
+        BASE_SOUSD,
+        BASE_SOETH,
         CBBTC,
         WETH,
         SOL,
@@ -170,6 +190,8 @@ describe('buildSpendableAssetRows', () => {
         ['USDT', undefined],
         ['EURC', 'for euro purchases'],
         ['soEUR', 'for euro purchases'],
+        ['soUSD', undefined],
+        ['soETH', undefined],
         ['cbBTC', undefined],
         ['WETH', undefined],
         ['SOL', undefined],
@@ -204,10 +226,43 @@ describe('buildSpendableAssetRows', () => {
 
       expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
         ['usdc', 'USDC', undefined, '$25.00', undefined],
-        ['cbbtc', 'cbBTC', 'Bitcoin', '$960.00', '0.0012 cbBTC'],
+        // 0.0012 BTC at $80,000.
+        ['cbbtc', 'cbBTC', 'Bitcoin', '$96.00', '0.0012 cbBTC'],
       ]);
       // Bitcoin counts in the balance, not as dollars.
       expect(dollarUsd).toBeCloseTo(25, 4);
+    });
+
+    it('lists Base soUSD as a dollar row named for Base, and soETH as ETH Yield in dollars', () => {
+      const { rows, dollarUsd, totalUsd } = buildSpendableAssetRows(
+        [
+          token({
+            contractTickerSymbol: 'soUSD',
+            contractAddress: BASE_SOUSD,
+            balance: '10000000',
+            quoteRate: 1.0885,
+            chainId: base.id,
+          }),
+          token({
+            contractTickerSymbol: 'soETH',
+            contractAddress: BASE_SOETH,
+            balance: '500000000000000000',
+            contractDecimals: 18,
+            quoteRate: 2_100,
+            chainId: base.id,
+          }),
+        ],
+        baseSpendableAssets([BASE_SOUSD, BASE_SOETH]),
+        undefined,
+      );
+
+      expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
+        ['sousd', 'soUSD', 'USD Yield on Base', '$10.89', '10.00 soUSD'],
+        ['soeth', 'soETH', 'ETH Yield', '$1,050.00', '0.5 soETH'],
+      ]);
+      // soETH counts in the balance, not as dollars.
+      expect(dollarUsd).toBeCloseTo(10.885, 4);
+      expect(totalUsd).toBeCloseTo(1060.885, 4);
     });
   });
 });

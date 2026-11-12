@@ -203,7 +203,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     },
   },
   {
-    // soETH takes it on Ethereum; the Base cash module spends it on Base.
+    // soETH takes it on Ethereum and Base; the Base cash module spends it on Base.
     symbol: 'WETH',
     name: 'Wrapped Ether',
     group: 'crypto',

@@ -275,10 +275,10 @@ type Addresses = {
     soEthAccountant: Address;
   };
   /**
-   * soUSD on Base: the hub withdrawals are requested on once
-   * {@link EXPO_PUBLIC_SOUSD_BASE_WITHDRAWALS} is on. The vault was a strategy
-   * sub-account of the Ethereum vault before it took deposits, so it holds shares
-   * only once users bridge them here.
+   * Base vaults. soUSD deposited on Base keeps its shares on Base, where the card spends them and
+   * lends against them; withdrawals are requested on the Base queue once
+   * {@link EXPO_PUBLIC_SOUSD_BASE_WITHDRAWALS} is on. soETH has a Base vault too: ETH and WETH
+   * deposited on Base, and Ethereum deposits, mint their shares here.
    */
   base: {
     vault: Address;
@@ -286,6 +286,17 @@ type Addresses = {
     accountant: Address;
     boringQueue: Address;
     usdc: Address;
+    /** Canonical Base WETH: the soETH vault's base asset and what a Base soETH withdrawal pays. */
+    weth: Address;
+    /**
+     * soETH on Base: share token, LayerZero teller (public `deposit` takes ETH and WETH, shares
+     * mint to the caller), accountant and withdraw queue. Zero in a build without a Base soETH
+     * deployment, which keeps every Base soETH path off.
+     */
+    soEthVault: Address;
+    soEthTeller: Address;
+    soEthAccountant: Address;
+    soEthBoringQueue: Address;
     /** soEURC BoringVault — also the share token, and the spender a EURC deposit approves. */
     soEurcVault: Address;
     /** Plain TellerWithMultiAssetSupport: `deposit` is public, no LayerZero, no native deposits. */
@@ -312,6 +323,7 @@ export const PRODUCTION_VAULT_ADDRESSES = {
   base: {
     vault: '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31',
     soEurcVault: '0x4f4B212aF8B5020399dde325e1Bc5B33b53DB70B',
+    soEthVault: '0x9b0e0EFA48C00eBEeA845AeA197F0bB71529D235',
   },
 } as const;
 
@@ -401,10 +413,11 @@ export const ADDRESSES: Addresses = {
       ? '0x4BD5873720072b4AC7956898dbCBc543b2fD3749'
       : '0x7EFD6391537518dC2A8260ff535439704AD6a111',
   },
-  // QA has no soUSD teller, accountant or queue on Base yet; a QA build points at
-  // one through the env overrides, and stays on Ethereum without them.
+  // QA has no soUSD or soETH teller, accountant or queue on Base yet; a QA build points
+  // at one through the env overrides, and stays off Base without them.
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    weth: '0x4200000000000000000000000000000000000006',
     vault: isProduction
       ? PRODUCTION_VAULT_ADDRESSES.base.vault
       : ((process.env.EXPO_PUBLIC_BASE_SOUSD_VAULT_ADDRESS ?? ZERO_ADDRESS) as Address),
@@ -417,6 +430,18 @@ export const ADDRESSES: Addresses = {
     boringQueue: isProduction
       ? '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2'
       : ((process.env.EXPO_PUBLIC_BASE_SOUSD_QUEUE_ADDRESS ?? ZERO_ADDRESS) as Address),
+    soEthVault: isProduction
+      ? PRODUCTION_VAULT_ADDRESSES.base.soEthVault
+      : ((process.env.EXPO_PUBLIC_BASE_SOETH_VAULT_ADDRESS ?? ZERO_ADDRESS) as Address),
+    soEthTeller: isProduction
+      ? '0xd41Eb8Bd56A6366c2C17662D6c9DE44b9D522E83'
+      : ((process.env.EXPO_PUBLIC_BASE_SOETH_TELLER_ADDRESS ?? ZERO_ADDRESS) as Address),
+    soEthAccountant: isProduction
+      ? '0x7F67a32fFBbd83bA7FcE88b72Feb80d752c4C032'
+      : ((process.env.EXPO_PUBLIC_BASE_SOETH_ACCOUNTANT_ADDRESS ?? ZERO_ADDRESS) as Address),
+    soEthBoringQueue: isProduction
+      ? '0xfa7CA93485fb2A8Fa9C505E0Af21EBA4823D9D99'
+      : ((process.env.EXPO_PUBLIC_BASE_SOETH_QUEUE_ADDRESS ?? ZERO_ADDRESS) as Address),
     // soEURC (on-chain "Solid EUR", symbol soEUR). QA and production each have their
     // own deployment; which builds can see the vault is decided by `isDevFeatureEnabled`
     // in constants/vaults.ts.

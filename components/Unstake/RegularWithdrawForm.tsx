@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
 import { Wallet } from 'lucide-react-native';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
-import { base } from 'viem/chains';
+import { base, fuse, mainnet } from 'viem/chains';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -33,6 +33,7 @@ import useWithdrawSoEurc from '@/hooks/useWithdrawSoEurc';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { getSoEthWithdrawChain, SOETH_WITHDRAW_CHAINS } from '@/lib/soEthWithdraw';
 import {
   getSoUsdWithdrawChain,
   SOUSD_WITHDRAW_CHAIN_ID,
@@ -137,8 +138,21 @@ const RegularWithdrawForm = () => {
   // soEURC withdraws in one step on Base, like soFUSE on Fuse, and is shown in EUR.
   // The new Base deployments report the share's on-chain symbol as soEUR.
   const isSoEurc = getVaultKey(selectedToken?.contractTickerSymbol) === 'EUR';
+  // soETH held on Base withdraws in one step, through the Base queue for Base WETH,
+  // like soEURC. soETH on Fuse keeps the two steps (bridge to Ethereum, then the
+  // Ethereum queue), and so does a withdraw resumed after that bridge.
+  const isSoEthOnBase =
+    isSoEth &&
+    getSoEthWithdrawChain(selectedToken?.chainId) === base.id &&
+    session?.vault !== 'ETH';
+  // soETH on Base in a build with no Base soETH deployment: neither flow fits. The two-step flow
+  // below bridges the Safe's FUSE shares, not these, so it must not be offered for them.
+  const isSoEthOnBaseUnavailable =
+    isSoEth && selectedToken?.chainId === base.id && !isSoEthOnBase && session?.vault !== 'ETH';
+  const soEthWithdrawChain = SOETH_WITHDRAW_CHAINS[isSoEthOnBase ? base.id : mainnet.id];
+  // Base soETH is paid out by the Base queue at the Base accountant's rate, not Ethereum's.
   const { data: exchangeRate } = useVaultExchangeRate(
-    isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
+    isSoFuse ? 'FUSE' : isSoEthOnBase ? 'ETH_BASE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
   );
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
@@ -173,8 +187,13 @@ const RegularWithdrawForm = () => {
     if (isSoFuse) {
       return { balanceWei: soFuseBalanceWei ?? 0n, balanceDecimals: 18 };
     }
-    if (isSoEth) {
+    // soETH on Fuse reads the Fuse vault; on Ethereum or Base, the selected token's own balance.
+    if (isSoEth && selectedToken?.chainId === fuse.id) {
       return { balanceWei: soEthBalanceWei ?? 0n, balanceDecimals: 18 };
+    }
+    // `??`, not `||`: a read that confirms 0 must not fall back to a stale stored balance.
+    if (isSoEth && selectedToken) {
+      return { balanceWei: balance ?? BigInt(selectedToken.balance || '0'), balanceDecimals: 18 };
     }
     if (!selectedToken) {
       // soUSD has 6 decimals, which a number holds exactly.
@@ -184,7 +203,7 @@ const RegularWithdrawForm = () => {
       };
     }
     return {
-      balanceWei: balance || BigInt(selectedToken.balance || '0'),
+      balanceWei: balance ?? BigInt(selectedToken.balance || '0'),
       balanceDecimals: selectedToken.contractDecimals,
     };
   }, [
@@ -260,7 +279,9 @@ const RegularWithdrawForm = () => {
   const { bridge, bridgeStatus } = useBridgeForWithdraw(withdrawChainId);
   const { bridgeSoEth, bridgeSoEthStatus } = useBridgeToMainnetSoEth();
   const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw(withdrawChainId);
-  const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth();
+  const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth(
+    isSoEthOnBase ? base.id : mainnet.id,
+  );
   const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
   const { withdrawSoEurc, withdrawSoEurcStatus } = useWithdrawSoEurc();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
@@ -275,7 +296,7 @@ const RegularWithdrawForm = () => {
   // Fuse starts on step 1 (bridge); a token already on the withdraw chain (Base
   // or Ethereum for soUSD, Ethereum for soETH) — or an unfinished withdraw
   // resumed from storage — jumps to step 2 (withdraw).
-  // soFUSE and soEURC have no bridge and keep the single-step layout.
+  // soFUSE, soEURC and soETH on Base have no bridge and keep the single-step layout.
   const isUsdVault = !isSoFuse && !isSoEth && !isSoEurc;
   const isEthVault = isSoEth;
   const isOnEthereum = selectedToken?.chainId === 1;
@@ -464,10 +485,10 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'success',
         text1: 'Withdraw submitted',
-        text2: `${data.amount} soETH → WETH on Ethereum`,
+        text2: `${data.amount} soETH → WETH on ${soEthWithdrawChain.name}`,
         props: {
           badgeText: 'Onchain',
-          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          link: `${soEthWithdrawChain.chain.blockExplorers?.default.url}/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'WETH' }),
         },
@@ -486,7 +507,9 @@ const RegularWithdrawForm = () => {
   const isVaultBalanceLoading = isSoFuse
     ? isLoadingSoFuseBalance
     : isSoEth
-      ? isLoadingSoEthBalance
+      ? selectedToken?.chainId === fuse.id
+        ? isLoadingSoEthBalance
+        : isLoading
       : isSoEurc
         ? isLoading
         : isLoadingFuseBalance;
@@ -512,7 +535,7 @@ const RegularWithdrawForm = () => {
   const destinationLabel = isSoFuse
     ? 'WFUSE on Fuse'
     : isSoEth
-      ? 'WETH on Ethereum'
+      ? `WETH on ${soEthWithdrawChain.name}`
       : isSoEurc
         ? 'EURC on Base'
         : `USDC on ${withdrawChain.name}`;
@@ -666,8 +689,11 @@ const RegularWithdrawForm = () => {
                   />
                   <Text className="text-base font-bold text-white">Withdraw to EURC</Text>
                 </View>
-                {/* Solved through the queue, which keeps a request open for at least three days. */}
-                <Text className="text-base font-medium text-muted-foreground">Up to 3 days</Text>
+                {/* An estimate: the queue keeps a request open for at least three days and a solver
+                    usually fills it well within them, but nothing guarantees a payout by then. */}
+                <Text className="text-base font-medium text-muted-foreground">
+                  Usually within 3 days
+                </Text>
               </View>
               <Button
                 variant="brand"
@@ -676,6 +702,45 @@ const RegularWithdrawForm = () => {
                 disabled={isWithdrawFormDisabled() || isWithdrawSoEurcLoading}
               >
                 {isWithdrawSoEurcLoading ? (
+                  <ActivityIndicator color="black" />
+                ) : (
+                  <View className="flex-row items-center gap-2">
+                    <Image
+                      source={require('@/assets/images/key.png')}
+                      tintColor="#18181b"
+                      className="h-6 w-6"
+                      contentFit="contain"
+                    />
+                    <Text className="text-base font-bold" style={{ color: '#18181b' }}>
+                      Withdraw
+                    </Text>
+                  </View>
+                )}
+              </Button>
+            </View>
+          ) : isSoEthOnBase ? (
+            <View className="px-5 py-6 md:p-5">
+              <View className="mb-4 flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({ tokenSymbol: 'soETH', size: 22 })}
+                    size={22}
+                  />
+                  <Text className="text-base font-bold text-white">Withdraw to WETH</Text>
+                </View>
+                {/* An estimate: the queue keeps a request open for at least three days and a solver
+                    usually fills it well within them, but nothing guarantees a payout by then. */}
+                <Text className="text-base font-medium text-muted-foreground">
+                  Usually within 3 days
+                </Text>
+              </View>
+              <Button
+                variant="brand"
+                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
+                onPress={handleSubmit(onWithdrawSoEthSubmit)}
+                disabled={isWithdrawFormDisabled() || isWithdrawSoEthLoading}
+              >
+                {isWithdrawSoEthLoading ? (
                   <ActivityIndicator color="black" />
                 ) : (
                   <View className="flex-row items-center gap-2">
@@ -816,6 +881,12 @@ const RegularWithdrawForm = () => {
                 </Button>
               </View>
             </>
+          ) : isSoEthOnBaseUnavailable ? (
+            <View className="px-5 py-6 md:p-5">
+              <Text className="text-base text-muted-foreground">
+                Withdrawing soETH held on Base isn&apos;t available in this version of the app.
+              </Text>
+            </View>
           ) : isEthVault ? (
             <>
               {/* Step 1: Bridge soETH to Ethereum */}

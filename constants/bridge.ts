@@ -236,6 +236,32 @@ export const EURC_TOKENS: Record<number, BridgeToken> = {
 };
 
 /**
+ * ETH and WETH on Base, as soETH deposit tokens only. The Safe deposits them into
+ * the Base soETH teller itself (lib/deposit/soEthBase.ts). Kept out of
+ * BRIDGE_TOKENS[base], which every surface that offers a token on a chain reads:
+ * listing them there would offer them to bridging and card funding as well.
+ */
+export const SOETH_BASE_DEPOSIT_TOKENS: Record<string, BridgeToken> = {
+  ETH: {
+    name: 'ETH',
+    fullName: 'Ether',
+    address: '0x0000000000000000000000000000000000000000',
+    decimals: 18,
+    icon: require('@/assets/images/eth.png'),
+    isPermit: false,
+    isNative: true,
+  },
+  WETH: {
+    name: 'WETH',
+    fullName: 'Wrapped Ether',
+    address: '0x4200000000000000000000000000000000000006',
+    decimals: 18,
+    icon: require('@/assets/images/weth.png'),
+    isPermit: false,
+  },
+};
+
+/**
  * Circle's EURC on Ethereum, as rhino.fi lists it
  * (`/sda/deposit-addresses/ETHEREUM/BASE/supported-tokens`) and Circle
  * publishes it. Only for the screens that take it through rhino.fi (the wallet

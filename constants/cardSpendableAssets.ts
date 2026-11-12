@@ -1,3 +1,4 @@
+import { zeroAddress } from 'viem';
 import { base, fuse } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
@@ -66,11 +67,11 @@ export interface CardSpendableAsset {
  *
  * USDC, USDT and soUSD on Fuse, in the order the backend actually draws from them.
  * A Wirex purchase is paid by Wirex out of its own Master Account and reimbursed by
- * debiting the user's Safe on Fuse through `SolidCashModule` at settlement, so any of
- * these held on another chain is not reachable and is deliberately left out —
- * counting it would show the user spending power they do not have. The one
- * exception is EURC on Base once euro spending is enabled — see
- * {@link baseEurcSpendableAsset}.
+ * debiting the user's Safe through `SolidCashModule` at settlement, so an asset held
+ * where no module can reach it is deliberately left out — counting it would show the
+ * user spending power they do not have. What the Base module spends (soUSD, soETH,
+ * soEUR, EURC, the stables and the crypto collateral) is added once Base spending is
+ * enabled — see {@link baseSpendableAssets}.
  *
  * This list must stay in step with the module's on-chain allowlist, which is admin
  * configuration rather than a deploy. An asset allowlisted on-chain but missing here
@@ -105,15 +106,22 @@ export const baseEurcSpendableAsset = (addresses: string[]): CardSpendableAsset 
 /** Coinbase's wrapped ZEC on Base. Not in the deposit token table, which takes ZEC on BSC. */
 const BASE_CBZEC = '0xb2000000000000000000008501b13360000cb2ec';
 
+/** A configured Base vault share, lowercased; undefined in a build without that vault. */
+const baseShare = (address: string): string | undefined =>
+  address === zeroAddress ? undefined : address.toLowerCase();
+
 /**
- * A Base spend token's ticker, from its address: soEUR by this build's vault, EURC by the bridge
- * config's Base EURC, cbZEC by the one address above, the rest — USDC, USDT, cbBTC, WETH, SOL, AAVE —
- * by the deposit token table, which already holds each one's Base contract. EURC is matched
- * directly rather than through that table because it is the one that carries the euro
- * qualifier. `undefined` for an address this build cannot name.
+ * A Base spend token's ticker, from its address: soEUR, soUSD and soETH by this build's vaults
+ * (soUSD and soETH deposited on Base keep their shares there), EURC by the bridge config's Base
+ * EURC, cbZEC by the one address above, the rest — USDC, USDT, cbBTC, WETH, SOL, AAVE — by the
+ * deposit token table, which already holds each one's Base contract. EURC is matched directly
+ * rather than through that table because it is the one that carries the euro qualifier.
+ * `undefined` for an address this build cannot name.
  */
 const baseTokenSymbol = (address: string): string | undefined => {
   if (address === ADDRESSES.base.soEurcVault.toLowerCase()) return 'soEUR';
+  if (address === baseShare(ADDRESSES.base.vault)) return 'soUSD';
+  if (address === baseShare(ADDRESSES.base.soEthVault)) return 'soETH';
   if (address === EURC_TOKENS[base.id]?.address.toLowerCase()) return 'EURC';
   if (address === BASE_CBZEC) return 'cbZEC';
   return WALLET_DEPOSIT_TOKENS.find(token => token.contracts[base.id]?.toLowerCase() === address)

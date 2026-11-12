@@ -9,6 +9,7 @@ import {
   EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
+import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { Vault, VaultType } from '@/lib/types';
 
 const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
@@ -58,8 +59,8 @@ export const VAULTS: Vault[] = [
         address: ADDRESSES.fuse.vault,
         chainId: fuse.id,
       },
-      // Shares sit on Base between a withdrawal's bridge and its queue request.
-      // Kept last: screens that show one share address read vaults[0].
+      // soUSD deposited on Base keeps its shares on Base, where the card spends
+      // them. Kept last: screens that show one share address read vaults[0].
       ...(ADDRESSES.base.vault !== zeroAddress
         ? [{ address: ADDRESSES.base.vault, chainId: base.id }]
         : []),
@@ -112,10 +113,16 @@ export const VAULTS: Vault[] = [
         address: ADDRESSES.fuse.soEthVault,
         chainId: fuse.id,
       },
+      // ETH and WETH deposited on Base, and Ethereum deposits, mint their shares
+      // on Base, where the card spends and lends against them. Kept last:
+      // screens that show one share address read vaults[0].
+      ...(isSoEthBaseConfigured ? [{ address: ADDRESSES.base.soEthVault, chainId: base.id }] : []),
     ],
     depositConfig: {
       methods: ['wallet'],
-      supportedChains: [mainnet.id],
+      // Base takes a deposit from the Solid wallet only: the Safe calls the Base
+      // teller itself (lib/deposit/soEthBase.ts).
+      supportedChains: isSoEthBaseConfigured ? [mainnet.id, base.id] : [mainnet.id],
       supportedTokens: ['WETH', 'ETH'],
     },
     vaultName: 'ETH Yield',

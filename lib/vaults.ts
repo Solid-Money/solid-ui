@@ -1,9 +1,15 @@
 import { formatUnits } from 'viem';
 import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
-import { BRIDGE_TOKENS, type BridgeToken, EURC_TOKENS } from '@/constants/bridge';
+import {
+  BRIDGE_TOKENS,
+  type BridgeToken,
+  EURC_TOKENS,
+  SOETH_BASE_DEPOSIT_TOKENS,
+} from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
+import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
 
 const DEFAULT_METHODS: DepositMethod[] = [
@@ -46,6 +52,7 @@ const productionShares = [
     address: PRODUCTION_VAULT_ADDRESSES.ethereum.soEthVault,
   },
   { type: VaultType.ETH, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.soEthVault },
+  { type: VaultType.ETH, chainId: base.id, address: PRODUCTION_VAULT_ADDRESSES.base.soEthVault },
 ];
 
 /** Display APY only for known share contracts, including production shares in a dev wallet.
@@ -121,17 +128,24 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
   if (vault?.depositConfig?.supportedTokens.includes(EURC_SYMBOL) && EURC_TOKENS[chainId]) {
     tokens.push(EURC_SYMBOL);
   }
+  // ETH and WETH on Base are offered to soETH alone, from its own table: in
+  // BRIDGE_TOKENS they would be offered to bridging and card funding as well.
+  if (vault?.type === VaultType.ETH && chainId === base.id && isSoEthBaseConfigured) {
+    tokens.push(...Object.keys(SOETH_BASE_DEPOSIT_TOKENS));
+  }
 
   return tokens.filter(symbol => config.supportedTokens.includes(symbol));
 };
 
 /**
- * The token a vault deposit sends: BRIDGE_TOKENS for everything but EURC, which
- * has its own table so that listing it for soEURC does not offer it anywhere else.
+ * The token a vault deposit sends: BRIDGE_TOKENS for everything but EURC and
+ * soETH's Base ETH/WETH, which have their own tables so that listing them for
+ * their vault does not offer them anywhere else.
  */
 export const getVaultDepositToken = (chainId: number, symbol: string): BridgeToken | undefined =>
   BRIDGE_TOKENS[chainId]?.tokens?.[symbol] ??
-  (symbol === EURC_SYMBOL ? EURC_TOKENS[chainId] : undefined);
+  (symbol === EURC_SYMBOL ? EURC_TOKENS[chainId] : undefined) ??
+  (chainId === base.id ? SOETH_BASE_DEPOSIT_TOKENS[symbol] : undefined);
 
 /** The wallet-token fields `hasDepositableWalletBalance` reads. */
 type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 'balance'>;
@@ -142,7 +156,7 @@ type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 
  *
  * Not the same question as "does the wallet hold anything": the deposit-from-Solid
  * form is per-vault and per-chain (soUSD takes USDC/USDT on any bridged chain,
- * soETH takes ETH/WETH on Ethereum, soFUSE takes FUSE/WFUSE on Fuse, soEURC takes
+ * soETH takes ETH/WETH on Ethereum and Base, soFUSE takes FUSE/WFUSE on Fuse, soEURC takes
  * EURC on Base), so someone holding only FUSE has funds but none the USD vault
  * could take.
  */

@@ -16,7 +16,11 @@ import { useActivityStore } from '@/store/useActivityStore';
 import { useActivityActions } from './useActivityActions';
 import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
-import { isBaseWithdrawRequest, useBaseWithdrawRequests } from './useBaseWithdrawRequests';
+import {
+  baseWithdrawRequestKey,
+  isBaseWithdrawRequest,
+  useBaseWithdrawRequests,
+} from './useBaseWithdrawRequests';
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -236,7 +240,7 @@ export function useActivity() {
     );
     userEvents = userEvents.map(activity => {
       if (!isBaseWithdrawRequest(activity)) return activity;
-      const request = baseWithdrawRequests[activity.hash.toLowerCase()];
+      const request = baseWithdrawRequests[baseWithdrawRequestKey(activity)];
       if (!request) return { ...activity, status: TransactionStatus.PROCESSING };
       const withRequestId = { ...activity, requestId: request.requestId };
       if (request.status === 'pending') {

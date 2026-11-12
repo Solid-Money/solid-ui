@@ -1,11 +1,14 @@
 import { useCallback, useMemo } from 'react';
 import { QueryObserverResult, useQueries } from '@tanstack/react-query';
-import { Hex } from 'viem';
-import { base } from 'viem/chains';
+import { type Address, formatUnits, Hex } from 'viem';
+import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
-import { getVaultKey } from '@/constants/withdraw';
+import { getVaultKey, type VaultKey } from '@/constants/withdraw';
+import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
+import { ADDRESSES } from '@/lib/config';
+import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { isSoUsdBaseConfigured } from '@/lib/soUsdWithdraw';
 import { BaseWithdrawRequest, readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
@@ -19,27 +22,46 @@ const PENDING_REFETCH_MS = 60_000;
 const PENDING_STALE_MS = 30_000;
 
 /**
- * A soUSD withdraw request made on the Base queue: its transaction confirmed,
- * so it is in the queue or has left it.
+ * A soUSD or soETH withdraw request made on its Base queue: its transaction
+ * confirmed, so it is in the queue or has left it.
  *
- * soUSD only: soEURC withdraws on Base too, but through its own queue, and its
- * status comes from the EUR subgraph (see useActivity). An activity naming no
- * vault is soUSD, as every withdraw was before vaults diverged.
+ * soEURC withdraws on Base too, but its status comes from the EUR subgraph (see
+ * useActivity). An activity naming no vault is soUSD, as every withdraw was
+ * before vaults diverged.
  */
 export const isBaseWithdrawRequest = (
   activity: ActivityEvent,
 ): activity is ActivityEvent & {
   hash: string;
-} =>
-  activity.type === TransactionType.WITHDRAW &&
-  activity.chainId === base.id &&
-  (getVaultKey(activity.symbol) ?? 'USD') === 'USD' &&
-  activity.status === TransactionStatus.SUCCESS &&
-  !!activity.hash;
+} => {
+  if (
+    activity.type !== TransactionType.WITHDRAW ||
+    activity.chainId !== base.id ||
+    activity.status !== TransactionStatus.SUCCESS ||
+    !activity.hash
+  ) {
+    return false;
+  }
+  const vault = getVaultKey(activity.symbol) ?? 'USD';
+  return (vault === 'USD' && isSoUsdBaseConfigured) || (vault === 'ETH' && isSoEthBaseConfigured);
+};
+
+/** The Base queue a request from {@link isBaseWithdrawRequest} was made on. */
+const baseWithdrawQueueOf = (activity: ActivityEvent) =>
+  getVaultKey(activity.symbol) === 'ETH'
+    ? ADDRESSES.base.soEthBoringQueue
+    : ADDRESSES.base.boringQueue;
+
+/**
+ * Where a Base request lives in {@link useBaseWithdrawRequests}' map: its transaction hash and the
+ * queue it was read from, lowercased, so a soUSD and a soETH request can never share an entry.
+ */
+export const baseWithdrawRequestKey = (activity: ActivityEvent & { hash: string }) =>
+  `${activity.hash.toLowerCase()}@${baseWithdrawQueueOf(activity).toLowerCase()}`;
 
 /**
  * The on-chain status of every Base withdraw request among `activities`, keyed
- * by the lowercased request transaction hash. A request missing from the map
+ * by {@link baseWithdrawRequestKey} (hash and queue). A request missing from the map
  * has not been read yet, or could not be.
  *
  * A request still in the queue is re-read every minute. Once it has left the
@@ -50,15 +72,18 @@ export function useBaseWithdrawRequests(
 ): Record<string, BaseWithdrawRequest> {
   // Keyed on the joined hashes: the store hands over a new array on every
   // activity change, and the list of Base requests rarely changes with it.
+  // Each entry is "hash@queue": a soETH request is read from the soETH queue.
   const hashKey = useMemo(() => {
-    if (!isSoUsdBaseConfigured || !activities) return '';
+    if (!activities) return '';
     const unique = new Set<string>();
     for (const activity of activities) {
-      if (activity && isBaseWithdrawRequest(activity)) unique.add(activity.hash.toLowerCase());
+      if (activity && isBaseWithdrawRequest(activity)) {
+        unique.add(baseWithdrawRequestKey(activity));
+      }
     }
     return [...unique].sort().join(',');
   }, [activities]);
-  const hashes = useMemo(() => (hashKey ? hashKey.split(',') : []), [hashKey]);
+  const keys = useMemo(() => (hashKey ? hashKey.split(',') : []), [hashKey]);
 
   // Re-run only when a query's result changes or the set of requests does, so
   // the map keeps its identity between renders and useActivity's memo holds.
@@ -66,39 +91,56 @@ export function useBaseWithdrawRequests(
     (results: QueryObserverResult<BaseWithdrawRequest | null>[]) => {
       const requests: Record<string, BaseWithdrawRequest> = {};
       results.forEach((result, i) => {
-        if (result.data) requests[hashes[i]] = result.data;
+        if (result.data) requests[keys[i]] = result.data;
       });
       return requests;
     },
-    [hashes],
+    [keys],
   );
 
   return useQueries({
-    queries: hashes.map(hash => ({
-      queryKey: [BASE_WITHDRAW_REQUEST, hash],
-      queryFn: () => readBaseWithdrawRequest(hash as Hex),
-      staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
-        query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
-      refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
-        query.state.data && query.state.data.status !== 'pending' ? false : PENDING_REFETCH_MS,
-      retry: 2,
-    })),
+    queries: keys.map(key => {
+      const [hash, queue] = key.split('@');
+      return {
+        queryKey: [BASE_WITHDRAW_REQUEST, hash, queue],
+        queryFn: () => readBaseWithdrawRequest(hash as Hex, queue as Address),
+        staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
+          query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
+        refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
+          query.state.data && query.state.data.status !== 'pending' ? false : PENDING_REFETCH_MS,
+        retry: 2,
+      };
+    }),
     combine,
   });
 }
 
-/** A soUSD withdrawal waiting in the Base queue: its shares have left the Safe, its USDC has not arrived. */
+/**
+ * A soUSD or soETH withdrawal waiting in its Base queue: its shares have left the Safe, its USDC
+ * or WETH has not arrived.
+ */
 export type PendingWithdrawal = {
   clientTxId: string;
-  /** Undefined if the request asked for something other than USDC. */
+  /** Which vault it leaves, so a product screen lists only its own. */
+  vault: Extract<VaultKey, 'USD' | 'ETH'>;
+  /** In dollars: the USDC paid out, or the WETH at the ETH price. Undefined until both are known. */
   amountUsd: number | undefined;
   /** Unix seconds, from the activity. */
   timestamp: string;
 };
 
 /**
- * The user's soUSD withdrawals still waiting in the Base queue, newest first, and
- * the USDC they will pay out.
+ * The dollar value of `wei` WETH at `ethPriceUsd`, in fixed point: the price is taken to micro-dollars
+ * and multiplied in bigint, so only the final figure becomes a float, for display and totals.
+ */
+const wethUsd = (wei: string, ethPriceUsd: number): number => {
+  const microUsdPerEth = BigInt(Math.round(ethPriceUsd * 1e6));
+  return Number(formatUnits((BigInt(wei) * microUsdPerEth) / 10n ** 18n, 6));
+};
+
+/**
+ * The user's soUSD and soETH withdrawals still waiting in their Base queues, newest
+ * first, and what they will pay out in dollars (soETH's WETH at the ETH price).
  *
  * Between the request and the solve, which can take most of a day, the money is
  * neither savings (the queue holds the shares) nor wallet (no USDC yet). Without
@@ -116,24 +158,39 @@ export function usePendingBaseWithdrawals(): {
     useShallow(state => (user?.userId ? state.events[user.userId] : undefined)),
   );
   const requests = useBaseWithdrawRequests(activities);
+  // Shared with the portfolio's ETH price, so it is one cached read.
+  const hasEthRequest = (activities ?? []).some(
+    activity =>
+      !!activity && isBaseWithdrawRequest(activity) && getVaultKey(activity.symbol) === 'ETH',
+  );
+  const { data: ethPriceData } = useNativePriceQuery(mainnet.id, 'ethPriceUsd', hasEthRequest);
+  const ethPrice = Number(ethPriceData) || undefined;
 
   return useMemo(() => {
     const withdrawals: PendingWithdrawal[] = [];
     const seen = new Set<string>();
     for (const activity of activities ?? []) {
       if (!activity || !isBaseWithdrawRequest(activity)) continue;
-      const hash = activity.hash.toLowerCase();
-      if (seen.has(hash)) continue;
-      seen.add(hash);
-      if (requests[hash]?.status !== 'pending') continue;
+      const vault = getVaultKey(activity.symbol) === 'ETH' ? 'ETH' : 'USD';
+      const key = baseWithdrawRequestKey(activity);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (requests[key]?.status !== 'pending') continue;
+      const { amountUsd, amountWethWei } = requests[key];
       withdrawals.push({
         clientTxId: activity.clientTxId,
-        amountUsd: requests[hash].amountUsd,
+        vault,
+        amountUsd:
+          vault === 'ETH'
+            ? amountWethWei !== undefined && ethPrice
+              ? wethUsd(amountWethWei, ethPrice)
+              : undefined
+            : amountUsd,
         timestamp: activity.timestamp,
       });
     }
     withdrawals.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
     const totalUsd = withdrawals.reduce((sum, item) => sum + (item.amountUsd ?? 0), 0);
     return { withdrawals, totalUsd };
-  }, [activities, requests]);
+  }, [activities, requests, ethPrice]);
 }

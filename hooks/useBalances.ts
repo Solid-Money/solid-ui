@@ -15,6 +15,7 @@ import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import {
+  isSoETHBase,
   isSoETHToken,
   isSoEURCToken,
   isSoFUSEToken,
@@ -179,11 +180,11 @@ const soEURCQuoteRate = 0;
 
 /**
  * Whether a Base token is kept although the curated token list does not name it.
- * soEURC is kept in every build, so whoever holds it can find and withdraw the
- * position before the backend adds the share to its list.
+ * soEURC and Base soETH are kept in every build, so whoever holds them can find,
+ * spend and withdraw the position before the backend adds the share to its list.
  */
 const isKeptUnlisted = (chainId: number, address: string) =>
-  chainId === BASE_CHAIN_ID && isSoEURCToken(address);
+  chainId === BASE_CHAIN_ID && (isSoEURCToken(address) || isSoETHBase(address));
 
 /**
  * How long a chain's token list or a token's price may stand in for a read that failed.
@@ -264,8 +265,9 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
       abi: ACCOUNTANT_ABI,
       functionName: 'getRate',
     }),
-    // One soETH rate for every chain the share sits on, read from the Ethereum
-    // accountant — the same source the savings screen uses.
+    // One soETH rate for every chain the share sits on (Ethereum, Fuse, Base),
+    // read from the Ethereum accountant — the same source the savings screen
+    // uses. The backend writes the same rate to every chain's accountant.
     readContract(publicClient(mainnet.id), {
       address: ADDRESSES.ethereum.soEthAccountant,
       abi: ACCOUNTANT_ABI,
@@ -395,15 +397,20 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   ): TokenBalance => {
     const address = getAddress(item);
     const isSoUSD = isSoUSDToken(address);
-    // soUSD on Base, where withdrawals pass through, is not in the curated list.
-    // It takes another chain's soUSD entry, so it links to the same coin.
+    const isSoETH = isSoETHToken(address);
+    // soUSD and soETH on Base are not in the curated list. Each takes another
+    // chain's entry for the same share, so it links to the same coin.
     const tokenFromList =
       tokenListData.find(
         token =>
           token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
-      ) ?? (isSoUSD ? tokenListData.find(token => isSoUSDToken(token.address ?? '')) : undefined);
+      ) ??
+      (isSoUSD
+        ? tokenListData.find(token => isSoUSDToken(token.address ?? ''))
+        : isSoETH
+          ? tokenListData.find(token => isSoETHToken(token.address ?? ''))
+          : undefined);
     const isSoFUSE = isSoFUSEToken(address);
-    const isSoETH = isSoETHToken(address);
     const isSoEURC = isSoEURCToken(address);
     // Vault shares are priced off their accountant rate, not off a market quote
     // for the share (Blockscout has none) or for the underlying asset. soEURC

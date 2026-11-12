@@ -462,7 +462,7 @@ export const isSoFUSEToken = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
 };
 
-/** soUSD on Base, where withdrawals bridge to once the vault moved off Ethereum. */
+/** soUSD on Base: deposits made on Base keep their shares there, where the card spends them. */
 export const isSoUSDBase = (contractAddress: string): boolean => {
   if (!contractAddress || ADDRESSES.base.vault === zeroAddress) return false;
   return contractAddress.toLowerCase() === ADDRESSES.base.vault.toLowerCase();
@@ -485,8 +485,16 @@ export const isSoETHFuse = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.soEthVault.toLowerCase();
 };
 
+/** soETH on Base: Base deposits and Ethereum deposits mint here, and the card spends it. */
+export const isSoETHBase = (contractAddress: string): boolean => {
+  if (!contractAddress || ADDRESSES.base.soEthVault === zeroAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.base.soEthVault.toLowerCase();
+};
+
 export const isSoETHToken = (contractAddress: string): boolean => {
-  return isSoETHEthereum(contractAddress) || isSoETHFuse(contractAddress);
+  return (
+    isSoETHEthereum(contractAddress) || isSoETHFuse(contractAddress) || isSoETHBase(contractAddress)
+  );
 };
 
 /**
