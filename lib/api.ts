@@ -209,6 +209,8 @@ import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
+import type { UserFeePromotionsResponse } from '@/lib/utils/feePromotion';
+
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
   const headers: Record<string, string> = {};
@@ -2847,6 +2849,30 @@ export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
     },
     credentials: 'include',
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The fee promotions running now that would save this user something, with
+ * how many free fees they have left under each — e.g. their next SEPA deposits
+ * to the euro account being free. Empty when nothing is running, and for a
+ * user whose plan already pays nothing on the promoted fee.
+ */
+export const fetchFeePromotions = async (): Promise<UserFeePromotionsResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/promotions`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };

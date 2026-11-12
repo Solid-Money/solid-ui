@@ -66,10 +66,10 @@ import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from 
 import { cardDeclineReason, isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
 import {
   cardRefundExplorerUrl,
-  formatCardRefundPaid,
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
+  formatCardRefundPaid,
   formatCardTransactionAmount,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
@@ -87,6 +87,7 @@ import {
   isDepositWithSteps,
   isSavingsDestination,
 } from '@/lib/utils/deposit-steps';
+import { bankDepositFeeLine, readBankDepositFee } from '@/lib/utils/feePromotion';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
 import {
   getMonthKey,
@@ -1208,6 +1209,10 @@ export default function ActivityDetail() {
     if (!finalActivity) return [];
 
     const { fromAddress, toAddress, status, metadata, url, hash } = finalActivity;
+    const wirexDepositFee =
+      finalActivity.type === TransactionType.WIREX_BANK_DEPOSIT
+        ? readBankDepositFee(metadata)
+        : null;
 
     return [
       fromAddress && {
@@ -1303,6 +1308,30 @@ export default function ActivityDetail() {
           label: <Label>Reference</Label>,
           value: <Value>{metadata.reference as string}</Value>,
         },
+      // What the deposit was charged, once the payout priced it — €0.00 on a
+      // free one, with why, so the user sees the benefit.
+      wirexDepositFee && {
+        key: 'fee',
+        label: <Label>Fee</Label>,
+        value: (() => {
+          const line = bankDepositFeeLine(wirexDepositFee);
+          return (
+            <View className="items-end">
+              <Value>{line.value}</Value>
+              {line.note ? <Text className="text-xs text-brand">{line.note}</Text> : null}
+            </View>
+          );
+        })(),
+      },
+      wirexDepositFee?.creditedAmount && {
+        key: 'credited',
+        label: <Label>You received</Label>,
+        value: (
+          <Value>
+            {wirexDepositFee.creditedAmount} {wirexDepositFee.creditedToken}
+          </Value>
+        ),
+      },
       metadata?.inputAmount &&
         metadata?.inputToken && {
           key: 'paid',
