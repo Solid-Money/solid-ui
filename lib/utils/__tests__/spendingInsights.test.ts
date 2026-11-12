@@ -125,10 +125,56 @@ describe('buildSpendingInsights', () => {
     const september = months[months.length - 1];
 
     expect(september.cashbackUsd).toBe(3.5);
+    expect(september.cashbackEur).toBe(0);
     expect(september.subscriptionCashback).toEqual([
-      { transactionId: 'gpt', merchant: 'OpenAI', category: 'ai', amountUsd: 2 },
+      { transactionId: 'gpt', merchant: 'OpenAI', category: 'ai', amount: 2, currency: 'USD' },
     ]);
     expect(september.subscriptionCategoriesUsed).toEqual(['ai']);
+  });
+
+  it('sums euro and dollar cashback apart, never into one figure', () => {
+    // A cardholder who switched to euros mid-month: one purchase earned dollars,
+    // two earned euros (one paid in soEUR, one still projected).
+    const { months } = build(
+      [tx({ id: 'usd', amount: '50' }), tx({ id: 'eur1', amount: '40' }), tx({ id: 'eur2' })],
+      [
+        cb({ transactionId: 'usd', projectedUsdValue: 1.5 }),
+        cb({
+          transactionId: 'eur1',
+          currency: 'EUR',
+          status: CashbackStatus.Paid,
+          soEurAmount: '1',
+          soEurRate: '1.2',
+        }),
+        cb({ transactionId: 'eur2', currency: 'EUR', projectedEurValue: 0.25 }),
+      ],
+    );
+    const september = months[months.length - 1];
+
+    expect(september.cashbackUsd).toBe(1.5);
+    expect(september.cashbackEur).toBe(1.45);
+  });
+
+  it('keeps subscription cashback in the currency it was earned in', () => {
+    const { months } = build(
+      [tx({ id: 'gpt', amount: '20', merchant_name: 'OPENAI *CHATGPT' })],
+      [
+        cb({
+          transactionId: 'gpt',
+          type: CashbackType.SubscriptionDiscount,
+          subscriptionCategory: 'ai',
+          merchantName: 'OpenAI',
+          currency: 'EUR',
+          projectedEurValue: 5,
+        }),
+      ],
+    );
+    const september = months[months.length - 1];
+
+    expect(september.subscriptionCashback).toEqual([
+      { transactionId: 'gpt', merchant: 'OpenAI', category: 'ai', amount: 5, currency: 'EUR' },
+    ]);
+    expect(september.subscriptions[0]).toMatchObject({ cashbackUsd: 0, cashbackEur: 5 });
   });
 
   it('only reports months the loaded history fully covers', () => {

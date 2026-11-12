@@ -58,7 +58,11 @@ import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { monthlyCashbackCap } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackCap,
+  resolveAllTimeCashback,
+  resolveCashbackMonth,
+} from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardProvider, CardStatus } from '@/lib/types';
 import {
@@ -331,8 +335,10 @@ const CardDetailsPane = () => {
     router.push(path.REWARDS_BENEFITS);
   }, [closePane]);
 
-  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  // In the cardholder's cashback currency — euros, euro caps and a euro
+  // lifetime for a euro cardholder, never mixed with dollars.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
   // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
   // while this absolute pane does not. Keep the pane on the measured card centre so
   // opening it never adds the resulting half-scrollbar horizontal drift.
@@ -456,11 +462,12 @@ const CardDetailsPane = () => {
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
               cashbackRate={resolveUserCashbackRate(rewardsData)}
-              cashbackThisMonth={cashbackThisMonth}
-              cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-              maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-              tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-              allTimeCashback={allTimeCashback}
+              currency={cashbackMonth?.currency}
+              cashbackThisMonth={cashbackMonth?.cashbackThisMonth ?? 0}
+              cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+              maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+              tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
+              {...allTimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
             />
           </HeroEnter>
