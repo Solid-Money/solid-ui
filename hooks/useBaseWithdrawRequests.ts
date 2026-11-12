@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { QueryObserverResult, useQueries } from '@tanstack/react-query';
-import { type Address, Hex } from 'viem';
+import { type Address, formatUnits, Hex } from 'viem';
 import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -130,6 +130,15 @@ export type PendingWithdrawal = {
 };
 
 /**
+ * The dollar value of `wei` WETH at `ethPriceUsd`, in fixed point: the price is taken to micro-dollars
+ * and multiplied in bigint, so only the final figure becomes a float, for display and totals.
+ */
+const wethUsd = (wei: string, ethPriceUsd: number): number => {
+  const microUsdPerEth = BigInt(Math.round(ethPriceUsd * 1e6));
+  return Number(formatUnits((BigInt(wei) * microUsdPerEth) / 10n ** 18n, 6));
+};
+
+/**
  * The user's soUSD and soETH withdrawals still waiting in their Base queues, newest
  * first, and what they will pay out in dollars (soETH's WETH at the ETH price).
  *
@@ -167,14 +176,14 @@ export function usePendingBaseWithdrawals(): {
       if (seen.has(key)) continue;
       seen.add(key);
       if (requests[key]?.status !== 'pending') continue;
-      const { amountUsd, amountWeth } = requests[key];
+      const { amountUsd, amountWethWei } = requests[key];
       withdrawals.push({
         clientTxId: activity.clientTxId,
         vault,
         amountUsd:
           vault === 'ETH'
-            ? amountWeth !== undefined && ethPrice
-              ? amountWeth * ethPrice
+            ? amountWethWei !== undefined && ethPrice
+              ? wethUsd(amountWethWei, ethPrice)
               : undefined
             : amountUsd,
         timestamp: activity.timestamp,
