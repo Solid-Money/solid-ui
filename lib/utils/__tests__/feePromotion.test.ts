@@ -3,6 +3,7 @@ import {
   eurDepositPromotion,
   eurDepositPromotionCopy,
   formatFiat,
+  nextEurPromotionChange,
   promotionLastDay,
   readBankDepositFee,
   UserFeePromotion,
@@ -161,5 +162,33 @@ describe('formatFiat', () => {
   it('uses the symbol when it has one', () => {
     expect(formatFiat('1.00', 'eur')).toBe('€1.00');
     expect(formatFiat('1.00', 'CHF')).toBe('1.00 CHF');
+  });
+});
+
+describe('nextEurPromotionChange', () => {
+  it('is the end of the running promotion', () => {
+    expect(nextEurPromotionChange({ promotions: [promotion()] }, NOW)).toBe(
+      Date.parse('2027-01-01T00:00:00.000Z'),
+    );
+  });
+
+  it('is the start of one that has not begun, when that comes first', () => {
+    expect(
+      nextEurPromotionChange(
+        { promotions: [promotion({ startsAt: '2026-11-25T00:00:00.000Z' })] },
+        NOW,
+      ),
+    ).toBe(Date.parse('2026-11-25T00:00:00.000Z'));
+  });
+
+  it('is null once every window is past, for other scopes, and for no data', () => {
+    expect(
+      nextEurPromotionChange(
+        { promotions: [promotion({ endsAt: '2026-11-19T00:00:00.000Z' })] },
+        NOW,
+      ),
+    ).toBeNull();
+    expect(nextEurPromotionChange({ promotions: [promotion({ scope: 'fx' })] }, NOW)).toBeNull();
+    expect(nextEurPromotionChange(undefined, NOW)).toBeNull();
   });
 });

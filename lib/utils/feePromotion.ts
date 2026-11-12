@@ -86,6 +86,27 @@ export function eurDepositPromotion(
 }
 
 /**
+ * When {@link eurDepositPromotion}'s answer next changes on the clock alone —
+ * the nearest start or end of a euro deposit promotion still ahead of `now` —
+ * or null when none will.
+ */
+export function nextEurPromotionChange(
+  response: UserFeePromotionsResponse | null | undefined,
+  now: number = Date.now(),
+): number | null {
+  const promotions = Array.isArray(response?.promotions) ? response.promotions : [];
+  let next: number | null = null;
+  for (const promotion of promotions) {
+    if (!promotion || promotion.scope !== EUR_BANK_DEPOSIT_PROMOTION_SCOPE) continue;
+    for (const boundary of [promotion.startsAt, promotion.endsAt]) {
+      const at = Date.parse(boundary);
+      if (Number.isFinite(at) && at > now && (next === null || at < next)) next = at;
+    }
+  }
+  return next;
+}
+
+/**
  * The last day a promotion covers, as "31 Dec", in UTC — the window is
  * [start, end), so an end at midnight on 1 Jan means 31 Dec is the last day.
  * Worked out by hand rather than with Intl's `timeZone`, which Hermes does not

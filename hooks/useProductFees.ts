@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
 import { fetchFeePromotions, fetchProductFeeRates, recordSwapFee } from '@/lib/api';
 import { FeeProduct, RecordSwapFeeParams } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { eurDepositPromotion } from '@/lib/utils/feePromotion';
+import { eurDepositPromotion, nextEurPromotionChange } from '@/lib/utils/feePromotion';
 import { useUserStore } from '@/store/useUserStore';
 
 const PRODUCT_FEES = 'productFees';
@@ -37,13 +38,17 @@ export const useProductFeeRates = () => {
   });
 };
 
+/** Longest a single timer waits before the window is looked at again. */
+const MAX_TIMER_MS = minutesToMilliseconds(60);
+
 /**
  * The fee promotions running for this user — what the euro account screen
  * reads to say their next SEPA deposits are free.
  *
- * Short-lived like the rates: a promotion an admin switches off should stop
- * being advertised within a minute, and a deposit that used a free slot should
- * bring the count down by the time the user looks again.
+ * Polled every minute while a screen that reads it is mounted (never in the
+ * background): the app does not refetch on focus, so without it an admin
+ * switching a promotion off, or a deposit using a free slot, would only reach
+ * an open screen on its next mount.
  */
 export const useFeePromotions = () => {
   const userId = useSelectedUserId();
@@ -52,6 +57,8 @@ export const useFeePromotions = () => {
     queryKey: [PRODUCT_FEES, 'promotions', userId],
     queryFn: async () => withRefreshToken(() => fetchFeePromotions()),
     staleTime: secondsToMilliseconds(60),
+    refetchInterval: secondsToMilliseconds(60),
+    refetchIntervalInBackground: false,
     gcTime: minutesToMilliseconds(5),
     enabled: Boolean(userId),
   });
@@ -61,10 +68,24 @@ export const useFeePromotions = () => {
  * The promotion making this user's next SEPA deposits to the euro account
  * free, or null — none running, none left, or not loaded yet. A failed load
  * reads as none: the screen then simply doesn't advertise it.
+ *
+ * Whether one is running depends on the clock, so the screen re-renders at
+ * the next start or end of a euro deposit promotion: an open screen stops
+ * promising free deposits the moment the window closes.
  */
 export const useEurDepositPromotion = () => {
   const { data } = useFeePromotions();
-  return eurDepositPromotion(data ?? null);
+  const [now, setNow] = useState(() => Date.now());
+  const next = nextEurPromotionChange(data ?? null, now);
+
+  useEffect(() => {
+    if (next === null) return;
+    const wait = Math.min(Math.max(next - Date.now(), 0) + 1_000, MAX_TIMER_MS);
+    const timer = setTimeout(() => setNow(Date.now()), wait);
+    return () => clearTimeout(timer);
+  }, [next, now]);
+
+  return eurDepositPromotion(data ?? null, now);
 };
 
 /**
