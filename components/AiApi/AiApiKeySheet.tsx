@@ -446,6 +446,11 @@ const AiApiKeySheet = ({
       contentKey={`ai-api-key-${view}`}
       designTop={37}
       designBottom={34}
+      // The details view, with its token strip, can outgrow a small phone; it
+      // scrolls only once it does. The limit and rename views keep a plain body:
+      // they hold a text field, and in a scroll view the first tap on Save with
+      // the keyboard up would only dismiss the keyboard.
+      scrollable={view === 'details'}
     >
       {({ session, topPadding, presentation }: CardSheetBody) =>
         apiKey ? (

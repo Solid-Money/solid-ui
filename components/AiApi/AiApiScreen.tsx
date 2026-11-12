@@ -112,7 +112,9 @@ export default function AiApiScreen() {
     // Not while a fetch is under way: the next preset up is worked out from the
     // key's limit, and a cached one may be behind a raise made elsewhere.
     if (!overview || isFetching || !LINKED_KEY_ID.test(linkedKeyId)) return;
-    const key = overview.keys.find(entry => entry.id === linkedKeyId);
+    // The allowlist takes either case, so the match does too.
+    const linkedId = linkedKeyId.toLowerCase();
+    const key = overview.keys.find(entry => entry.id.toLowerCase() === linkedId);
     if (!key) return;
 
     const view: AiApiKeySheetView = linkedView === 'limit' ? 'limit' : 'details';
