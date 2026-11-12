@@ -51,7 +51,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Solid',
   slug: 'flash-frontend',
-  version: '2.0.2',
+  version: '2.1.0',
   orientation: 'portrait',
   icon: './assets/images/adaptive-icon.png',
   scheme: 'solid',
@@ -129,6 +129,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // served at https://app.solid.xyz/.well-known/.
       'applinks:app.solid.xyz',
     ],
+    entitlements: {
+      // Firebase App Check's App Attest provider (falls back to DeviceCheck on
+      // devices without it): proves recovery and signup requests come from this
+      // app on a real device. See lib/botProtection.ts.
+      'com.apple.developer.devicecheck.appattest-environment': 'production',
+    },
     appleTeamId: '67UG7X46Z8',
     splash: {
       image: './assets/splash/splash-icon.png',
@@ -256,6 +262,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     '@react-native-firebase/app',
     '@react-native-firebase/messaging',
+    // Activates App Check in AppDelegate before Firebase configures. See
+    // lib/botProtection.ts. EAS always prebuilds from scratch (ios/ is
+    // ignored), which is the order this plugin expects. A local ios/ generated
+    // before this plugin was added needs one `npx expo prebuild --clean`:
+    // incrementally, the plugin appends a second FirebaseApp.configure() after
+    // the existing one instead of going ahead of it.
+    '@react-native-firebase/app-check',
     // Adds the iOS Notification Service Extension so rich-push images render.
     './plugins/withIosNotificationServiceExtension',
     [

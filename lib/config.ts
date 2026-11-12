@@ -83,6 +83,13 @@ export const EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID =
   process.env.EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID ?? '';
 export const EXPO_PUBLIC_SHARED_REVIEW_ACCESS_EMAIL =
   process.env.EXPO_PUBLIC_SHARED_REVIEW_ACCESS_EMAIL ?? '';
+/**
+ * Cloudflare Turnstile site key (public by design) for the web app's proof it is
+ * a real browser on recovery, signup and account lookups. Unset, the web app
+ * sends no token — fine while the backend's bot protection is in monitor mode.
+ * See lib/botProtection.web.ts.
+ */
+export const EXPO_PUBLIC_TURNSTILE_SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 export const EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS =
   process.env.EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS ?? '';
 export const EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL =

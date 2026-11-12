@@ -63,6 +63,7 @@
     "@react-native-community/netinfo": "11.5.2",
     "@react-native-firebase/analytics": "24.0.0",
     "@react-native-firebase/app": "24.0.0",
+    "@react-native-firebase/app-check": "24.0.0",
     "@react-native-firebase/messaging": "24.0.0",
     "@react-navigation/bottom-tabs": "^7.10.1",
     "@react-navigation/elements": "^2.9.10",
@@ -179,13 +180,13 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@sentry/cli": "^2.39.1",
     "@graphql-codegen/cli": "~6.2.1",
     "@graphql-codegen/client-preset": "~5.2.4",
     "@graphql-codegen/introspection": "~5.0.1",
     "@graphql-codegen/typed-document-node": "~6.1.7",
     "@graphql-codegen/typescript-react-apollo": "~4.4.1",
     "@playwright/test": "^1.58.2",
+    "@sentry/cli": "^2.39.1",
     "@types/jest": "29.5.14",
     "@types/lodash.merge": "^4.6.9",
     "@types/react": "~19.2.10",

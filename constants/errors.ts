@@ -32,6 +32,30 @@ export const PASSKEY_ACCOUNT_NOT_FOUND_CODE = 'PASSKEY_ACCOUNT_NOT_FOUND';
 export const EMAIL_DOMAIN_NOT_ALLOWED_CODE = 'EMAIL_DOMAIN_NOT_ALLOWED';
 
 /**
+ * Backend code when it couldn't verify that a recovery, signup or email-change
+ * request came from the real app or a real browser (App Check / Turnstile, see
+ * lib/botProtection.ts). Usually an outdated build, or a page blocking the
+ * Turnstile script; updating or refreshing fixes it.
+ */
+export const BOT_CHECK_FAILED_CODE = 'BOT_CHECK_FAILED';
+export const BOT_CHECK_FAILED_MESSAGE =
+  'We couldn’t verify this device. Update the app or refresh the page, then try again.';
+
+/** An email change to an address another account already holds. */
+export const EMAIL_ALREADY_LINKED_CODE = 'EMAIL_ALREADY_LINKED';
+export const EMAIL_ALREADY_LINKED_MESSAGE =
+  'This email is already linked to another account. Use a different email.';
+
+/**
+ * Whether an API error is a rate limit. The backend answers 429 with its own
+ * wording; older checks only matched Turnkey's phrasing.
+ */
+export const isRateLimitedError = (error: unknown): boolean => {
+  const err = error as { status?: unknown; statusCode?: unknown } | null;
+  return err?.statusCode === 429 || err?.status === 429;
+};
+
+/**
  * The email change reached the backend without a valid passkey confirmation —
  * or the verified code it belonged to has expired or was already used. The
  * user has to request a new code.

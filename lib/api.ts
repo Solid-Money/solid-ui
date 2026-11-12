@@ -14,6 +14,7 @@ import {
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
+import { getBotProtectionHeaders } from '@/lib/botProtection';
 import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
@@ -2397,6 +2398,7 @@ export const getSubOrgIdByUsername = async (username: string) => {
     headers: {
       'Content-Type': 'application/json',
       ...getPlatformHeaders(),
+      ...(await getBotProtectionHeaders()),
     },
     credentials: 'include',
     body: JSON.stringify({
@@ -3190,6 +3192,7 @@ export const initGenericOtp = async (
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
@@ -3775,6 +3778,7 @@ export const initSignupOtp = async (email: string) => {
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
       body: JSON.stringify({ email }),
     },
@@ -3904,6 +3908,7 @@ export const emailExists = async (email: string): Promise<boolean> => {
       method: 'HEAD',
       headers: {
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
     },
   );
@@ -5162,6 +5167,7 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
       username,
       targetPublicKey,
     },
+    { headers: await getBotProtectionHeaders() },
   );
   return response.data;
 };
@@ -5195,6 +5201,7 @@ export const initRecoveryOtp = async (
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
       body: JSON.stringify({
         identifier: trimmed,
