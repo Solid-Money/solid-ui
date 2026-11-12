@@ -22,14 +22,16 @@ export const pendingWithdrawalsUsd = (withdrawals: PendingWithdrawal[]) => {
 };
 
 /**
- * soUSD withdrawals waiting in the queue: no longer savings, not yet in the wallet. Listed so
+ * soUSD and soETH withdrawals waiting in their queues: no longer savings, not yet in the wallet. Listed so
  * the rows still add up to the balance, which counts them, and the user sees where it went.
  */
 export default function WithdrawingRow({ withdrawals }: { withdrawals: PendingWithdrawal[] }) {
   return (
     <AssetRow
       title="Withdrawing"
-      icon={<PortfolioIcon kind="usdc" />}
+      icon={
+        <PortfolioIcon kind={withdrawals.every(item => item.vault === 'ETH') ? 'eth' : 'usdc'} />
+      }
       value={pendingWithdrawalsUsd(withdrawals)}
       subtitle={WITHDRAWING_SUBTITLE}
       onPress={() => openPendingWithdrawals(withdrawals)}

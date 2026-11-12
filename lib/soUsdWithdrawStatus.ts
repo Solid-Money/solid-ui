@@ -27,10 +27,14 @@ export type BaseWithdrawRequest = {
    * for another asset (soETH's WETH). A plain number so the query stays JSON-safe.
    */
   amountUsd?: number;
+  /** The WETH a soETH request pays out, fixed when it was made; priced by the caller. */
+  amountWeth?: number;
 };
 
-/** Base USDC, the only asset the app asks the Base queue for. */
+/** Base USDC, what soUSD requests pay out. */
 const USDC_DECIMALS = 6;
+/** Base WETH, what soETH requests pay out. */
+const WETH_DECIMALS = 18;
 
 /**
  * The request a withdraw transaction made on a Base queue (soUSD's by default, or
@@ -47,6 +51,7 @@ export async function readBaseWithdrawRequest(
   const receipt = await client.getTransactionReceipt({ hash: requestTxHash });
   let requestId: Hex | undefined;
   let amountUsd: number | undefined;
+  let amountWeth: number | undefined;
   for (const log of receipt.logs) {
     if (!isAddressEqual(log.address, queue)) continue;
     try {
@@ -55,6 +60,8 @@ export async function readBaseWithdrawRequest(
         requestId = event.args.requestId;
         if (isAddressEqual(event.args.assetOut, ADDRESSES.base.usdc)) {
           amountUsd = Number(formatUnits(event.args.amountOfAssets, USDC_DECIMALS));
+        } else if (isAddressEqual(event.args.assetOut, ADDRESSES.base.weth)) {
+          amountWeth = Number(formatUnits(event.args.amountOfAssets, WETH_DECIMALS));
         }
         break;
       }
@@ -70,5 +77,5 @@ export async function readBaseWithdrawRequest(
     functionName: 'getRequestIds',
   });
   const isPending = outstanding.some(id => id.toLowerCase() === requestId.toLowerCase());
-  return { requestId, status: isPending ? 'pending' : 'finished', amountUsd };
+  return { requestId, status: isPending ? 'pending' : 'finished', amountUsd, amountWeth };
 }

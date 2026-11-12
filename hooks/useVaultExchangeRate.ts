@@ -6,11 +6,14 @@ import {
   fetchExchangeRateSoEurc,
   fetchExchangeRatesoFuse,
 } from '@/hooks/usePreviewDeposit';
+import { readSoEthBaseDepositRate } from '@/lib/deposit/soEthBase';
 
 /**
  * The share → underlying rate for a vault, by vault name, in display units:
- * soUSD→USD for USDC, soFUSE→FUSE for FUSE, soETH→ETH for ETH and soEURC→EURC
- * for EUR (shown in euros, never converted to dollars).
+ * soUSD→USD for USDC, soFUSE→FUSE for FUSE, soETH→ETH for ETH (the Ethereum
+ * accountant), ETH_BASE for soETH held on Base (the Base accountant, which its
+ * queue pays out at) and soEURC→EURC for EUR (shown in euros, never converted
+ * to dollars).
  *
  * An unknown name is an error rather than a 1:1 rate: a guessed 1 would value
  * another vault's shares at par without anyone noticing.
@@ -34,6 +37,11 @@ export const useVaultExchangeRate = (tokenName: string, enabled = true) => {
       if (tokenName === 'ETH') {
         const rate = await fetchExchangeRateSoEth(queryClient);
         return Number(rate) / 10 ** 18; // soETH → ETH (18 decimals)
+      }
+
+      if (tokenName === 'ETH_BASE') {
+        const rate = await readSoEthBaseDepositRate();
+        return Number(rate) / 10 ** 18; // Base soETH → WETH (18 decimals)
       }
 
       if (tokenName === 'EUR') {

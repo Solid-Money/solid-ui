@@ -1,10 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { QueryObserverResult, useQueries } from '@tanstack/react-query';
 import { type Address, Hex } from 'viem';
-import { base } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
-import { getVaultKey } from '@/constants/withdraw';
+import { getVaultKey, type VaultKey } from '@/constants/withdraw';
+import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
 import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
@@ -114,18 +115,23 @@ export function useBaseWithdrawRequests(
   });
 }
 
-/** A soUSD withdrawal waiting in the Base queue: its shares have left the Safe, its USDC has not arrived. */
+/**
+ * A soUSD or soETH withdrawal waiting in its Base queue: its shares have left the Safe, its USDC
+ * or WETH has not arrived.
+ */
 export type PendingWithdrawal = {
   clientTxId: string;
-  /** Undefined if the request asked for something other than USDC. */
+  /** Which vault it leaves, so a product screen lists only its own. */
+  vault: Extract<VaultKey, 'USD' | 'ETH'>;
+  /** In dollars: the USDC paid out, or the WETH at the ETH price. Undefined until both are known. */
   amountUsd: number | undefined;
   /** Unix seconds, from the activity. */
   timestamp: string;
 };
 
 /**
- * The user's soUSD withdrawals still waiting in the Base queue, newest first, and
- * the USDC they will pay out.
+ * The user's soUSD and soETH withdrawals still waiting in their Base queues, newest
+ * first, and what they will pay out in dollars (soETH's WETH at the ETH price).
  *
  * Between the request and the solve, which can take most of a day, the money is
  * neither savings (the queue holds the shares) nor wallet (no USDC yet). Without
@@ -143,26 +149,39 @@ export function usePendingBaseWithdrawals(): {
     useShallow(state => (user?.userId ? state.events[user.userId] : undefined)),
   );
   const requests = useBaseWithdrawRequests(activities);
+  // Shared with the portfolio's ETH price, so it is one cached read.
+  const hasEthRequest = (activities ?? []).some(
+    activity =>
+      !!activity && isBaseWithdrawRequest(activity) && getVaultKey(activity.symbol) === 'ETH',
+  );
+  const { data: ethPriceData } = useNativePriceQuery(mainnet.id, 'ethPriceUsd', hasEthRequest);
+  const ethPrice = Number(ethPriceData) || undefined;
 
   return useMemo(() => {
     const withdrawals: PendingWithdrawal[] = [];
     const seen = new Set<string>();
     for (const activity of activities ?? []) {
       if (!activity || !isBaseWithdrawRequest(activity)) continue;
-      // soUSD only: these are counted in dollars, and a soETH request pays WETH.
-      if ((getVaultKey(activity.symbol) ?? 'USD') !== 'USD') continue;
+      const vault = getVaultKey(activity.symbol) === 'ETH' ? 'ETH' : 'USD';
       const key = baseWithdrawRequestKey(activity);
       if (seen.has(key)) continue;
       seen.add(key);
       if (requests[key]?.status !== 'pending') continue;
+      const { amountUsd, amountWeth } = requests[key];
       withdrawals.push({
         clientTxId: activity.clientTxId,
-        amountUsd: requests[key].amountUsd,
+        vault,
+        amountUsd:
+          vault === 'ETH'
+            ? amountWeth !== undefined && ethPrice
+              ? amountWeth * ethPrice
+              : undefined
+            : amountUsd,
         timestamp: activity.timestamp,
       });
     }
     withdrawals.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
     const totalUsd = withdrawals.reduce((sum, item) => sum + (item.amountUsd ?? 0), 0);
     return { withdrawals, totalUsd };
-  }, [activities, requests]);
+  }, [activities, requests, ethPrice]);
 }

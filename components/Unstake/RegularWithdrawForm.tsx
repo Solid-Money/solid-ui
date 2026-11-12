@@ -150,8 +150,9 @@ const RegularWithdrawForm = () => {
   const isSoEthOnBaseUnavailable =
     isSoEth && selectedToken?.chainId === base.id && !isSoEthOnBase && session?.vault !== 'ETH';
   const soEthWithdrawChain = SOETH_WITHDRAW_CHAINS[isSoEthOnBase ? base.id : mainnet.id];
+  // Base soETH is paid out by the Base queue at the Base accountant's rate, not Ethereum's.
   const { data: exchangeRate } = useVaultExchangeRate(
-    isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
+    isSoFuse ? 'FUSE' : isSoEthOnBase ? 'ETH_BASE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
   );
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
@@ -688,8 +689,11 @@ const RegularWithdrawForm = () => {
                   />
                   <Text className="text-base font-bold text-white">Withdraw to EURC</Text>
                 </View>
-                {/* Solved through the queue, which keeps a request open for at least three days. */}
-                <Text className="text-base font-medium text-muted-foreground">Up to 3 days</Text>
+                {/* An estimate: the queue keeps a request open for at least three days and a solver
+                    usually fills it well within them, but nothing guarantees a payout by then. */}
+                <Text className="text-base font-medium text-muted-foreground">
+                  Usually within 3 days
+                </Text>
               </View>
               <Button
                 variant="brand"
@@ -724,8 +728,11 @@ const RegularWithdrawForm = () => {
                   />
                   <Text className="text-base font-bold text-white">Withdraw to WETH</Text>
                 </View>
-                {/* Solved through the queue, which keeps a request open for at least three days. */}
-                <Text className="text-base font-medium text-muted-foreground">Up to 3 days</Text>
+                {/* An estimate: the queue keeps a request open for at least three days and a solver
+                    usually fills it well within them, but nothing guarantees a payout by then. */}
+                <Text className="text-base font-medium text-muted-foreground">
+                  Usually within 3 days
+                </Text>
               </View>
               <Button
                 variant="brand"

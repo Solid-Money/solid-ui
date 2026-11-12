@@ -46,6 +46,9 @@ const WETH_ABI = [
   },
 ] as const;
 
+/** What executeTransactions throws for a Base deposit that reverted on chain, and only then. */
+const BASE_DEPOSIT_REVERTED = 'Deposit failed';
+
 const useDepositFromSolidEth = (
   tokenAddress: Address,
   token: string,
@@ -136,6 +139,7 @@ const useDepositFromSolidEth = (
 
     let trackingId: string | undefined;
     let cancelled = false;
+    let sentUserOpHash: string | undefined;
 
     try {
       trackDepositInitiated(ctx);
@@ -180,9 +184,10 @@ const useDepositFromSolidEth = (
       const result = await executeTransactions(
         smartAccountClient,
         transactions,
-        'Deposit failed',
+        BASE_DEPOSIT_REVERTED,
         base,
         userOpHash => {
+          sentUserOpHash = userOpHash;
           updateActivity(trackingId!, { userOpHash });
         },
       );
@@ -200,7 +205,7 @@ const useDepositFromSolidEth = (
         'transactionHash' in result
           ? (result as { transactionHash: `0x${string}` }).transactionHash
           : undefined;
-      if (!txHash) throw new Error('ETH deposit on Base has not been confirmed');
+      if (!txHash) throw new Error('ETH deposit on Base has not been confirmed yet');
 
       // The teller minted in the same transaction: the deposit is complete.
       updateActivity(trackingId, {
@@ -216,6 +221,15 @@ const useDepositFromSolidEth = (
       return trackingId;
     } catch (error: any) {
       console.error(error);
+      // Sent, and only the confirmation could not be read (a timeout, a lost connection): the
+      // deposit has most likely landed. Not a failure, or the user deposits again. The activity
+      // keeps its user operation hash and stays processing; the form shows it as submitted.
+      // executeTransactions throws BASE_DEPOSIT_REVERTED only for a confirmed revert.
+      if (trackingId && sentUserOpHash && error?.message !== BASE_DEPOSIT_REVERTED) {
+        captureDepositError(error, { ...ctx, depositStatus });
+        setDepositStatus({ status: Status.SUCCESS, message: 'Deposit sent, confirming' });
+        return trackingId;
+      }
       const errMsg = captureDepositError(error, { ...ctx, depositStatus });
       if (trackingId && !cancelled) {
         updateActivity(trackingId, {

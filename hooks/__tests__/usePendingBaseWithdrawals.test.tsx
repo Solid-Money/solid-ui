@@ -25,6 +25,10 @@ jest.mock('@/lib/soUsdWithdraw', () => ({ isSoUsdBaseConfigured: true }));
 // Reads ADDRESSES.base at import, which the config mock above leaves out.
 jest.mock('@/lib/soEthWithdraw', () => ({ isSoEthBaseConfigured: true }));
 jest.mock('@/lib/soUsdWithdrawStatus', () => ({ readBaseWithdrawRequest: jest.fn() }));
+// Only soETH requests are priced in ETH; these are all soUSD.
+jest.mock('@/hooks/useNativePriceUsd', () => ({
+  useNativePriceQuery: () => ({ data: undefined }),
+}));
 
 const request = (hash: string, timestamp: string): ActivityEvent => ({
   clientTxId: `client-${hash}`,

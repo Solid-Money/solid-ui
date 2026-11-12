@@ -45,7 +45,8 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
       key: 'spend',
       icon: CreditCard,
       title: 'Spend or borrow against it',
-      body: 'soETH on Base backs your Solid card: spend it, or borrow against it without selling.',
+      // Qualified: a Safe without Base spending turned on can't spend Base assets yet.
+      body: 'With Base spending on, soETH on Base backs your Solid card: spend it, or borrow against it without selling.',
     },
     {
       key: 'withdraw',

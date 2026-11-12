@@ -164,7 +164,13 @@ export default function SavingsScreenNew() {
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
         // Only soUSD withdraws through the Base queue these are read from.
-        pendingWithdrawals={vaultType === VaultType.USDC ? portfolio.pendingWithdrawals : undefined}
+        pendingWithdrawals={
+          vaultType === VaultType.USDC || vaultType === VaultType.ETH
+            ? portfolio.pendingWithdrawals.filter(
+                item => item.vault === (vaultType === VaultType.ETH ? 'ETH' : 'USD'),
+              )
+            : undefined
+        }
       />
     </PageLayout>
   );
