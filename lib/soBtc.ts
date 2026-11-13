@@ -183,14 +183,38 @@ export const readSoBtcRate = (chainId: SoBtcChainId) =>
     args: [SOBTC_WITHDRAW_OPTIONS[chainId].assetAddress],
   });
 
-/** The base asset `chainId`'s vault holds right now: the most a withdrawal there can pay. */
-export const readSoBtcAvailable = (chainId: SoBtcChainId) =>
+/** The base asset `chainId`'s vault holds right now, before any queued request is paid. */
+export const readSoBtcVaultBalance = (chainId: SoBtcChainId) =>
   readContract(publicClient(chainId), {
     address: SOBTC_WITHDRAW_OPTIONS[chainId].assetAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [SOBTC_WITHDRAW_OPTIONS[chainId].vault],
   });
+
+/**
+ * Shares in `chainId`'s queue that the solver can still pay out of that vault: every open request
+ * for the chain's asset that hasn't passed its deadline. Expired requests can't be solved (only
+ * cancelled), so they hold no liquidity. The queue tracks requests on-chain, so one read covers them.
+ */
+export const readSoBtcQueuedShares = async (chainId: SoBtcChainId): Promise<bigint> => {
+  const option = SOBTC_WITHDRAW_OPTIONS[chainId];
+  const [, requests] = await readContract(publicClient(chainId), {
+    address: option.boringQueue,
+    abi: BoringQueue_ABI,
+    functionName: 'getWithdrawRequests',
+  });
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  return requests.reduce((sum, request) => {
+    const deadline =
+      BigInt(request.creationTime) +
+      BigInt(request.secondsToMaturity) +
+      BigInt(request.secondsToDeadline);
+    const live =
+      request.assetOut.toLowerCase() === option.assetAddress.toLowerCase() && deadline >= now;
+    return live ? sum + BigInt(request.amountOfShares) : sum;
+  }, 0n);
+};
 
 /** The LayerZero fee, in native wei, for the `fromChainId` teller to send shares across. */
 export const readSoBtcBridgeFee = (

@@ -22,9 +22,10 @@ import {
   buildSoBtcBridgeToEthereumCall,
   buildSoBtcWithdrawRequestCall,
   isSoBtcConfigured,
-  readSoBtcAvailable,
   readSoBtcBridgeFee,
+  readSoBtcQueuedShares,
   readSoBtcRate,
+  readSoBtcVaultBalance,
   SOBTC_DECIMALS,
   SOBTC_WITHDRAW_OPTIONS,
   type SoBtcChainId,
@@ -41,8 +42,13 @@ import useUser from './useUser';
 const AVAILABILITY_REFRESH_MS = 30_000;
 
 export type SoBtcAvailability = {
-  /** The asset the option's vault holds right now, in satoshis: the most it can pay. */
+  /**
+   * What the option can pay a new request right now, in satoshis: the vault's balance minus what
+   * the open requests ahead of it will take when solved.
+   */
   availableSats: bigint;
+  /** Satoshis the open, unexpired requests in this option's queue will take from the vault. */
+  queuedSats: bigint;
   /** The option's share → BTC rate, 8 decimals. */
   rate: bigint;
   /** The most shares that vault can redeem right now, at that rate. */
@@ -58,12 +64,18 @@ export const useSoBtcAvailability = (chainId: SoBtcChainId, enabled = true) =>
   useQuery({
     queryKey: ['soBtcAvailability', chainId],
     queryFn: async (): Promise<SoBtcAvailability> => {
-      const [availableSats, rate] = await Promise.all([
-        readSoBtcAvailable(chainId),
+      const [vaultSats, queuedShares, rate] = await Promise.all([
+        readSoBtcVaultBalance(chainId),
+        readSoBtcQueuedShares(chainId),
         readSoBtcRate(chainId),
       ]);
-      const maxShares = rate > 0n ? (availableSats * 10n ** BigInt(SOBTC_DECIMALS)) / rate : 0n;
-      return { availableSats, rate, maxShares };
+      const oneShare = 10n ** BigInt(SOBTC_DECIMALS);
+      // A solve pays out shares x the rate at solve time (the discount goes to the solver Safe),
+      // so queued requests are valued at today's rate, not at their discounted amountOfAssets.
+      const queuedSats = (queuedShares * rate) / oneShare;
+      const availableSats = vaultSats > queuedSats ? vaultSats - queuedSats : 0n;
+      const maxShares = rate > 0n ? (availableSats * oneShare) / rate : 0n;
+      return { availableSats, queuedSats, rate, maxShares };
     },
     enabled: enabled && isSoBtcConfigured,
     staleTime: AVAILABILITY_REFRESH_MS,
