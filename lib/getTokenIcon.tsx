@@ -62,6 +62,23 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/eth.png'),
       };
+    // soBTC has no share mark of its own yet: it draws the BTC mark.
+    case 'SOBTC':
+    case 'BTC':
+      return {
+        type: 'image',
+        source: getAsset('images/btc.png'),
+      };
+    case 'WBTC':
+      return {
+        type: 'image',
+        source: getAsset('images/wbtc.png'),
+      };
+    case 'CBBTC':
+      return {
+        type: 'image',
+        source: getAsset('images/cbbtc.png'),
+      };
     case 'FUSE':
     case 'WFUSE':
       return {

@@ -1,13 +1,15 @@
 import { useCallback, useMemo } from 'react';
 import { QueryObserverResult, useQueries } from '@tanstack/react-query';
-import { type Address, formatUnits, Hex } from 'viem';
+import { type Address, formatUnits, Hex, isAddressEqual } from 'viem';
 import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import { getVaultKey, type VaultKey } from '@/constants/withdraw';
+import { useBtcPriceQuery } from '@/hooks/useBtcPriceUsd';
 import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
+import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
 import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { isSoUsdBaseConfigured } from '@/lib/soUsdWithdraw';
 import { BaseWithdrawRequest, readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
@@ -22,8 +24,9 @@ const PENDING_REFETCH_MS = 60_000;
 const PENDING_STALE_MS = 30_000;
 
 /**
- * A soUSD or soETH withdraw request made on its Base queue: its transaction
- * confirmed, so it is in the queue or has left it.
+ * A soUSD, soETH or soBTC withdraw request made on its Base queue, or a soBTC one on its Ethereum
+ * queue (the WBTC route): its transaction confirmed, so it is in the queue or has left it. Both
+ * soBTC queues track requests on-chain, so neither needs a subgraph.
  *
  * soEURC withdraws on Base too, but its status comes from the EUR subgraph (see
  * useActivity). An activity naming no vault is soUSD, as every withdraw was
@@ -36,21 +39,32 @@ export const isBaseWithdrawRequest = (
 } => {
   if (
     activity.type !== TransactionType.WITHDRAW ||
-    activity.chainId !== base.id ||
     activity.status !== TransactionStatus.SUCCESS ||
     !activity.hash
   ) {
     return false;
   }
   const vault = getVaultKey(activity.symbol) ?? 'USD';
-  return (vault === 'USD' && isSoUsdBaseConfigured) || (vault === 'ETH' && isSoEthBaseConfigured);
+  if (activity.chainId === mainnet.id) return vault === 'BTC' && isSoBtcConfigured;
+  if (activity.chainId !== base.id) return false;
+  return (
+    (vault === 'USD' && isSoUsdBaseConfigured) ||
+    (vault === 'ETH' && isSoEthBaseConfigured) ||
+    (vault === 'BTC' && isSoBtcConfigured)
+  );
 };
 
-/** The Base queue a request from {@link isBaseWithdrawRequest} was made on. */
-const baseWithdrawQueueOf = (activity: ActivityEvent) =>
-  getVaultKey(activity.symbol) === 'ETH'
-    ? ADDRESSES.base.soEthBoringQueue
-    : ADDRESSES.base.boringQueue;
+/** The queue a request from {@link isBaseWithdrawRequest} was made on. */
+const baseWithdrawQueueOf = (activity: ActivityEvent) => {
+  const vault = getVaultKey(activity.symbol);
+  if (vault === 'ETH') return ADDRESSES.base.soEthBoringQueue;
+  if (vault === 'BTC') {
+    return activity.chainId === mainnet.id
+      ? SOBTC_ADDRESSES.ethereum.boringQueue
+      : SOBTC_ADDRESSES.base.boringQueue;
+  }
+  return ADDRESSES.base.boringQueue;
+};
 
 /**
  * Where a Base request lives in {@link useBaseWithdrawRequests}' map: its transaction hash and the
@@ -103,7 +117,15 @@ export function useBaseWithdrawRequests(
       const [hash, queue] = key.split('@');
       return {
         queryKey: [BASE_WITHDRAW_REQUEST, hash, queue],
-        queryFn: () => readBaseWithdrawRequest(hash as Hex, queue as Address),
+        queryFn: () =>
+          readBaseWithdrawRequest(
+            hash as Hex,
+            queue as Address,
+            // soBTC's Ethereum queue is the only one not on Base.
+            isAddressEqual(queue as Address, SOBTC_ADDRESSES.ethereum.boringQueue)
+              ? mainnet.id
+              : base.id,
+          ),
         staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
           query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
         refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
@@ -122,20 +144,24 @@ export function useBaseWithdrawRequests(
 export type PendingWithdrawal = {
   clientTxId: string;
   /** Which vault it leaves, so a product screen lists only its own. */
-  vault: Extract<VaultKey, 'USD' | 'ETH'>;
-  /** In dollars: the USDC paid out, or the WETH at the ETH price. Undefined until both are known. */
+  vault: Extract<VaultKey, 'USD' | 'ETH' | 'BTC'>;
+  /**
+   * In dollars: the USDC paid out, the WETH at the ETH price, or the cbBTC at the BTC price.
+   * Undefined until both are known.
+   */
   amountUsd: number | undefined;
   /** Unix seconds, from the activity. */
   timestamp: string;
 };
 
 /**
- * The dollar value of `wei` WETH at `ethPriceUsd`, in fixed point: the price is taken to micro-dollars
- * and multiplied in bigint, so only the final figure becomes a float, for display and totals.
+ * The dollar value of `amount` base units of an asset with `decimals` at `priceUsd`, in fixed
+ * point: the price is taken to micro-dollars and multiplied in bigint, so only the final figure
+ * becomes a float, for display and totals. WETH (18 decimals) and cbBTC/WBTC (8).
  */
-const wethUsd = (wei: string, ethPriceUsd: number): number => {
-  const microUsdPerEth = BigInt(Math.round(ethPriceUsd * 1e6));
-  return Number(formatUnits((BigInt(wei) * microUsdPerEth) / 10n ** 18n, 6));
+const assetUsd = (amount: string, decimals: number, priceUsd: number): number => {
+  const microUsdPerUnit = BigInt(Math.round(priceUsd * 1e6));
+  return Number(formatUnits((BigInt(amount) * microUsdPerUnit) / 10n ** BigInt(decimals), 6));
 };
 
 /**
@@ -165,32 +191,43 @@ export function usePendingBaseWithdrawals(): {
   );
   const { data: ethPriceData } = useNativePriceQuery(mainnet.id, 'ethPriceUsd', hasEthRequest);
   const ethPrice = Number(ethPriceData) || undefined;
+  const hasBtcRequest = (activities ?? []).some(
+    activity =>
+      !!activity && isBaseWithdrawRequest(activity) && getVaultKey(activity.symbol) === 'BTC',
+  );
+  const { data: btcPriceData } = useBtcPriceQuery(hasBtcRequest);
+  const btcPrice = Number(btcPriceData) || undefined;
 
   return useMemo(() => {
     const withdrawals: PendingWithdrawal[] = [];
     const seen = new Set<string>();
     for (const activity of activities ?? []) {
       if (!activity || !isBaseWithdrawRequest(activity)) continue;
-      const vault = getVaultKey(activity.symbol) === 'ETH' ? 'ETH' : 'USD';
-      const key = baseWithdrawRequestKey(activity);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (requests[key]?.status !== 'pending') continue;
-      const { amountUsd, amountWethWei } = requests[key];
+      const key = getVaultKey(activity.symbol);
+      const vault = key === 'ETH' || key === 'BTC' ? key : 'USD';
+      const requestKey = baseWithdrawRequestKey(activity);
+      if (seen.has(requestKey)) continue;
+      seen.add(requestKey);
+      if (requests[requestKey]?.status !== 'pending') continue;
+      const { amountUsd, amountWethWei, amountBtcSats } = requests[requestKey];
       withdrawals.push({
         clientTxId: activity.clientTxId,
         vault,
         amountUsd:
           vault === 'ETH'
             ? amountWethWei !== undefined && ethPrice
-              ? wethUsd(amountWethWei, ethPrice)
+              ? assetUsd(amountWethWei, 18, ethPrice)
               : undefined
-            : amountUsd,
+            : vault === 'BTC'
+              ? amountBtcSats !== undefined && btcPrice
+                ? assetUsd(amountBtcSats, SOBTC_DECIMALS, btcPrice)
+                : undefined
+              : amountUsd,
         timestamp: activity.timestamp,
       });
     }
     withdrawals.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
     const totalUsd = withdrawals.reduce((sum, item) => sum + (item.amountUsd ?? 0), 0);
     return { withdrawals, totalUsd };
-  }, [activities, requests, ethPrice]);
+  }, [activities, requests, ethPrice, btcPrice]);
 }

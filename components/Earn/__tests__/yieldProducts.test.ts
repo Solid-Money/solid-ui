@@ -6,15 +6,23 @@ import {
   YIELD_PRODUCT_ORDER,
   yieldProductName,
 } from '@/components/Earn/yieldProducts';
+import { isSoBtcConfigured } from '@/lib/soBtc';
 import { VaultType } from '@/lib/types';
 
 describe('yield products', () => {
+  // BTC Yield sits between ETH and FUSE, and only in a build with both soBTC deployments.
   it('names each product, never its share token', () => {
     expect(YIELD_PRODUCT_ORDER.map(yieldProductName)).toEqual([
       'USD Yield',
       'ETH Yield',
+      ...(isSoBtcConfigured ? ['BTC Yield'] : []),
       'FUSE Yield',
     ]);
+  });
+
+  it('prices a soBTC share to eight places, in BTC', () => {
+    expect(yieldProductName(VaultType.BTC)).toBe('BTC Yield');
+    expect(formatShareRate(VaultType.BTC, 1.0001)).toBe('1 soBTC = 1.00010000 BTC');
   });
 
   it('prices a share in what the product is worth in', () => {

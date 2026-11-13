@@ -5175,6 +5175,9 @@ export const fetchHistoricalAPY = async (
     case VaultType.EUR:
       params.set('vault', VaultType.EUR);
       break;
+    case VaultType.BTC:
+      params.set('vault', VaultType.BTC);
+      break;
     default:
   }
   const response = await axios.get<HistoricalAPYPoint[]>(

@@ -1,4 +1,5 @@
 import { VAULTS } from '@/constants/vaults';
+import { isSoBtcConfigured } from '@/lib/soBtc';
 import { Vault, VaultType } from '@/lib/types';
 import { getVaultCurrencySymbol } from '@/lib/vaultCurrency';
 
@@ -6,7 +7,14 @@ import { getVaultCurrencySymbol } from '@/lib/vaultCurrency';
  * Earn's USD-valued products in the order the app lists them: dollars first. EUR Yield
  * (soEURC) is held in euros and listed after them, apart from every dollar total.
  */
-export const YIELD_PRODUCT_ORDER = [VaultType.USDC, VaultType.ETH, VaultType.FUSE] as const;
+export type UsdYieldProduct = VaultType.USDC | VaultType.ETH | VaultType.FUSE | VaultType.BTC;
+// BTC Yield is listed only in a build with both soBTC deployments.
+export const YIELD_PRODUCT_ORDER: readonly UsdYieldProduct[] = [
+  VaultType.USDC,
+  VaultType.ETH,
+  ...(isSoBtcConfigured ? [VaultType.BTC as const] : []),
+  VaultType.FUSE,
+];
 
 export const yieldVault = (type: VaultType): Vault =>
   VAULTS.find(vault => vault.type === type) ?? VAULTS[0];
@@ -20,6 +28,7 @@ export const YIELD_DEPOSIT_ASSETS: Record<VaultType, string> = {
   [VaultType.ETH]: 'ETH',
   [VaultType.FUSE]: 'FUSE',
   [VaultType.EUR]: 'EURC',
+  [VaultType.BTC]: 'WBTC, cbBTC',
 };
 
 /** What the deposit is worth in, for the no-funds headline: "On your dollars." */
@@ -28,6 +37,7 @@ export const YIELD_ASSET_NOUN: Record<VaultType, string> = {
   [VaultType.ETH]: 'ETH',
   [VaultType.FUSE]: 'FUSE',
   [VaultType.EUR]: 'euros',
+  [VaultType.BTC]: 'bitcoin',
 };
 
 export const openYieldProduct = (type: VaultType) =>
@@ -38,6 +48,8 @@ export const formatShareRate = (type: VaultType, rate: number | undefined) => {
   if (rate === undefined || !Number.isFinite(rate) || rate <= 0) return undefined;
   const token = yieldVault(type).vaultToken;
   if (type === VaultType.USDC) return `1 ${token} = $${rate.toFixed(4)}`;
+  // BTC shows eight places: four would hide a year's yield on a rate near 1.
+  if (type === VaultType.BTC) return `1 ${token} = ${rate.toFixed(8)} BTC`;
   const underlying = type === VaultType.ETH ? 'ETH' : type === VaultType.EUR ? 'EURC' : 'FUSE';
   return `1 ${token} = ${rate.toFixed(4)} ${underlying}`;
 };

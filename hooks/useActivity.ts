@@ -275,14 +275,19 @@ export function useActivity() {
       }
 
       const vault = getVaultKey(activity.symbol);
+      // soBTC has no subgraph. Its requests on either queue (Base cbBTC, Ethereum WBTC) are read
+      // on-chain above; anything else stays processing rather than being looked up in the USD
+      // vault's withdrawals, where it never appears.
       const vaultWithdraws =
-        vault === 'EUR'
-          ? eurWithdraws
-          : vault === 'ETH'
-            ? ethWithdraws
-            : vault === 'FUSE'
-              ? fuseWithdraws
-              : withdraws;
+        vault === 'BTC'
+          ? undefined
+          : vault === 'EUR'
+            ? eurWithdraws
+            : vault === 'ETH'
+              ? ethWithdraws
+              : vault === 'FUSE'
+                ? fuseWithdraws
+                : withdraws;
 
       // Subgraph data not yet available — show PROCESSING (on-chain tx succeeded,
       // waiting for solver fulfillment) instead of PENDING which implies the

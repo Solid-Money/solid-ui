@@ -86,6 +86,26 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
     },
     NOTHING_TO_MANAGE,
   ],
+  [VaultType.BTC]: [
+    {
+      key: 'exposure',
+      icon: TrendingUp,
+      title: 'Earns in BTC',
+      body: 'soBTC tracks bitcoin, so you keep your exposure and earn more BTC on top of it.',
+    },
+    {
+      key: 'either',
+      icon: RefreshCw,
+      title: 'WBTC or cbBTC',
+      body: 'Deposit WBTC on Ethereum or cbBTC on Base. Both count 1:1 and earn the same rate.',
+    },
+    {
+      key: 'withdraw',
+      icon: ArrowUp,
+      title: 'Choose how to withdraw',
+      body: 'Take cbBTC on Base or WBTC on Ethereum, up to what each side holds at the time.',
+    },
+  ],
 };
 
 /**

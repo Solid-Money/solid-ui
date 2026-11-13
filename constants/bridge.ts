@@ -262,6 +262,33 @@ export const SOETH_BASE_DEPOSIT_TOKENS: Record<string, BridgeToken> = {
 };
 
 /**
+ * What soBTC takes, by chain: WBTC on Ethereum, cbBTC on Base. Offered to the BTC vault alone,
+ * like SOETH_BASE_DEPOSIT_TOKENS, so neither appears in bridging or card funding.
+ */
+export const SOBTC_DEPOSIT_TOKENS: Record<number, Record<string, BridgeToken>> = {
+  [mainnet.id]: {
+    WBTC: {
+      name: 'WBTC',
+      fullName: 'Wrapped BTC',
+      address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      decimals: 8,
+      icon: require('@/assets/images/wbtc.png'),
+      isPermit: false,
+    },
+  },
+  [base.id]: {
+    cbBTC: {
+      name: 'cbBTC',
+      fullName: 'Coinbase Wrapped BTC',
+      address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+      decimals: 8,
+      icon: require('@/assets/images/cbbtc.png'),
+      isPermit: false,
+    },
+  },
+};
+
+/**
  * Circle's EURC on Ethereum, as rhino.fi lists it
  * (`/sda/deposit-addresses/ETHEREUM/BASE/supported-tokens`) and Circle
  * publishes it. Only for the screens that take it through rhino.fi (the wallet

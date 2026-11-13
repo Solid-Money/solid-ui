@@ -100,6 +100,9 @@ export const EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT ?? '5000';
 export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT ?? '0.01';
+/** Minimum WBTC or cbBTC into soBTC: about $50 at $100k a BTC. */
+export const EXPO_PUBLIC_MINIMUM_BTC_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_BTC_DEPOSIT_AMOUNT ?? '0.0005';
 /**
  * Minimum USDC for a card funding the backend carries out: from the Solid
  * wallet, or from a connected wallet to the card's deposit address. Matches the

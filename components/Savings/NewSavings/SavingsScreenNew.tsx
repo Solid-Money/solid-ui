@@ -27,6 +27,7 @@ const VAULT_KEY_BY_TYPE: Record<VaultType, VaultKey> = {
   [VaultType.FUSE]: 'FUSE',
   [VaultType.ETH]: 'ETH',
   [VaultType.EUR]: 'EUR',
+  [VaultType.BTC]: 'BTC',
 };
 
 /**
@@ -143,6 +144,7 @@ export default function SavingsScreenNew() {
         isFunded={isFunded}
         balanceUsd={balanceUsd}
         apy={isAPYsLoading || !maxAPY ? undefined : maxAPY}
+        isApyLoading={isAPYsLoading}
         interestUsd={interest.interest}
         isInterestLoading={interest.isLoading}
         past30Usd={past30Usd}
@@ -163,11 +165,11 @@ export default function SavingsScreenNew() {
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
-        // Only soUSD withdraws through the Base queue these are read from.
+        // Only soUSD, soETH and soBTC withdraw through the Base queues these are read from.
         pendingWithdrawals={
-          vaultType === VaultType.USDC || vaultType === VaultType.ETH
+          vaultType === VaultType.USDC || vaultType === VaultType.ETH || vaultType === VaultType.BTC
             ? portfolio.pendingWithdrawals.filter(
-                item => item.vault === (vaultType === VaultType.ETH ? 'ETH' : 'USD'),
+                item => item.vault === VAULT_KEY_BY_TYPE[vaultType],
               )
             : undefined
         }

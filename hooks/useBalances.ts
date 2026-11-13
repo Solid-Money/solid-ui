@@ -13,6 +13,7 @@ import {
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
+import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import {
   isSoETHBase,
@@ -25,6 +26,7 @@ import {
 import { publicClient } from '@/lib/wagmi';
 import { selectIsRealtimeLive, useRealtimeStore } from '@/store/useRealtimeStore';
 
+import { fetchBtcPriceUsd } from './useBtcPriceUsd';
 import { makeNativePriceFetcher } from './useNativePriceUsd';
 import useUser from './useUser';
 
@@ -152,6 +154,19 @@ const parsePrice = (v: unknown): number | undefined => {
 };
 
 /**
+ * soBTC on Base or Ethereum. Its swaptokens rows carry the `bitcoin` price id, so like soETH it
+ * must be priced rate × BTC, never as a bare BTC.
+ */
+const isSoBTCToken = (contractAddress: string | undefined): boolean => {
+  if (!isSoBtcConfigured || !contractAddress) return false;
+  const address = contractAddress.toLowerCase();
+  return (
+    address === SOBTC_ADDRESSES.base.vault.toLowerCase() ||
+    address === SOBTC_ADDRESSES.ethereum.vault.toLowerCase()
+  );
+};
+
+/**
  * A vault share is worth its exchange rate in the underlying asset, never one
  * for one: soFUSE and soETH are listed under the underlying's own price id
  * (`fuse-network-token` / `weth`), so letting them take a price from the generic
@@ -165,7 +180,10 @@ const parsePrice = (v: unknown): number | undefined => {
  * one — a dollar price here would carry it into every USD sum built on quoteRate.
  */
 const isUnderlyingPricedShare = (contractAddress: string): boolean =>
-  isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress) || isSoEURCToken(contractAddress);
+  isSoFUSEToken(contractAddress) ||
+  isSoETHToken(contractAddress) ||
+  isSoEURCToken(contractAddress) ||
+  isSoBTCToken(contractAddress);
 
 /**
  * soEURC's `quoteRate`, which is a USD quote everywhere it is read: always 0.
@@ -180,11 +198,12 @@ const soEURCQuoteRate = 0;
 
 /**
  * Whether a Base token is kept although the curated token list does not name it.
- * soEURC and Base soETH are kept in every build, so whoever holds them can find,
+ * soEURC, Base soETH and Base soBTC are kept in every build, so whoever holds them can find,
  * spend and withdraw the position before the backend adds the share to its list.
  */
 const isKeptUnlisted = (chainId: number, address: string) =>
-  chainId === BASE_CHAIN_ID && (isSoEURCToken(address) || isSoETHBase(address));
+  chainId === BASE_CHAIN_ID &&
+  (isSoEURCToken(address) || isSoETHBase(address) || isSoBTCToken(address));
 
 /**
  * How long a chain's token list or a token's price may stand in for a read that failed.
@@ -234,6 +253,8 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     polygonPrice,
     optimismPrice,
     tokenList,
+    soBTCRate,
+    btcPrice,
   ] = await Promise.allSettled([
     // Token balances via the data-source dispatcher (Alchemy primary,
     // Blockscout fallback). Fuse (122) skips Alchemy entirely. BSC (56)
@@ -304,6 +325,18 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     fetchTokenList({
       isActive: true,
     }),
+    // One soBTC rate for both chains, from the Base accountant: the backend writes the same rate
+    // to the Ethereum one.
+    isSoBtcConfigured
+      ? readContract(publicClient(base.id), {
+          address: SOBTC_ADDRESSES.base.accountant,
+          abi: ACCOUNTANT_ABI,
+          functionName: 'getRate',
+        })
+      : Promise.reject(new Error('soBTC is not configured in this build')),
+    isSoBtcConfigured
+      ? fetchBtcPriceUsd()
+      : Promise.reject(new Error('soBTC is not configured in this build')),
   ]);
 
   let ethereumTokens: TokenBalance[] = [];
@@ -317,6 +350,7 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   let soUSDBaseRateNum = 0;
   let soFUSEQuoteRateUSD = 0;
   let soETHQuoteRateUSD = 0;
+  let soBTCQuoteRateUSD = 0;
 
   const now = Date.now();
   // Carried values keep the time of the read they came from, never this poll's, so a run of
@@ -386,6 +420,15 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     console.warn('No ETH price — soETH left unpriced rather than valued as bare ETH');
   }
 
+  // Same for soBTC: soBTC→BTC (8 decimals) × BTC price.
+  const btcPriceNum =
+    btcPrice.status === PromiseStatus.FULFILLED ? parsePrice(btcPrice.value) : undefined;
+  if (soBTCRate.status === PromiseStatus.FULFILLED && btcPriceNum) {
+    soBTCQuoteRateUSD = Number(formatUnits(soBTCRate.value, SOBTC_DECIMALS)) * btcPriceNum;
+  } else if (isSoBtcConfigured) {
+    console.warn('soBTC left unpriced rather than valued as bare BTC');
+  }
+
   const getAddress = (item: BlockscoutTokenBalance) => {
     return item.token.address || item.token.address_hash;
   };
@@ -423,11 +466,13 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
         ? soFUSEQuoteRateUSD
         : isSoETH
           ? soETHQuoteRateUSD
-          : isSoEURC
-            ? soEURCQuoteRate
-            : item.token.exchange_rate
-              ? parseFloat(item.token.exchange_rate)
-              : 0;
+          : isSoBTCToken(address)
+            ? soBTCQuoteRateUSD
+            : isSoEURC
+              ? soEURCQuoteRate
+              : item.token.exchange_rate
+                ? parseFloat(item.token.exchange_rate)
+                : 0;
     return {
       contractTickerSymbol: String(
         symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,

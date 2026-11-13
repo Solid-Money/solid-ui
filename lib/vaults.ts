@@ -5,6 +5,7 @@ import {
   BRIDGE_TOKENS,
   type BridgeToken,
   EURC_TOKENS,
+  SOBTC_DEPOSIT_TOKENS,
   SOETH_BASE_DEPOSIT_TOKENS,
 } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
@@ -133,6 +134,10 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
   if (vault?.type === VaultType.ETH && chainId === base.id && isSoEthBaseConfigured) {
     tokens.push(...Object.keys(SOETH_BASE_DEPOSIT_TOKENS));
   }
+  // WBTC on Ethereum and cbBTC on Base are offered to soBTC alone, from its own table.
+  if (vault?.type === VaultType.BTC) {
+    tokens.push(...Object.keys(SOBTC_DEPOSIT_TOKENS[chainId] ?? {}));
+  }
 
   return tokens.filter(symbol => config.supportedTokens.includes(symbol));
 };
@@ -145,7 +150,8 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
 export const getVaultDepositToken = (chainId: number, symbol: string): BridgeToken | undefined =>
   BRIDGE_TOKENS[chainId]?.tokens?.[symbol] ??
   (symbol === EURC_SYMBOL ? EURC_TOKENS[chainId] : undefined) ??
-  (chainId === base.id ? SOETH_BASE_DEPOSIT_TOKENS[symbol] : undefined);
+  (chainId === base.id ? SOETH_BASE_DEPOSIT_TOKENS[symbol] : undefined) ??
+  SOBTC_DEPOSIT_TOKENS[chainId]?.[symbol];
 
 /** The wallet-token fields `hasDepositableWalletBalance` reads. */
 type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 'balance'>;

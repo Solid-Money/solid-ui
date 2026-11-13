@@ -154,6 +154,8 @@ export const userTransactionsQueryOptions = (
   queryKey: ['user-transactions', safeAddress?.toLowerCase(), vault],
   queryFn: async () => {
     if (!safeAddress) return undefined;
+    // soBTC has no subgraph: an empty history, never the USD vault's.
+    if (vault === VaultType.BTC) return EMPTY_USER_TRANSACTIONS;
     const client =
       vault === VaultType.ETH
         ? getInfoClientEth()

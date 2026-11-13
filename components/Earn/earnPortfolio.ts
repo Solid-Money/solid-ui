@@ -28,6 +28,8 @@ export const FALLBACK_VAULT_APY: VaultApys = {
   [VaultType.ETH]: 2,
   [VaultType.FUSE]: 14,
   [VaultType.EUR]: 0,
+  // No indicative rate: soBTC shows "— APY" until analytics reports one.
+  [VaultType.BTC]: undefined,
 };
 
 /** The reported APY when there is one, otherwise the vault's indicative rate (if it has one). */
