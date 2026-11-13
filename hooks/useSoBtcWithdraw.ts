@@ -17,7 +17,11 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { WITHDRAW_SECONDS_TO_DEADLINE } from '@/constants/withdraw';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { track } from '@/lib/analytics';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import {
+  executeTransactions,
+  USER_CANCELLED_TRANSACTION,
+  UserOperationRevertedError,
+} from '@/lib/execute';
 import {
   buildSoBtcBridgeToEthereumCall,
   buildSoBtcWithdrawRequestCall,
@@ -213,9 +217,11 @@ export const useBridgeSoBtcToEthereum = () => {
 
   const bridgeSoBtc = useCallback(
     async (amount: string): Promise<TransactionReceipt> => {
-      // Set once the bridge transaction has landed on Base. Before that, a failure means the
-      // shares never left Base, so the resume session (set when the user op is sent) must go.
+      // Set once the bridge transaction has landed on Base (the resume session is set earlier,
+      // when the UserOperation is sent; see the catch for when it's cleared).
       let bridged = false;
+      // Set once the UserOperation hash exists: from then on the bridge may land even if a wait fails.
+      let sent = false;
       try {
         if (!user?.safeAddress) throw new Error('User not found');
         setStatus(Status.PENDING);
@@ -266,6 +272,7 @@ export const useBridgeSoBtcToEthereum = () => {
               'Moving soBTC to Ethereum failed',
               base,
               hash => {
+                sent = true;
                 useWithdrawSessionStore.getState().setSession({
                   address: safe,
                   vault: 'BTC',
@@ -315,7 +322,12 @@ export const useBridgeSoBtcToEthereum = () => {
         return transaction;
       } catch (err) {
         console.error(err);
-        if (!bridged) useWithdrawSessionStore.getState().clearSession('BTC');
+        // Clear the resume session only when the bridge certainly didn't happen: never sent, or
+        // mined and reverted. A receipt wait that failed after sending is an unknown outcome; the
+        // shares may still be leaving Base, so the session must survive to resume step 2.
+        if (!bridged && (!sent || err instanceof UserOperationRevertedError)) {
+          useWithdrawSessionStore.getState().clearSession('BTC');
+        }
         track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
           amount,
           error: err instanceof Error ? err.message : 'Unknown error',

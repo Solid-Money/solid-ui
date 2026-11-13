@@ -42,6 +42,9 @@ type DepositResult = {
 };
 
 /** Why a Base deposit from an external wallet is refused, shown as the form's error. */
+
+/** How long to keep re-reading a deposit receipt the first read missed. */
+const RECEIPT_RECHECK_TIMEOUT_MS = 10 * 60 * 1000;
 export const SOBTC_EOA_BASE_UNSUPPORTED =
   'Deposit cbBTC on Base from your Solid wallet, or WBTC on Ethereum from this wallet';
 
@@ -205,6 +208,39 @@ const useDepositFromEOABtc = (
       if (receipt && receipt.status !== 'success') throw new Error('Deposit failed');
 
       setHash(txHash);
+      const id = trackingId;
+      if (!receipt) {
+        // Sent, but not yet known to have succeeded: say so, and settle the activity once the
+        // receipt is read. A later revert fails the activity instead of leaving it processing.
+        setDepositStatus({
+          status: Status.SUCCESS,
+          message: 'Deposit sent, confirming on Ethereum',
+        });
+        waitForTransactionReceipt(publicClient(mainnet.id), {
+          hash: txHash,
+          timeout: RECEIPT_RECHECK_TIMEOUT_MS,
+        })
+          .then(late => {
+            if (late.status !== 'success') {
+              updateActivity(id, {
+                status: TransactionStatus.FAILED,
+                metadata: { error: 'Deposit reverted', failedAt: new Date().toISOString() },
+              });
+              return;
+            }
+            updateUser({ ...user, isDeposited: true });
+            trackDepositCompleted(ctx, { transactionHash: txHash });
+            return waitForLayerzeroTransaction(txHash).then(() =>
+              updateActivity(id, {
+                status: TransactionStatus.SUCCESS,
+                metadata: { layerzeroDeliveredAt: new Date().toISOString() },
+              }),
+            );
+          })
+          .catch(err => console.warn('soBTC deposit: outcome still unknown', err));
+        return trackingId;
+      }
+
       updateUser({ ...user, isDeposited: true });
       trackDepositCompleted(ctx, { transactionHash: txHash });
       // The shares are on their way to Base: processing until LayerZero delivers them.
@@ -214,7 +250,6 @@ const useDepositFromEOABtc = (
         url: `https://layerzeroscan.com/tx/${txHash}`,
       });
       setDepositStatus({ status: Status.SUCCESS, message: 'soBTC arriving on Base' });
-      const id = trackingId;
       waitForLayerzeroTransaction(txHash)
         .then(() =>
           updateActivity(id, {
