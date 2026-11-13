@@ -148,7 +148,7 @@ export const RHINO_ASSETS: RhinoDepositAssetsResponse = {
       tokens: [dollar('USDC'), dollar('USDT'), ether, bitcoin],
     },
     {
-      // Listed by the backend, held back from "More networks" by the app.
+      // A chain the app has no row of its own for: listed under "More networks".
       chain: 'ARC',
       chainId: 5042,
       name: 'Arc',

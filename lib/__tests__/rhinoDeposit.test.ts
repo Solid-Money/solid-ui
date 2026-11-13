@@ -858,11 +858,11 @@ describe('isOwnPipelineToken', () => {
 
 /** "More networks": rhino.fi's chains the app has no row for. */
 describe('getRhinoExtraChains', () => {
-  // Never an app chain, which shows once as its own row, nor Arc, held back.
-  it('lists only the chains the app has no row for, Arc aside', () => {
+  // Never an app chain, which shows once as its own row.
+  it('lists only the chains the app has no row for', () => {
     expect(
       chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'USDC' })),
-    ).toEqual(['SOLANA', 'AVALANCHE']);
+    ).toEqual(['SOLANA', 'AVALANCHE', 'ARC']);
     expect(
       chainsOf(
         getRhinoExtraChains(RHINO_ASSETS, {
@@ -877,7 +877,7 @@ describe('getRhinoExtraChains', () => {
   it('lists only what rhino.fi routes to the screen’s destination', () => {
     expect(
       chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'WALLET', symbol: 'EURC' })),
-    ).toEqual(['SOLANA']);
+    ).toEqual(['SOLANA', 'ARC']);
     expect(
       chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'EURC' })),
     ).toEqual([]);
