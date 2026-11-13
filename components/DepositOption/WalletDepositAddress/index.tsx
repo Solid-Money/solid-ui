@@ -4,7 +4,8 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight } from 'lucide-react-native';
+import { base } from 'viem/chains';
 
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
@@ -23,6 +24,8 @@ import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useRhinoDepositAddress } from '@/hooks/useRhinoDepositAddress';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
+import { useSafeTokenDeposit } from '@/hooks/useSafeTokenDeposit';
+import { useSyncActivities } from '@/hooks/useSyncActivities';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
 import { track } from '@/lib/analytics';
 import { openHelpLink } from '@/lib/help/links';
@@ -33,6 +36,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import {
   formatWalletDepositMinimum,
   getDefaultWalletDepositSelection,
+  getWalletDepositContract,
   getWalletDepositExtraRow,
   getWalletDepositNetworks,
   getWalletDepositRow,
@@ -59,6 +63,8 @@ const CARD_PADDING = 20;
  */
 const QR_QUIET_ZONE = 10;
 const INLINE_ICON_STYLE = { width: 16, height: 16, borderRadius: 8 };
+/** Only when a deposit to the Safe lands: never on opening the screen, nor on resume. */
+const SYNC_ON_DEMAND = { syncOnAppActive: false, syncOnMount: false };
 
 /** In the QR's place when its address cannot be had: why, and a retry. */
 const AddressRetry = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
@@ -91,8 +97,11 @@ const AddressRetry = ({ message, onRetry }: { message: string; onRetry: () => vo
  *
  * Until rhino.fi's routes are in no row but Fuse's can be told apart, so the QR
  * waits; if they cannot be had, it offers a retry. Sending a currency the chosen
- * chain does not list, or less than its minimum, is what the copy under the QR
- * is there to prevent.
+ * chain does not list, or less than a minted address's minimum, is what the copy
+ * under the QR is there to prevent.
+ *
+ * Under it, the deposit's progress: rhino.fi's for its address, the pipeline's
+ * for a minted one, and the Safe's own balance on Base, which nothing else watches.
  */
 const WalletDepositAddress = () => {
   // Chain and currency are both chosen on steps of their own, so the selection
@@ -211,9 +220,9 @@ const WalletDepositAddress = () => {
     router.push(path.CARD_MAIN_CURRENCY);
   }, [router, setDepositModal]);
 
-  // Only a minted address is watched, so only then is there anything to scan for.
-  // The Safe is not registered with the pipeline; saying "scanning" over it would
-  // be describing a poll that can never come back positive.
+  // A minted address is watched by the pipeline, which reports the transfer. The
+  // Safe is not registered with it, so the pipeline never reports one there; the
+  // Safe on Base is watched by its balance instead (below).
   const isScanning = !!address && isMinted && row.kind === 'own';
   // The pipeline has seen the transfer: hand the user to its progress screen, as the
   // card deposit sheet does. Polling stops at detection, so staying here would leave
@@ -240,6 +249,30 @@ const WalletDepositAddress = () => {
     enabled: isScanning || watchesRhinoPayout,
     destinationType: watchesRhinoPayout ? 'WALLET' : sessionDestination,
     onDetected: openDetectedDeposit,
+  });
+
+  // The Safe on Base, which nothing on our side watches: its balance of the token
+  // is read here from when the address is shown, and a rise is the deposit. ETH
+  // on Base is not the Safe but a minted address (above), and a chain's own coin
+  // has no contract to read.
+  const safeToken =
+    row.kind === 'own' && !isMinted && chainId === base.id
+      ? getWalletDepositContract(chainId, symbol)
+      : undefined;
+  const { sync: syncActivity } = useSyncActivities(SYNC_ON_DEMAND);
+  // A transfer to the Safe is recorded, and its Activity row and deposit push
+  // sent, only once the activity sync reads it from the chain: so it runs as soon
+  // as the deposit lands, once per watch. Forced past the app's own 30 s spacing;
+  // the backend allows two a minute.
+  const syncSafeDeposit = useCallback(() => {
+    syncActivity(undefined, true).catch(() => undefined);
+  }, [syncActivity]);
+  const { isWatching: isWatchingSafe, isReceived: isSafeDepositReceived } = useSafeTokenDeposit({
+    enabled: !!address && !!safeToken,
+    chainId,
+    token: safeToken,
+    safe: address,
+    onReceived: syncSafeDeposit,
   });
 
   useEffect(() => {
@@ -384,20 +417,31 @@ const WalletDepositAddress = () => {
             maximumUsd={rhinoAddress?.maximumUsd ?? rhino.route.maximumUsd}
           />
         ) : row.kind === 'own' ? (
+          // Only a minted address has a floor: the pipeline pays gas to move what
+          // lands there, and leaves anything under it. The Safe keeps whatever is
+          // sent to it, so there it is only the currency and the chain.
           <>
             <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-              <Text className="text-base font-medium text-white">Send at least</Text>
+              <Text className="text-base font-medium text-white">
+                {isMinted ? 'Send at least' : 'Send'}
+              </Text>
               <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
               {/* "10 USDC", "0.005 ETH" and "0.00012 WBTC" all read right, rounded up. */}
-              <Text className="text-base font-medium text-white">{`${formatWalletDepositMinimum(minimum)} ${symbol} on the`}</Text>
+              <Text className="text-base font-medium text-white">
+                {isMinted
+                  ? `${formatWalletDepositMinimum(minimum)} ${symbol} on the`
+                  : `${symbol} on the`}
+              </Text>
               {network?.icon ? (
                 <Image source={network.icon} style={INLINE_ICON_STYLE} contentFit="cover" />
               ) : null}
               <Text className="text-base font-medium text-white">{`${network?.name ?? ''} chain to this address`}</Text>
             </View>
-            <Text className="text-center text-sm text-white/50">
-              Deposits below the minimum will not be credited or refunded
-            </Text>
+            {isMinted ? (
+              <Text className="text-center text-sm text-white/50">
+                Deposits below the minimum will not be credited or refunded
+              </Text>
+            ) : null}
           </>
         ) : null}
         {showsEuroSpendingNote ? (
@@ -448,12 +492,20 @@ const WalletDepositAddress = () => {
         />
       ) : null}
 
-      {isScanning ? (
+      {isScanning || isWatchingSafe ? (
         <View className="flex-row items-center gap-x-2 self-center rounded-[18px] bg-[#333333] px-4 py-2">
           <Text className="text-sm leading-4 text-white">
-            {isDetected ? 'Deposit detected' : 'Scanning for deposits'}
+            {isSafeDepositReceived
+              ? 'Deposit received'
+              : isScanning && isDetected
+                ? 'Deposit detected'
+                : 'Scanning for deposits'}
           </Text>
-          <DepositScanningIndicator />
+          {isSafeDepositReceived ? (
+            <Check size={16} color="#94F27F" />
+          ) : (
+            <DepositScanningIndicator />
+          )}
         </View>
       ) : null}
 

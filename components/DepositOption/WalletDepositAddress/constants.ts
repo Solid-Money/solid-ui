@@ -4,6 +4,7 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
 import {
+  NATIVE_COIN,
   WALLET_DEPOSIT_CHAIN_IDS,
   WALLET_DEPOSIT_TOKEN_GROUPS,
   WALLET_DEPOSIT_TOKENS,
@@ -470,6 +471,15 @@ const toWalletDepositToken = ({
 /** The currency's icon, wherever it is drawn: the row, the pill, the minimum line. */
 export const getWalletDepositTokenIcon = (symbol: string): ImageSourcePropType =>
   getAsset(findToken(symbol)?.icon ?? 'images/usdc-4x.png');
+
+/**
+ * The currency's contract on a chain, for reading a balance of it; undefined for
+ * a chain's own coin (ETH, FUSE), which has none, and where it is not listed.
+ */
+export const getWalletDepositContract = (chainId: number, symbol: string): string | undefined => {
+  const contract = findToken(symbol)?.contracts[chainId];
+  return contract && contract !== NATIVE_COIN ? contract : undefined;
+};
 
 /** The currencies that chain accepts for this person, in "Select token" order. */
 export const getWalletDepositTokens = (
