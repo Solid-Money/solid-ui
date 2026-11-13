@@ -7,16 +7,24 @@ import { getBridgeChain } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
 
 /**
- * Logos for the non-EVM rhino.fi chains the repo already has artwork for. An
- * EVM chain the app lists itself (Ethereum, Arbitrum, …) is drawn with that
- * row's own logo, found by `chainId`. Every other chain (Tron, Avalanche, Celo,
- * Gnosis, Mantle, Plasma, Kaia, Tempo, Arc) is drawn as its initial until its
- * logo is added here.
+ * Logos for the rhino.fi chains the app does not list itself. An EVM chain the
+ * app lists (Ethereum, Arbitrum, …) is drawn with that row's own logo, found by
+ * `chainId`. A chain rhino.fi adds later, with no logo here or in the app's
+ * list, is drawn as its initial until its logo is added here.
  */
 const RHINO_CHAIN_ICONS: Record<string, ImageSourcePropType> = {
   OPTIMISM: getAsset('images/op.png'),
   SOLANA: getAsset('images/sol.png'),
   BITCOIN: getAsset('images/btc.png'),
+  TRON: getAsset('images/tron.png'),
+  AVALANCHE: getAsset('images/avalanche.png'),
+  CELO: getAsset('images/celo.png'),
+  GNOSIS: getAsset('images/gnosis.png'),
+  MANTLE: getAsset('images/mantle.png'),
+  PLASMA: getAsset('images/plasma.png'),
+  KAIA: getAsset('images/kaia.png'),
+  TEMPO: getAsset('images/tempo.png'),
+  ARC: getAsset('images/arc.png'),
 };
 
 export const getRhinoChainIcon = (

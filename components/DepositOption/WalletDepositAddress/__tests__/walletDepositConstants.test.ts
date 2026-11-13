@@ -762,11 +762,13 @@ describe('EURC', () => {
     ).toBe('0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c');
   });
 
-  // Not Arc, pending a product decision, nor Optimism, though rhino.fi lists both.
-  // Nor under "More networks", which offers Bitcoin alone.
-  it('is not offered on Optimism, Arc or Solana', () => {
+  // Not Optimism, though rhino.fi lists it; Arc under "More networks", like Solana.
+  it('is not offered on Optimism, and is on Arc', () => {
     expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).not.toContain(optimism.id);
-    expect(getWalletDepositExtraNetworks('EURC', WIREX)).toEqual([]);
+    expect(getWalletDepositExtraNetworks('EURC', WIREX).map(chain => chain.chain)).toEqual([
+      'SOLANA',
+      'ARC',
+    ]);
   });
 
   it('is not offered on Ethereum without rhino.fi', () => {
@@ -1036,15 +1038,37 @@ describe('getWalletDepositNetworksNotice', () => {
  * with only what rhino.fi takes into the wallet there.
  */
 describe('getWalletDepositExtraNetworks', () => {
-  // Product decision, 2026-11-10: "More networks" offers Bitcoin alone. The
-  // backend still lists Tron, Solana, Avalanche and Arc, with wallet routes.
-  it('offers none of the other chains the app has no row for', () => {
-    ['USDC', 'USDT', 'ETH', 'EURC'].forEach(symbol =>
-      expect(getWalletDepositExtraNetworks(symbol, ALL)).toEqual([]),
-    );
+  const chainsOf = (chains: { chain: string }[]) => chains.map(chain => chain.chain);
+
+  it('lists the chains the app has no row for, for the currency chosen', () => {
+    expect(chainsOf(getWalletDepositExtraNetworks('USDC', ALL))).toEqual([
+      'SOLANA',
+      'AVALANCHE',
+      'ARC',
+    ]);
+    expect(chainsOf(getWalletDepositExtraNetworks('ETH', ALL))).toEqual(['AVALANCHE']);
+    expect(chainsOf(getWalletDepositExtraNetworks('WBTC', ALL))).toEqual(['AVALANCHE']);
   });
 
+  // Never an app chain (Ethereum, Optimism, …).
+  it('never repeats a row of the list', () => {
+    const chains = chainsOf(getWalletDepositExtraNetworks('USDC', ALL));
+    ['ETHEREUM', 'BASE', 'OPTIMISM', 'FUSE'].forEach(chain => expect(chains).not.toContain(chain));
+  });
+
+  // Tron, Solana and the rest pay USDT to the Safe on Base as USDC.
+  it('lists the chains rhino.fi takes USDT into the wallet from', () => {
+    expect(chainsOf(getWalletDepositExtraNetworks('USDT', ALL))).toEqual([
+      'TRON',
+      'SOLANA',
+      'AVALANCHE',
+    ]);
+  });
+
+  // EURC is everyone's here, Wirex cardholder or not.
   it('has none for a currency off the list, nor before the routes are in', () => {
+    expect(chainsOf(getWalletDepositExtraNetworks('EURC', ALL))).toEqual(['SOLANA', 'ARC']);
+    expect(chainsOf(getWalletDepositExtraNetworks('EURC', WIREX))).toEqual(['SOLANA', 'ARC']);
     expect(getWalletDepositExtraNetworks('DOGE', ALL)).toEqual([]);
     expect(getWalletDepositExtraNetworks('USDC', { rhino: { status: 'loading' } })).toEqual([]);
     expect(getWalletDepositExtraNetworks('USDC', { rhino: { status: 'unavailable' } })).toEqual([]);
@@ -1052,6 +1076,26 @@ describe('getWalletDepositExtraNetworks', () => {
 });
 
 describe('getWalletDepositExtraRow', () => {
+  it('is the rhino.fi address for the chain, with no app chain of its own for Solana', () => {
+    expect(getWalletDepositExtraRow('SOLANA', 'USDC', ALL)).toEqual({
+      kind: 'rhino',
+      selection: { chain: 'SOLANA', tokenSymbol: 'USDC', destinationType: 'WALLET' },
+    });
+    expect(getWalletDepositExtraRow('AVALANCHE', 'ETH', ALL)).toEqual({
+      kind: 'rhino',
+      selection: {
+        chain: 'AVALANCHE',
+        chainId: 43114,
+        tokenSymbol: 'ETH',
+        destinationType: 'WALLET',
+      },
+    });
+    expect(getWalletDepositExtraRow('ARC', 'USDC', ALL)).toEqual({
+      kind: 'rhino',
+      selection: { chain: 'ARC', chainId: 5042, tokenSymbol: 'USDC', destinationType: 'WALLET' },
+    });
+  });
+
   it('is the rhino.fi address for Bitcoin, for native BTC', () => {
     expect(
       getWalletDepositExtraRow('BITCOIN', 'BTC', {
@@ -1064,20 +1108,17 @@ describe('getWalletDepositExtraRow', () => {
     });
   });
 
-  // A screen left on one of them (an address from before) moves off it.
-  it('has none on a chain no longer offered', () => {
-    expect(getWalletDepositExtraRow('SOLANA', 'USDC', ALL)).toEqual({ kind: 'none' });
-    expect(getWalletDepositExtraRow('AVALANCHE', 'ETH', ALL)).toEqual({ kind: 'none' });
-    expect(getWalletDepositExtraRow('TRON', 'USDT', ALL)).toEqual({ kind: 'none' });
-  });
-
-  it('waits for the routes', () => {
-    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', { rhino: { status: 'loading' } })).toEqual({
+  it('waits for the routes, and has none where the chain does not take the currency', () => {
+    expect(getWalletDepositExtraRow('SOLANA', 'USDC', { rhino: { status: 'loading' } })).toEqual({
       kind: 'loading',
     });
     expect(
-      getWalletDepositExtraRow('BITCOIN', 'BTC', { rhino: { status: 'unavailable' } }),
+      getWalletDepositExtraRow('SOLANA', 'USDC', { rhino: { status: 'unavailable' } }),
     ).toEqual({ kind: 'unavailable' });
+    expect(getWalletDepositExtraRow('SOLANA', 'ETH', ALL)).toEqual({ kind: 'none' });
+    // Tron takes USDT alone.
+    expect(getWalletDepositExtraRow('TRON', 'USDC', ALL)).toEqual({ kind: 'none' });
+    expect(getWalletDepositExtraRow('ARC', 'ETH', ALL)).toEqual({ kind: 'none' });
   });
 });
 
@@ -1129,8 +1170,8 @@ describe('native BTC', () => {
     // A currency with rows of its own goes back to them, as before.
     expect(resolveWalletDepositExtraChain('USDC', undefined, NEW_TOKENS)).toBeUndefined();
     expect(resolveWalletDepositExtraChain('cbBTC', 'BITCOIN', NEW_TOKENS)).toBeUndefined();
-    // Tron is no longer offered, so USDT goes back to its own rows too.
-    expect(resolveWalletDepositExtraChain('USDT', 'TRON', NEW_TOKENS)).toBeUndefined();
+    // Tron takes USDT, so a screen on Tron stays there.
+    expect(resolveWalletDepositExtraChain('USDT', 'TRON', NEW_TOKENS)).toBe('TRON');
     // Nowhere to open while Bitcoin is off.
     expect(resolveWalletDepositExtraChain('BTC', undefined, ALL)).toBeUndefined();
   });

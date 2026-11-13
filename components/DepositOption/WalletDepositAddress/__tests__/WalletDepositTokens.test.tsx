@@ -238,9 +238,8 @@ describe('WalletDepositTokens', () => {
     });
   });
 
-  // Avalanche is no longer offered under "More networks": a screen still on it
-  // (from before) leaves it for whichever token is picked next.
-  it('leaves a "More networks" chain that is no longer offered when the token changes', () => {
+  // Avalanche takes ETH and WBTC into the wallet; it takes no WETH.
+  it('keeps a "More networks" chain that takes the new token, and leaves one that does not', () => {
     mockDeposit.walletDeposit = {
       chainId: base.id,
       symbol: 'ETH',
@@ -248,13 +247,19 @@ describe('WalletDepositTokens', () => {
       isChangingToken: true,
     } as any;
     const root = render();
-    act(() =>
-      root.root
-        .find((node: any) => node.props.accessibilityLabel === 'USDC, USD Coin')
-        .props.onPress(),
-    );
+    const press = (label: string) =>
+      act(() =>
+        root.root.find((node: any) => node.props.accessibilityLabel === label).props.onPress(),
+      );
+
+    press('WBTC, Wrapped Bitcoin');
     expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
-      expect.objectContaining({ symbol: 'USDC', rhinoChain: undefined }),
+      expect.objectContaining({ symbol: 'WBTC', rhinoChain: 'AVALANCHE' }),
+    );
+
+    press('WETH, Wrapped Ether');
+    expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ symbol: 'WETH', rhinoChain: undefined }),
     );
   });
 

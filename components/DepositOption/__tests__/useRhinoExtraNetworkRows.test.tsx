@@ -67,11 +67,10 @@ afterEach(async () => {
  * screen has already chosen, as rows for the screen's own network list.
  */
 describe('useRhinoExtraNetworkRows', () => {
-  // Never Ethereum, Base, Optimism or Fuse, which are rows of the app's own;
-  // never Arc, held back.
+  // Never Ethereum, Base, Optimism or Fuse, which are rows of the app's own.
   it('lists only the chains the app has no row for, for the token chosen', async () => {
     await mount({ destinationType: 'RAIN_CARD', symbol: 'USDC' });
-    expect(titles()).toEqual(['Solana', 'Avalanche']);
+    expect(titles()).toEqual(['Solana', 'Avalanche', 'Arc']);
   });
 
   // On savings, USDT into soUSD stays rhino.fi's, Tron and all.
@@ -81,7 +80,7 @@ describe('useRhinoExtraNetworkRows', () => {
 
     await act(async () => root.unmount());
     await mount({ destinationType: 'PROTOCOL', symbol: 'EURC', vault: 'soEURC' });
-    expect(titles()).toEqual(['Solana']);
+    expect(titles()).toEqual(['Solana', 'Arc']);
 
     await act(async () => root.unmount());
     await mount({ destinationType: 'PROTOCOL', symbol: 'ETH', vault: 'soUSD' });
