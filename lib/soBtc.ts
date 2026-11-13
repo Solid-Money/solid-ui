@@ -30,21 +30,22 @@ import { publicClient } from '@/lib/wagmi';
  */
 
 /**
- * Every soBTC contract this build talks to. Zero until the vaults are deployed, which keeps
- * soBTC out of the app entirely (see {@link isSoBtcConfigured}).
+ * Every soBTC contract this build talks to, deployed 2026-11-13 (boring-vault
+ * deployments/addresses/{Mainnet,Base}/soBTC.json). Owned by the Ethereum Safe 0x6B26 and the
+ * Base Safe 0x5Eb1. Zeroing them keeps soBTC out of the app entirely (see {@link isSoBtcConfigured}).
  */
 export const SOBTC_ADDRESSES = {
   ethereum: {
-    vault: zeroAddress as Address,
-    accountant: zeroAddress as Address,
-    teller: zeroAddress as Address,
-    boringQueue: zeroAddress as Address,
+    vault: '0x4518Af8B68DBabc2Bdf9b6922ACA30ea8939979F' as Address,
+    accountant: '0xfb513e4Dc121a455E43017B37c09dcd4827f5A01' as Address,
+    teller: '0x20Ec4b175a463470A6122484113Afd0BC4ca5105' as Address,
+    boringQueue: '0x0800bb6AF4668e14186F5cd6CD357e1aA81A3802' as Address,
   },
   base: {
-    vault: zeroAddress as Address,
-    accountant: zeroAddress as Address,
-    teller: zeroAddress as Address,
-    boringQueue: zeroAddress as Address,
+    vault: '0xb5Fb6a807c1B35419CCC90480287305314D77B52' as Address,
+    accountant: '0x0C5BB76738BD2D095dBAb4a9Fe97D369284F9dD7' as Address,
+    teller: '0xBBd9100Be5712594B5db736e5280A4C0535Ee4Ec' as Address,
+    boringQueue: '0x7d61eac254d9510f10cc40C07BB59a112792E832' as Address,
   },
 } as const;
 

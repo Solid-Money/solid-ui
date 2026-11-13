@@ -27,6 +27,7 @@ describe('calculateEstimatedDailyEarnings', () => {
       [VaultType.ETH]: 7.3,
       [VaultType.FUSE]: 0,
       [VaultType.EUR]: undefined,
+      [VaultType.BTC]: undefined,
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBeCloseTo(0.5, 8);
@@ -43,6 +44,7 @@ describe('calculateEstimatedDailyEarnings', () => {
       [VaultType.ETH]: -5,
       [VaultType.FUSE]: 0,
       [VaultType.EUR]: undefined,
+      [VaultType.BTC]: undefined,
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBe(0);
@@ -56,6 +58,7 @@ describe('calculateEstimatedDailyEarnings', () => {
       [VaultType.ETH]: 0,
       [VaultType.FUSE]: 0,
       [VaultType.EUR]: 10,
+      [VaultType.BTC]: undefined,
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBe(0);
