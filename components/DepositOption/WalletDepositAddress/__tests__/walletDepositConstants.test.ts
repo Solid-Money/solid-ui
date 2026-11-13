@@ -772,11 +772,12 @@ describe('EURC', () => {
     ).toBe('0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c');
   });
 
-  // Not Arc, pending a product decision, nor Optimism, though rhino.fi lists both.
-  it('is not offered on Optimism or Arc', () => {
+  // Not Optimism, though rhino.fi lists it; Arc under "More networks", like Solana.
+  it('is not offered on Optimism, and is on Arc', () => {
     expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).not.toContain(optimism.id);
     expect(getWalletDepositExtraNetworks('EURC', WIREX).map(chain => chain.chain)).toEqual([
       'SOLANA',
+      'ARC',
     ]);
   });
 
@@ -1056,17 +1057,19 @@ describe('getWalletDepositExtraNetworks', () => {
   const chainsOf = (chains: { chain: string }[]) => chains.map(chain => chain.chain);
 
   it('lists the chains the app has no row for, for the currency chosen', () => {
-    expect(chainsOf(getWalletDepositExtraNetworks('USDC', ALL))).toEqual(['SOLANA', 'AVALANCHE']);
+    expect(chainsOf(getWalletDepositExtraNetworks('USDC', ALL))).toEqual([
+      'SOLANA',
+      'AVALANCHE',
+      'ARC',
+    ]);
     expect(chainsOf(getWalletDepositExtraNetworks('ETH', ALL))).toEqual(['AVALANCHE']);
     expect(chainsOf(getWalletDepositExtraNetworks('WBTC', ALL))).toEqual(['AVALANCHE']);
   });
 
-  // Never an app chain (Ethereum, Optimism, …), and never Arc for now.
-  it('never repeats a row of the list, and holds Arc back', () => {
+  // Never an app chain (Ethereum, Optimism, …).
+  it('never repeats a row of the list', () => {
     const chains = chainsOf(getWalletDepositExtraNetworks('USDC', ALL));
-    ['ETHEREUM', 'BASE', 'OPTIMISM', 'FUSE', 'ARC'].forEach(chain =>
-      expect(chains).not.toContain(chain),
-    );
+    ['ETHEREUM', 'BASE', 'OPTIMISM', 'FUSE'].forEach(chain => expect(chains).not.toContain(chain));
   });
 
   // Tron, Solana and the rest pay USDT to the Safe on Base as USDC.
@@ -1080,7 +1083,7 @@ describe('getWalletDepositExtraNetworks', () => {
 
   it('has none for a currency the person is not offered, nor before the routes are in', () => {
     expect(getWalletDepositExtraNetworks('EURC', ALL)).toEqual([]);
-    expect(chainsOf(getWalletDepositExtraNetworks('EURC', WIREX))).toEqual(['SOLANA']);
+    expect(chainsOf(getWalletDepositExtraNetworks('EURC', WIREX))).toEqual(['SOLANA', 'ARC']);
     expect(getWalletDepositExtraNetworks('USDC', { rhino: { status: 'loading' } })).toEqual([]);
     expect(getWalletDepositExtraNetworks('USDC', { rhino: { status: 'unavailable' } })).toEqual([]);
   });
@@ -1101,6 +1104,10 @@ describe('getWalletDepositExtraRow', () => {
         destinationType: 'WALLET',
       },
     });
+    expect(getWalletDepositExtraRow('ARC', 'USDC', ALL)).toEqual({
+      kind: 'rhino',
+      selection: { chain: 'ARC', chainId: 5042, tokenSymbol: 'USDC', destinationType: 'WALLET' },
+    });
   });
 
   it('waits for the routes, and has none where the chain does not take the currency', () => {
@@ -1113,7 +1120,7 @@ describe('getWalletDepositExtraRow', () => {
     expect(getWalletDepositExtraRow('SOLANA', 'ETH', ALL)).toEqual({ kind: 'none' });
     // Tron takes USDT alone.
     expect(getWalletDepositExtraRow('TRON', 'USDC', ALL)).toEqual({ kind: 'none' });
-    expect(getWalletDepositExtraRow('ARC', 'USDC', ALL)).toEqual({ kind: 'none' });
+    expect(getWalletDepositExtraRow('ARC', 'ETH', ALL)).toEqual({ kind: 'none' });
   });
 });
 

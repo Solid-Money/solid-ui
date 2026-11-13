@@ -239,6 +239,7 @@ export const ASSETS = {
   'images/apple_pay.png': { module: require('@/assets/images/apple_pay.png'), hash: 'c12b79b1' },
   'images/arb.png': { module: require('@/assets/images/arb.png'), hash: 'a0f75ab1' },
   'images/arbitrum.png': { module: require('@/assets/images/arbitrum.png'), hash: 'f6ebb536' },
+  'images/arc.png': { module: require('@/assets/images/arc.png'), hash: 'b8443fe5' },
   'images/assets-nav-bar-icon.tsx': {
     module: require('@/assets/images/assets-nav-bar-icon.tsx'),
     hash: '7f80b140',
@@ -247,6 +248,7 @@ export const ASSETS = {
     module: require('@/assets/images/auto-finance.jpg'),
     hash: '9e569f44',
   },
+  'images/avalanche.png': { module: require('@/assets/images/avalanche.png'), hash: '66b55f3e' },
   'images/avantis.png': { module: require('@/assets/images/avantis.png'), hash: '1aad6bc0' },
   'images/backspace.png': { module: require('@/assets/images/backspace.png'), hash: '46dc5885' },
   'images/badge-apple-google-pay.png': {
@@ -446,6 +448,7 @@ export const ASSETS = {
   },
   'images/cards.png': { module: require('@/assets/images/cards.png'), hash: '6c671c63' },
   'images/cbbtc.png': { module: require('@/assets/images/cbbtc.png'), hash: '7524ef4e' },
+  'images/celo.png': { module: require('@/assets/images/celo.png'), hash: '2a6d4d98' },
   'images/checkmark.tsx': { module: require('@/assets/images/checkmark.tsx'), hash: '66caebb4' },
   'images/copy.tsx': { module: require('@/assets/images/copy.tsx'), hash: '25734d53' },
   'images/delete-account.tsx': {
@@ -723,6 +726,7 @@ export const ASSETS = {
     module: require('@/assets/images/globe-green.png'),
     hash: 'ba254b95',
   },
+  'images/gnosis.png': { module: require('@/assets/images/gnosis.png'), hash: '45d981b5' },
   'images/google-pay-circle.tsx': {
     module: require('@/assets/images/google-pay-circle.tsx'),
     hash: 'c87a29c8',
@@ -791,6 +795,7 @@ export const ASSETS = {
     module: require('@/assets/images/ipor-fusion.png'),
     hash: '5605920f',
   },
+  'images/kaia.png': { module: require('@/assets/images/kaia.png'), hash: 'bfdb145e' },
   'images/key-muted.png': { module: require('@/assets/images/key-muted.png'), hash: '041c4fd4' },
   'images/key.png': { module: require('@/assets/images/key.png'), hash: '2a016399' },
   'images/key.tsx': { module: require('@/assets/images/key.tsx'), hash: 'de44f15d' },
@@ -809,6 +814,7 @@ export const ASSETS = {
     hash: 'e5bb391a',
   },
   'images/logout.tsx': { module: require('@/assets/images/logout.tsx'), hash: 'd540e375' },
+  'images/mantle.png': { module: require('@/assets/images/mantle.png'), hash: '0946f772' },
   'images/merkl.png': { module: require('@/assets/images/merkl.png'), hash: 'c4c14095' },
   'images/messages.tsx': { module: require('@/assets/images/messages.tsx'), hash: '37cbc1f8' },
   'images/metamask.tsx': { module: require('@/assets/images/metamask.tsx'), hash: '32683a7e' },
@@ -910,6 +916,7 @@ export const ASSETS = {
     hash: '07cadb92',
   },
   'images/person-key.tsx': { module: require('@/assets/images/person-key.tsx'), hash: '832d595f' },
+  'images/plasma.png': { module: require('@/assets/images/plasma.png'), hash: 'af69e3fd' },
   'images/points-star.png': {
     module: require('@/assets/images/points-star.png'),
     hash: '89db8759',
@@ -1965,11 +1972,13 @@ export const ASSETS = {
     module: require('@/assets/images/swap_circle.png'),
     hash: '5d84c53c',
   },
+  'images/tempo.png': { module: require('@/assets/images/tempo.png'), hash: '4e2ddb51' },
   'images/three-percent.png': {
     module: require('@/assets/images/three-percent.png'),
     hash: 'f1e94427',
   },
   'images/trash.tsx': { module: require('@/assets/images/trash.tsx'), hash: 'feb342aa' },
+  'images/tron.png': { module: require('@/assets/images/tron.png'), hash: 'ae0c615b' },
   'images/two-percent-yellow.png': {
     module: require('@/assets/images/two-percent-yellow.png'),
     hash: '71c88645',

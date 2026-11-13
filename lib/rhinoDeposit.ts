@@ -288,18 +288,13 @@ const APP_NETWORK_CHAIN_IDS: ReadonlySet<number> = new Set([
   fuse.id,
 ]);
 
-/** rhino.fi chains kept out of "More networks" until the product decides on them: Arc. */
-const HELD_BACK_RHINO_CHAINS: ReadonlySet<string> = new Set(['ARC']);
-
 /**
  * Whether a rhino.fi chain is one the app has no row for, and so belongs under
  * "More networks": Tron, Solana, Avalanche, Celo, Gnosis, Mantle, Plasma, Kaia,
- * Tempo, whichever the backend lists. Never an app chain, and never one held
- * back (Arc).
+ * Tempo, Arc, whichever the backend lists. Never an app chain.
  */
 export const isRhinoExtraChain = (chain: Pick<RhinoDepositChain, 'chain' | 'chainId'>): boolean =>
-  !HELD_BACK_RHINO_CHAINS.has(chain.chain) &&
-  (chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId));
+  chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId);
 
 /** "More networks" always serves one token, the one the screen has already chosen. */
 export type RhinoExtraChainFilter = RhinoRouteFilter & { symbol: string };
