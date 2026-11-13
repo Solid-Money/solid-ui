@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { QueryObserverResult, useQueries } from '@tanstack/react-query';
-import { type Address, formatUnits, Hex } from 'viem';
+import { type Address, formatUnits, Hex, isAddressEqual } from 'viem';
 import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -24,8 +24,9 @@ const PENDING_REFETCH_MS = 60_000;
 const PENDING_STALE_MS = 30_000;
 
 /**
- * A soUSD or soETH withdraw request made on its Base queue: its transaction
- * confirmed, so it is in the queue or has left it.
+ * A soUSD, soETH or soBTC withdraw request made on its Base queue, or a soBTC one on its Ethereum
+ * queue (the WBTC route): its transaction confirmed, so it is in the queue or has left it. Both
+ * soBTC queues track requests on-chain, so neither needs a subgraph.
  *
  * soEURC withdraws on Base too, but its status comes from the EUR subgraph (see
  * useActivity). An activity naming no vault is soUSD, as every withdraw was
@@ -38,13 +39,14 @@ export const isBaseWithdrawRequest = (
 } => {
   if (
     activity.type !== TransactionType.WITHDRAW ||
-    activity.chainId !== base.id ||
     activity.status !== TransactionStatus.SUCCESS ||
     !activity.hash
   ) {
     return false;
   }
   const vault = getVaultKey(activity.symbol) ?? 'USD';
+  if (activity.chainId === mainnet.id) return vault === 'BTC' && isSoBtcConfigured;
+  if (activity.chainId !== base.id) return false;
   return (
     (vault === 'USD' && isSoUsdBaseConfigured) ||
     (vault === 'ETH' && isSoEthBaseConfigured) ||
@@ -52,11 +54,15 @@ export const isBaseWithdrawRequest = (
   );
 };
 
-/** The Base queue a request from {@link isBaseWithdrawRequest} was made on. */
+/** The queue a request from {@link isBaseWithdrawRequest} was made on. */
 const baseWithdrawQueueOf = (activity: ActivityEvent) => {
   const vault = getVaultKey(activity.symbol);
   if (vault === 'ETH') return ADDRESSES.base.soEthBoringQueue;
-  if (vault === 'BTC') return SOBTC_ADDRESSES.base.boringQueue;
+  if (vault === 'BTC') {
+    return activity.chainId === mainnet.id
+      ? SOBTC_ADDRESSES.ethereum.boringQueue
+      : SOBTC_ADDRESSES.base.boringQueue;
+  }
   return ADDRESSES.base.boringQueue;
 };
 
@@ -111,7 +117,15 @@ export function useBaseWithdrawRequests(
       const [hash, queue] = key.split('@');
       return {
         queryKey: [BASE_WITHDRAW_REQUEST, hash, queue],
-        queryFn: () => readBaseWithdrawRequest(hash as Hex, queue as Address),
+        queryFn: () =>
+          readBaseWithdrawRequest(
+            hash as Hex,
+            queue as Address,
+            // soBTC's Ethereum queue is the only one not on Base.
+            isAddressEqual(queue as Address, SOBTC_ADDRESSES.ethereum.boringQueue)
+              ? mainnet.id
+              : base.id,
+          ),
         staleTime: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
           query.state.data && query.state.data.status !== 'pending' ? Infinity : PENDING_STALE_MS,
         refetchInterval: (query: { state: { data?: BaseWithdrawRequest | null } }) =>
@@ -141,12 +155,13 @@ export type PendingWithdrawal = {
 };
 
 /**
- * The dollar value of `wei` WETH at `ethPriceUsd`, in fixed point: the price is taken to micro-dollars
- * and multiplied in bigint, so only the final figure becomes a float, for display and totals.
+ * The dollar value of `amount` base units of an asset with `decimals` at `priceUsd`, in fixed
+ * point: the price is taken to micro-dollars and multiplied in bigint, so only the final figure
+ * becomes a float, for display and totals. WETH (18 decimals) and cbBTC/WBTC (8).
  */
-const wethUsd = (wei: string, ethPriceUsd: number): number => {
-  const microUsdPerEth = BigInt(Math.round(ethPriceUsd * 1e6));
-  return Number(formatUnits((BigInt(wei) * microUsdPerEth) / 10n ** 18n, 6));
+const assetUsd = (amount: string, decimals: number, priceUsd: number): number => {
+  const microUsdPerUnit = BigInt(Math.round(priceUsd * 1e6));
+  return Number(formatUnits((BigInt(amount) * microUsdPerUnit) / 10n ** BigInt(decimals), 6));
 };
 
 /**
@@ -201,11 +216,11 @@ export function usePendingBaseWithdrawals(): {
         amountUsd:
           vault === 'ETH'
             ? amountWethWei !== undefined && ethPrice
-              ? wethUsd(amountWethWei, ethPrice)
+              ? assetUsd(amountWethWei, 18, ethPrice)
               : undefined
             : vault === 'BTC'
               ? amountBtcSats !== undefined && btcPrice
-                ? Number(formatUnits(BigInt(amountBtcSats), SOBTC_DECIMALS)) * btcPrice
+                ? assetUsd(amountBtcSats, SOBTC_DECIMALS, btcPrice)
                 : undefined
               : amountUsd,
         timestamp: activity.timestamp,

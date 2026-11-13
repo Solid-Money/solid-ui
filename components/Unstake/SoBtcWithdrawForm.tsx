@@ -112,9 +112,12 @@ const SoBtcWithdrawForm = () => {
 
   const option = SOBTC_WITHDRAW_OPTIONS[chainId];
   const isWbtc = chainId === mainnet.id;
-  // WBTC with shares already on Ethereum (resumed, or an earlier bridge): straight to step 2.
+  // WBTC goes straight to step 2 for a resumed withdrawal, or when the only soBTC left is on
+  // Ethereum (an earlier bridge whose request was cancelled). Shares left on Ethereum never
+  // block bridging the Base ones: with Base shares and no session, step 1 comes first.
   const hasEthereumShares = (ethereumShares ?? 0n) > 0n;
-  const isStep2 = isWbtc && (!!session || hasEthereumShares);
+  const hasBaseShares = (baseShares ?? 0n) > 0n;
+  const isStep2 = isWbtc && (!!session || (hasEthereumShares && !hasBaseShares));
   const balanceShares = isStep2 ? (ethereumShares ?? 0n) : (baseShares ?? 0n);
   const isBalanceLoading = isStep2 ? isEthereumSharesLoading : isBaseSharesLoading;
 

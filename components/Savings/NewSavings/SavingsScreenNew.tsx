@@ -144,6 +144,7 @@ export default function SavingsScreenNew() {
         isFunded={isFunded}
         balanceUsd={balanceUsd}
         apy={isAPYsLoading || !maxAPY ? undefined : maxAPY}
+        isApyLoading={isAPYsLoading}
         interestUsd={interest.interest}
         isInterestLoading={interest.isLoading}
         past30Usd={past30Usd}

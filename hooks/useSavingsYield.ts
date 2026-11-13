@@ -48,8 +48,11 @@ export interface UseSavingsYieldParams {
   vault?: string;
 }
 
-/** Vaults with no subgraph, whose interest comes from the backend savings summary. */
-const SUMMARY_VAULTS = ['FUSE', 'EUR'];
+/**
+ * Vaults with no subgraph, whose interest comes from the backend savings summary, in the
+ * vault's own asset (FUSE, EURC, BTC): the caller converts it to dollars where it needs to.
+ */
+const SUMMARY_VAULTS = ['FUSE', 'EUR', 'BTC'];
 
 export function useSavingsYield({
   balance,
@@ -95,7 +98,7 @@ export function useSavingsYield({
 
   // Full calc only when inputs change (no animation). For TOTAL_USD use redeemable only so display matches withdraw.
   useEffect(() => {
-    // soFUSE / soEURC CURRENT mode: interest comes from the backend summary (no
+    // soFUSE / soEURC / soBTC CURRENT mode: interest comes from the backend summary (no
     // subgraph for either) and stays valid even if the on-chain balance read is
     // momentarily 0 (slow/failed RPC poll or a vault switch). Handle it BEFORE the
     // balance<=0 guard so a transient 0 balance can't wipe the anchor and snap

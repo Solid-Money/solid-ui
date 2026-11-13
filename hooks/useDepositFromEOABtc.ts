@@ -187,8 +187,22 @@ const useDepositFromEOABtc = (
       });
       const txHash = sent?.transactionHash as `0x${string}`;
       setDepositStatus({ status: Status.PENDING, message: 'Depositing' });
-      const receipt = await waitForTransactionReceipt(publicClient(mainnet.id), { hash: txHash });
-      if (receipt.status !== 'success') throw new Error('Deposit failed');
+      // Keep the hash on the activity from the moment it's broadcast, so a failed receipt read
+      // below can never leave a sent deposit without its transaction.
+      updateActivity(trackingId, {
+        status: TransactionStatus.PROCESSING,
+        hash: txHash,
+        url: `https://layerzeroscan.com/tx/${txHash}`,
+      });
+      // A receipt that can't be read is an unknown outcome, not a failure: carry on as sent and
+      // let LayerZero delivery settle it. Only a confirmed revert fails the deposit.
+      const receipt = await waitForTransactionReceipt(publicClient(mainnet.id), {
+        hash: txHash,
+      }).catch(receiptError => {
+        console.warn('soBTC deposit: receipt not read yet', receiptError);
+        return undefined;
+      });
+      if (receipt && receipt.status !== 'success') throw new Error('Deposit failed');
 
       setHash(txHash);
       updateUser({ ...user, isDeposited: true });

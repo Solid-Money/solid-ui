@@ -28,7 +28,7 @@ import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
-import useDepositFromEOABtc from '@/hooks/useDepositFromEOABtc';
+import useDepositFromEOABtc, { SOBTC_EOA_BASE_UNSUPPORTED } from '@/hooks/useDepositFromEOABtc';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAEur from '@/hooks/useDepositFromEOAEur';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
@@ -379,6 +379,9 @@ function DepositToVaultForm() {
   // soBTC: WBTC on Ethereum or cbBTC on Base, both 8 decimals (lib/soBtc.ts).
   const isBtcVault = vault.type === VaultType.BTC;
   const useSolidForBtc = isBtcVault && depositFromSolid;
+  // A connected wallet can't deposit cbBTC on Base (the shares would mint to that wallet, not the
+  // Safe). Say so up front instead of reading a 0 balance and failing every amount.
+  const isBtcEoaOnBase = isBtcVault && !depositFromSolid && normalizedSelection.chainId === base.id;
   /** One hook's value for the soBTC vault, from the Solid wallet or the external one. */
   const btcPick = <T,>(solid: T, eoa: T) => (useSolidForBtc ? solid : eoa);
   const isNativeFuse = isFuseVault && normalizedSelection.principalToken === 'FUSE';
@@ -658,6 +661,7 @@ function DepositToVaultForm() {
   const showNoQuote = vault.name === 'USDC' && isQuoteUnavailable;
 
   const getButtonText = () => {
+    if (isBtcEoaOnBase) return 'Use your Solid wallet for cbBTC';
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
     if (depositStatusForVault.status === Status.PENDING) return depositStatusForVault.message;
@@ -771,7 +775,7 @@ function DepositToVaultForm() {
   };
 
   const isFormDisabled = () => {
-    return isLoading || !isValid || !watchedAmount;
+    return isBtcEoaOnBase || isLoading || !isValid || !watchedAmount;
   };
 
   return (
@@ -959,9 +963,11 @@ function DepositToVaultForm() {
                 <View className="flex-row items-start gap-2">
                   <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
                   <Text className="max-w-xs text-sm text-muted-foreground">
-                    {isBtcVault
-                      ? getSoBtcDepositNote(normalizedSelection.chainId)
-                      : getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
+                    {isBtcEoaOnBase
+                      ? SOBTC_EOA_BASE_UNSUPPORTED
+                      : isBtcVault
+                        ? getSoBtcDepositNote(normalizedSelection.chainId)
+                        : getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
                   </Text>
                 </View>
               </View>

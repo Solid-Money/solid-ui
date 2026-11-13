@@ -127,7 +127,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Who backs WBTC and cbBTC?',
       answer:
-        'Both are bitcoin held by a custodian: WBTC by BitGo, cbBTC by Coinbase. Each is worth 1 BTC as long as its custodian holds the bitcoin behind it, so soBTC carries that custodian risk too.',
+        'Both are bitcoin held by a custodian: WBTC by BitGo, cbBTC by Coinbase. Each token represents 1 BTC of custodied bitcoin, but its market price can fall below 1 BTC. soBTC carries both the custodian risk and this market-price risk.',
     },
     {
       question: 'How do I withdraw?',

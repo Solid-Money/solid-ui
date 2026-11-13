@@ -5,7 +5,11 @@ import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import CountUp from '@/components/CountUp';
 import { EarnChip } from '@/components/Earn/EarnChips';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { formatYieldAmount, yieldProductName } from '@/components/Earn/yieldProducts';
+import {
+  formatYieldAmount,
+  YIELD_ASSET_NOUN,
+  yieldProductName,
+} from '@/components/Earn/yieldProducts';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
@@ -73,8 +77,10 @@ export interface YieldProductViewProps {
   isLoading: boolean;
   isFunded: boolean;
   balanceUsd: number;
-  /** Undefined while the rate loads. */
+  /** Undefined while the rate loads, or when there is none. */
   apy: number | undefined;
+  /** Whether `apy` is still loading: once it isn't, a missing rate is shown as missing. */
+  isApyLoading?: boolean;
   interestUsd: number;
   isInterestLoading: boolean;
   /** Interest added over the last 30 days; undefined while it can't be worked out. */
@@ -107,6 +113,7 @@ export default function YieldProductView({
   isFunded,
   balanceUsd,
   apy,
+  isApyLoading = false,
   interestUsd,
   isInterestLoading,
   past30Usd,
@@ -254,8 +261,14 @@ export default function YieldProductView({
                 Earn <Text className="text-[36px] font-semibold text-[#94F27F]">{apyLabel}</Text> a
                 year
               </Text>
-            ) : (
+            ) : isApyLoading ? (
               <Skeleton className="h-11 w-64 rounded-xl bg-white/10" />
+            ) : (
+              // No rate to quote (BTC Yield has none until its strategies start): say what it
+              // earns on rather than wait on a rate forever.
+              <Text className="text-center text-[36px] font-semibold leading-[44px] text-white">
+                Earn on your {YIELD_ASSET_NOUN[vaultType]}
+              </Text>
             )}
             <Text className="max-w-[340px] text-center text-[15px] leading-[22px] text-white/60">
               {INTRO[vaultType]}

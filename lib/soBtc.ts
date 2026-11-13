@@ -293,6 +293,10 @@ export const buildSoBtcEthereumApproveCall = (amount: bigint): Call => ({
 /**
  * WBTC on Ethereum: deposit and bridge the minted shares to `to` on Base in one call, paying the
  * LayerZero fee as value. The WBTC stays in the Ethereum vault.
+ *
+ * Relies on the Ethereum teller's `shareLockPeriod` staying 0 (it is 0 since deploy): the
+ * deposit locks the caller's new shares for that long, and the bridge in the same call would
+ * then revert on the lock.
  */
 export const buildSoBtcEthereumDepositCall = (
   amount: bigint,

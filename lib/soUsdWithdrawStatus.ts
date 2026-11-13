@@ -3,7 +3,7 @@ import { base } from 'viem/chains';
 
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
-import { CBBTC_BASE } from '@/lib/soBtc';
+import { CBBTC_BASE, WBTC_ETHEREUM } from '@/lib/soBtc';
 import { publicClient } from '@/lib/wagmi';
 
 /**
@@ -49,8 +49,10 @@ const USDC_DECIMALS = 6;
 export async function readBaseWithdrawRequest(
   requestTxHash: Hex,
   queue: Address = ADDRESSES.base.boringQueue,
+  // Base for every queue but soBTC's Ethereum one, which pays WBTC the same way.
+  chainId: number = base.id,
 ): Promise<BaseWithdrawRequest | null> {
-  const client = publicClient(base.id);
+  const client = publicClient(chainId);
 
   const receipt = await client.getTransactionReceipt({ hash: requestTxHash });
   let requestId: Hex | undefined;
@@ -67,7 +69,10 @@ export async function readBaseWithdrawRequest(
           amountUsd = Number(formatUnits(event.args.amountOfAssets, USDC_DECIMALS));
         } else if (isAddressEqual(event.args.assetOut, ADDRESSES.base.weth)) {
           amountWethWei = event.args.amountOfAssets.toString();
-        } else if (isAddressEqual(event.args.assetOut, CBBTC_BASE)) {
+        } else if (
+          isAddressEqual(event.args.assetOut, CBBTC_BASE) ||
+          isAddressEqual(event.args.assetOut, WBTC_ETHEREUM)
+        ) {
           amountBtcSats = event.args.amountOfAssets.toString();
         }
         break;

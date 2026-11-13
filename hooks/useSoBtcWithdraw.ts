@@ -213,6 +213,9 @@ export const useBridgeSoBtcToEthereum = () => {
 
   const bridgeSoBtc = useCallback(
     async (amount: string): Promise<TransactionReceipt> => {
+      // Set once the bridge transaction has landed on Base. Before that, a failure means the
+      // shares never left Base, so the resume session (set when the user op is sent) must go.
+      let bridged = false;
       try {
         if (!user?.safeAddress) throw new Error('User not found');
         setStatus(Status.PENDING);
@@ -284,14 +287,23 @@ export const useBridgeSoBtcToEthereum = () => {
           throw new Error('User cancelled transaction');
         }
 
-        const delivered = await waitForLayerzeroTransaction(transaction.transactionHash);
-        if (delivered.data[0]?.status.name !== 'DELIVERED') {
-          throw new Error('LayerZero transaction failed');
+        bridged = true;
+
+        // The shares have left Base. The waiter resolves only once LayerZero reports a delivery;
+        // if it gives up first, the shares are still in flight: keep the session and leave the
+        // activity processing rather than report a failed withdrawal.
+        const delivered = await waitForLayerzeroTransaction(transaction.transactionHash)
+          .then(() => true)
+          .catch(lzError => {
+            console.warn('soBTC bridge: LayerZero delivery not confirmed yet', lzError);
+            return false;
+          });
+        if (delivered) {
+          updateActivity(clientTxId, {
+            status: TransactionStatus.SUCCESS,
+            metadata: { layerzeroDeliveredAt: new Date().toISOString() },
+          });
         }
-        updateActivity(clientTxId, {
-          status: TransactionStatus.SUCCESS,
-          metadata: { layerzeroDeliveredAt: new Date().toISOString() },
-        });
         track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_COMPLETED, {
           amount,
           transaction_hash: transaction.transactionHash,
@@ -303,6 +315,7 @@ export const useBridgeSoBtcToEthereum = () => {
         return transaction;
       } catch (err) {
         console.error(err);
+        if (!bridged) useWithdrawSessionStore.getState().clearSession('BTC');
         track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
           amount,
           error: err instanceof Error ? err.message : 'Unknown error',

@@ -424,7 +424,7 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   const btcPriceNum =
     btcPrice.status === PromiseStatus.FULFILLED ? parsePrice(btcPrice.value) : undefined;
   if (soBTCRate.status === PromiseStatus.FULFILLED && btcPriceNum) {
-    soBTCQuoteRateUSD = (Number(soBTCRate.value) / 10 ** SOBTC_DECIMALS) * btcPriceNum;
+    soBTCQuoteRateUSD = Number(formatUnits(soBTCRate.value, SOBTC_DECIMALS)) * btcPriceNum;
   } else if (isSoBtcConfigured) {
     console.warn('soBTC left unpriced rather than valued as bare BTC');
   }
