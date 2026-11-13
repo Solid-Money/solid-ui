@@ -1,4 +1,4 @@
-import { isBridgePaymasterAddress } from '@/lib/protocolAddresses';
+import { isProtocolAddress } from '@/lib/protocolAddresses';
 import {
   ActivityEvent,
   AddressBookResponse,
@@ -15,8 +15,9 @@ export interface SendRecipient {
 
 /**
  * A successful send to someone, as a recent recipient. A bridge's source leg
- * is indexed as a plain send to our BridgePaymaster; offering that address as
- * a recipient sent a user's funds to it, so it never counts.
+ * and a deposit pull are indexed as plain sends to our own contracts (the
+ * BridgePaymaster, the backend smart accounts); offering those as recipients
+ * sent users' funds to them, so they never count.
  */
 export function isRecentSendActivity(
   activity: ActivityEvent,
@@ -25,7 +26,7 @@ export function isRecentSendActivity(
     [TransactionType.SEND, TransactionType.CROSS_CHAIN_SEND].includes(activity.type) &&
     activity.status === TransactionStatus.SUCCESS &&
     !!activity.toAddress &&
-    !isBridgePaymasterAddress(activity.toAddress)
+    !isProtocolAddress(activity.toAddress)
   );
 }
 
@@ -59,4 +60,30 @@ export function getRecentSendRecipients(
         saved: !!contact,
       };
     });
+}
+
+/**
+ * The network a send to this address is expected to land on, or undefined for
+ * an address with no history: the network the user picked for it in the bridge
+ * flow, else the network shown on its recipient row (the saved contact's, else
+ * the last send's — the receiving network for a cross-chain send).
+ *
+ * The regular send always executes on the picked token's chain, so a recipient
+ * last paid on Arbitrum (often an exchange deposit address) could be sent USDC
+ * on Base without a word; Review compares the two with this.
+ */
+export function getExpectedRecipientChainId(
+  walletAddress: string | undefined,
+  activities: ActivityEvent[],
+  addressBook: AddressBookResponse[],
+  pickedChainId?: number | null,
+): number | undefined {
+  if (pickedChainId) return pickedChainId;
+  if (!walletAddress) return undefined;
+  const key = walletAddress.toLowerCase();
+  return (
+    getRecentSendRecipients(activities, addressBook).find(
+      recipient => recipient.walletAddress.toLowerCase() === key,
+    )?.chainId ?? addressBook.find(entry => entry.walletAddress.toLowerCase() === key)?.chainId
+  );
 }

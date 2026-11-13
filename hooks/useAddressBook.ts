@@ -9,10 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
-import {
-  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
-  isBridgePaymasterAddress,
-} from '@/lib/protocolAddresses';
+import { isProtocolAddress, PROTOCOL_ADDRESS_RECIPIENT_ERROR } from '@/lib/protocolAddresses';
 import { AddressBookRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
@@ -30,8 +27,8 @@ const walletAddressField = z
   .string()
   .refine(val => val.trim().length > 0, { error: 'Address is required' })
   .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
-  .refine(val => !isBridgePaymasterAddress(val.trim()), {
-    error: BRIDGE_PAYMASTER_RECIPIENT_ERROR,
+  .refine(val => !isProtocolAddress(val.trim()), {
+    error: PROTOCOL_ADDRESS_RECIPIENT_ERROR,
   })
   .transform(val => val.trim());
 

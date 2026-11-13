@@ -1,5 +1,9 @@
 import { ADDRESSES } from '@/lib/config';
-import { getRecentSendRecipients, isRecentSendActivity } from '@/lib/sendRecipients';
+import {
+  getExpectedRecipientChainId,
+  getRecentSendRecipients,
+  isRecentSendActivity,
+} from '@/lib/sendRecipients';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 
 function send(
@@ -77,11 +81,60 @@ describe('recent send recipients', () => {
     );
     expect(recipients.map(recipient => recipient.walletAddress)).toEqual(['0xabc']);
   });
+
+  it('never offers a backend smart account as a recipient', () => {
+    // Deposit pulls from a Safe are indexed as sends to these accounts; two
+    // users then sent their soUSD to the Connect-Wallet account (Nov 2026).
+    const recipients = getRecentSendRecipients(
+      [
+        send('0x9e852a0d1bd9738d52b90a5e907138575822d69e', '300', { chainId: 56 }),
+        send('0x54C11A6185907bC464fa6aCA0901Aea9DbDD08Fe', '250', { chainId: 8453 }),
+        send('0xabc', '100'),
+      ],
+      [],
+    );
+    expect(recipients.map(recipient => recipient.walletAddress)).toEqual(['0xabc']);
+  });
 });
 
 describe('isRecentSendActivity', () => {
   it('accepts a successful send to someone and rejects a paymaster leg', () => {
     expect(isRecentSendActivity(send('0xabc', '1'))).toBe(true);
     expect(isRecentSendActivity(send(ADDRESSES.fuse.bridgePaymasterAddress, '1'))).toBe(false);
+  });
+});
+
+describe('getExpectedRecipientChainId', () => {
+  // sdelkin23, Oct 29 2026: 102 USDC bridged to Arbitrum for 0x0900…, then a
+  // regular send of USDC on Base to the same address 41 seconds later.
+  const arbitrumBridge = send('0x0900f6fccaac6193e40625e310099d1956b311d7', '200', {
+    type: TransactionType.CROSS_CHAIN_SEND,
+    chainId: 122,
+    metadata: { dstChainId: 42161 },
+  });
+
+  it('expects the receiving network of the last send, whatever the casing', () => {
+    expect(
+      getExpectedRecipientChainId(
+        '0x0900F6FccAac6193e40625E310099D1956B311d7',
+        [
+          send('0x0900f6fccaac6193e40625e310099d1956b311d7', '100', { chainId: 122 }),
+          arbitrumBridge,
+        ],
+        [],
+      ),
+    ).toBe(42161);
+  });
+
+  it('prefers the network picked in the bridge flow, then a saved contact', () => {
+    expect(getExpectedRecipientChainId('0xabc', [send('0xabc', '1')], [], 8453)).toBe(8453);
+    expect(
+      getExpectedRecipientChainId('0xabc', [], [{ walletAddress: '0xABC', chainId: 56 }]),
+    ).toBe(56);
+  });
+
+  it('knows nothing about a new address', () => {
+    expect(getExpectedRecipientChainId('0xnew', [arbitrumBridge], [])).toBeUndefined();
+    expect(getExpectedRecipientChainId('', [arbitrumBridge], [])).toBeUndefined();
   });
 });
