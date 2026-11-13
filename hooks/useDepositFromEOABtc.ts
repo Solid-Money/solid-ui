@@ -73,6 +73,14 @@ const useDepositFromEOABtc = (
   const { createActivity, updateActivity } = useActivityActions();
   const updateUser = useUserStore(state => state.updateUser);
 
+  // Writes only the deposit flag onto the account's current stored record. The receipt can arrive
+  // minutes later; writing back the `user` captured when the deposit started could restore a stale
+  // `selected` or `tokens` after a logout or account switch.
+  const markUserDeposited = () => {
+    const current = useUserStore.getState().users.find(u => u.userId === user?.userId);
+    if (current) updateUser({ ...current, isDeposited: true });
+  };
+
   const eoaAddress = account?.address as Address | undefined;
   const isWbtc =
     srcChainId === mainnet.id && tokenAddress?.toLowerCase() === WBTC_ETHEREUM.toLowerCase();
@@ -228,7 +236,7 @@ const useDepositFromEOABtc = (
               });
               return;
             }
-            updateUser({ ...user, isDeposited: true });
+            markUserDeposited();
             trackDepositCompleted(ctx, { transactionHash: txHash });
             return waitForLayerzeroTransaction(txHash).then(() =>
               updateActivity(id, {
@@ -241,7 +249,7 @@ const useDepositFromEOABtc = (
         return trackingId;
       }
 
-      updateUser({ ...user, isDeposited: true });
+      markUserDeposited();
       trackDepositCompleted(ctx, { transactionHash: txHash });
       // The shares are on their way to Base: processing until LayerZero delivers them.
       updateActivity(trackingId, {

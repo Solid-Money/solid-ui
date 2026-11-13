@@ -45,6 +45,8 @@ import useUser from './useUser';
 /** How often "available now" is re-read while the withdraw form is open. */
 const AVAILABILITY_REFRESH_MS = 30_000;
 
+/** The bridge UserOperation was sent but its outcome couldn't be read (not a confirmed revert). */
+const BRIDGE_OUTCOME_UNKNOWN = Symbol('BRIDGE_OUTCOME_UNKNOWN');
 export type SoBtcAvailability = {
   /**
    * What the option can pay a new request right now, in satoshis: the vault's balance minus what
@@ -283,8 +285,23 @@ export const useBridgeSoBtcToEthereum = () => {
                 });
                 onUserOpHash(hash);
               },
-            ),
+            ).catch(executeError => {
+              // Sent, then a wait failed without a confirmed revert: the bridge may still land.
+              // Returning (not throwing) keeps trackTransaction from marking the activity FAILED;
+              // it stays processing with its UserOperation hash, for reconciliation.
+              if (sent && !(executeError instanceof UserOperationRevertedError)) {
+                console.warn('soBTC bridge: outcome unknown after sending', executeError);
+                return BRIDGE_OUTCOME_UNKNOWN;
+              }
+              throw executeError;
+            }),
         );
+        if (result === BRIDGE_OUTCOME_UNKNOWN) {
+          // The resume session stays (see the catch below): step 2 picks up once the shares land.
+          throw new Error(
+            "Couldn't confirm the move to Ethereum yet. It may still go through; reopen Withdraw to continue.",
+          );
+        }
         const transaction =
           result && typeof result === 'object' && 'transaction' in result
             ? result.transaction
