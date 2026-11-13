@@ -3356,6 +3356,8 @@ export interface TotalAPYResponse {
   eth: number;
   /** soEURC. 0 until the vault earns (absent or null on older APIs) — all read as "no APY". */
   eur?: number | null;
+  /** soBTC. Absent or null until the analytics API reports it: read as "no APY". */
+  btc?: number | null;
 }
 
 export interface APYsByAsset {
@@ -3364,6 +3366,8 @@ export interface APYsByAsset {
   eth: APYs;
   /** soEURC. Zeroes until the vault earns; absent or null on older APIs. Both read as "no APY". */
   eur?: APYs | null;
+  /** soBTC. Absent or null until the analytics API reports it: read as "no APY". */
+  btc?: APYs | null;
 }
 
 export interface HistoricalAPYPoint {
@@ -3847,6 +3851,11 @@ export enum VaultType {
   ETH = 'eth',
   /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
   EUR = 'eur',
+  /**
+   * soBTC: WBTC on Ethereum and cbBTC on Base, one share on Base. Earns and is shown in BTC; its
+   * dollar value is BTC × the BTC price.
+   */
+  BTC = 'btc',
 }
 
 export interface SavingsDataQuality {

@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
+import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
 
 // The ETH and FUSE marks are drawn on a 40.77 × 40 canvas with their own 10% circle;
@@ -53,6 +54,13 @@ export default function YieldIcon({
             style={{ width: glyph.width * scale, height: glyph.height * scale }}
           />
         </View>
+      ) : vaultType === VaultType.BTC ? (
+        // No BTC Yield mark yet: the BTC mark.
+        <Image
+          source={getAsset('images/btc.png')}
+          contentFit="contain"
+          style={{ width: size, height: size, borderRadius: size / 2 }}
+        />
       ) : (
         <Image
           source={vaultType === VaultType.ETH ? PORTFOLIO_ICONS.eth : PORTFOLIO_ICONS.fuse}

@@ -8,6 +8,7 @@ export const SOLID_TOKEN_SYMBOLS = [
   'soeurc',
   // The same share's on-chain symbol on the Base deployments from Oct 15 2026 on.
   'soeur',
+  'sobtc',
 ] as const;
 
 export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
@@ -22,7 +23,7 @@ export function isSolidTokenSymbol(symbol: string | undefined): boolean {
  * independent of the network they sit on. soUSD and fUSDC both belong to the
  * USD vault; soFUSE, soETH and soEURC have their own vaults.
  */
-export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR';
+export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR' | 'BTC';
 
 export interface VaultMeta {
   key: VaultKey;
@@ -76,6 +77,16 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
     destinationNetwork: 'Base',
     requiresBridge: false,
   },
+  // The user picks the payout: cbBTC on Base (one step) or WBTC on Ethereum (bridge, then
+  // withdraw). This is the default, the one-step option; the soBTC form decides per withdrawal.
+  BTC: {
+    key: 'BTC',
+    displayName: 'soBTC',
+    iconSymbol: 'soBTC',
+    destinationSymbol: 'cbBTC',
+    destinationNetwork: 'Base',
+    requiresBridge: false,
+  },
 };
 
 /** Maps a token symbol to the vault it belongs to (null if not a vault token). */
@@ -87,6 +98,7 @@ export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
   if (s === 'soeurc' || s === 'soeur') return 'EUR';
+  if (s === 'sobtc') return 'BTC';
   return null;
 }
 

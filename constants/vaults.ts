@@ -4,11 +4,13 @@ import { base, fuse, mainnet } from 'viem/chains';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import {
   ADDRESSES,
+  EXPO_PUBLIC_MINIMUM_BTC_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
+import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
 import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { Vault, VaultType } from '@/lib/types';
 
@@ -40,6 +42,33 @@ export const EUR_VAULT: Vault = {
     supportedTokens: ['EURC'],
   },
   vaultName: 'EUR Yield',
+};
+
+/**
+ * soBTC — BTC Yield. WBTC on Ethereum and cbBTC on Base, each kept in its own chain's vault and
+ * never bridged; one share, held on Base whichever was deposited (lib/soBtc.ts).
+ *
+ * Listed only in a build with both soBTC deployments (`isSoBtcConfigured`).
+ */
+export const BTC_VAULT: Vault = {
+  name: 'BTC',
+  type: VaultType.BTC,
+  vaultToken: 'soBTC',
+  icon: 'images/btc.png',
+  decimals: SOBTC_DECIMALS,
+  minimumAmount: EXPO_PUBLIC_MINIMUM_BTC_DEPOSIT_AMOUNT,
+  vaults: [
+    // Base first: screens that show one share address read vaults[0].
+    { address: SOBTC_ADDRESSES.base.vault, chainId: base.id },
+    // Shares only sit on Ethereum between the two steps of a WBTC withdrawal.
+    { address: SOBTC_ADDRESSES.ethereum.vault, chainId: mainnet.id },
+  ],
+  depositConfig: {
+    methods: ['wallet'],
+    supportedChains: [mainnet.id, base.id],
+    supportedTokens: ['WBTC', 'cbBTC'],
+  },
+  vaultName: 'BTC Yield',
 };
 
 export const VAULTS: Vault[] = [
@@ -127,8 +156,9 @@ export const VAULTS: Vault[] = [
     },
     vaultName: 'ETH Yield',
   },
-  // Always last: `useSavingStore` persists the selected vault as an index into
-  // this list, so inserting a vault ahead of the others would move a returning
-  // user's selection onto a different vault.
+  // `useSavingStore` persists the selected vault as an index into this list, so
+  // a vault is only ever added at the end: inserting one ahead of the others
+  // would move a returning user's selection onto a different vault.
   EUR_VAULT,
+  ...(isSoBtcConfigured ? [BTC_VAULT] : []),
 ];

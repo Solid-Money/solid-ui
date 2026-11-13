@@ -8,6 +8,7 @@ import TransactionStatus from '@/components/TransactionStatus';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import RegularWithdrawForm from '@/components/Unstake/RegularWithdrawForm';
+import SoBtcWithdrawForm from '@/components/Unstake/SoBtcWithdrawForm';
 import UnstakeTokenSelector from '@/components/Unstake/UnstakeTokenSelector';
 import UnstakeVaultSelector from '@/components/Unstake/UnstakeVaultSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
@@ -33,15 +34,17 @@ const useWithdrawOption = ({
   modal = UNSTAKE_MODAL.OPEN_VAULT_SELECTOR,
 }: WithdrawOptionProps = {}) => {
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, transaction, setModal, setSelectedVault } = useUnstakeStore(
-    useShallow(state => ({
-      currentModal: state.currentModal ?? UNSTAKE_MODAL.CLOSE,
-      previousModal: state.previousModal ?? UNSTAKE_MODAL.CLOSE,
-      transaction: state.transaction,
-      setModal: state.setModal,
-      setSelectedVault: state.setSelectedVault,
-    })),
-  );
+  const { currentModal, previousModal, transaction, selectedVault, setModal, setSelectedVault } =
+    useUnstakeStore(
+      useShallow(state => ({
+        currentModal: state.currentModal ?? UNSTAKE_MODAL.CLOSE,
+        previousModal: state.previousModal ?? UNSTAKE_MODAL.CLOSE,
+        transaction: state.transaction,
+        selectedVault: state.selectedVault,
+        setModal: state.setModal,
+        setSelectedVault: state.setSelectedVault,
+      })),
+    );
   const router = useRouter();
   const { isScreenMedium } = useDimension();
   const { triggerElement } = useResponsiveModal();
@@ -121,8 +124,9 @@ const useWithdrawOption = ({
   const getContent = () => {
     if (isTransactionStatus) {
       const tokenSymbol = transaction.symbol ?? 'SoUSD';
-      // soEURC requests sit in a queue that keeps them open for at least three days.
-      const duration = getVaultKey(tokenSymbol) === 'EUR' ? 'up to 3 days' : 'up to 24H';
+      // soEURC and soBTC requests sit in queues that keep them open for at least three days.
+      const vaultKey = getVaultKey(tokenSymbol);
+      const duration = vaultKey === 'EUR' || vaultKey === 'BTC' ? 'up to 3 days' : 'up to 24H';
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}
@@ -141,6 +145,11 @@ const useWithdrawOption = ({
 
     if (isVaultSelector) {
       return <UnstakeVaultSelector />;
+    }
+
+    // soBTC picks its payout (cbBTC on Base or WBTC on Ethereum) on its own form.
+    if (selectedVault === 'BTC') {
+      return <SoBtcWithdrawForm />;
     }
 
     return <RegularWithdrawForm />;

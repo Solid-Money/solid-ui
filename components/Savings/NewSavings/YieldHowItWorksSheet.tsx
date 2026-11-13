@@ -8,6 +8,7 @@ import { yieldProductName, yieldVault } from '@/components/Earn/yieldProducts';
 import { Text } from '@/components/ui/text';
 import { CHAIN_NAMES } from '@/constants/chains';
 import { useDimension } from '@/hooks/useDimension';
+import { formatBtcAmount } from '@/lib/soBtc';
 import { VaultType } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 
@@ -33,13 +34,22 @@ const productDetails = (type: VaultType): Detail[] => {
       ? `$${formatNumber(minimum, 2, 0)}`
       : type === VaultType.EUR
         ? `€${formatNumber(minimum, 2, 0)}`
-        : `${formatNumber(minimum, 4, 0)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
+        : type === VaultType.BTC
+          ? `${formatBtcAmount(minimum)} (WBTC or cbBTC)`
+          : `${formatNumber(minimum, 4, 0)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
   return [
     ...(type === VaultType.USDC ? [{ label: 'Fee', value: '10% of interest earned' }] : []),
     { label: 'APY shown', value: 'After fees' },
     ...(type === VaultType.USDC ? [{ label: 'Withdrawals', value: 'Usually within minutes' }] : []),
     // The soEURC queue keeps a request open for at least three days.
     ...(type === VaultType.EUR ? [{ label: 'Withdrawals', value: 'Up to about 3 days' }] : []),
+    // Each side pays from what its own vault holds.
+    ...(type === VaultType.BTC
+      ? [
+          { label: 'Withdraw to', value: 'cbBTC on Base or WBTC on Ethereum' },
+          { label: 'Withdrawals', value: 'Usually within 3 days' },
+        ]
+      : []),
     ...(minimumLabel ? [{ label: 'Minimum deposit', value: minimumLabel }] : []),
     ...(type === VaultType.USDC ? [{ label: 'Built with', value: 'Veda' }] : []),
     // The share token has its own contract on each network it lives on, so each gets a row

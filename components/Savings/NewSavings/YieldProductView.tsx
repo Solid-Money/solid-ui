@@ -37,6 +37,8 @@ const INTRO: Record<VaultType, string> = {
   [VaultType.FUSE]: 'On your FUSE. Interest is added all the time, and it counts toward your tier.',
   [VaultType.EUR]:
     'On your euros. Your EURC is held and shown in euros, and you can withdraw it whenever you want.',
+  [VaultType.BTC]:
+    'On your bitcoin. Deposit WBTC or cbBTC, earn in BTC, and keep your BTC exposure.',
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (

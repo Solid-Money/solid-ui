@@ -275,14 +275,18 @@ export function useActivity() {
       }
 
       const vault = getVaultKey(activity.symbol);
+      // soBTC has no subgraph: its requests stay processing rather than being looked up in
+      // the USD vault's withdrawals, where they never appear.
       const vaultWithdraws =
-        vault === 'EUR'
-          ? eurWithdraws
-          : vault === 'ETH'
-            ? ethWithdraws
-            : vault === 'FUSE'
-              ? fuseWithdraws
-              : withdraws;
+        vault === 'BTC'
+          ? undefined
+          : vault === 'EUR'
+            ? eurWithdraws
+            : vault === 'ETH'
+              ? ethWithdraws
+              : vault === 'FUSE'
+                ? fuseWithdraws
+                : withdraws;
 
       // Subgraph data not yet available — show PROCESSING (on-chain tx succeeded,
       // waiting for solver fulfillment) instead of PENDING which implies the

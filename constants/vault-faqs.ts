@@ -112,6 +112,34 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
         'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',
     },
   ],
+  // TODO(soBTC): product to review and move this copy to the Monday board above.
+  [VaultType.BTC]: [
+    {
+      question: 'What is soBTC?',
+      answer:
+        'Your yield-bearing bitcoin. Deposit WBTC on Ethereum or cbBTC on Base and receive soBTC on Base. It grows in BTC terms as yield accrues, so you keep your bitcoin exposure.',
+    },
+    {
+      question: 'Are WBTC and cbBTC treated the same?',
+      answer:
+        'Yes. soBTC counts 1 WBTC and 1 cbBTC as 1 BTC, so both earn the same rate and mint the same amount of soBTC. Your deposit stays on the network you sent it from and is never bridged.',
+    },
+    {
+      question: 'Who backs WBTC and cbBTC?',
+      answer:
+        'Both are bitcoin held by a custodian: WBTC by BitGo, cbBTC by Coinbase. Each is worth 1 BTC as long as its custodian holds the bitcoin behind it, so soBTC carries that custodian risk too.',
+    },
+    {
+      question: 'How do I withdraw?',
+      answer:
+        'Choose what you receive: cbBTC on Base, in one step, or WBTC on Ethereum, in two steps (your soBTC moves to Ethereum first, for a small fee in ETH on Base). Withdrawals go through a queue and usually finish within about 3 days.',
+    },
+    {
+      question: 'Why does the amount I can withdraw differ between WBTC and cbBTC?',
+      answer:
+        'Each withdrawal is paid from the BTC held on that network: WBTC on Ethereum, cbBTC on Base. If more people deposited one than the other, one side holds less, and you can withdraw up to what it holds right now. The rest is still yours: withdraw it from the other side, or later.',
+    },
+  ],
 };
 
 /** FAQ list for a vault, falling back to the USDC vault for an unknown type. */

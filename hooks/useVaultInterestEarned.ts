@@ -3,6 +3,7 @@ import { fuse, mainnet } from 'viem/chains';
 
 import { VAULTS } from '@/constants/vaults';
 import { useAPYs, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
+import { useBtcPriceUsd } from '@/hooks/useBtcPriceUsd';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
 import { useSavingsSummary } from '@/hooks/useSavingsSummary';
@@ -67,8 +68,9 @@ export const useVaultInterestEarned = (vaultType: VaultType) => {
     lastTimestamp,
     vault.decimals,
   );
-  // soFUSE and soEURC have no subgraph, so their interest comes from the backend summary.
-  const usesSummary = vault.type === VaultType.FUSE || vault.type === VaultType.EUR;
+  // soFUSE, soEURC and soBTC have no subgraph, so their interest comes from the backend summary.
+  const usesSummary =
+    vault.type === VaultType.FUSE || vault.type === VaultType.EUR || vault.type === VaultType.BTC;
   const { data: savingsSummary, isLoading: isSummaryLoading } = useSavingsSummary(
     vault.name,
     usesSummary,
@@ -78,8 +80,15 @@ export const useVaultInterestEarned = (vaultType: VaultType) => {
   const ethPriceUsd = useNativePriceUsd(mainnet.id, 'ethPriceUsd', vault.type === VaultType.ETH);
   // Price of one unit of the vault's asset in the vault's currency: 1 for soUSD (USD) and
   // soEURC (EUR, which stays EUR), the live USD price for FUSE / ETH.
+  const btcPriceUsd = useBtcPriceUsd(vault.type === VaultType.BTC);
   const price =
-    vault.type === VaultType.FUSE ? fusePriceUsd : vault.type === VaultType.ETH ? ethPriceUsd : 1;
+    vault.type === VaultType.FUSE
+      ? fusePriceUsd
+      : vault.type === VaultType.ETH
+        ? ethPriceUsd
+        : vault.type === VaultType.BTC
+          ? btcPriceUsd
+          : 1;
   const vaultApy =
     apys?.allTime != null && Number.isFinite(Number(apys.allTime)) ? Number(apys.allTime) : 0;
 

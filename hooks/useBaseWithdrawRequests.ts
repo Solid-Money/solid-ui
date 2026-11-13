@@ -5,9 +5,11 @@ import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import { getVaultKey, type VaultKey } from '@/constants/withdraw';
+import { useBtcPriceQuery } from '@/hooks/useBtcPriceUsd';
 import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
+import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
 import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { isSoUsdBaseConfigured } from '@/lib/soUsdWithdraw';
 import { BaseWithdrawRequest, readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
@@ -43,14 +45,20 @@ export const isBaseWithdrawRequest = (
     return false;
   }
   const vault = getVaultKey(activity.symbol) ?? 'USD';
-  return (vault === 'USD' && isSoUsdBaseConfigured) || (vault === 'ETH' && isSoEthBaseConfigured);
+  return (
+    (vault === 'USD' && isSoUsdBaseConfigured) ||
+    (vault === 'ETH' && isSoEthBaseConfigured) ||
+    (vault === 'BTC' && isSoBtcConfigured)
+  );
 };
 
 /** The Base queue a request from {@link isBaseWithdrawRequest} was made on. */
-const baseWithdrawQueueOf = (activity: ActivityEvent) =>
-  getVaultKey(activity.symbol) === 'ETH'
-    ? ADDRESSES.base.soEthBoringQueue
-    : ADDRESSES.base.boringQueue;
+const baseWithdrawQueueOf = (activity: ActivityEvent) => {
+  const vault = getVaultKey(activity.symbol);
+  if (vault === 'ETH') return ADDRESSES.base.soEthBoringQueue;
+  if (vault === 'BTC') return SOBTC_ADDRESSES.base.boringQueue;
+  return ADDRESSES.base.boringQueue;
+};
 
 /**
  * Where a Base request lives in {@link useBaseWithdrawRequests}' map: its transaction hash and the
@@ -122,8 +130,11 @@ export function useBaseWithdrawRequests(
 export type PendingWithdrawal = {
   clientTxId: string;
   /** Which vault it leaves, so a product screen lists only its own. */
-  vault: Extract<VaultKey, 'USD' | 'ETH'>;
-  /** In dollars: the USDC paid out, or the WETH at the ETH price. Undefined until both are known. */
+  vault: Extract<VaultKey, 'USD' | 'ETH' | 'BTC'>;
+  /**
+   * In dollars: the USDC paid out, the WETH at the ETH price, or the cbBTC at the BTC price.
+   * Undefined until both are known.
+   */
   amountUsd: number | undefined;
   /** Unix seconds, from the activity. */
   timestamp: string;
@@ -165,18 +176,25 @@ export function usePendingBaseWithdrawals(): {
   );
   const { data: ethPriceData } = useNativePriceQuery(mainnet.id, 'ethPriceUsd', hasEthRequest);
   const ethPrice = Number(ethPriceData) || undefined;
+  const hasBtcRequest = (activities ?? []).some(
+    activity =>
+      !!activity && isBaseWithdrawRequest(activity) && getVaultKey(activity.symbol) === 'BTC',
+  );
+  const { data: btcPriceData } = useBtcPriceQuery(hasBtcRequest);
+  const btcPrice = Number(btcPriceData) || undefined;
 
   return useMemo(() => {
     const withdrawals: PendingWithdrawal[] = [];
     const seen = new Set<string>();
     for (const activity of activities ?? []) {
       if (!activity || !isBaseWithdrawRequest(activity)) continue;
-      const vault = getVaultKey(activity.symbol) === 'ETH' ? 'ETH' : 'USD';
-      const key = baseWithdrawRequestKey(activity);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (requests[key]?.status !== 'pending') continue;
-      const { amountUsd, amountWethWei } = requests[key];
+      const key = getVaultKey(activity.symbol);
+      const vault = key === 'ETH' || key === 'BTC' ? key : 'USD';
+      const requestKey = baseWithdrawRequestKey(activity);
+      if (seen.has(requestKey)) continue;
+      seen.add(requestKey);
+      if (requests[requestKey]?.status !== 'pending') continue;
+      const { amountUsd, amountWethWei, amountBtcSats } = requests[requestKey];
       withdrawals.push({
         clientTxId: activity.clientTxId,
         vault,
@@ -185,12 +203,16 @@ export function usePendingBaseWithdrawals(): {
             ? amountWethWei !== undefined && ethPrice
               ? wethUsd(amountWethWei, ethPrice)
               : undefined
-            : amountUsd,
+            : vault === 'BTC'
+              ? amountBtcSats !== undefined && btcPrice
+                ? Number(formatUnits(BigInt(amountBtcSats), SOBTC_DECIMALS)) * btcPrice
+                : undefined
+              : amountUsd,
         timestamp: activity.timestamp,
       });
     }
     withdrawals.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
     const totalUsd = withdrawals.reduce((sum, item) => sum + (item.amountUsd ?? 0), 0);
     return { withdrawals, totalUsd };
-  }, [activities, requests, ethPrice]);
+  }, [activities, requests, ethPrice, btcPrice]);
 }
