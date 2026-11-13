@@ -1,8 +1,10 @@
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { arbitrum, base, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
 import { getWalletOwnAddress } from '@/components/DepositOption/WalletDepositAddress/constants';
+import { EURC_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
 import { CardProvider } from '@/lib/types';
@@ -17,7 +19,7 @@ jest.mock('react-native-qrcode-svg', () => 'QRCode');
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
-jest.mock('lucide-react-native', () => ({ ChevronRight: 'ChevronRight' }));
+jest.mock('lucide-react-native', () => ({ Check: 'Check', ChevronRight: 'ChevronRight' }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 jest.mock('@/components/CopyToClipboard', () => 'CopyToClipboard');
@@ -63,6 +65,18 @@ jest.mock('@/hooks/useDetectedDirectDeposit', () => ({
   useDetectedDirectDeposit: (params: any) => {
     mockDetected.params = params;
     return { isDetected: false };
+  },
+}));
+// The Safe's balance watch is the real one; only the chain it reads is stood in for.
+jest.mock('@/lib/wagmi', () => ({
+  publicClient: (chainId: number) => ({
+    readContract: (call: unknown) => mockReadBalance(chainId, call),
+  }),
+}));
+jest.mock('@/hooks/useSyncActivities', () => ({
+  useSyncActivities: (options: unknown) => {
+    mockSyncOptions.current = options;
+    return { sync: mockSync };
   },
 }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
@@ -157,13 +171,35 @@ const rhinoAddressFor = (selection: unknown): any =>
       }
     : { address: undefined, isError: false, isFetching: false, refetch: mockRhinoRefetch };
 const mockRhinoAddress = jest.fn(rhinoAddressFor);
+/** The Safe's balance of the token, as the chain answers each read. */
+const mockReadBalance = jest.fn(async (_chainId: number, _call: unknown): Promise<bigint> => 0n);
+const mockSync = jest.fn((_options?: unknown, _force?: boolean) => Promise.resolve(undefined));
+const mockSyncOptions: { current?: unknown } = {};
+const MINIMUM_WARNING = 'Deposits below the minimum will not be credited or refunded';
 
 let root: any;
+let queryClient: QueryClient | undefined;
+const screen = () => (
+  <QueryClientProvider client={queryClient!}>
+    <WalletDepositAddress />
+  </QueryClientProvider>
+);
 const render = () => {
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   act(() => {
-    root = create(<WalletDepositAddress />);
+    root = create(screen());
   });
   return root;
+};
+/**
+ * Lets the reads due within `ms` (fake timers) answer, and the screen redraw.
+ * react-query hands a result to the screen on a zero-delay timer, which the fake
+ * clock defers by 1 ms when it is set mid-tick: hence the extra millisecond.
+ */
+const flushReads = async (ms = 0) => {
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(ms + 1);
+  });
 };
 
 const texts = (): string[] =>
@@ -188,6 +224,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   // A case that fails the rhino.fi address must not fail it for the next one.
   mockRhinoAddress.mockImplementation(rhinoAddressFor);
+  mockReadBalance.mockReset().mockImplementation(async () => 0n);
+  mockSyncOptions.current = undefined;
   mockDetected.params = undefined;
   mockViewer.current = WIREX_READY;
   mockDeposit.walletDeposit = { chainId: fuse.id, symbol: 'USDC' };
@@ -195,6 +233,8 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root?.unmount());
+  queryClient?.clear();
+  jest.useRealTimers();
 });
 
 describe('WalletDepositAddress on Fuse, our own row', () => {
@@ -286,6 +326,176 @@ describe('WalletDepositAddress on Base, our own row', () => {
 
     expect(qrValues()).toEqual([SAFE_ADDRESS]);
     expect(retryButton()).toBeUndefined();
+  });
+});
+
+/**
+ * The pipeline does not watch the Safe, so the screen reads the Safe's balance
+ * of the token on Base itself, from when the address is shown.
+ */
+describe('WalletDepositAddress watching the Safe on Base', () => {
+  const EURC_ON_BASE = EURC_TOKENS[base.id].address;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'EURC' };
+  });
+
+  it('scans the Safe’s balance of the token while the address is shown', async () => {
+    render();
+    await flushReads();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(texts()).toContain('Scanning for deposits');
+    expect(root.root.findAllByType('DepositScanningIndicator')).toHaveLength(1);
+    expect(mockReadBalance).toHaveBeenCalledWith(
+      base.id,
+      expect.objectContaining({
+        address: EURC_ON_BASE,
+        functionName: 'balanceOf',
+        args: [SAFE_ADDRESS],
+      }),
+    );
+    // The pipeline is not asked: the Safe is not one of its addresses.
+    expect(mockDetected.params).toEqual(expect.objectContaining({ enabled: false }));
+  });
+
+  it('says the deposit is received once the balance rises, and syncs activity once', async () => {
+    mockReadBalance.mockResolvedValueOnce(5_000_000n).mockResolvedValue(15_000_000n);
+    render();
+    await flushReads();
+
+    expect(texts()).toContain('Scanning for deposits');
+    expect(mockSync).not.toHaveBeenCalled();
+
+    await flushReads(6000);
+
+    expect(texts()).toContain('Deposit received');
+    expect(texts()).not.toContain('Scanning for deposits');
+    expect(root.root.findAllByType('Check')).toHaveLength(1);
+    expect(root.root.findAllByType('DepositScanningIndicator')).toHaveLength(0);
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(mockSync).toHaveBeenCalledWith(undefined, true);
+
+    // Polling stops at the deposit: neither the chain nor the sync is asked again.
+    const reads = mockReadBalance.mock.calls.length;
+    await flushReads(30_000);
+    expect(mockReadBalance).toHaveBeenCalledTimes(reads);
+    expect(mockSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps scanning while the balance holds or falls, and counts a rise from the low', async () => {
+    mockReadBalance
+      .mockResolvedValueOnce(5_000_000n)
+      .mockResolvedValueOnce(5_000_000n)
+      .mockResolvedValueOnce(2_000_000n)
+      .mockResolvedValue(3_000_000n);
+    render();
+    await flushReads();
+    await flushReads(6000);
+    await flushReads(6000);
+
+    expect(texts()).toContain('Scanning for deposits');
+    expect(mockSync).not.toHaveBeenCalled();
+
+    await flushReads(6000);
+
+    expect(texts()).toContain('Deposit received');
+    expect(mockSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a fresh baseline for another token, never the last one’s', async () => {
+    mockReadBalance.mockImplementation(async (_chainId, call) =>
+      (call as { address: string }).address === EURC_ON_BASE ? 5_000_000n : 100_000_000n,
+    );
+    render();
+    await flushReads();
+
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC' };
+    act(() => root.update(screen()));
+    await flushReads();
+    await flushReads(6000);
+
+    expect(texts()).toContain('Scanning for deposits');
+    expect(mockSync).not.toHaveBeenCalled();
+  });
+
+  it('never syncs on opening the screen or on resume', () => {
+    render();
+
+    expect(mockSyncOptions.current).toEqual({ syncOnAppActive: false, syncOnMount: false });
+    expect(mockSync).not.toHaveBeenCalled();
+  });
+});
+
+describe('WalletDepositAddress where the Safe is not what is shown', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  it('leaves a minted address to the pipeline, as before', async () => {
+    render();
+    await flushReads(6000);
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockReadBalance).not.toHaveBeenCalled();
+    expect(texts()).toContain('Scanning for deposits');
+    expect(root.root.findAllByType('Check')).toHaveLength(0);
+  });
+
+  it('leaves ETH on Base to the wallet deposit address the pipeline watches', async () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'ETH' };
+    render();
+    await flushReads(6000);
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(mockReadBalance).not.toHaveBeenCalled();
+    expect(mockDetected.params).toEqual(
+      expect.objectContaining({ enabled: true, destinationType: 'WALLET' }),
+    );
+  });
+
+  it('leaves a rhino.fi address to rhino.fi’s own status', async () => {
+    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC' };
+    render();
+    await flushReads(6000);
+
+    expect(qrValues()).toEqual([RHINO_ADDRESS]);
+    expect(mockReadBalance).not.toHaveBeenCalled();
+    expect(root.root.findAllByType('RhinoDepositStatus')).toHaveLength(1);
+    expect(texts()).not.toContain('Scanning for deposits');
+  });
+});
+
+describe('WalletDepositAddress copy under the QR', () => {
+  it('asks for no minimum on the Safe, which keeps whatever is sent', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC' };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(texts()).toEqual(
+      expect.arrayContaining(['Send', 'USDC on the', 'Base chain to this address']),
+    );
+    expect(texts()).not.toContain('Send at least');
+    expect(texts()).not.toContain(MINIMUM_WARNING);
+  });
+
+  it('asks for no minimum on the Safe on Fuse either', () => {
+    mockViewer.current = { ...WIREX_READY, provider: null };
+    render();
+
+    expect(qrValues()).toEqual([SAFE_ADDRESS]);
+    expect(texts()).toContain('Send');
+    expect(texts()).not.toContain(MINIMUM_WARNING);
+  });
+
+  it('keeps the minimum and its warning on a minted address', () => {
+    render();
+
+    expect(qrValues()).toEqual(['0xabc']);
+    expect(texts()).toEqual(
+      expect.arrayContaining(['Send at least', '1 USDC on the', MINIMUM_WARNING]),
+    );
   });
 });
 
