@@ -1,7 +1,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
+import { base } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -90,7 +90,9 @@ export function useDepositDirectlyData() {
   const setModal = useDepositStore(state => state.setModal);
   const clearDirectDepositSession = useDepositStore(state => state.clearDirectDepositSession);
 
-  const chainId = rawChainId || mainnet.id;
+  // Every way here picks a chain first; should none be stored, Base, where the
+  // network lists lead and a soUSD deposit is free.
+  const chainId = rawChainId || base.id;
   const selectedToken = rawSelectedToken || 'USDC';
 
   const tokenIcon = useMemo(
@@ -171,7 +173,7 @@ export function useDepositDirectlyData() {
   const minDeposit = rawMinDeposit || '0.0001';
   const fee = rawFee || '0';
 
-  const networkName = network?.name || 'Ethereum';
+  const networkName = network?.name || 'Base';
   const networkIcon = network?.icon;
 
   const soUSDAmount = useMemo(() => {

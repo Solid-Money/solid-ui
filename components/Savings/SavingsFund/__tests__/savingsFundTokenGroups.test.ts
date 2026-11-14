@@ -53,7 +53,8 @@ describe('getSavingsFundTokenGroups', () => {
     expect(eur.stablecoins).toEqual([SAVINGS_FUND_EURC]);
     expect(eur.crypto).toEqual([]);
     expect(SAVINGS_FUND_EURC).toMatchObject({ vaultToken: 'soEURC', chainIds: [1, 8453] });
-    expect(getSavingsFundNetworks('EURC').map(network => network.chainId)).toEqual([1, 8453]);
+    // Base first: soEURC mints there, so a deposit sent there is free.
+    expect(getSavingsFundNetworks('EURC').map(network => network.chainId)).toEqual([8453, 1]);
 
     // Not in the vault-less list, not at the card's soUSD gate, not on another vault.
     for (const [intent, vaultToken] of [
@@ -116,5 +117,19 @@ describe('offersExternalWalletFunding', () => {
   // is the least used way of getting there.
   it('withholds them on the card deposit steps', () => {
     expect(offersExternalWalletFunding('card_deposit')).toBe(false);
+  });
+});
+
+describe('getSavingsFundNetworks', () => {
+  // soUSD and soEURC mint on Base, so a deposit sent there is the free one.
+  it('lists Base first for a token whose vault is on Base', () => {
+    ['USDC', 'EURC'].forEach(symbol =>
+      expect(getSavingsFundNetworks(symbol)[0]?.chainId).toBe(8453),
+    );
+  });
+
+  // soETH mints on Ethereum, where an ETH deposit is the free one.
+  it('keeps Ethereum first for ETH', () => {
+    expect(getSavingsFundNetworks('ETH').map(network => network.chainId)).toEqual([1, 8453, 42161]);
   });
 });
