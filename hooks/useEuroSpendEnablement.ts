@@ -124,12 +124,15 @@ interface EuroSpendEnablement {
  *
  * `home_banner` and `declined_receipt` are the "Use your Base balance" entry points, for a
  * cardholder holding dollars or crypto on Base rather than EURC — see `useUnreachableBaseBalance`.
+ * `card_deposit` is the card funding flow, which asks before showing an address off Fuse — see
+ * `wirexBaseDepositGate`.
  */
 export type EuroSpendEnableSource =
   | 'main_currency'
   | 'card_activation'
   | 'home_banner'
-  | 'declined_receipt';
+  | 'declined_receipt'
+  | 'card_deposit';
 
 /**
  * The user's spend-module deployments as the backend records them.
