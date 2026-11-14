@@ -90,9 +90,21 @@ export const fuseForShares = (shares: bigint, rate: bigint): number => {
  *
  * What is already locked counts, so topping up from Prime to Ultra asks for the
  * difference rather than for the whole thing again.
+ *
+ * The backend's figure when it sends one. The tier is resolved from what the
+ * lock is *graded* on — each tranche at no less than it was worth when locked —
+ * and that parts from the live `lockedFuse` whenever the soFUSE rate dips. On
+ * Oct 25 2026 this asked a user 0.43 FUSE short of Ultra for 3.41, because it
+ * subtracted the live value. `lockedFuse` is the fallback for an older backend.
  */
-export const remainingFuseForTier = (offer: TierOffer, lockedFuse: number): number =>
-  Math.max(0, offer.lockFuse - Math.max(0, lockedFuse));
+export const remainingFuseForTier = (offer: TierOffer, lockedFuse: number): number => {
+  const shortfall = offer.lockShortfallFuse;
+  if (typeof shortfall === 'number' && Number.isFinite(shortfall)) {
+    return Math.max(0, shortfall);
+  }
+
+  return Math.max(0, offer.lockFuse - Math.max(0, lockedFuse));
+};
 
 /** The routes a tier can actually be bought by right now, cheapest intent first. */
 export const availableRoutes = (offer: TierOffer | undefined): TierUpgradeRoute[] => {
@@ -271,6 +283,23 @@ export const formatFuseHeld = (amount: number): string => formatFuse(Math.floor(
 
 /** A shortfall, rounded UP — so topping it up always clears it. */
 export const formatFuseShortfall = (amount: number): string => formatFuse(Math.ceil(amount));
+
+/**
+ * An amount about to be locked, to the cent and rounded UP.
+ *
+ * Whole FUSE is right for a tier's price and wrong for what a top-up commits:
+ * quoted against the graded value, a top-up is often a fraction of a FUSE, and
+ * `formatFuse` printed "0 FUSE" above a button that locks 1.10. Rounded up so
+ * the screen never shows less than what is locked; the epsilon keeps a whole
+ * amount whose float lands a hair over it from reading a cent high.
+ */
+export const formatFuseToLock = (amount: number): string => {
+  if (!Number.isFinite(amount) || amount <= 0) return '0';
+
+  return (Math.ceil(amount * 100 - 1e-9) / 100).toLocaleString('en-US', {
+    maximumFractionDigits: 2,
+  });
+};
 
 /**
  * A USD figure with cents: "$199.00".
