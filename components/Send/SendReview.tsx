@@ -23,10 +23,7 @@ import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
 import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
-import {
-  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
-  isBridgePaymasterAddress,
-} from '@/lib/protocolAddresses';
+import { getSystemRecipientError } from '@/lib/protocolAddresses';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
@@ -81,7 +78,7 @@ const SendReview: React.FC = () => {
   const { isVerified: isTotpVerified } = useTotp();
 
   const isSendLoading = sendStatus === Status.PENDING;
-  const isBridgePaymasterRecipient = isBridgePaymasterAddress(address);
+  const systemRecipientError = getSystemRecipientError(address);
   const showSkip2fa = isTotpVerified && !hasSkipped2fa;
   const isContact = !name || showSkip2fa;
 
@@ -243,10 +240,8 @@ const SendReview: React.FC = () => {
           </Text>
         </View>
 
-        {isBridgePaymasterRecipient ? (
-          <Text className="text-center text-sm text-red-500">
-            {BRIDGE_PAYMASTER_RECIPIENT_ERROR}
-          </Text>
+        {systemRecipientError ? (
+          <Text className="text-center text-sm text-red-500">{systemRecipientError}</Text>
         ) : (
           isContract && (
             <ContractAddressWarning chainName={getBridgeChain(selectedToken?.chainId || 1).name} />
@@ -282,7 +277,7 @@ const SendReview: React.FC = () => {
         variant="brand"
         className="h-12 rounded-xl"
         onPress={handleSend}
-        disabled={isSendLoading || isBridgePaymasterRecipient}
+        disabled={isSendLoading || !!systemRecipientError}
       >
         <Key />
         <Text className="text-base font-bold">{getButtonText()}</Text>
