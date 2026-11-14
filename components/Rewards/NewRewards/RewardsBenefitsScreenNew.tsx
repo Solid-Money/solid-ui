@@ -38,7 +38,6 @@ import { useUserStore } from '@/store/useUserStore';
 
 import { TierBenefitsBackground, TierBenefitsPage } from './TierBenefitsPage';
 import { TIER_LABELS, tierOfferSubtitle } from './tierBenefitsPresentation';
-import TierPointsSheet from './TierPointsSheet';
 import TierSwitcher from './TierSwitcher';
 import { type TierUpgradeCta, tierUpgradeCta } from './tierUpgradeCta';
 import UpgradeTierSheet from './UpgradeTierSheet';
@@ -551,21 +550,15 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))
                   }
                   subtitle={(() => {
-                    const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
+                    // Points no longer unlock a tier, so there is no "Unlocks
+                    // at 5M points" fallback: a tier says how to buy it (a FUSE
+                    // lock or an annual membership) or says nothing.
                     const offerCopy = membership?.enabled
                       ? tierOfferSubtitle(findOffer(membership, tier))
                       : null;
-                    const copy =
-                      tier === RewardsTier.CORE
-                        ? 'Starting tier'
-                        : (offerCopy ??
-                          (pointsEnabled
-                            ? tier === RewardsTier.PRIME
-                              ? 'Unlocks at 5M points'
-                              : 'Unlocks at 35M points'
-                            : null));
+                    const copy = tier === RewardsTier.CORE ? 'Starting tier' : offerCopy;
                     if (!copy) return null;
-                    const text = (
+                    return (
                       <Text
                         style={{
                           fontFamily: 'MonaSans_400Regular',
@@ -576,24 +569,6 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                       >
                         {copy}
                       </Text>
-                    );
-                    return selectedTier === tier &&
-                      pointsEnabled &&
-                      !offerCopy &&
-                      tier !== RewardsTier.CORE ? (
-                      <TierPointsSheet
-                        trigger={
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`${copy}. Learn how to earn points`}
-                            hitSlop={8}
-                          >
-                            {text}
-                          </Pressable>
-                        }
-                      />
-                    ) : (
-                      text
                     );
                   })()}
                 />

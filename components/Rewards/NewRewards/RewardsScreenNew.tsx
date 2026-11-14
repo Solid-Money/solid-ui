@@ -38,23 +38,22 @@ import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import JoinTierClubCard from './JoinTierClubCard';
-import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
-import { resolveTierUpgradeCardData } from './skipTheLine';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
+import TierHeadline from './TierHeadline';
 import TierMembershipSheet from './TierMembershipSheet';
 import TierTrialPill from './TierTrialPill';
-import TierUpgradeCard from './TierUpgradeCard';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
  * builds via the dispatcher in rewards/index.tsx. Production and all
  * desktop-web users keep the legacy rewards screen.
  *
- * Shows the user's CURRENT tier + points, a rewards summary (cashback +
- * referrals), and the current tier's daily benefits. "Invite friends" opens the
+ * Shows the user's CURRENT tier, a rewards summary (cashback + referrals), and
+ * the current tier's daily benefits. Points are not shown: they are deprecated
+ * and no longer move anyone between tiers. "Invite friends" opens the
  * referral program popup; "Explore tiers" opens the rewards benefits screen
  * (full tier comparison).
  */
@@ -169,26 +168,18 @@ export default function RewardsScreenNew() {
   // Rewards data failed to load (or the user has none yet) — render the full
   // page with Core-tier defaults and zeroed stats rather than an error state.
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
-  const totalPoints = rewardsData?.totalPoints ?? 0;
-  const { nextTier, targetPoints, skipLine, showTierUpgradeCard } = resolveTierUpgradeCardData({
-    currentTier,
-    nextTier: rewardsData?.nextTier,
-    targetPoints: rewardsData?.nextTierPoints,
-    skipLine: rewardsData?.fuseSkipLine,
-    allowFallback: isDevFeatureEnabled,
-  });
 
   /**
    * The membership teaser, and the tier it points at.
    *
-   * Shown only once the backend says points no longer unlock tiers AND there is
-   * something to sell — a tier on offer that the user does not already hold.
-   * Both halves matter: without the first this would duplicate v2's card, and
-   * without the second it would invite an Ultra member to join a club they are
-   * already in.
+   * Shown whenever there is something to sell — a tier on offer that the user
+   * does not already hold — so an Ultra member is never invited to join a club
+   * they are already in. A FUSE lock or an annual membership are the only ways
+   * up a tier; points no longer count, so there is no points card to fall back
+   * to while the membership is loading or unavailable.
    */
   const joinClubTier = nextPurchasableTier(membership);
-  const showJoinClubCard = Boolean(membership && !membership.pointsUnlockEnabled);
+  const showJoinClubCard = Boolean(membership);
 
   if (rewardsLocked) {
     return (
@@ -207,8 +198,8 @@ export default function RewardsScreenNew() {
           isOpen={showWelcomePopup}
           variant={legacyPoints > 0 ? 'existing' : 'new'}
           oldPoints={legacyPoints}
-          legacyCarryoverPoints={rewardsData?.legacyCarryoverPoints ?? 0}
-          startingTier={rewardsData?.startingTier ?? currentTier}
+          // The tier they hold: points (and the carryover) no longer decide it.
+          startingTier={currentTier}
           isJoining={isJoining}
           onAgree={() => joinRewards()}
           onClose={() => {
@@ -265,11 +256,10 @@ export default function RewardsScreenNew() {
     >
       <View className="mb-5 w-full pb-24">
         <View className="mb-5 gap-5">
-          {/* The countdown goes between the tier name and the points, and draws
-              nothing at all when no trial is running. */}
-          <PointsHeadline
+          {/* The countdown goes above the tier name, and draws nothing at all
+              when no trial is running. */}
+          <TierHeadline
             tier={currentTier}
-            points={totalPoints}
             badge={<TierTrialPill trial={rewardsData?.activeTierTrial} />}
             onPressTier={() => setIsMembershipSheetOpen(true)}
           />
@@ -363,14 +353,9 @@ export default function RewardsScreenNew() {
           />
         </View>
 
-        {/* Two cards for the same job, and which one shows is decided by
-            whether points still unlock a tier.
-
-            v2's card offers a points bar and a FUSE "shortcut". Under v3 the
-            first of those climbs toward something points no longer grant, and
-            the second is a year-long lock with a price — so once
-            `pointsUnlockEnabled` is off, that card advertises a route the
-            backend refuses, and the membership teaser takes its place. */}
+        {/* The membership teaser: the only upgrade card. v2's points bar and
+            FUSE-in-Savings "shortcut" card is gone — points no longer grant a
+            tier and holding FUSE in Savings no longer upgrades one. */}
         {showJoinClubCard &&
         (joinClubTier === RewardsTier.PRIME || joinClubTier === RewardsTier.ULTRA) ? (
           <View className="mt-8 px-4">
@@ -383,16 +368,6 @@ export default function RewardsScreenNew() {
                   params: { tier: joinClubTier },
                 })
               }
-            />
-          </View>
-        ) : showTierUpgradeCard ? (
-          <View className="mt-8 px-4">
-            <TierUpgradeCard
-              currentPoints={totalPoints}
-              targetPoints={targetPoints}
-              nextTier={nextTier}
-              skipLine={skipLine}
-              onUpgradeTier={() => handleUpgradeTier(nextTier)}
             />
           </View>
         ) : null}

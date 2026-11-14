@@ -2834,8 +2834,8 @@ export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
  * The product fee rates this user currently pays.
  *
  * Read per user rather than from a published table: the rate depends on the
- * tier, and the tier depends on points and FUSE staking that only the server
- * can resolve. One call returns every product so a screen renders its whole fee
+ * tier, and the tier depends on FUSE locks, memberships and trials that only
+ * the server can resolve. One call returns every product so a screen renders its whole fee
  * table from a single snapshot.
  */
 export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
