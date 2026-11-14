@@ -45,6 +45,7 @@ export default function AiApiKeyScreen() {
           secret={secret}
           baseUrl={aiApiBaseUrl(overview)}
           model={aiApiSetupModel(overview)}
+          models={overview?.models ?? []}
           onDone={leave}
           onOpenGuide={() => router.push(path.AI_API_SETUP)}
         />

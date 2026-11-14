@@ -17,6 +17,7 @@ import {
   aiApiModelTag,
   formatAiApiCashbackNote,
   formatAiApiCount,
+  formatAiApiModelSpeed,
   formatAiApiTokenPrice,
 } from './aiApiFormat';
 import AiApiModelLogo from './AiApiModelLogo';
@@ -193,8 +194,12 @@ export const AiApiAntseedCard = () => (
 /** What a screen reader says for one model's card: everything the card shows. */
 const modelCardLabel = (model: AiApiModel): string => {
   const name = model.provider ? `${model.name}, ${model.provider}` : model.name;
+  // Read out as words: "about 85 tokens a second", not "tilde 85 tokens slash s".
+  const speed = formatAiApiModelSpeed(model)
+    ?.replace('~', 'about ')
+    .replace('tokens/s', 'tokens a second');
   // Every cell reads "Free" already; saying so once is the whole card.
-  if (aiApiModelIsFree(model)) return `${name}. Free`;
+  if (aiApiModelIsFree(model)) return [name, 'Free', speed].filter(Boolean).join('. ');
   const cached =
     model.cachedInputUsdPerMTok == null
       ? ''
@@ -205,6 +210,7 @@ const modelCardLabel = (model: AiApiModel): string => {
       model.outputUsdPerMTok,
     )}, per million tokens`,
     tagLabel(model),
+    speed,
   ]
     .filter(Boolean)
     .join('. ');
@@ -219,9 +225,13 @@ const PriceCell = ({ label, price }: { label: string; price: number }) => (
   </View>
 );
 
-/** Figma "AI agents / Model price card": a model, its tag, and our three prices. */
+/**
+ * Figma "AI agents / Model price card": a model, its tag, our three prices,
+ * and how fast it has been answering lately when that was measured.
+ */
 const ModelPriceCard = ({ model }: { model: AiApiModel }) => {
   const tag = aiApiModelTag(model);
+  const speed = formatAiApiModelSpeed(model);
   return (
     <View className="gap-3" accessible accessibilityLabel={modelCardLabel(model)}>
       <View className="flex-row items-center gap-3">
@@ -237,6 +247,8 @@ const ModelPriceCard = ({ model }: { model: AiApiModel }) => {
         )}
         <PriceCell label="Output" price={model.outputUsdPerMTok} />
       </View>
+      {/* Too few recent requests, or an older backend, measures nothing: no line. */}
+      {speed ? <Text className="text-[13px] text-white/50">{speed}</Text> : null}
     </View>
   );
 };

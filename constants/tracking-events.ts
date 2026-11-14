@@ -616,17 +616,17 @@ export const TRACKING_EVENTS = {
   // AI API: Solid keys for AI agents, paid from the Wallet with cashback. The
   // funnel splits at the mandate signature, like tier membership's, because a
   // dismissed passkey prompt is a decision rather than an error.
+  // `ai_api_key_created` and `ai_api_key_deleted` are sent by the backend, not
+  // from here, so each key counts once.
   AI_API_BENEFIT_PRESSED: 'ai_api_benefit_pressed',
   AI_API_GET_KEY_PRESSED: 'ai_api_get_key_pressed',
   AI_API_MANDATE_CANCELLED: 'ai_api_mandate_cancelled',
   AI_API_MANDATE_SIGNED: 'ai_api_mandate_signed',
-  AI_API_KEY_CREATED: 'ai_api_key_created',
   AI_API_KEY_CREATE_FAILED: 'ai_api_key_create_failed',
   AI_API_KEY_COPIED: 'ai_api_key_copied',
   AI_API_SETUP_SNIPPET_COPIED: 'ai_api_setup_snippet_copied',
   AI_API_KEY_LIMIT_CHANGED: 'ai_api_key_limit_changed',
   AI_API_KEY_RENAMED: 'ai_api_key_renamed',
-  AI_API_KEY_DELETED: 'ai_api_key_deleted',
   AI_API_ADD_FUNDS_PRESSED: 'ai_api_add_funds_pressed',
 
   // Referral program v4: invite bonuses paid as card credit, plus a share of what

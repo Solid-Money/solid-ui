@@ -117,6 +117,12 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
 /** Vaults `/savings?vault=` may open: the savings screen's own selector values. */
 const LINKABLE_VAULTS: readonly string[] = Object.values(VaultType);
 
+/** `/rewards/ai-api?key=`: a key id, which is a 24-hex Mongo id. */
+const LINKABLE_AI_API_KEY = /^[a-f0-9]{24}$/i;
+
+/** Key sheet views `/rewards/ai-api?view=` may open: only "Change limit", for the limit pushes. */
+const LINKABLE_AI_API_VIEWS: readonly string[] = ['limit'];
+
 /**
  * The screen a push's deep link names, or undefined if it names none.
  *
@@ -130,13 +136,15 @@ const LINKABLE_VAULTS: readonly string[] = Object.values(VaultType);
  * something a user supplied is not the day to start looking for the control
  * point.
  *
- * Three paths read their query, because it is what picks the destination:
+ * Four paths read their query, because it is what picks the destination:
  * `/rewards?referral=open` is the referral sheet; `/savings?vault=eur` is that
- * vault's page (Euro yield); and `/` carries the one-shot Home params
- * (`constants/homeLinkParams`) that open What's New on a given page, the
- * deposit sheet or the spend-mode selector. Each is read through its own
- * allowlist, and only the params it names are passed on. Everything else
- * ignores the query, which by then is only the campaign.
+ * vault's page (Euro yield); `/rewards/ai-api?key=<id>&view=limit` is that AI
+ * API key's "Change limit", where the limit pushes send a user to raise it;
+ * and `/` carries the one-shot Home params (`constants/homeLinkParams`) that
+ * open What's New on a given page, the deposit sheet or the spend-mode
+ * selector. Each is read through its own allowlist, and only the params it
+ * names are passed on. Everything else ignores the query, which by then is
+ * only the campaign.
  *
  * Returns undefined rather than throwing for a malformed, foreign or
  * unrecognised link so the caller falls back to the `type` switch: a link we
@@ -166,6 +174,17 @@ function routeForLink(link?: string): Href | undefined {
       const vault = url.searchParams.get('vault');
       if (vault && LINKABLE_VAULTS.includes(vault)) {
         return { pathname: '/savings', params: { vault } } as Href;
+      }
+    }
+
+    // A view names nothing without the key it is a view of, so it only rides
+    // along with one.
+    if (pathname === '/rewards/ai-api') {
+      const key = url.searchParams.get('key');
+      const view = url.searchParams.get('view');
+      if (key && LINKABLE_AI_API_KEY.test(key)) {
+        const params = view && LINKABLE_AI_API_VIEWS.includes(view) ? { key, view } : { key };
+        return { pathname: '/rewards/ai-api', params } as Href;
       }
     }
 

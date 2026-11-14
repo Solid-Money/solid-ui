@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 
 import LazyDepositOptionModal from '@/components/DepositOption/LazyDepositOptionModal';
 import PageLayout from '@/components/PageLayout';
@@ -23,7 +23,22 @@ import AiApiIntro from './AiApiIntro';
 import AiApiKeySheet, { type AiApiKeySheetView } from './AiApiKeySheet';
 import { AiApiModelsSheet } from './AiApiModels';
 
-import type { AiApiKey } from '@/lib/types/ai-api';
+import type { AiApiKey, AiApiOverview } from '@/lib/types/ai-api';
+
+/** A key id as links carry it: a 24-hex Mongo id. */
+const LINKED_KEY_ID = /^[a-f0-9]{24}$/i;
+
+/**
+ * Where "Change limit" starts for a key a limit push points at: the smallest
+ * preset above its limit that a key may have, or null when it is already at
+ * the top preset.
+ */
+const nextLimitOption = (overview: AiApiOverview, key: AiApiKey): number | null => {
+  const above = overview.limitOptionsUsd.filter(
+    option => option > key.monthlyLimitUsd && option <= overview.maxMonthlyLimitUsd,
+  );
+  return above.length > 0 ? Math.min(...above) : null;
+};
 
 const LoadingState = () => (
   <View className="gap-3 px-4">
@@ -42,7 +57,14 @@ const LoadingState = () => (
  * that screen clears when it closes.
  */
 export default function AiApiScreen() {
-  const { data: overview, isLoading, isError, refetch, isRefetching } = useAiApiOverview();
+  const {
+    data: overview,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+    isFetching,
+  } = useAiApiOverview();
   const reveal = useAiApiRevealStore(state => state.reveal);
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const setDepositModal = useDepositStore(state => state.setModal);
@@ -55,6 +77,8 @@ export default function AiApiScreen() {
   /** "How it works" from the dashboard: the intro again, over the dashboard. */
   const [isIntroOpen, setIsIntroOpen] = useState(false);
   const [isModelsOpen, setIsModelsOpen] = useState(false);
+  /** Where "Change limit" starts when a limit push opened it; null is the key's own limit. */
+  const [suggestedLimitUsd, setSuggestedLimitUsd] = useState<number | null>(null);
 
   // Read from the latest overview, so the sheet shows a rename or a new limit
   // as soon as it is saved, and closes if the key is gone.
@@ -63,8 +87,48 @@ export default function AiApiScreen() {
   const openKey = (key: AiApiKey, view: AiApiKeySheetView = 'details') => {
     setSelectedKeyId(key.id);
     setKeySheetView(view);
+    setSuggestedLimitUsd(null);
     setIsKeySheetOpen(true);
   };
+
+  // `?key=<id>&view=limit`, from the limit pushes (80% used, limit reached):
+  // that key's "Change limit", already on the next preset up, so raising it is
+  // one tap on Save. `?key=` alone opens the key. Read here rather than only in
+  // push routing, because the same URL also arrives as a web or Universal Link.
+  // A one-shot instruction like the rewards screen's `referral`: cleared once
+  // acted on, so a refresh or remount doesn't open it again. A key that isn't
+  // the user's opens nothing.
+  const { key: linkedKeyId, view: linkedView } = useLocalSearchParams<{
+    key?: string;
+    view?: string;
+  }>();
+  const handledLink = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof linkedKeyId !== 'string') {
+      handledLink.current = null;
+      return;
+    }
+    // Not while a fetch is under way: the next preset up is worked out from the
+    // key's limit, and a cached one may be behind a raise made elsewhere.
+    if (!overview || isFetching || !LINKED_KEY_ID.test(linkedKeyId)) return;
+    // The allowlist takes either case, so the match does too.
+    const linkedId = linkedKeyId.toLowerCase();
+    const key = overview.keys.find(entry => entry.id.toLowerCase() === linkedId);
+    if (!key) return;
+
+    const view: AiApiKeySheetView = linkedView === 'limit' ? 'limit' : 'details';
+    // Once per link, even if a refetch lands before the cleared params do.
+    const link = `${key.id}:${view}`;
+    if (handledLink.current === link) return;
+    handledLink.current = link;
+
+    setSelectedKeyId(key.id);
+    setKeySheetView(view);
+    setSuggestedLimitUsd(view === 'limit' ? nextLimitOption(overview, key) : null);
+    setIsKeySheetOpen(true);
+    router.setParams({ key: undefined, view: undefined });
+  }, [linkedKeyId, linkedView, overview, isFetching]);
 
   const openCreate = () => {
     track(TRACKING_EVENTS.AI_API_GET_KEY_PRESSED, { key_count: overview?.keys.length ?? 0 });
@@ -185,6 +249,7 @@ export default function AiApiScreen() {
               limitOptions={overview.limitOptionsUsd}
               maxLimitUsd={overview.maxMonthlyLimitUsd}
               resetsAt={overview.month.resetsAt}
+              suggestedLimitUsd={suggestedLimitUsd}
               onOpenSetupGuide={openSetup}
             />
             <AiApiModelsSheet

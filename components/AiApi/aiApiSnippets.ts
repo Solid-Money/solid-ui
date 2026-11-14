@@ -1,10 +1,11 @@
 /** The agents the setup tabs cover, in tab order. */
-export type AiApiAgent = 'claude-code' | 'codex' | 'openclaw' | 'other';
+export type AiApiAgent = 'claude-code' | 'codex' | 'openclaw' | 'opencode' | 'other';
 
 export const AI_API_AGENT_TABS: { id: AiApiAgent; label: string }[] = [
   { id: 'claude-code', label: 'Claude Code' },
   { id: 'codex', label: 'Codex' },
   { id: 'openclaw', label: 'OpenClaw' },
+  { id: 'opencode', label: 'OpenCode' },
   { id: 'other', label: 'Other' },
 ];
 
@@ -41,21 +42,55 @@ const block = (label: string, lines: (key: string) => string, key: string): AiAp
 });
 
 /**
+ * OpenCode's config for the Solid provider: every model the key can call,
+ * under its own name, and `model` to start on. The key stays out of the file —
+ * OpenCode reads it from the environment — so the file is safe to keep in a
+ * project.
+ *
+ * `model` is listed even when the list doesn't have it (the list is empty
+ * until the overview loads), since OpenCode only starts on a model its
+ * provider names.
+ */
+const openCodeConfig = (v1: string, model: string, models: { id: string; name: string }[]) => {
+  const listed = models.some(entry => entry.id === model)
+    ? models
+    : [...models, { id: model, name: model }];
+  return JSON.stringify(
+    {
+      $schema: 'https://opencode.ai/config.json',
+      provider: {
+        solid: {
+          npm: '@ai-sdk/openai-compatible',
+          name: 'Solid AI API',
+          options: { baseURL: v1, apiKey: '{env:SOLID_AI_API_KEY}' },
+          models: Object.fromEntries(listed.map(entry => [entry.id, { name: entry.name }])),
+        },
+      },
+      model: `solid/${model}`,
+    },
+    null,
+    2,
+  );
+};
+
+/**
  * The setup for each agent, from the base URL (without `/v1`), a key — the
- * real one on the key-ready screen, a placeholder in the guide — and the model
- * to start with.
+ * real one on the key-ready screen, a placeholder in the guide — the model to
+ * start with, and every model the key can call, for agents whose config lists
+ * them (OpenCode).
  *
  * Anthropic-style clients (Claude Code, OpenClaw's `anthropic-messages`) take
- * the root and add `/v1` themselves; OpenAI-style ones (Codex, everything
- * else) are given the `/v1` base.
+ * the root and add `/v1` themselves; OpenAI-style ones (Codex, OpenCode,
+ * everything else) are given the `/v1` base.
  */
 export function buildAiApiSetupGuide(params: {
   agent: AiApiAgent;
   baseUrl: string;
   apiKey: string;
   model: string;
+  models: { id: string; name: string }[];
 }): AiApiSetupGuide {
-  const { baseUrl, apiKey, model } = params;
+  const { baseUrl, apiKey, model, models } = params;
   const v1 = `${baseUrl}/v1`;
 
   switch (params.agent) {
@@ -126,6 +161,23 @@ export function buildAiApiSetupGuide(params: {
           ),
         ],
         hint: 'Add this under models.providers in your OpenClaw config. Hermes works the same way, in ~/.hermes/config.yaml.',
+      };
+
+    case 'opencode':
+      return {
+        blocks: [
+          block(
+            '~/.config/opencode/opencode.json',
+            () => openCodeConfig(v1, model, models),
+            apiKey,
+          ),
+          block(
+            'Then run',
+            key => [`export SOLID_AI_API_KEY=${key}`, 'opencode'].join('\n'),
+            apiKey,
+          ),
+        ],
+        hint: 'Save this as opencode.json in your project, or in ~/.config/opencode/ for every project, then start OpenCode from the same terminal.',
       };
 
     default:

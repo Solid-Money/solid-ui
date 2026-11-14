@@ -13,6 +13,7 @@ import {
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiLongDate,
+  formatAiApiModelSpeed,
   formatAiApiNotCounted,
   formatAiApiPaidFrom,
   formatAiApiRate,
@@ -65,6 +66,38 @@ describe('formatAiApiTokens', () => {
     [312, '312 tokens'],
   ])('formats %p as %s', (tokens, expected) => {
     expect(formatAiApiTokens(tokens)).toBe(expected);
+  });
+});
+
+describe('formatAiApiModelSpeed', () => {
+  it('shows speed in whole tokens a second and the first token to one decimal', () => {
+    expect(formatAiApiModelSpeed({ tokensPerSecond: 84.6, timeToFirstTokenMs: 1234 })).toBe(
+      '~85 tokens/s · first token in 1.2 s',
+    );
+    expect(formatAiApiModelSpeed({ tokensPerSecond: 1250, timeToFirstTokenMs: 12_340 })).toBe(
+      '~1,250 tokens/s · first token in 12.3 s',
+    );
+  });
+
+  it('shows whichever half was measured', () => {
+    expect(formatAiApiModelSpeed({ tokensPerSecond: 85, timeToFirstTokenMs: null })).toBe(
+      '~85 tokens/s',
+    );
+    expect(formatAiApiModelSpeed({ tokensPerSecond: null, timeToFirstTokenMs: 800 })).toBe(
+      'First token in 0.8 s',
+    );
+  });
+
+  it('never reads a fast first token as 0.0 s', () => {
+    expect(formatAiApiModelSpeed({ timeToFirstTokenMs: 30 })).toBe('First token in 0.1 s');
+  });
+
+  it.each([
+    ['nothing measured', { tokensPerSecond: null, timeToFirstTokenMs: null }],
+    ['an older backend', {}],
+    ['nonsense', { tokensPerSecond: Number.NaN, timeToFirstTokenMs: -5 }],
+  ])('shows nothing for %s', (_label, model) => {
+    expect(formatAiApiModelSpeed(model)).toBeNull();
   });
 });
 

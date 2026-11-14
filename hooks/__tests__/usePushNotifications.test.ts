@@ -79,6 +79,35 @@ describe('routeForLink', () => {
       expect(routeForLink(link('/savings?vault=doge'))).toEqual(path.SAVINGS);
     });
 
+    describe('an AI API limit push', () => {
+      const KEY_ID = '65f1a2b3c4d5e6f7a8b9c0d1';
+
+      it('opens that key’s limit, passing on only the key and the view', () => {
+        expect(
+          routeForLink(
+            link(
+              `/rewards/ai-api?key=${KEY_ID}&view=limit&utm_source=ai_api_limit_warning&utm_medium=push&utm_campaign=ai_api`,
+            ),
+          ),
+        ).toEqual({ pathname: '/rewards/ai-api', params: { key: KEY_ID, view: 'limit' } });
+      });
+
+      it('opens the key without a view it does not know', () => {
+        expect(routeForLink(link(`/rewards/ai-api?key=${KEY_ID}&view=delete`))).toEqual({
+          pathname: '/rewards/ai-api',
+          params: { key: KEY_ID },
+        });
+      });
+
+      it.each([
+        ['a key that is not an id', '/rewards/ai-api?key=../../card&view=limit'],
+        ['a key one character short', `/rewards/ai-api?key=${KEY_ID.slice(1)}&view=limit`],
+        ['a view without a key', '/rewards/ai-api?view=limit'],
+      ])('opens the AI API screen alone for %s', (_label, p) => {
+        expect(routeForLink(link(p))).toEqual(path.AI_API);
+      });
+    });
+
     it('opens What’s New on the page a campaign chose, passing on only those params', () => {
       expect(
         routeForLink(link(`/?whatsNew=${ID}&whatsNewStep=2&utm_source=x_a&utm_campaign=x`)),
@@ -227,6 +256,19 @@ describe('getNotificationRoute', () => {
           link: link('/savings?vault=eur&utm_source=test_a&utm_medium=push'),
         }),
       ).toEqual({ pathname: '/savings', params: { vault: 'eur' } });
+    });
+
+    it('opens the limit of the key an AI API limit push is about', () => {
+      const keyId = '65f1a2b3c4d5e6f7a8b9c0d1';
+      expect(
+        getNotificationRoute({
+          type: 'ai_api_limit_warning',
+          keyId,
+          link: link(
+            `/rewards/ai-api?key=${keyId}&view=limit&utm_source=ai_api_limit_warning&utm_medium=push`,
+          ),
+        }),
+      ).toEqual({ pathname: '/rewards/ai-api', params: { key: keyId, view: 'limit' } });
     });
   });
 

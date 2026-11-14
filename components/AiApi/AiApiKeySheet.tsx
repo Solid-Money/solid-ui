@@ -18,6 +18,7 @@ import {
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiShortDate,
+  formatAiApiTokens,
   formatAiApiUsd,
 } from './aiApiFormat';
 import {
@@ -60,6 +61,12 @@ interface AiApiKeySheetProps {
   maxLimitUsd: number;
   /** When monthly limits start again: midnight UTC on the 1st. */
   resetsAt: string;
+  /**
+   * The amount "Change limit" starts on instead of the key's own limit — the
+   * next option up, when a limit push opened the sheet. Left out, it starts on
+   * the key's limit.
+   */
+  suggestedLimitUsd?: number | null;
   onOpenSetupGuide: () => void;
 }
 
@@ -160,6 +167,36 @@ const DetailsView = ({
       <Text className="text-[12px] text-white/45">Resets {formatAiApiShortDate(resetsAt)}</Text>
     </View>
 
+    {/* An older backend sends no split; cache writes only show once there are some.
+        One strip, like the stats above it: the sheet does not scroll, so it
+        stays short on small phones. */}
+    {apiKey.tokensThisMonth ? (
+      <View className="gap-2">
+        <Text className="text-[12px] text-white/55">Tokens this month</Text>
+        <View className="flex-row rounded-2xl bg-[#262626] py-3.5">
+          {[
+            { label: 'Input', value: apiKey.tokensThisMonth.input, show: true },
+            { label: 'Cached', value: apiKey.tokensThisMonth.cachedInput, show: true },
+            {
+              label: 'Cache write',
+              value: apiKey.tokensThisMonth.cacheWrite,
+              show: apiKey.tokensThisMonth.cacheWrite > 0,
+            },
+            { label: 'Output', value: apiKey.tokensThisMonth.output, show: true },
+          ]
+            .filter(stat => stat.show)
+            .map(stat => (
+              <View key={stat.label} className="flex-1 items-center gap-1">
+                <Text className="text-[12px] text-white/55">{stat.label}</Text>
+                <Text className="text-[17px] font-semibold text-white" numberOfLines={1}>
+                  {formatAiApiTokens(stat.value)}
+                </Text>
+              </View>
+            ))}
+        </View>
+      </View>
+    ) : null}
+
     <AiApiGroup surface="sheet">
       <AiApiRow
         icon={<Gauge size={20} color="white" strokeWidth={AI_API_ICON_STROKE} />}
@@ -199,6 +236,7 @@ const LimitView = ({
   limitOptions,
   maxLimitUsd,
   resetsAt,
+  suggestedLimitUsd,
   onDone,
 }: {
   apiKey: AiApiKey;
@@ -206,22 +244,28 @@ const LimitView = ({
   limitOptions: number[];
   maxLimitUsd: number;
   resetsAt: string;
+  suggestedLimitUsd?: number | null;
   onDone: () => void;
 }) => {
   const { updateKey, isUpdating } = useUpdateAiApiKey();
-  const [limit, setLimit] = useState(apiKey.monthlyLimitUsd);
-  const [isCustom, setIsCustom] = useState(!limitOptions.includes(apiKey.monthlyLimitUsd));
-  const [customText, setCustomText] = useState(String(apiKey.monthlyLimitUsd));
+  // Where the editor starts: the suggested raise when there is one, else the
+  // key's own limit.
+  const startLimit = suggestedLimitUsd ?? apiKey.monthlyLimitUsd;
+  const [limit, setLimit] = useState(startLimit);
+  const [isCustom, setIsCustom] = useState(!limitOptions.includes(startLimit));
+  const [customText, setCustomText] = useState(String(startLimit));
 
   // A boolean, not the options array, for the same reason as the create sheet:
   // a refetch must not undo a choice the user is in the middle of.
-  const startsCustom = !limitOptions.includes(apiKey.monthlyLimitUsd);
+  const startsCustom = !limitOptions.includes(startLimit);
 
+  // Keyed on where it starts, not only on the session: a limit push can ask
+  // for a raise while this view is already open, which starts no new session.
   useEffect(() => {
-    setLimit(apiKey.monthlyLimitUsd);
+    setLimit(startLimit);
     setIsCustom(startsCustom);
-    setCustomText(String(apiKey.monthlyLimitUsd));
-  }, [session, apiKey.id, apiKey.monthlyLimitUsd, startsCustom]);
+    setCustomText(String(startLimit));
+  }, [session, apiKey.id, startLimit, startsCustom]);
 
   const parsedCustom = Number.parseInt(customText, 10);
   const chosen = isCustom ? (Number.isFinite(parsedCustom) ? parsedCustom : null) : limit;
@@ -390,6 +434,7 @@ const AiApiKeySheet = ({
   limitOptions,
   maxLimitUsd,
   resetsAt,
+  suggestedLimitUsd,
   onOpenSetupGuide,
 }: AiApiKeySheetProps) => {
   const close = () => onOpenChange(false);
@@ -401,6 +446,11 @@ const AiApiKeySheet = ({
       contentKey={`ai-api-key-${view}`}
       designTop={37}
       designBottom={34}
+      // The details view, with its token strip, can outgrow a small phone; it
+      // scrolls only once it does. The limit and rename views keep a plain body:
+      // they hold a text field, and in a scroll view the first tap on Save with
+      // the keyboard up would only dismiss the keyboard.
+      scrollable={view === 'details'}
     >
       {({ session, topPadding, presentation }: CardSheetBody) =>
         apiKey ? (
@@ -422,6 +472,7 @@ const AiApiKeySheet = ({
                 limitOptions={limitOptions}
                 maxLimitUsd={maxLimitUsd}
                 resetsAt={resetsAt}
+                suggestedLimitUsd={suggestedLimitUsd}
                 onDone={close}
               />
             ) : view === 'rename' ? (

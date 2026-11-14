@@ -18,12 +18,15 @@ const AiApiKeyReady = ({
   secret,
   baseUrl,
   model,
+  models,
   onDone,
   onOpenGuide,
 }: {
   secret: string;
   baseUrl: string;
   model: string;
+  /** Every model the key can call, for agents whose config lists them. */
+  models: { id: string; name: string }[];
   onDone: () => void;
   onOpenGuide: () => void;
 }) => (
@@ -50,7 +53,7 @@ const AiApiKeyReady = ({
 
     <View className="gap-3">
       <Text className="text-[16px] font-semibold text-white">Set up your agent</Text>
-      <AiApiSetupGuide baseUrl={baseUrl} apiKey={secret} model={model} />
+      <AiApiSetupGuide baseUrl={baseUrl} apiKey={secret} model={model} models={models} />
       <Pressable
         accessibilityRole="link"
         onPress={onOpenGuide}
