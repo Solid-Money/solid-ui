@@ -11,6 +11,7 @@ import {
 } from '@/constants/swapChains';
 import { RewardsTier } from '@/lib/types';
 import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
+import { sumTokenUnits, TokenUnits } from '@/lib/utils/tokenUnits';
 
 export type { SwapAssetCategory };
 
@@ -113,7 +114,7 @@ export interface SwapAssetRow {
   asset: SwapAssetWithBalance;
   /** Every eligible network, in chip order. */
   members: SwapAssetWithBalance[];
-  balance: number;
+  balance: TokenUnits;
   balanceUsd: number;
 }
 
@@ -139,7 +140,7 @@ const makeRow = (members: SwapAssetWithBalance[]): SwapAssetRow => {
     category: identity.category,
     asset,
     members,
-    balance: members.reduce((total, member) => total + member.balance, 0),
+    balance: sumTokenUnits(members.map(({ balanceRaw: raw, decimals }) => ({ raw, decimals }))),
     balanceUsd: members.reduce((total, member) => total + member.balanceUsd, 0),
   };
 };
@@ -176,7 +177,7 @@ const onList = (asset: SwapAssetWithBalance) => asset.swappable && !!swapListing
  * shown.
  */
 export function payAssetRows(assets: SwapAssetWithBalance[]): SwapAssetRow[] {
-  const held = assets.filter(asset => asset.balance > 0 && onList(asset));
+  const held = assets.filter(asset => asset.balanceRaw > 0n && onList(asset));
   return Array.from(groupBy(held).values(), members => makeRow(members.sort(byValue))).sort(
     byValueThenList,
   );

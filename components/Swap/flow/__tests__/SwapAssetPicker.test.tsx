@@ -138,6 +138,16 @@ it('asks which network to pay from for a coin held on more than one', () => {
   expect(mockSetModal).toHaveBeenCalledWith(SWAP_MODAL.OPEN_FORM);
 });
 
+it('rounds the exact balance after combining networks with different decimals', () => {
+  mockAssets = [
+    { ...usdcFuse, balance: 1.005, balanceRaw: 1_005_000n },
+    { ...usdcBase, balance: 1.01, balanceRaw: 1_010_000_000_000_000_000n, decimals: 18 },
+  ];
+  mount();
+
+  expect(text()).toContain('2.02 USDC · 2 networks');
+});
+
 it('keeps one network row open and collapses it when tapped again', () => {
   mockAssets.push(usdtBase);
   mount();

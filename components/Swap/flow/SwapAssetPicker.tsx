@@ -23,7 +23,7 @@ import { VaultType } from '@/lib/types';
 import { SwapAsset } from '@/lib/types/lifi-swap';
 import { SwapField } from '@/lib/types/swap-field';
 import { cn } from '@/lib/utils';
-import { formatSwapAmount, formatSwapUsd } from '@/lib/utils/swap/format';
+import { formatSwapTokenAmount, formatSwapUsd } from '@/lib/utils/swap/format';
 import { useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 
 type CategoryFilter = 'all' | SwapAssetCategory;
@@ -54,7 +54,9 @@ const PickerRow = ({
 }) => {
   const hasNetworks = row.members.length > 1;
   const decimals = row.category === 'stablecoins' ? 2 : 0;
-  const ticker = isPay ? `${formatSwapAmount(row.balance, decimals)} ${row.symbol}` : row.symbol;
+  const ticker = isPay
+    ? `${formatSwapTokenAmount(row.balance, decimals)} ${row.symbol}`
+    : row.symbol;
   const subtitle = hasNetworks ? `${ticker} · ${row.members.length} networks` : ticker;
   const value = isPay && row.balanceUsd > 0 ? formatSwapUsd(row.balanceUsd) : undefined;
   const Chevron = expanded ? ChevronUp : ChevronDown;
@@ -106,7 +108,7 @@ const PickerRow = ({
             const balance = isPay
               ? member.balanceUsd > 0
                 ? formatSwapUsd(member.balanceUsd)
-                : `${formatSwapAmount(member.balance, decimals)} ${row.symbol}`
+                : `${formatSwapTokenAmount({ raw: member.balanceRaw, decimals: member.decimals }, decimals)} ${row.symbol}`
               : undefined;
             return (
               <Pressable
@@ -116,9 +118,9 @@ const PickerRow = ({
                 accessibilityLabel={`${row.name} on ${name}${balance ? `, ${balance}` : ''}`}
                 className="min-h-9 flex-row items-center gap-2 rounded-[10px] bg-[#2A2A2A] py-2 pl-2.5 pr-3 active:bg-white/15 web:hover:bg-white/15"
               >
-                {icon && (
+                {icon ? (
                   <Image source={icon} style={{ width: 20, height: 20 }} contentFit="contain" />
-                )}
+                ) : null}
                 <Text className="text-[14px] font-medium leading-5 text-white">{name}</Text>
                 {balance && <Text className="text-[14px] leading-5 text-white/50">{balance}</Text>}
               </Pressable>

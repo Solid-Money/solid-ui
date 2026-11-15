@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useQueries } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react-native';
@@ -37,13 +37,6 @@ const APY_PERIODS: ApyPeriod[] = [
   { days: '15', label: '15D', title: '15 Day APY', valueKey: 'fifteenDay' },
   { days: '30', label: '30D', title: '30 Day APY', valueKey: 'thirtyDay' },
 ];
-
-const selectChartableHistory = (history: HistoricalAPYPoint[]) => {
-  const validHistory = history.filter(point => Number.isFinite(point.value) && point.value >= 0);
-
-  // The chart draws no bars for an all-zero series. Keep zeroes within a series with yield.
-  return validHistory.some(point => point.value > 0) ? validHistory : [];
-};
 
 const resampleHistory = (
   history: { time: string | number; value: number }[],
@@ -136,24 +129,36 @@ const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
   const { isDesktop } = useDimension();
   const [selectedPeriod, setSelectedPeriod] = useState<ApyPeriod>();
   const { data: apys, isLoading: isApyLoading } = useAPYs(vaultType);
+  const selectChartData = useCallback(
+    (history: HistoricalAPYPoint[]) => {
+      const validHistory = history.filter(
+        point => Number.isFinite(point.value) && point.value >= 0,
+      );
+      const barCount = isDesktop ? DESKTOP_VISIBLE_BARS : MOBILE_VISIBLE_BARS;
+      const bars = resampleHistory(validHistory, barCount);
+      return bars.some(point => point.value > 0) ? bars : [];
+    },
+    [isDesktop],
+  );
   const histories = useQueries({
     queries: APY_PERIODS.map(({ days }) => ({
       ...historicalApyQueryOptions(days, vaultType),
-      select: selectChartableHistory,
+      select: selectChartData,
     })),
   });
   const firstPeriodWithHistory = histories.findIndex(({ data }) => Boolean(data?.length));
+  const firstLoadingPeriod = histories.findIndex(({ isLoading }) => isLoading);
+  const isInitialHistoryLoading = firstPeriodWithHistory === -1 && firstLoadingPeriod !== -1;
+  if (firstPeriodWithHistory === -1 && !isInitialHistoryLoading) return null;
+
   const periodIndex = selectedPeriod
     ? APY_PERIODS.indexOf(selectedPeriod)
-    : Math.max(0, firstPeriodWithHistory);
+    : isInitialHistoryLoading
+      ? firstLoadingPeriod
+      : firstPeriodWithHistory;
   const period = APY_PERIODS[periodIndex];
-  const { data: history, isLoading: isHistoryLoading } = histories[periodIndex];
-
-  const chartData = useMemo(
-    () => resampleHistory(history ?? [], isDesktop ? DESKTOP_VISIBLE_BARS : MOBILE_VISIBLE_BARS),
-    [history, isDesktop],
-  );
-  if (firstPeriodWithHistory === -1) return null;
+  const { data: chartData = [], isLoading } = histories[periodIndex];
+  const isHistoryLoading = isInitialHistoryLoading || isLoading;
 
   const currentApy = Math.max(apys?.[period.valueKey] ?? 0, 0);
   const showChart = isHistoryLoading || chartData.length > 0;

@@ -14,33 +14,53 @@ export class FetchTimeoutError extends Error {
  * backend takes — which is how a slow dependency turns into a permanent spinner.
  *
  * The rejection is a `FetchTimeoutError`, not the bare `AbortError` an abort
- * produces: callers treat `AbortError` as a superseded request rather than a
- * failure, so a timeout raised that way would be swallowed.
+ * produces. Pass a response reader to keep the deadline active while the body
+ * is consumed.
  */
-export const fetchWithTimeout = async (
+export function fetchWithTimeout(
   input: string,
   init: RequestInit,
   timeoutMs: number,
-): Promise<Response> => {
+): Promise<Response>;
+export function fetchWithTimeout<T>(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+  readResponse: (response: Response) => Promise<T>,
+): Promise<T>;
+export async function fetchWithTimeout<T>(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+  readResponse?: (response: Response) => Promise<T>,
+): Promise<Response | T> {
   const controller = new AbortController();
   const signal = init.signal;
-  const abort = () => controller.abort();
-  if (signal?.aborted) abort();
-  else signal?.addEventListener('abort', abort, { once: true });
+  const abortError = () => Object.assign(new Error('Aborted'), { name: 'AbortError' });
+  if (signal?.aborted) throw abortError();
 
-  let timedOut = false;
+  let rejectRequest!: (error: Error) => void;
+  const interrupted = new Promise<never>((_, reject) => {
+    rejectRequest = reject;
+  });
+  const abort = () => {
+    rejectRequest(abortError());
+    controller.abort();
+  };
+  signal?.addEventListener('abort', abort, { once: true });
+
   const timer = setTimeout(() => {
-    timedOut = true;
+    rejectRequest(new FetchTimeoutError(timeoutMs));
     controller.abort();
   }, timeoutMs);
 
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } catch (error) {
-    if (timedOut) throw new FetchTimeoutError(timeoutMs);
-    throw error;
+    const request = fetch(input, { ...init, signal: controller.signal }).then<Response | T>(
+      response => (readResponse ? readResponse(response) : response),
+    );
+    return await Promise.race([request, interrupted]);
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', abort);
   }
-};
+}

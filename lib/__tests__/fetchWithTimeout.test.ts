@@ -59,6 +59,23 @@ describe('fetchWithTimeout', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 
+  it('times out while reading a body after the headers arrive', async () => {
+    jest.useFakeTimers();
+    const json = jest.fn(() => new Promise(() => {}));
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json });
+    const pending = fetchWithTimeout('https://example.test', {}, 5000, response => response.json());
+    const assertion = expect(pending).rejects.toBeInstanceOf(FetchTimeoutError);
+
+    await jest.advanceTimersByTimeAsync(4999);
+    expect(json).toHaveBeenCalledTimes(1);
+    const init = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(init.signal.aborted).toBe(false);
+    await jest.advanceTimersByTimeAsync(1);
+
+    await assertion;
+    expect(init.signal.aborted).toBe(true);
+  });
+
   it('does not leave its timer running after the request settles', async () => {
     jest.useFakeTimers();
     global.fetch = jest.fn(() =>

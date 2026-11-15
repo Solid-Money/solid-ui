@@ -117,12 +117,12 @@ export const fetchLifiSwapDestinations = async (
     fromChain: String(params.fromChain),
     fromToken: params.fromToken,
   });
-  const response = await fetchWithTimeout(
+  return fetchWithTimeout(
     `${BASE}/destinations?${query.toString()}`,
     { method: 'GET', headers: authHeaders(), credentials: 'include', signal },
     DESTINATIONS_TIMEOUT_MS,
+    parse<LifiSwapDestinations>,
   );
-  return parse<LifiSwapDestinations>(response);
 };
 
 export const fetchLifiSwapStatus = async (params: {
