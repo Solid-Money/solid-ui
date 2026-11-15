@@ -24,6 +24,8 @@ import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership } from '@/hooks/useTierMembership';
@@ -38,6 +40,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 import { TierBenefitsBackground, TierBenefitsPage } from './TierBenefitsPage';
 import { TIER_LABELS, tierOfferSubtitle } from './tierBenefitsPresentation';
+import { showsCardFxPricing } from './tierCardFx';
 import TierPointsSheet from './TierPointsSheet';
 import TierSwitcher from './TierSwitcher';
 import { type TierUpgradeCta, tierUpgradeCta } from './tierUpgradeCta';
@@ -219,6 +222,10 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
     refetch: refetchRewards,
   } = useRewardsUserData();
   const { data: tierBenefits } = useTierBenefits();
+  // The card FX price is a Wirex one: Rain cardholders keep Rain's fee.
+  const { provider: cardProvider } = useCardProvider();
+  const { isSuccess: cardStatusSettled } = useCardStatus();
+  const showCardFx = showsCardFxPricing({ provider: cardProvider, cardStatusSettled });
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
   const pending = useRewardsUpgradeStore(state => !!state.pendingUntil);
   const currentTier = isError ? undefined : confirmed?.currentTier;
@@ -545,6 +552,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   benefits={tierBenefits?.find(benefit => benefit.tier === tier)}
                   allBenefits={tierBenefits}
                   fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
+                  showCardFx={showCardFx}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&

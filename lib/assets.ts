@@ -1439,6 +1439,10 @@ export const ASSETS = {
     module: require('@/assets/images/rewards-tiers/v4/card-ultra.png'),
     hash: '5f66a8bb',
   },
+  'images/rewards-tiers/v4/fx.svg': {
+    module: require('@/assets/images/rewards-tiers/v4/fx.svg'),
+    hash: 'ca76736d',
+  },
   'images/rewards-tiers/v4/lock.svg': {
     module: require('@/assets/images/rewards-tiers/v4/lock.svg'),
     hash: '2e7d27d9',
