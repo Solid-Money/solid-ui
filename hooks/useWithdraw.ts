@@ -12,14 +12,20 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import { VAULT } from '@/hooks/useVault';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
+import { UserCopyError } from '@/lib/errors/UserCopyError';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { SOUSD_WITHDRAW_CHAINS, SoUsdWithdrawChainId } from '@/lib/soUsdWithdraw';
+import {
+  SOUSD_WITHDRAW_CHAINS,
+  SoUsdWithdrawChainId,
+  withdrawShortfallCopy,
+} from '@/lib/soUsdWithdraw';
 import { Status, TransactionType } from '@/lib/types';
 import {
   decodeRevertReason,
   describeWithdrawError,
   isUserCancelledError,
 } from '@/lib/utils/withdrawErrors';
+import { publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
 
@@ -69,6 +75,22 @@ const useWithdraw = (chainId: SoUsdWithdrawChainId): WithdrawResult => {
       if (!user) {
         throw new Error('User not found');
       }
+
+      // Step 1 bridges shares here, and fewer arrive than were sent: the
+      // bridge fee comes out of them. A resumed withdraw prefilled with the
+      // sent amount then asked the queue for shares the Safe doesn't hold, and
+      // reverted on every retry while the shares sat here unwithdrawn.
+      const shares = await publicClient(chainId)
+        .readContract({
+          address: vault,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [user.safeAddress as Address],
+        })
+        .catch(() => undefined);
+      const shortfall =
+        shares === undefined ? undefined : withdrawShortfallCopy(amountWei, shares, chain.name);
+      if (shortfall) throw new UserCopyError(shortfall);
 
       // `allowance` is undefined until the read resolves, and `undefined < amountWei`
       // is false — so the old check read a pending query as "already approved",

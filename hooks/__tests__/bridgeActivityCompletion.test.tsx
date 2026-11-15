@@ -38,6 +38,9 @@ jest.mock('@/hooks/useActivityActions', () => ({
 }));
 jest.mock('@/lib/config', () => ({ ADDRESSES: { fuse: {} } }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/lib/sponsoredMinimum', () => ({
+  assertSponsoredMinimum: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('@/lib/soUsdWithdraw', () => ({
   SOUSD_WITHDRAW_CHAIN_ID: 8453,
   SOUSD_WITHDRAW_CHAINS: { 8453: { lzEid: 30184 } },

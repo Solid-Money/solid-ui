@@ -60,6 +60,7 @@ import {
   isProduction,
 } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
+import { sponsoredMinimumCopy, useSponsoredMinimum } from '@/lib/sponsoredMinimum';
 import {
   CardProvider,
   DepositCategory,
@@ -609,6 +610,12 @@ export default function CardDepositInternalForm() {
 
   const isWalletSourceGaslessGated = isProduction && watchedFrom === CardDepositSource.WALLET;
 
+  // Savings go through the Fuse paymaster, which only sponsors a card deposit
+  // from its minimum (0.1 soUSD when this was written). Below it every try
+  // reverted as "Couldn't add funds to your card".
+  const { data: savingsMinimum } = useSponsoredMinimum(ADDRESSES.fuse.cardDepositManager);
+  const isSavingsSource = watchedFrom === CardDepositSource.SAVINGS;
+
   const schema = useMemo(() => {
     return z.object({
       amount: z
@@ -623,11 +630,23 @@ export default function CardDepositInternalForm() {
             Number(val) >= Number(EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT),
           { error: `Minimum deposit is ${EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT} ${tokenSymbol}` },
         )
+        .refine(
+          val =>
+            !isSavingsSource ||
+            savingsMinimum === undefined ||
+            Number(val) >= Number(formatUnits(savingsMinimum, 6)),
+          {
+            error:
+              savingsMinimum !== undefined
+                ? sponsoredMinimumCopy('deposit', savingsMinimum, 'soUSD')
+                : 'Amount is below the minimum',
+          },
+        )
         .refine(val => Number(val) <= balanceAmount, {
           error: `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
         }),
     });
-  }, [balanceAmount, tokenSymbol, isWalletSourceGaslessGated]);
+  }, [balanceAmount, tokenSymbol, isWalletSourceGaslessGated, isSavingsSource, savingsMinimum]);
 
   const formattedBalance = balanceAmount.toString();
 

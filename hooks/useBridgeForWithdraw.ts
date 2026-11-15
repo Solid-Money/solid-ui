@@ -23,6 +23,7 @@ import {
   SOUSD_WITHDRAW_CHAINS,
   SoUsdWithdrawChainId,
 } from '@/lib/soUsdWithdraw';
+import { assertSponsoredMinimum } from '@/lib/sponsoredMinimum';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { generateId } from '@/lib/utils/generate-id';
 import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
@@ -58,12 +59,7 @@ const useBridgeForWithdraw = (
     abi: ETHEREUM_TELLER_ABI,
     address: ADDRESSES.fuse.teller,
     functionName: 'previewFee',
-    args: [
-      BigInt(0),
-      user?.safeAddress as Address,
-      bridgeWildCard,
-      ADDRESSES.fuse.nativeFeeToken,
-    ],
+    args: [BigInt(0), user?.safeAddress as Address, bridgeWildCard, ADDRESSES.fuse.nativeFeeToken],
     chainId: fuse.id,
   });
 
@@ -103,6 +99,10 @@ const useBridgeForWithdraw = (
         setError(null);
 
         const amountWei = parseUnits(amount, 6);
+        await assertSponsoredMinimum(ADDRESSES.fuse.teller, amountWei, {
+          what: 'withdrawal',
+          symbol: 'soUSD',
+        });
 
         Sentry.addBreadcrumb({
           message: `Starting bridge to ${destination.name} transaction`,
@@ -132,12 +132,7 @@ const useBridgeForWithdraw = (
             data: encodeFunctionData({
               abi: BridgePayamster_ABI,
               functionName: 'sponsorBridge',
-              args: [
-                ADDRESSES.fuse.teller,
-                amountWei,
-                user.safeAddress as Address,
-                bridgeWildCard,
-              ],
+              args: [ADDRESSES.fuse.teller, amountWei, user.safeAddress as Address, bridgeWildCard],
             }),
             value: 0n,
           },
