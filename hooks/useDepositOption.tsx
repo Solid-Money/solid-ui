@@ -826,9 +826,9 @@ const useDepositOption = ({
         is_first_deposit: !user?.isDeposited,
       });
 
-      setModal(DEPOSIT_MODAL.CLOSE);
+      const { onDismiss } = useDepositStore.getState();
       resetDepositFlow();
-      clearSessionStartTime();
+      onDismiss?.();
     }
   };
 

@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -89,7 +89,11 @@ const SwapModalProvider = () => {
   const isFlowOutcome =
     currentModal.name === SWAP_MODAL.OPEN_SWAPPED.name ||
     currentModal.name === SWAP_MODAL.OPEN_ON_ITS_WAY.name;
+  // The form, pickers and review share one frame, even while the list is loading.
+  const usePickerLayout =
+    isNewFlow && !isFlowOutcome && isSwapAvailable && hasAcceptedSwapDisclaimer;
   const isBuyFuseContent = isBuyFuse && isSwapAvailable && hasAcceptedSwapDisclaimer;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const handleOpenChange = useCallback(
     (value: boolean) => {
@@ -102,6 +106,10 @@ const SwapModalProvider = () => {
         });
         setModal(SWAP_MODAL.OPEN_FORM);
       } else {
+        if (isFlowSubScreen) {
+          setModal(SWAP_MODAL.OPEN_FORM);
+          return;
+        }
         // Leaving a finished swap isn't abandoning one; it also clears the
         // amount the outcome screens kept on screen.
         if (isFlowOutcome) {
@@ -115,7 +123,7 @@ const SwapModalProvider = () => {
         setModal(SWAP_MODAL.CLOSE);
       }
     },
-    [setModal, resetForm, currentModal, previousModal, isFlowOutcome],
+    [setModal, resetForm, currentModal, previousModal, isFlowOutcome, isFlowSubScreen],
   );
 
   const handleTransactionStatusPress = useCallback(() => {
@@ -132,7 +140,7 @@ const SwapModalProvider = () => {
     return isBuyFuse ? 'Buy FUSE' : 'Swap';
   }, [isBuyFuse, isTransactionStatus, isLifiStatus, isFlowOutcome, isNewFlow, currentModal.name]);
 
-  const contentKey = useMemo(() => {
+  const screenKey = useMemo(() => {
     // Confirm swap is a sheet over the form, which stays put underneath it.
     if (isNewFlow) {
       const screen =
@@ -146,6 +154,10 @@ const SwapModalProvider = () => {
     if (isBuyFuse) return 'buy-fuse';
     return isLifiSwap ? 'swap-form-lifi' : 'swap-form';
   }, [isBuyFuse, isTransactionStatus, isLifiStatus, isLifiSwap, isNewFlow, currentModal.name]);
+
+  useLayoutEffect(() => {
+    if (usePickerLayout) scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+  }, [screenKey, usePickerLayout]);
 
   const handleAcceptSwapDisclaimer = useCallback(() => {
     acceptDisclaimer('swap');
@@ -190,7 +202,7 @@ const SwapModalProvider = () => {
       return <LifiSwapStatusView onDone={handleTransactionStatusPress} />;
     }
 
-    if (isNewFlow) return <SwapFlow />;
+    if (isNewFlow) return <SwapFlow name={currentModal.name} />;
 
     // Fuse to Fuse is quoted and routed on Algebra; a pair that touches any
     // other chain goes through LI.FI.
@@ -228,6 +240,7 @@ const SwapModalProvider = () => {
   }, [
     isLifiStatus,
     isNewFlow,
+    currentModal.name,
     isLifiSwap,
     isSwapAvailable,
     hasAcceptedSwapDisclaimer,
@@ -251,8 +264,13 @@ const SwapModalProvider = () => {
         trigger={null}
         title={title}
         titleClassName="items-center w-full"
-        containerClassName="w-full max-w-md"
+        titleTextClassName={
+          usePickerLayout ? 'text-[24px] leading-[34px] native:text-[24px]' : undefined
+        }
+        containerClassName={usePickerLayout ? 'w-full max-w-md gap-4' : 'w-full max-w-md'}
         showBackButton={isBuyFuse || isFlowSubScreen}
+        showCloseButton={!isFlowSubScreen}
+        compactControls={usePickerLayout}
         onBackPress={
           isBuyFuse
             ? () => handleOpenChange(false)
@@ -260,7 +278,12 @@ const SwapModalProvider = () => {
               ? () => setModal(SWAP_MODAL.OPEN_FORM)
               : undefined
         }
-        contentKey={contentKey}
+        // Keep the header, scroll view and query providers mounted across picker steps.
+        contentKey={usePickerLayout ? 'swap-flow' : screenKey}
+        shouldAnimate={usePickerLayout ? false : undefined}
+        fillViewportHeight={usePickerLayout}
+        wideScreenHeight={usePickerLayout ? 640 : undefined}
+        scrollViewRef={usePickerLayout ? scrollViewRef : undefined}
         disableScroll={isBuyFuseContent}
       >
         {content}

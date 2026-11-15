@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, PressableProps, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { formatBalanceUSD } from '@/lib/utils';
@@ -23,6 +23,8 @@ export default function AssetRow({
   detail,
   trailing,
   onPress,
+  accessibilityLabel = `View ${title}`,
+  accessibilityState,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -35,7 +37,10 @@ export default function AssetRow({
   /** Replaces the amount column, e.g. the new user's "Start" on Earn. */
   trailing?: ReactNode;
   onPress?: () => void;
+  accessibilityLabel?: string;
+  accessibilityState?: PressableProps['accessibilityState'];
 }) {
+  const rowClassName = 'flex-row items-center gap-[12px] px-[16px] py-[14px]';
   const content = (
     <>
       {icon}
@@ -67,13 +72,14 @@ export default function AssetRow({
   return onPress ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`View ${title}`}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
       onPress={onPress}
-      className="flex-row items-center gap-[12px] px-[16px] py-[14px] active:bg-white/5"
+      className={`${rowClassName} active:bg-white/5`}
     >
       {content}
     </Pressable>
   ) : (
-    <View className="flex-row items-center gap-[12px] px-[16px] py-[14px]">{content}</View>
+    <View className={rowClassName}>{content}</View>
   );
 }

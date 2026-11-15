@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Check } from 'lucide-react-native';
 
 import ReferSheet from '@/components/Referral/v4/ReferSheet';
@@ -8,6 +8,7 @@ import {
   ReferDivider,
   RewardIcon,
 } from '@/components/Referral/v4/ReferV4Primitives';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cardCreditSourceLine } from '@/lib/cardCredit';
 import { formatUsdCents } from '@/lib/referral/referralV4';
@@ -85,13 +86,9 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
         ))}
       </View>
 
-      <Pressable
-        onPress={() => onOpenChange(false)}
-        accessibilityRole="button"
-        className="mt-6 h-[56px] w-full items-center justify-center rounded-[16px] bg-brand active:opacity-80 web:hover:opacity-90"
-      >
-        <Text className="text-[16px] font-semibold text-black">Got it</Text>
-      </Pressable>
+      <Button variant="brand" className="mt-6 w-full" onPress={() => onOpenChange(false)}>
+        <Text>Got it</Text>
+      </Button>
     </ReferSheet>
   );
 };
