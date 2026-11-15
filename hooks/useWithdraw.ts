@@ -243,7 +243,7 @@ const useWithdraw = (chainId: SoUsdWithdrawChainId): WithdrawResult => {
         });
       }
       setWithdrawStatus(Status.ERROR);
-      setError(describeWithdrawError(error));
+      setError(error instanceof UserCopyError ? error.message : describeWithdrawError(error));
       throw error;
     }
   };

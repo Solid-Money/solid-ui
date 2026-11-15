@@ -331,7 +331,18 @@ const RegularWithdrawForm = () => {
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
     chainId: withdrawChain.chain.id,
-    query: { enabled: !!user?.safeAddress && session?.vault === 'USD' },
+    query: {
+      enabled: !!user?.safeAddress && session?.vault === 'USD',
+      // The shares may still be on their way when step 2 opens: read again
+      // every 15 s while fewer than were sent are there (arrivals fall short
+      // of it by the bridge fee), for up to half an hour after step 1.
+      refetchInterval: query => {
+        if (!session || session.vault !== 'USD') return false;
+        const shares = query.state.data;
+        const waiting = shares === undefined || shares < parseUnits(session.amount, 6);
+        return waiting && Date.now() - session.createdAt < 30 * 60 * 1000 ? 15_000 : false;
+      },
+    },
   });
 
   // What a resumed withdraw can take: what step 1 sent, or what arrived if less.

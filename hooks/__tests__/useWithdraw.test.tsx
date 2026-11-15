@@ -167,6 +167,8 @@ it('stops before signing when fewer shares arrived than step 2 asks for', async 
   await act(async () => {
     await expect(hook.withdraw('1')).rejects.toThrow('Only 700000 soUSD is on Base.');
   });
+  // The form shows the hook's error: it keeps the amount that is there.
+  expect(hook.error).toBe('Only 700000 soUSD is on Base.');
   expect(mockReadShares).toHaveBeenCalledWith(
     expect.objectContaining({
       address: '0xbasevault',

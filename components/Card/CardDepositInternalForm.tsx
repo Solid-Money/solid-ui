@@ -18,7 +18,7 @@ import {
   Leaf,
   Wallet as WalletIcon,
 } from 'lucide-react-native';
-import { Address, erc20Abi, formatUnits, TransactionReceipt } from 'viem';
+import { Address, erc20Abi, formatUnits, parseUnits, TransactionReceipt } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
@@ -631,10 +631,14 @@ export default function CardDepositInternalForm() {
           { error: `Minimum deposit is ${EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT} ${tokenSymbol}` },
         )
         .refine(
-          val =>
-            !isSavingsSource ||
-            savingsMinimum === undefined ||
-            Number(val) >= Number(formatUnits(savingsMinimum, 6)),
+          val => {
+            if (!isSavingsSource || savingsMinimum === undefined) return true;
+            try {
+              return parseUnits(val, 6) >= savingsMinimum;
+            } catch {
+              return false;
+            }
+          },
           {
             error:
               savingsMinimum !== undefined
