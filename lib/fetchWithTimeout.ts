@@ -23,6 +23,11 @@ export const fetchWithTimeout = async (
   timeoutMs: number,
 ): Promise<Response> => {
   const controller = new AbortController();
+  const signal = init.signal;
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort();
+  else signal?.addEventListener('abort', abort, { once: true });
+
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
@@ -36,5 +41,6 @@ export const fetchWithTimeout = async (
     throw error;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 };

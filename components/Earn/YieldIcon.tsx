@@ -1,23 +1,34 @@
 import { View } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, type ImageProps } from 'expo-image';
 
 import { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
 import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
 
-// The ETH and FUSE marks are drawn on a 40.77 × 40 canvas with their own 10% circle;
-// the USD and EUR glyphs are the bare "$" and "€", so they get their circle here.
+// ETH and FUSE include their circles; the other glyphs get the same circle here.
 const CANVAS_RATIO = 40.7692 / 40;
-const USD_GLYPH = { width: 12.1184, height: 23.9253 };
-// Figma 29123:9532: a 17px euro on a 32 × 31.4 circle.
-const EUR_GLYPH = { width: 17 * (40 / 31.396), height: 17 * (40 / 31.396) };
+const GLYPHS: Partial<
+  Record<VaultType, { source: ImageProps['source']; width: number; height: number }>
+> = {
+  [VaultType.USDC]: { source: PORTFOLIO_ICONS.usd, width: 12.1184, height: 23.9253 },
+  // Figma 29123:9532: a 17px euro on a 32 × 31.4 circle.
+  [VaultType.EUR]: {
+    source: PORTFOLIO_ICONS.euro,
+    width: 17 * (40 / 31.396),
+    height: 17 * (40 / 31.396),
+  },
+  [VaultType.BTC]: {
+    source: getAsset('images/spend-mode-collateral-btc.svg'),
+    width: 28,
+    height: 28,
+  },
+};
 
 interface YieldIconProps {
   vaultType: VaultType;
   size?: number;
   /**
-   * `live`: the share token (soUSD / soETH / soFUSE) rather than the product — the same mark
-   * with a small green dot, because a share is the product's balance, still earning.
+   * `live`: the share token, shown with a small green dot because it is still earning.
    * `lock`: FUSE committed to a tier, still earning but not withdrawable until its date.
    */
   badge?: 'live' | 'lock';
@@ -25,7 +36,7 @@ interface YieldIconProps {
   ringColor?: string;
 }
 
-/** USD Yield / ETH Yield / FUSE Yield / EUR Yield, and with `live` their share tokens. */
+/** Yield product icons, and with `live` their share tokens. */
 export default function YieldIcon({
   vaultType,
   size = 40,
@@ -35,11 +46,11 @@ export default function YieldIcon({
   const scale = size / 40;
   const dot = Math.max(Math.round(size * 0.24), 8);
   const ring = Math.max(Math.round(size * 0.05), 2);
-  const glyph = vaultType === VaultType.EUR ? EUR_GLYPH : USD_GLYPH;
+  const glyph = GLYPHS[vaultType];
 
   return (
     <View style={{ width: size * CANVAS_RATIO, height: size }}>
-      {vaultType === VaultType.USDC || vaultType === VaultType.EUR ? (
+      {glyph ? (
         <View
           className="items-center justify-center rounded-full"
           style={{
@@ -49,18 +60,11 @@ export default function YieldIcon({
           }}
         >
           <Image
-            source={vaultType === VaultType.EUR ? PORTFOLIO_ICONS.euro : PORTFOLIO_ICONS.usd}
+            source={glyph.source}
             contentFit="contain"
             style={{ width: glyph.width * scale, height: glyph.height * scale }}
           />
         </View>
-      ) : vaultType === VaultType.BTC ? (
-        // No BTC Yield mark yet: the BTC mark.
-        <Image
-          source={getAsset('images/btc.png')}
-          contentFit="contain"
-          style={{ width: size, height: size, borderRadius: size / 2 }}
-        />
       ) : (
         <Image
           source={vaultType === VaultType.ETH ? PORTFOLIO_ICONS.eth : PORTFOLIO_ICONS.fuse}

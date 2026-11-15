@@ -51,11 +51,12 @@ describe('fetchWithTimeout', () => {
   it('leaves a caller-supplied abort reported as an AbortError', async () => {
     // A superseded request must stay distinguishable from a timeout - callers
     // deliberately ignore AbortError.
-    const aborted = new Error('Aborted');
-    aborted.name = 'AbortError';
-    global.fetch = jest.fn(() => Promise.reject(aborted)) as unknown as typeof fetch;
+    global.fetch = hangingFetch() as unknown as typeof fetch;
+    const controller = new AbortController();
+    const pending = fetchWithTimeout('https://example.test', { signal: controller.signal }, 30000);
+    controller.abort();
 
-    await expect(fetchWithTimeout('https://example.test', {}, 30000)).rejects.toBe(aborted);
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('does not leave its timer running after the request settles', async () => {

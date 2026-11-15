@@ -12,13 +12,6 @@ import {
 import { RewardsTier } from '@/lib/types';
 import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 
-/**
- * The swap pickers list assets, not contracts: USDC is one row however many
- * networks it is held on, and soUSD is "USD Yield". The network is picked for
- * the user (the one holding most on "You pay", the quickest to arrive on "You
- * get") and named only where it matters. What's offered is `SWAP_LIST`.
- */
-
 export type { SwapAssetCategory };
 
 /** Share tokens, by the product they are, for coins off the swap list. */
@@ -54,15 +47,15 @@ const STABLECOINS = new Set([
   'EURA',
 ]);
 
-const DESCRIPTIONS: Record<string, string> = {
-  USDC: 'Dollar coin',
-  USDT: 'Dollar coin',
-  EURC: 'Euro coin',
-  FUSE: 'Fuse token',
-  WFUSE: 'Wrapped FUSE',
-  ETH: 'Ether',
+const PICKER_NAMES: Record<string, string> = {
+  USDC: 'USD Coin',
+  USDT: 'Tether',
+  EURC: 'Euro Coin',
+  FUSE: 'Fuse',
+  WFUSE: 'Wrapped Fuse',
+  ETH: 'Ethereum',
   WETH: 'Wrapped Ether',
-  cbBTC: 'Bitcoin, by Coinbase',
+  cbBTC: 'Coinbase Bitcoin',
   WBTC: 'Wrapped Bitcoin',
   AAVE: 'Aave',
   ENA: 'Ethena',
@@ -70,13 +63,7 @@ const DESCRIPTIONS: Record<string, string> = {
   UNI: 'Uniswap',
 };
 
-/** The line under a coin's name when nothing more pressing is said there. */
-const describe = (identity: SwapAssetIdentity, asset: SwapAsset) =>
-  identity.isYield
-    ? `Earn on ${identity.name.replace(' Yield', '')}`
-    : (DESCRIPTIONS[identity.name] ?? asset.name);
-
-/** Where each row sits within its section: the swap list's order. */
+/** Where each row sits within its category: the swap list's order. */
 const LIST_ORDER = new Map<string, number>();
 SWAP_LIST.forEach((listing, index) => {
   if (!LIST_ORDER.has(listing.name)) LIST_ORDER.set(listing.name, index);
@@ -120,37 +107,18 @@ export const assetDisplayName = (asset: NamedAsset) => assetIdentity(asset).name
 export interface SwapAssetRow {
   key: string;
   name: string;
-  subtitle: string;
+  symbol: string;
   category: SwapAssetCategory;
   /** What a tap selects. */
   asset: SwapAssetWithBalance;
-  /** Every network it's on, the selected one first. */
+  /** Every eligible network, in chip order. */
   members: SwapAssetWithBalance[];
   balance: number;
   balanceUsd: number;
 }
 
-export interface SwapAssetSection {
-  key: string;
-  title: string;
-  rows: SwapAssetRow[];
-}
-
-type ChainName = (chainId: number) => string;
-
 const byValue = (a: SwapAssetWithBalance, b: SwapAssetWithBalance) =>
   b.balanceUsd - a.balanceUsd || b.balance - a.balance;
-
-const matches = (row: Pick<SwapAssetRow, 'name' | 'members'>, query: string) => {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return (
-    row.name.toLowerCase().includes(q) ||
-    row.members.some(
-      member => member.symbol.toLowerCase().includes(q) || member.name.toLowerCase().includes(q),
-    )
-  );
-};
 
 const groupBy = (assets: SwapAssetWithBalance[]) => {
   const groups = new Map<string, SwapAssetWithBalance[]>();
@@ -161,21 +129,38 @@ const groupBy = (assets: SwapAssetWithBalance[]) => {
   return groups;
 };
 
-const section = (key: string, title: string, rows: SwapAssetRow[]): SwapAssetSection[] =>
-  rows.length ? [{ key, title, rows }] : [];
-
-/** Stablecoins, Earn, Crypto: the design's order, on both pickers. */
-const bySection = (rows: SwapAssetRow[]): SwapAssetSection[] => {
-  const inCategory = (category: SwapAssetCategory) => rows.filter(row => row.category === category);
-  return [
-    ...section('stablecoins', 'Stablecoins', inCategory('stablecoins')),
-    ...section('earn', 'Earn', inCategory('earn')),
-    ...section('crypto', 'Crypto', inCategory('crypto')),
-  ];
+const makeRow = (members: SwapAssetWithBalance[]): SwapAssetRow => {
+  const [asset] = members;
+  const identity = assetIdentity(asset);
+  return {
+    key: identity.key,
+    name: PICKER_NAMES[identity.name] ?? identity.name,
+    symbol: identity.isYield ? asset.symbol : identity.name,
+    category: identity.category,
+    asset,
+    members,
+    balance: members.reduce((total, member) => total + member.balance, 0),
+    balanceUsd: members.reduce((total, member) => total + member.balanceUsd, 0),
+  };
 };
 
-/** A row's place within its section: the swap list's order. */
-const listOrder = (row: SwapAssetRow) => LIST_ORDER.get(row.name) ?? SWAP_LIST.length;
+export const matchesSwapAsset = (row: SwapAssetRow, query: string) => {
+  const term = query.trim().toLowerCase();
+  return (
+    row.name.toLowerCase().includes(term) ||
+    row.symbol.toLowerCase().includes(term) ||
+    row.members.some(
+      member =>
+        member.symbol.toLowerCase().includes(term) || member.name.toLowerCase().includes(term),
+    )
+  );
+};
+
+const listOrder = (row: SwapAssetRow) => LIST_ORDER.get(row.key) ?? SWAP_LIST.length;
+const CATEGORY_ORDER = { stablecoins: 0, earn: 1, crypto: 2 } satisfies Record<
+  SwapAssetCategory,
+  number
+>;
 
 const byValueThenList = (a: SwapAssetRow, b: SwapAssetRow) =>
   b.balanceUsd - a.balanceUsd || listOrder(a) - listOrder(b);
@@ -190,36 +175,11 @@ const onList = (asset: SwapAssetWithBalance) => asset.swappable && !!swapListing
  * Earn share withdrawn in Earn, an old bridged USDC) and coins not held aren't
  * shown.
  */
-export function payAssetSections(
-  assets: SwapAssetWithBalance[],
-  { query = '', chainName }: { query?: string; chainName: ChainName },
-): SwapAssetSection[] {
+export function payAssetRows(assets: SwapAssetWithBalance[]): SwapAssetRow[] {
   const held = assets.filter(asset => asset.balance > 0 && onList(asset));
-  const rows: SwapAssetRow[] = [];
-
-  for (const members of groupBy(held).values()) {
-    const sorted = [...members].sort(byValue);
-    const [asset] = sorted;
-    const identity = assetIdentity(asset);
-    const subtitle =
-      sorted.length > 1
-        ? `On ${sorted.length} networks`
-        : asset.chainId !== fuse.id
-          ? `On ${chainName(asset.chainId)}`
-          : describe(identity, asset);
-    rows.push({
-      key: identity.key,
-      name: identity.name,
-      subtitle,
-      category: identity.category,
-      asset,
-      members: sorted,
-      balance: sorted.reduce((sum, member) => sum + member.balance, 0),
-      balanceUsd: sorted.reduce((sum, member) => sum + member.balanceUsd, 0),
-    });
-  }
-
-  return bySection(rows.filter(row => matches(row, query)).sort(byValueThenList));
+  return Array.from(groupBy(held).values(), members => makeRow(members.sort(byValue))).sort(
+    byValueThenList,
+  );
 }
 
 /**
@@ -235,20 +195,16 @@ export function payAssetSections(
  * coin) and into Fuse from another network (LI.FI's route map doesn't list
  * Stargate with the paymaster paying its fee).
  */
-export function getAssetSections(
+export function getAssetRows(
   assets: SwapAssetWithBalance[],
   {
     from,
     reachable,
-    query = '',
-    chainName,
   }: {
     from: SwapAsset | undefined;
     reachable: ReadonlySet<string> | null;
-    query?: string;
-    chainName: ChainName;
   },
-): SwapAssetSection[] {
+): SwapAssetRow[] {
   const fromKey = from ? swapAssetKey(from) : undefined;
   const isFrom = (asset: SwapAsset) => swapAssetKey(asset) === fromKey;
   const canBecome = (asset: SwapAssetWithBalance) => {
@@ -266,35 +222,11 @@ export function getAssetSections(
   const preference = (asset: SwapAsset) =>
     asset.chainId === from?.chainId ? -1 : SWAP_CHAIN_IDS.indexOf(asset.chainId);
 
-  const rows: SwapAssetRow[] = [];
-  for (const members of groupBy(assets.filter(canBecome)).values()) {
-    const sorted = [...members].sort(
-      (a, b) => preference(a) - preference(b) || b.balanceUsd - a.balanceUsd,
-    );
-    const [asset] = sorted;
-    const identity = assetIdentity(asset);
-    // Fuse's USDC is the one the card and Send spend; say so where it's offered.
-    const description =
-      identity.name === 'USDC' && asset.chainId === fuse.id
-        ? 'Dollar coin · card and Send use it'
-        : describe(identity, asset);
-    const crossChain = !!from && asset.chainId !== from.chainId;
-    rows.push({
-      key: identity.key,
-      name: identity.name,
-      subtitle: crossChain
-        ? `${description} · arrives on ${chainName(asset.chainId)}`
-        : description,
-      category: identity.category,
-      asset,
-      members: sorted,
-      balance: asset.balance,
-      balanceUsd: asset.balanceUsd,
-    });
-  }
-
-  return bySection(
-    rows.filter(row => matches(row, query)).sort((a, b) => listOrder(a) - listOrder(b)),
+  return Array.from(groupBy(assets.filter(canBecome)).values(), members =>
+    makeRow(members.sort((a, b) => preference(a) - preference(b) || b.balanceUsd - a.balanceUsd)),
+  ).sort(
+    (a, b) =>
+      CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category] || listOrder(a) - listOrder(b),
   );
 }
 

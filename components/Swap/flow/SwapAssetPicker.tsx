@@ -1,149 +1,154 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import AssetRow from '@/components/Assets/AssetRow';
 import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
 import { Text } from '@/components/ui/text';
-import { CHAIN_NAMES } from '@/constants/chains';
+import { CHAIN_ICONS, CHAIN_NAMES } from '@/constants/chains';
 import { SWAP_MODAL } from '@/constants/modals';
-import { isSwapPairOpen } from '@/constants/swapChains';
+import { isSwapPairOpen, swapAssetKey } from '@/constants/swapChains';
 import { useSwapAssets } from '@/hooks/swap/useSwapAssets';
-import { useSwapDestinations } from '@/hooks/swap/useSwapDestinations';
-import { useSwapFlow } from '@/hooks/swap/useSwapFlow';
+import { useMaxAPY } from '@/hooks/useAnalytics';
 import {
-  assetDisplayName,
-  getAssetSections,
-  payAssetSections,
+  getAssetRows,
+  matchesSwapAsset,
+  payAssetRows,
+  SwapAssetCategory,
   SwapAssetRow,
 } from '@/lib/swapAssets';
-import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
+import { VaultType } from '@/lib/types';
+import { SwapAsset } from '@/lib/types/lifi-swap';
 import { SwapField } from '@/lib/types/swap-field';
+import { cn } from '@/lib/utils';
 import { formatSwapAmount, formatSwapUsd } from '@/lib/utils/swap/format';
 import { useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 
-const chainName = (chainId: number) => CHAIN_NAMES[chainId] ?? `chain ${chainId}`;
+type CategoryFilter = 'all' | SwapAssetCategory;
 
-const AssetRow = ({
+const FILTERS: { key: CategoryFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'stablecoins', label: 'Stablecoins' },
+  { key: 'earn', label: 'Earn' },
+  { key: 'crypto', label: 'Crypto' },
+];
+
+const chainName = (chainId: number) => CHAIN_NAMES[chainId] ?? `Chain ${chainId}`;
+
+const PickerRow = ({
   row,
-  showBalance,
+  isPay,
+  expanded,
+  apy,
   onPress,
-}: {
-  row: SwapAssetRow;
-  showBalance: boolean;
-  onPress: (row: SwapAssetRow) => void;
-}) => (
-  <Pressable
-    onPress={() => onPress(row)}
-    accessibilityRole="button"
-    accessibilityLabel={`${row.name}, ${row.subtitle}`}
-    className="flex-row items-center gap-3.5 px-[18px] py-[13px] web:hover:bg-card-hover"
-  >
-    <SwapAssetLogo asset={row.asset} size={34} showChain={row.members.length === 1} />
-    <View className="flex-1 gap-0.5">
-      <Text className="text-base font-semibold leading-5 text-white">{row.name}</Text>
-      <Text numberOfLines={1} className="text-sm leading-[18px] text-white/55">
-        {row.subtitle}
-      </Text>
-    </View>
-    {showBalance && row.balance > 0 ? (
-      <Balance usd={row.balanceUsd} amount={row.balance} symbol={assetDisplayName(row.asset)} />
-    ) : row.members.length > 1 ? (
-      <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
-    ) : null}
-  </Pressable>
-);
-
-/** A holding's value over its amount; the value left out when it has no dollar price. */
-const Balance = ({ usd, amount, symbol }: { usd: number; amount: number; symbol: string }) => (
-  <View className="items-end gap-0.5">
-    {usd > 0 ? (
-      <Text className="text-base font-semibold leading-5 text-white">{formatSwapUsd(usd)}</Text>
-    ) : null}
-    <Text className="text-sm leading-[18px] text-white/55">
-      {formatSwapAmount(amount)} {symbol}
-    </Text>
-  </View>
-);
-
-/** How a coin on "You get" reaches the user from what they pay with. */
-const arrivalHint = (from: SwapAsset | undefined, to: SwapAsset) => {
-  if (!from || from.chainId === to.chainId) return 'Same network, straight away';
-  return `Arrives on ${chainName(to.chainId)} in a few minutes`;
-};
-
-/**
- * The networks one row's asset is on, for the user to pick from: what they
- * hold on each for "You pay", how it arrives for "You get".
- */
-const NetworkStep = ({
-  row,
-  side,
-  from,
-  onBack,
   onSelect,
 }: {
   row: SwapAssetRow;
-  side: 'pay' | 'get';
-  from: SwapAsset | undefined;
-  onBack: () => void;
-  onSelect: (asset: SwapAssetWithBalance) => void;
-}) => (
-  <View className="gap-4">
-    <Pressable
-      onPress={onBack}
-      accessibilityRole="button"
-      accessibilityLabel="Back to all coins"
-      className="flex-row items-center gap-1 self-start py-1"
-    >
-      <ChevronLeft size={18} color="rgba(255,255,255,0.7)" />
-      <Text className="text-sm text-white/70">All coins</Text>
-    </Pressable>
-    <Text className="px-1 text-sm text-white/60">
-      {side === 'pay' ? `Pay with ${row.name} from` : `Get ${row.name} on`}
-    </Text>
-    <View className="overflow-hidden rounded-[15px] bg-card py-[5px]">
-      {row.members.map(member => (
-        <Pressable
-          key={`${member.chainId}:${member.address}`}
-          onPress={() => onSelect(member)}
-          accessibilityRole="button"
-          accessibilityLabel={`${row.name} on ${chainName(member.chainId)}`}
-          className="flex-row items-center gap-3.5 px-[18px] py-[13px] web:hover:bg-card-hover"
-        >
-          <SwapAssetLogo asset={member} size={34} />
-          <View className="flex-1 gap-0.5">
-            <Text className="text-base font-semibold leading-5 text-white">
-              {chainName(member.chainId)}
-            </Text>
-            <Text numberOfLines={1} className="text-sm leading-[18px] text-white/55">
-              {side === 'pay' ? member.name : arrivalHint(from, member)}
-            </Text>
-          </View>
-          {side === 'pay' && member.balance > 0 ? (
-            <Balance
-              usd={member.balanceUsd}
-              amount={member.balance}
-              symbol={assetDisplayName(member)}
-            />
-          ) : null}
-        </Pressable>
-      ))}
-    </View>
-  </View>
-);
+  isPay: boolean;
+  expanded: boolean;
+  apy?: number;
+  onPress: () => void;
+  onSelect: (asset: SwapAsset) => void;
+}) => {
+  const hasNetworks = row.members.length > 1;
+  const decimals = row.category === 'stablecoins' ? 2 : 0;
+  const ticker = isPay ? `${formatSwapAmount(row.balance, decimals)} ${row.symbol}` : row.symbol;
+  const subtitle = hasNetworks ? `${ticker} · ${row.members.length} networks` : ticker;
+  const value = isPay && row.balanceUsd > 0 ? formatSwapUsd(row.balanceUsd) : undefined;
+  const Chevron = expanded ? ChevronUp : ChevronDown;
+  const label = [
+    row.name,
+    subtitle,
+    !hasNetworks && chainName(row.asset.chainId),
+    value,
+    apy !== undefined && `${apy.toFixed(1)}% APY`,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
-/**
- * Screens 2 and 3 of the swap: the coins, one row per asset rather than per
- * contract, and only ones that can be swapped. "You pay" lists what's held;
- * "You get" what the paying coin can become, from the route matrix and the
- * backend's route map. An asset on more than one network asks which network
- * next.
- */
-const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
-  const { fromAsset } = useSwapFlow();
+  return (
+    <View>
+      <AssetRow
+        title={row.name}
+        subtitle={subtitle}
+        isEarning={apy !== undefined}
+        apy={apy}
+        value={undefined}
+        accessibilityLabel={label}
+        accessibilityState={hasNetworks ? { expanded } : undefined}
+        onPress={onPress}
+        icon={
+          <SwapAssetLogo
+            asset={row.asset}
+            pickerKey={row.key}
+            size={40}
+            showChain={!hasNetworks && row.category !== 'earn'}
+          />
+        }
+        trailing={
+          (value !== undefined || hasNetworks) && (
+            <View className="shrink-0 flex-row items-center gap-3">
+              {value && (
+                <Text className="text-[16px] font-semibold leading-5 text-white">{value}</Text>
+              )}
+              {hasNetworks && <Chevron size={18} color="rgba(255,255,255,0.5)" />}
+            </View>
+          )
+        }
+      />
+      {expanded && (
+        <View className="flex-row flex-wrap gap-2 px-4 pb-[14px] pt-0.5">
+          {row.members.map(member => {
+            const name = chainName(member.chainId);
+            const icon = CHAIN_ICONS[member.chainId];
+            const balance = isPay
+              ? member.balanceUsd > 0
+                ? formatSwapUsd(member.balanceUsd)
+                : `${formatSwapAmount(member.balance, decimals)} ${row.symbol}`
+              : undefined;
+            return (
+              <Pressable
+                key={swapAssetKey(member)}
+                onPress={() => onSelect(member)}
+                accessibilityRole="button"
+                accessibilityLabel={`${row.name} on ${name}${balance ? `, ${balance}` : ''}`}
+                className="min-h-9 flex-row items-center gap-2 rounded-[10px] bg-[#2A2A2A] py-2 pl-2.5 pr-3 active:bg-white/15 web:hover:bg-white/15"
+              >
+                {icon && (
+                  <Image source={icon} style={{ width: 20, height: 20 }} contentFit="contain" />
+                )}
+                <Text className="text-[14px] font-medium leading-5 text-white">{name}</Text>
+                {balance && <Text className="text-[14px] leading-5 text-white/50">{balance}</Text>}
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+};
+
+type SwapAssetPickerProps =
+  | { side: 'pay' }
+  | {
+      side: 'get';
+      fromAsset: SwapAsset | undefined;
+      reachable: ReadonlySet<string> | null | undefined;
+    };
+
+const SwapAssetPicker = (props: SwapAssetPickerProps) => {
+  const isPay = props.side === 'pay';
+  const { fromAsset, reachable } = props.side === 'get' ? props : {};
   const { assets, isLoading } = useSwapAssets();
-  const reachable = useSwapDestinations(side === 'get' ? fromAsset : undefined);
+  const isListLoading = isLoading || (!isPay && reachable === undefined);
+  const usdRate = useMaxAPY(VaultType.USDC);
+  const fuseRate = useMaxAPY(VaultType.FUSE);
+  const rates = new Map([
+    ['USD Yield', usdRate],
+    ['FUSE Yield', fuseRate],
+  ]);
   const { onAssetSelection } = useSwapActionHandlers();
   const { setModal, selectCurrency } = useSwapState(
     useShallow(state => ({
@@ -152,107 +157,128 @@ const SwapAssetPicker = ({ side }: { side: 'pay' | 'get' }) => {
     })),
   );
   const [query, setQuery] = useState('');
-  const [networkRow, setNetworkRow] = useState<SwapAssetRow | null>(null);
+  const [category, setCategory] = useState<CategoryFilter>('all');
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
-  const sections = useMemo(
-    () =>
-      side === 'pay'
-        ? payAssetSections(assets, { query, chainName })
-        : getAssetSections(assets, { from: fromAsset, reachable, query, chainName }),
-    [side, assets, query, fromAsset, reachable],
+  const allRows = useMemo(() => {
+    if (isListLoading) return [];
+    return isPay
+      ? payAssetRows(assets)
+      : getAssetRows(assets, { from: fromAsset, reachable: reachable ?? null });
+  }, [assets, fromAsset, isListLoading, isPay, reachable]);
+  const rows = allRows.filter(
+    row => (category === 'all' || row.category === category) && matchesSwapAsset(row, query),
   );
 
   const selectAsset = useCallback(
     (asset: SwapAsset) => {
-      onAssetSelection(side === 'pay' ? SwapField.INPUT : SwapField.OUTPUT, asset);
-      // A "You get" the new "You pay" can't reach is cleared for the user to
-      // pick again, rather than left to quote "No route". Read back from the
-      // store, since picking the coin "You get" holds swaps the two.
+      onAssetSelection(isPay ? SwapField.INPUT : SwapField.OUTPUT, asset);
+      // Read the settled pair because picking the output asset as input can flip the fields.
       const { [SwapField.INPUT]: pay, [SwapField.OUTPUT]: get } = useSwapState.getState();
-      if (
-        side === 'pay' &&
-        pay.currencyId &&
-        get.currencyId &&
-        !isSwapPairOpen(pay.chainId, get.chainId)
-      ) {
+      if (isPay && pay.currencyId && get.currencyId && !isSwapPairOpen(pay.chainId, get.chainId)) {
         selectCurrency(SwapField.OUTPUT, undefined, pay.chainId);
       }
       setModal(SWAP_MODAL.OPEN_FORM);
     },
-    [onAssetSelection, side, selectCurrency, setModal],
+    [isPay, onAssetSelection, selectCurrency, setModal],
   );
 
-  const handleSelect = useCallback(
-    (row: SwapAssetRow) => {
-      if (row.members.length > 1) setNetworkRow(row);
-      else selectAsset(row.asset);
-    },
-    [selectAsset],
-  );
-
-  if (networkRow) {
-    return (
-      <NetworkStep
-        row={networkRow}
-        side={side}
-        from={fromAsset}
-        onBack={() => setNetworkRow(null)}
-        onSelect={selectAsset}
-      />
-    );
-  }
+  const handleSearch = (value: string) => {
+    if (!query.trim() && value.trim()) setCategory('all');
+    setQuery(value);
+    setExpandedKey(null);
+  };
 
   return (
-    <View className="gap-2.5">
-      <View className="h-12 flex-row items-center gap-2 rounded-[15px] bg-card px-4">
+    <View className="gap-3">
+      <View className="h-[45px] flex-row items-center gap-2.5 rounded-xl bg-card px-3.5">
         <Search size={18} color="rgba(255,255,255,0.5)" />
         <TextInput
           value={query}
-          onChangeText={setQuery}
+          onChangeText={handleSearch}
           placeholder="Search"
-          placeholderTextColor="rgba(255,255,255,0.5)"
+          placeholderTextColor="rgba(255,255,255,0.45)"
           autoCorrect={false}
           autoCapitalize="none"
           accessibilityLabel="Search coins"
-          className="flex-1 text-base text-white web:focus:outline-none"
+          className="min-w-0 flex-1 p-0 text-[15px] text-white web:focus:outline-none"
         />
       </View>
 
-      {side === 'get' && fromAsset ? (
-        <Text className="px-1 text-sm text-white/55">
-          Showing what you can get for {assetDisplayName(fromAsset)}
-        </Text>
-      ) : null}
-
-      {isLoading && sections.length === 0 ? (
-        <View className="items-center py-10">
-          <ActivityIndicator color="white" />
+      {!isPay && (
+        <View className="flex-row flex-wrap items-center gap-2">
+          {FILTERS.map(({ key, label }) => {
+            const selected = category === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => {
+                  setCategory(key);
+                  setExpandedKey(null);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityState={{ selected }}
+                className={cn(
+                  'rounded-full px-3.5 py-1.5',
+                  selected ? 'bg-white' : 'border border-[#303030] active:bg-white/5',
+                )}
+              >
+                <Text
+                  className={cn(
+                    'text-[14px] leading-5',
+                    selected ? 'font-semibold text-[#111]' : 'font-medium text-white/70',
+                  )}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
-      ) : sections.length === 0 ? (
-        <Text className="py-10 text-center text-base text-white/60">
-          {query
-            ? 'No coins match that search'
-            : side === 'pay'
+      )}
+
+      {isListLoading ? (
+        <View className="items-center py-10">
+          <ActivityIndicator accessibilityLabel="Loading coins" color="white" />
+        </View>
+      ) : rows.length === 0 ? (
+        <Text className="py-10 text-center text-[16px] text-white/60">
+          {query.trim()
+            ? `No coins match “${query.trim()}”`
+            : isPay
               ? 'You don’t hold anything to swap yet'
-              : 'Nothing to swap this into yet'}
+              : category === 'all'
+                ? 'Nothing to swap this into yet'
+                : 'No coins in this category'}
         </Text>
       ) : (
-        // Each section its own card under a small heading; no lines between coins.
-        sections.map(section => (
-          <View key={section.key} className="gap-2.5">
-            <Text className="px-1 text-sm font-medium text-white/55">{section.title}</Text>
-            <View className="overflow-hidden rounded-[15px] bg-card py-[5px]">
-              {section.rows.map(row => (
-                <AssetRow
-                  key={row.key}
+        <View className="overflow-hidden rounded-[20px] bg-card">
+          {rows.map((row, index) => {
+            const canExpand = row.members.length > 1;
+            const rate = rates.get(row.key);
+            return (
+              <Fragment key={row.key}>
+                {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
+                <PickerRow
                   row={row}
-                  showBalance={side === 'pay'}
-                  onPress={handleSelect}
+                  isPay={isPay}
+                  expanded={canExpand && expandedKey === row.key}
+                  apy={
+                    rate && !rate.isAPYsLoading && Number.isFinite(rate.maxAPY) && rate.maxAPY > 0
+                      ? rate.maxAPY
+                      : undefined
+                  }
+                  onPress={() => {
+                    if (canExpand) setExpandedKey(open => (open === row.key ? null : row.key));
+                    else selectAsset(row.asset);
+                  }}
+                  onSelect={selectAsset}
                 />
-              ))}
-            </View>
-          </View>
-        ))
+              </Fragment>
+            );
+          })}
+        </View>
       )}
     </View>
   );

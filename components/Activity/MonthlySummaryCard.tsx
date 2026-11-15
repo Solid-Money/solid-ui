@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react-native';
 import CategoryIcon from '@/components/Insights/CategoryIcon';
 import SegmentedArc from '@/components/Insights/SegmentedArc';
 import SpendDeltaLine from '@/components/Insights/SpendDeltaLine';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useSpendingInsights } from '@/hooks/useSpendingInsights';
@@ -16,6 +17,49 @@ import {
 } from '@/lib/utils/spendingInsights';
 
 const GAUGE_SIZE = 240;
+const GAUGE_STROKE_WIDTH = 16;
+const CARD_CLASS_NAME = 'mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] py-[18px]';
+const SKELETON_STYLE = { backgroundColor: '#343434' };
+
+function MonthlySummarySkeleton() {
+  return (
+    <View
+      accessible
+      accessibilityLabel="Loading spending summary"
+      accessibilityRole="progressbar"
+      accessibilityState={{ busy: true }}
+      className={CARD_CLASS_NAME}
+    >
+      <View className="h-6 flex-row items-center justify-between px-5">
+        <Skeleton className="h-4 w-32" style={SKELETON_STYLE} />
+        <Skeleton className="h-3 w-16" style={SKELETON_STYLE} />
+      </View>
+
+      <View className="mt-3 items-center">
+        <View style={{ width: GAUGE_SIZE }}>
+          <SegmentedArc
+            variant="half"
+            size={GAUGE_SIZE}
+            strokeWidth={GAUGE_STROKE_WIDTH}
+            segments={[]}
+            trackColor={SKELETON_STYLE.backgroundColor}
+          />
+          <View className="absolute inset-x-0 top-11 items-center">
+            <View className="h-9 justify-center">
+              <Skeleton className="h-6 w-24" style={SKELETON_STYLE} />
+            </View>
+            <Skeleton className="h-3 w-28" style={SKELETON_STYLE} />
+          </View>
+        </View>
+      </View>
+
+      <View className="mt-4 flex-row gap-2 px-5">
+        <Skeleton className="h-[34px] w-40 shrink-0 rounded-full" style={SKELETON_STYLE} />
+        <Skeleton className="h-[34px] w-36 shrink-0 rounded-full" style={SKELETON_STYLE} />
+      </View>
+    </View>
+  );
+}
 
 /**
  * "Spent in September" above the Activity feed: the month's total and change
@@ -26,13 +70,15 @@ const GAUGE_SIZE = 240;
  */
 export default function MonthlySummaryCard() {
   const insights = useSpendingInsights();
+  if (insights.isLoading) return <MonthlySummarySkeleton />;
+
   const monthKey = getLatestSpendMonthKey(insights);
   const { month, previous, change, isFirstMonth } = getMonthContext(
     insights,
     monthKey ?? insights.currentMonthKey,
   );
 
-  if (insights.isLoading || !monthKey || !month || month.total <= 0) return null;
+  if (!monthKey || !month || month.total <= 0) return null;
 
   const openInsights = () => router.push(path.ACTIVITY_INSIGHTS);
 
@@ -41,7 +87,7 @@ export default function MonthlySummaryCard() {
       onPress={openInsights}
       accessibilityRole="button"
       accessibilityLabel={`Spent ${formatInsightUsd(month.total)} in ${getMonthName(month.key)}. Open insights`}
-      className="mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] py-[18px]"
+      className={CARD_CLASS_NAME}
     >
       <View className="flex-row items-center justify-between px-5">
         <Text className="text-base font-medium text-white/50">
@@ -58,7 +104,7 @@ export default function MonthlySummaryCard() {
           <SegmentedArc
             variant="half"
             size={GAUGE_SIZE}
-            strokeWidth={16}
+            strokeWidth={GAUGE_STROKE_WIDTH}
             gap={5}
             segments={month.categories.map(category => ({
               key: category.key,

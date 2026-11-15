@@ -4,7 +4,7 @@
  *
  *   18.43 → "18.43"    0.00081234 → "0.0008123"    145000 → "145,000"
  */
-export function formatSwapAmount(value: number): string {
+export function formatSwapAmount(value: number, minimumFractionDigits = 0): string {
   if (!Number.isFinite(value) || value === 0) return '0';
   const abs = Math.abs(value);
   if (abs < 0.000001) return '<0.000001';
@@ -13,7 +13,7 @@ export function formatSwapAmount(value: number): string {
     abs >= 1 ? 2 : Math.min(6, Math.max(2, 3 - Math.floor(Math.log10(abs))));
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits,
-    minimumFractionDigits: 0,
+    minimumFractionDigits: Math.min(minimumFractionDigits, maximumFractionDigits),
   }).format(value);
 }
 

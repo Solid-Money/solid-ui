@@ -1,14 +1,19 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useQueries } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react-native';
 
 import BarChart from '@/components/BarChart';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { DEFAULT_HISTORICAL_APY_DAYS, useAPYs, useHistoricalAPY } from '@/hooks/useAnalytics';
+import {
+  DEFAULT_HISTORICAL_APY_DAYS,
+  historicalApyQueryOptions,
+  useAPYs,
+} from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
-import { APYs, VaultType } from '@/lib/types';
+import { APYs, HistoricalAPYPoint, VaultType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 import SelectSheet from './SelectSheet';
@@ -24,7 +29,7 @@ type ApyPeriod = {
   valueKey: keyof Pick<APYs, 'sevenDay' | 'fifteenDay' | 'thirtyDay'>;
 };
 
-// The first entry is what the card opens on, and therefore what Earn prefetches
+// The first entry is the preferred period, and therefore what Earn prefetches
 // (see useVaultDetailPrefetch). Reordering these without moving
 // DEFAULT_HISTORICAL_APY_DAYS makes that prefetch miss, silently.
 const APY_PERIODS: ApyPeriod[] = [
@@ -32,6 +37,13 @@ const APY_PERIODS: ApyPeriod[] = [
   { days: '15', label: '15D', title: '15 Day APY', valueKey: 'fifteenDay' },
   { days: '30', label: '30D', title: '30 Day APY', valueKey: 'thirtyDay' },
 ];
+
+const selectChartableHistory = (history: HistoricalAPYPoint[]) => {
+  const validHistory = history.filter(point => Number.isFinite(point.value) && point.value >= 0);
+
+  // The chart draws no bars for an all-zero series. Keep zeroes within a series with yield.
+  return validHistory.some(point => point.value > 0) ? validHistory : [];
+};
 
 const resampleHistory = (
   history: { time: string | number; value: number }[],
@@ -122,22 +134,37 @@ interface VaultApyHistoryCardProps {
 /** Figma 24766:4859 — compact vault APY summary using the legacy historical APY chart. */
 const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
   const { isDesktop } = useDimension();
-  const [period, setPeriod] = useState(APY_PERIODS[0]);
+  const [selectedPeriod, setSelectedPeriod] = useState<ApyPeriod>();
   const { data: apys, isLoading: isApyLoading } = useAPYs(vaultType);
-  const { data: history = [], isLoading: isHistoryLoading } = useHistoricalAPY(
-    period.days,
-    vaultType,
+  const histories = useQueries({
+    queries: APY_PERIODS.map(({ days }) => ({
+      ...historicalApyQueryOptions(days, vaultType),
+      select: selectChartableHistory,
+    })),
+  });
+  const firstPeriodWithHistory = histories.findIndex(({ data }) => Boolean(data?.length));
+  const periodIndex = selectedPeriod
+    ? APY_PERIODS.indexOf(selectedPeriod)
+    : Math.max(0, firstPeriodWithHistory);
+  const period = APY_PERIODS[periodIndex];
+  const { data: history, isLoading: isHistoryLoading } = histories[periodIndex];
+
+  const chartData = useMemo(
+    () => resampleHistory(history ?? [], isDesktop ? DESKTOP_VISIBLE_BARS : MOBILE_VISIBLE_BARS),
+    [history, isDesktop],
   );
+  if (firstPeriodWithHistory === -1) return null;
 
-  const chartData = useMemo(() => {
-    const validHistory = history.filter(point => Number.isFinite(point.value) && point.value >= 0);
-
-    return resampleHistory(validHistory, isDesktop ? DESKTOP_VISIBLE_BARS : MOBILE_VISIBLE_BARS);
-  }, [history, isDesktop]);
   const currentApy = Math.max(apys?.[period.valueKey] ?? 0, 0);
+  const showChart = isHistoryLoading || chartData.length > 0;
 
   return (
-    <View className="relative mx-4 h-[199px] overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+    <View
+      className={cn(
+        'relative mx-4 overflow-hidden rounded-[20px] bg-[#1C1C1C]',
+        showChart ? 'h-[199px]' : 'h-[98px]',
+      )}
+    >
       <View className="absolute left-5 right-[15px] top-5 flex-row items-start justify-between">
         <View className="h-[22px] flex-row items-center gap-[7px]">
           <Text className="text-[16px] font-medium leading-[16px] text-white/50">
@@ -149,7 +176,7 @@ const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
           />
         </View>
 
-        <PeriodDropdown period={period} onSelect={setPeriod} />
+        <PeriodDropdown period={period} onSelect={setSelectedPeriod} />
       </View>
 
       {isApyLoading ? (
@@ -160,23 +187,21 @@ const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
         </Text>
       )}
 
-      <View className="absolute bottom-4 left-[15px] right-[15px] h-[76px] overflow-visible">
-        {isHistoryLoading ? (
-          <Skeleton className="h-[76px] w-full bg-white/10" />
-        ) : chartData.length > 0 ? (
-          <BarChart
-            key={period.days}
-            data={chartData}
-            height={CHART_HEIGHT}
-            compact
-            formatToolTip={value => `${Math.max(value ?? 0, 0).toFixed(2)}%`}
-          />
-        ) : (
-          <View className="h-[76px] items-center justify-center">
-            <Text className="text-[14px] text-white/40">No APY history available</Text>
-          </View>
-        )}
-      </View>
+      {showChart && (
+        <View className="absolute bottom-4 left-[15px] right-[15px] h-[76px] overflow-visible">
+          {isHistoryLoading ? (
+            <Skeleton className="h-[76px] w-full bg-white/10" />
+          ) : (
+            <BarChart
+              key={period.days}
+              data={chartData}
+              height={CHART_HEIGHT}
+              compact
+              formatToolTip={value => `${Math.max(value ?? 0, 0).toFixed(2)}%`}
+            />
+          )}
+        </View>
+      )}
     </View>
   );
 };
