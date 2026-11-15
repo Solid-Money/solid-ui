@@ -48,11 +48,14 @@ export default function AiApiSetupScreen() {
             baseUrl={baseUrl}
             apiKey={AI_API_KEY_PLACEHOLDER}
             model={aiApiSetupModel(overview)}
+            models={models}
           />
 
+          {/* Every model the key can call, with the exact id an agent's config
+              takes, so switching model is one copy away. */}
           {models.length > 0 ? (
             <View className="gap-3">
-              <Text className="text-[16px] font-semibold text-white">Models you can use</Text>
+              <Text className="text-[16px] font-semibold text-white">Model IDs</Text>
               <AiApiGroup>
                 {models.map((model, index) => (
                   <View key={model.id}>
@@ -76,7 +79,7 @@ export default function AiApiSetupScreen() {
                       <AiApiCopyPill
                         text={model.id}
                         compact
-                        accessibilityLabel={`Copy ${model.name} model name`}
+                        accessibilityLabel={`Copy ${model.name} model ID`}
                       />
                     </View>
                   </View>

@@ -258,9 +258,8 @@ export const useCreateAiApiKey = () => {
     onSuccess: result => {
       if (!result) return;
       invalidate();
-      track(TRACKING_EVENTS.AI_API_KEY_CREATED, {
-        monthly_limit_usd: result.key.monthlyLimitUsd,
-      });
+      // No `ai_api_key_created` from here: the backend sends it once the key
+      // exists, with the key's id, limit and the user's key count.
     },
     onError: error => {
       track(TRACKING_EVENTS.AI_API_KEY_CREATE_FAILED, {
@@ -336,7 +335,7 @@ export const useDeleteAiApiKey = () => {
     mutationFn: (id: string) => withRefreshToken(asSelectedAccount(() => deleteAiApiKey(id))),
     onSuccess: () => {
       invalidate();
-      track(TRACKING_EVENTS.AI_API_KEY_DELETED);
+      // No `ai_api_key_deleted` from here: the backend sends it, with the key's id.
       Toast.show({ type: 'success', text1: 'Key deleted' });
     },
     onError: error => {
