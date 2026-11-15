@@ -12,6 +12,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import {
   CASHBACK_EARNED_COLOR,
+  lifetimeCashbackTotal,
   monthlyCashbackCap,
   monthlyCashbackTotal,
 } from '@/lib/cashbackProgress';
@@ -62,6 +63,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
     cashbackThisMonth,
     rewardsData?.cashbackPendingThisMonth,
   );
+  const lifetimeCashback = lifetimeCashbackTotal(rewardsData, cardDetails?.cashback?.totalUsdValue);
   // The Cash segment's empty-state text is "Add funds"; the home tile always
   // shows a balance. Credit and Smart use the same availability as the picker.
   const available =
@@ -135,7 +137,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
           cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
           maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
           tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-          allTimeCashback={Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth)}
+          lifetimeCashback={lifetimeCashback}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           trigger={
             <Pressable

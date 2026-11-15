@@ -74,8 +74,9 @@ const RewardsGradient = () => (
 );
 
 interface RewardsSummaryCardProps {
-  /** This month's cashback, settled and escrowed together. */
-  cashback: number;
+  /** Everything earned, paid and still escrowed — see `lifetimeCashbackTotal`. */
+  lifetimeCashback: number;
+  /** Everything earned from referrals so far. */
   referrals: number;
   cashbackDetails: CashbackDetailsData;
   onGetMoreCashback: () => void;
@@ -113,6 +114,9 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
     style={Platform.OS === 'web' ? { minHeight: 96 } : undefined}
   >
     <Text
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.8}
       className="text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 20 }}
     >
@@ -129,13 +133,16 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
 );
 
 /**
- * "Rewards" summary card: Cashback and Referrals split into two columns.
+ * "Rewards" summary card: Lifetime cashback and Referrals split into two
+ * columns.
  *
- * The cashback figure counts this month's settled and escrowed cashback as one
- * number — see `monthlyCashbackTotal`, which the caller applies.
+ * Both are totals over everything earned so far, so the two columns measure the
+ * same thing. The cashback figure counts what is still in escrow alongside what
+ * has been paid — see `lifetimeCashbackTotal`, which the caller applies — and is
+ * the same figure as the sheet's "Lifetime cashback" row.
  */
 const RewardsSummaryCard = ({
-  cashback,
+  lifetimeCashback,
   referrals,
   cashbackDetails,
   onGetMoreCashback,
@@ -157,7 +164,7 @@ const RewardsSummaryCard = ({
 
       <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
-          trigger={<SummaryStat label="Cashback" value={cashback} />}
+          trigger={<SummaryStat label="Lifetime cashback" value={lifetimeCashback} />}
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />

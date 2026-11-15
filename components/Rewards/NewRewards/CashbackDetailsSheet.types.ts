@@ -13,7 +13,8 @@ export interface CashbackDetailsData {
    * (purchases made during a trial that has since ended keep its cap).
    */
   tierMonthlyCap?: number;
-  allTimeCashback: number;
+  /** Everything earned, paid and still escrowed — see `lifetimeCashbackTotal`. */
+  lifetimeCashback: number;
 }
 
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {

@@ -36,7 +36,7 @@ const CashbackDetailsContent = ({
   cashbackPendingThisMonth,
   maxCashbackMonthly,
   tierMonthlyCap,
-  allTimeCashback,
+  lifetimeCashback,
   onGetMoreCashback,
   animationSession,
   isSheet = true,
@@ -107,10 +107,11 @@ const CashbackDetailsContent = ({
         </StatRow>
       )}
       <Divider />
-      <StatRow label="All time cashback">
-        <Text className="text-lg font-medium text-white">
-          {formatWholeDollars(allTimeCashback)}
-        </Text>
+      {/* The same figure, in cents, as the rewards card that opens this sheet:
+          it includes escrow, so a new cardholder's first purchase reads here
+          as it does on the card rather than rounding to $0. */}
+      <StatRow label="Lifetime cashback">
+        <Text className="text-lg font-medium text-white">{formatBalanceUSD(lifetimeCashback)}</Text>
       </StatRow>
     </View>
 

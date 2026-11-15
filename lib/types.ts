@@ -2311,6 +2311,14 @@ export interface RewardsUserData {
    */
   cashbackPendingThisMonth?: number;
   /**
+   * All the cashback this cardholder has earned, in USD: everything paid on
+   * any card they have held, plus what is still in escrow, held to the monthly
+   * caps. The "Lifetime cashback" figure — read it through
+   * `lifetimeCashbackTotal`, which falls back when this is absent (an older
+   * backend, or a paid total the backend couldn't read).
+   */
+  cashbackLifetime?: number;
+  /**
    * The monthly cap of the tier the user holds now — what the tier advertises.
    * For "how much can this month pay", read `monthlyCashbackCap` instead.
    */

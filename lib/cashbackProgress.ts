@@ -29,6 +29,41 @@ export const monthlyCashbackTotal = (
   pending: number | undefined,
 ): number => toPositive(earned) + toPositive(pending);
 
+type LifetimeFields = Pick<
+  RewardsUserData,
+  'cashbackLifetime' | 'cashbackThisMonth' | 'cashbackPendingThisMonth'
+>;
+
+/**
+ * All the cashback a cardholder has earned, as the app shows it: everything
+ * paid plus what is still in escrow — the "Lifetime cashback" on the rewards
+ * card and in the cashback sheet.
+ *
+ * Escrow counts for the same reason it does in the month's figure: leaving it
+ * out read $0 for the fortnight a new cardholder's first purchase takes to
+ * mature, and put the lifetime below the month shown in the same sheet.
+ *
+ * The backend works it out over every card the cardholder has held
+ * (`cashbackLifetime`). Without it — an older backend, or a paid total it
+ * couldn't read — it is rebuilt from the paid total on the current card
+ * (`paidOnCardUsd`, the card details' `cashback.totalUsdValue`), floored at this
+ * month's settled figure because that total can trail a payout, with this
+ * month's escrow on top. Either way it never reads below the month's figure.
+ */
+export const lifetimeCashbackTotal = (
+  data: LifetimeFields | undefined,
+  paidOnCardUsd: number | undefined,
+): number => {
+  const thisMonth = monthlyCashbackTotal(data?.cashbackThisMonth, data?.cashbackPendingThisMonth);
+  const lifetime =
+    typeof data?.cashbackLifetime === 'number'
+      ? toPositive(data.cashbackLifetime)
+      : Math.max(toPositive(paidOnCardUsd), toPositive(data?.cashbackThisMonth)) +
+        toPositive(data?.cashbackPendingThisMonth);
+
+  return Math.max(lifetime, thisMonth);
+};
+
 /**
  * How much of the monthly cap the figure fills, 0-100.
  *

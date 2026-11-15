@@ -7,7 +7,11 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
-import { monthlyCashbackCap, monthlyCashbackTotal } from '@/lib/cashbackProgress';
+import {
+  lifetimeCashbackTotal,
+  monthlyCashbackCap,
+  monthlyCashbackTotal,
+} from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { formatBalanceUSD } from '@/lib/utils';
@@ -32,7 +36,7 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
 
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
   const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  const lifetimeCashback = lifetimeCashbackTotal(rewardsData, cardDetails?.cashback?.totalUsdValue);
   const earnedThisMonth = monthlyCashbackTotal(
     rewardsData?.cashbackThisMonth,
     rewardsData?.cashbackPendingThisMonth,
@@ -46,7 +50,7 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
       cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
       maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
       tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-      allTimeCashback={allTimeCashback}
+      lifetimeCashback={lifetimeCashback}
       onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
       trigger={
         <Pressable

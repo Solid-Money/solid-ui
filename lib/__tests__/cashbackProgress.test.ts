@@ -1,5 +1,6 @@
 import {
   isMonthlyCashbackCapReached,
+  lifetimeCashbackTotal,
   monthlyCashbackCap,
   monthlyCashbackHeadroom,
   monthlyCashbackTotal,
@@ -24,6 +25,72 @@ describe('monthlyCashbackTotal', () => {
     expect(monthlyCashbackTotal(undefined, undefined)).toBe(0);
     expect(monthlyCashbackTotal(Number.NaN, -5)).toBe(0);
     expect(monthlyCashbackTotal(-20, 10)).toBe(10);
+  });
+});
+
+describe('lifetimeCashbackTotal', () => {
+  it("takes the backend's lifetime figure when it sends one", () => {
+    // Paid on every card held plus escrow, worked out server-side; the card's
+    // own paid total (which misses a retired card) is not consulted.
+    expect(
+      lifetimeCashbackTotal(
+        { cashbackLifetime: 131.75, cashbackThisMonth: 20, cashbackPendingThisMonth: 9 },
+        10,
+      ),
+    ).toBe(131.75);
+  });
+
+  it("counts a new cardholder's escrowed cashback rather than reading $0", () => {
+    expect(
+      lifetimeCashbackTotal(
+        { cashbackLifetime: 3.2, cashbackThisMonth: 0, cashbackPendingThisMonth: 3.2 },
+        0,
+      ),
+    ).toBeCloseTo(3.2);
+  });
+
+  it("reports zero for someone who hasn't earned any", () => {
+    expect(
+      lifetimeCashbackTotal(
+        { cashbackLifetime: 0, cashbackThisMonth: 0, cashbackPendingThisMonth: 0 },
+        0,
+      ),
+    ).toBe(0);
+  });
+
+  describe('on an older backend, with no lifetime figure', () => {
+    const month = { cashbackThisMonth: 20, cashbackPendingThisMonth: 9 };
+
+    it("rebuilds it from the card's paid total and this month's escrow", () => {
+      expect(lifetimeCashbackTotal(month, 120)).toBe(129);
+    });
+
+    it("floors the card's paid total at this month's settled figure, which it can trail", () => {
+      expect(lifetimeCashbackTotal(month, 15)).toBe(29);
+    });
+  });
+
+  it("never reads below this month's figure", () => {
+    expect(
+      lifetimeCashbackTotal(
+        { cashbackLifetime: 5, cashbackThisMonth: 20, cashbackPendingThisMonth: 9 },
+        0,
+      ),
+    ).toBe(29);
+  });
+
+  it('shows the card total while the rewards data is still loading', () => {
+    expect(lifetimeCashbackTotal(undefined, 42.5)).toBe(42.5);
+    expect(lifetimeCashbackTotal(undefined, undefined)).toBe(0);
+  });
+
+  it('treats nonsensical amounts as nothing', () => {
+    expect(
+      lifetimeCashbackTotal(
+        { cashbackLifetime: Number.NaN, cashbackThisMonth: 0, cashbackPendingThisMonth: 0 },
+        Number.NaN,
+      ),
+    ).toBe(0);
   });
 });
 

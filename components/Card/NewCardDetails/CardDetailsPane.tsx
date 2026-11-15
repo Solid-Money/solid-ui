@@ -60,7 +60,7 @@ import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRainSunset } from '@/hooks/useRainSunset';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { monthlyCashbackCap } from '@/lib/cashbackProgress';
+import { lifetimeCashbackTotal, monthlyCashbackCap } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardProvider, CardStatus } from '@/lib/types';
 import {
@@ -337,7 +337,7 @@ const CardDetailsPane = () => {
   }, [closePane]);
 
   const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  const lifetimeCashback = lifetimeCashbackTotal(rewardsData, cardDetails?.cashback?.totalUsdValue);
   // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
   // while this absolute pane does not. Keep the pane on the measured card centre so
   // opening it never adds the resulting half-scrollbar horizontal drift.
@@ -472,7 +472,7 @@ const CardDetailsPane = () => {
               cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
               maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
               tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-              allTimeCashback={allTimeCashback}
+              lifetimeCashback={lifetimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
             />
           </HeroEnter>
