@@ -42,9 +42,9 @@ export const SOBTC_ADDRESSES = {
     boringQueue: '0x0800bb6AF4668e14186F5cd6CD357e1aA81A3802' as Address,
   },
   base: {
-    vault: '0xBd51647c783A917c797873c6c5A489ff197fb51e' as Address,
-    accountant: '0xaC88737d45421EA93eEe11f0E30d2D2c6eC51382' as Address,
-    teller: '0x49d88bd2b250d57Fc2c14a16A3420Fb149078d00' as Address,
+    vault: '0x49d88bd2b250d57Fc2c14a16A3420Fb149078d00' as Address,
+    accountant: '0xe7C3178aE1Af62495c49B529dA385F6F8032B808' as Address,
+    teller: '0xB2Ab9874f36F5D201346C0bd67279fD75635Ca73' as Address,
   },
 } as const;
 
