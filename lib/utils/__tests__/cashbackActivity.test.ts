@@ -70,6 +70,25 @@ describe('isCashbackPayoutActivity', () => {
     expect(isCashbackPayoutActivity(activity({ hash: '0xABC123' }), hashes)).toBe(true);
   });
 
+  it('matches a payout paid on Base exactly as one paid on Fuse', () => {
+    // Cashback pays from Base first; the soUSD receive there is indexed like
+    // any listed token's, so it must be kept out of the feed the same way.
+    const baseHashes = collectCashbackPayoutHashes([
+      cashback({ payoutTxHash: '0xBA5E01', payoutChainId: 8453 }),
+    ]);
+
+    expect(
+      isCashbackPayoutActivity(
+        activity({
+          clientTxId: 'webhook_8453_0xba5e01_incoming',
+          chainId: 8453,
+          hash: '0xba5e01',
+        }),
+        baseHashes,
+      ),
+    ).toBe(true);
+  });
+
   it('matches a payout whose hash is only on the metadata', () => {
     expect(
       isCashbackPayoutActivity(
