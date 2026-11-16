@@ -340,22 +340,15 @@ describe('resolveWirexMoveDestination', () => {
 describe('getCardFundCryptoRows', () => {
   const WITH_BITCOIN: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
 
-  it('lists BTC, sent on Bitcoin, once rhino.fi takes it to the card', () => {
-    expect(getCardFundCryptoRows(WITH_BITCOIN, true)).toEqual([
-      { symbol: 'BTC', networks: ['Bitcoin'] },
-    ]);
+  it('lists BTC, sent on Bitcoin, to everyone once rhino.fi takes it to the card', () => {
+    expect(getCardFundCryptoRows(WITH_BITCOIN)).toEqual([{ symbol: 'BTC', networks: ['Bitcoin'] }]);
   });
 
   it('lists nothing while rhino.fi does not take it: Bitcoin off, or routes not in', () => {
-    expect(getCardFundCryptoRows({ status: 'ready', assets: RHINO_ASSETS }, true)).toEqual([]);
-    expect(getCardFundCryptoRows({ status: 'loading' }, true)).toEqual([]);
-    expect(getCardFundCryptoRows({ status: 'unavailable' }, true)).toEqual([]);
-    expect(getCardFundCryptoRows({ status: 'disabled' }, true)).toEqual([]);
-  });
-
-  // As in the wallet: the internal team in production, everyone on qa.
-  it('lists nothing for someone not given the new deposit tokens', () => {
-    expect(getCardFundCryptoRows(WITH_BITCOIN, false)).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'ready', assets: RHINO_ASSETS })).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'loading' })).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'unavailable' })).toEqual([]);
+    expect(getCardFundCryptoRows({ status: 'disabled' })).toEqual([]);
   });
 
   it('is offered to Rain cards, not Wirex', () => {

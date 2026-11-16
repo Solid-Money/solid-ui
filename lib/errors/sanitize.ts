@@ -42,7 +42,23 @@ const TRAILING_DETAIL_MARKERS = [
  * is often the one line that says what went wrong: without it every paymaster
  * refusal read as "Invalid parameters were provided to the RPC method".
  */
-const DETAILS_LINE = /^Details:[ \t]*(\S.*)$/m;
+const DETAILS_LINES = /^Details:[ \t]*(\S.*)$/gm;
+
+/**
+ * viem's own short messages. When an error from one viem copy is wrapped by
+ * another (the app bundles several), `instanceof BaseError` fails and the
+ * outer error's Details line is the inner one's short message, "RPC Request
+ * failed.", with the server's reason in a later Details line. Mobile reports
+ * kept only that first line and lost every bundler reason.
+ */
+const GENERIC_DETAILS =
+  /^(?:RPC Request failed|HTTP request failed|An internal error was received)\.?$/i;
+
+/** The most specific Details line: the last one that isn't a viem short message. */
+const pickDetails = (message: string): string | undefined => {
+  const lines = [...message.matchAll(DETAILS_LINES)].map(match => match[1].trim());
+  return lines.filter(line => !GENERIC_DETAILS.test(line)).pop() ?? lines[0];
+};
 
 const toText = (raw: unknown): string => {
   if (raw === undefined || raw === null) return '';
@@ -72,7 +88,7 @@ export const sanitizeTechnicalMessage = (
   maxLength = TECHNICAL_MESSAGE_MAX,
 ): string => {
   let message = toText(raw);
-  const details = message.match(DETAILS_LINE)?.[1]?.trim();
+  const details = pickDetails(message);
 
   // A dump that starts the message goes too; the Details line, if any, is
   // all that is left of it.

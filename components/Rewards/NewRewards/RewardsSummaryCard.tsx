@@ -10,7 +10,8 @@ import Svg, {
 } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
-import { formatBalanceUSD } from '@/lib/utils';
+import { formatBalance } from '@/lib/utils';
+import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
 
@@ -74,7 +75,7 @@ const RewardsGradient = () => (
 );
 
 interface RewardsSummaryCardProps {
-  /** This month's cashback, settled and escrowed together. */
+  /** This month's cashback, settled and escrowed together, in `cashbackDetails.currency`. */
   cashback: number;
   referrals: number;
   cashbackDetails: CashbackDetailsData;
@@ -99,14 +100,16 @@ const RewardsIcon = () => (
 interface SummaryStatProps {
   label: string;
   value: number;
+  /** "$" unless the figure is in another currency (a euro cardholder's cashback). */
+  symbol?: string;
   onPress?: () => void;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
+const SummaryStat = ({ label, value, symbol = '$', onPress }: SummaryStatProps) => (
   <Pressable
     accessibilityRole={onPress ? 'button' : undefined}
-    accessibilityLabel={`${label}. ${formatBalanceUSD(value)}`}
+    accessibilityLabel={`${label}. ${formatBalance(value, symbol)}`}
     disabled={!onPress}
     onPress={onPress}
     className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
@@ -123,7 +126,7 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
       // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
       style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
     >
-      {formatBalanceUSD(value)}
+      {formatBalance(value, symbol)}
     </Text>
   </Pressable>
 );
@@ -157,7 +160,13 @@ const RewardsSummaryCard = ({
 
       <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
-          trigger={<SummaryStat label="Cashback" value={cashback} />}
+          trigger={
+            <SummaryStat
+              label="Cashback"
+              value={cashback}
+              symbol={CURRENCY_SYMBOLS[cashbackDetails.currency ?? 'USD']}
+            />
+          }
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />

@@ -112,6 +112,34 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
         'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',
     },
   ],
+  // TODO(soBTC): product to review and move this copy to the Monday board above.
+  [VaultType.BTC]: [
+    {
+      question: 'What is soBTC?',
+      answer:
+        'Your yield-bearing bitcoin. Deposit WBTC on Ethereum or on Base and receive soBTC on Base. It grows in BTC terms as yield accrues, so you keep your bitcoin exposure.',
+    },
+    {
+      question: 'Is WBTC on Base the same as WBTC on Ethereum?',
+      answer:
+        'Yes. WBTC on Base is the same BitGo WBTC, carried to Base over LayerZero. soBTC counts 1 WBTC on either network as 1 BTC, so both earn the same rate and mint the same amount of soBTC.',
+    },
+    {
+      question: 'Who backs WBTC?',
+      answer:
+        'WBTC is bitcoin held by a custodian, BitGo. Each token represents 1 BTC of custodied bitcoin, but its market price can fall below 1 BTC. soBTC carries both the custodian risk and this market-price risk.',
+    },
+    {
+      question: 'How do I withdraw?',
+      answer:
+        'Withdrawals are paid in WBTC on Ethereum, in two steps: your soBTC moves from Base to Ethereum first, for a small fee in ETH on Base, then the withdrawal goes through a queue and usually finishes within about 3 days.',
+    },
+    {
+      question: 'Why can I withdraw less than I hold right now?',
+      answer:
+        'Withdrawals are paid from the WBTC the vault holds on Ethereum. While part of it is out earning or still on Base, you can withdraw up to what it holds right now. The rest is still yours: withdraw it later.',
+    },
+  ],
 };
 
 /** FAQ list for a vault, falling back to the USDC vault for an unknown type. */

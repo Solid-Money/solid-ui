@@ -1,5 +1,6 @@
 import { getJWTToken, getPlatformHeaders } from '@/lib/api';
 import { EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import {
   LifiRouteOrder,
   LifiSwapDestinations,
@@ -13,6 +14,7 @@ import {
  * holds the LI.FI key and fixes sender and recipient to the user's own Safe.
  */
 const BASE = `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/lifi-swap`;
+const DESTINATIONS_TIMEOUT_MS = 5_000;
 
 const authHeaders = () => {
   const jwt = getJWTToken();
@@ -115,13 +117,12 @@ export const fetchLifiSwapDestinations = async (
     fromChain: String(params.fromChain),
     fromToken: params.fromToken,
   });
-  const response = await fetch(`${BASE}/destinations?${query.toString()}`, {
-    method: 'GET',
-    headers: authHeaders(),
-    credentials: 'include',
-    signal,
-  });
-  return parse<LifiSwapDestinations>(response);
+  return fetchWithTimeout(
+    `${BASE}/destinations?${query.toString()}`,
+    { method: 'GET', headers: authHeaders(), credentials: 'include', signal },
+    DESTINATIONS_TIMEOUT_MS,
+    parse<LifiSwapDestinations>,
+  );
 };
 
 export const fetchLifiSwapStatus = async (params: {

@@ -12,6 +12,7 @@ import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { isSoBtcConfigured, SOBTC_ADDRESSES } from '@/lib/soBtc';
 import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { getSoUsdWithdrawChain, SOUSD_WITHDRAW_CHAINS } from '@/lib/soUsdWithdraw';
 import { Status, TransactionType } from '@/lib/types';
@@ -56,6 +57,16 @@ const CANCEL_TARGETS: Record<Exclude<VaultKey, 'USD'>, CancelWithdrawTarget | un
     shareSymbol: 'soEURC',
     shareAddress: ADDRESSES.base.soEurcVault,
   },
+  // soBTC's only queue is on Ethereum: every request is for WBTC there, made after the shares
+  // were bridged from Base.
+  BTC: isSoBtcConfigured
+    ? {
+        chain: mainnet,
+        queue: SOBTC_ADDRESSES.ethereum.boringQueue,
+        shareSymbol: 'soBTC',
+        shareAddress: SOBTC_ADDRESSES.ethereum.vault,
+      }
+    : undefined,
 };
 
 /** soUSD's queue on the chain the request was queued on; Ethereum when it names none. */
@@ -92,6 +103,8 @@ export const getCancelWithdrawTarget = (
   const key = getVaultKey(symbol) ?? 'USD';
   if (key === 'USD') return soUsdCancelTarget(chainId);
   if (key === 'ETH' && chainId === base.id) return SOETH_BASE_CANCEL_TARGET;
+  // A soBTC request from the retired Base queue (cbBTC) has nowhere to be cancelled from here.
+  if (key === 'BTC' && chainId !== mainnet.id) return undefined;
   return CANCEL_TARGETS[key];
 };
 

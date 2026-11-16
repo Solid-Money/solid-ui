@@ -21,6 +21,8 @@ const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
   [VaultType.ETH]: 'images/eth-yield-4x.png',
   [VaultType.FUSE]: 'images/fuse-yield-4x.png',
   [VaultType.EUR]: 'images/eur-yield-4x.png',
+  // No BTC Yield mark yet: the BTC mark.
+  [VaultType.BTC]: 'images/btc.png',
 };
 const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
 

@@ -17,8 +17,11 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useSpendingInsights } from '@/hooks/useSpendingInsights';
+import { cashbackFiguresByCurrency } from '@/lib/cashbackProgress';
+import { CashbackCurrency } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
+  formatInsightAmount,
   formatInsightUsd,
   getLatestSpendMonthKey,
   getMonthContext,
@@ -140,11 +143,14 @@ function SubscriptionsCard({
   categoryLimit,
   discountRate,
   isCurrentMonth,
+  cashbackCurrency = 'USD',
 }: {
   month: MonthSummary;
   categoryLimit: number;
   discountRate: number;
   isCurrentMonth: boolean;
+  /** Listed first when a service earned cashback in both currencies. */
+  cashbackCurrency?: CashbackCurrency;
 }) {
   const total = month.subscriptions.reduce((sum, item) => sum + item.amountUsd, 0);
   const monthName = getMonthName(month.key);
@@ -187,6 +193,14 @@ function SubscriptionsCard({
         <View className="py-1.5">
           {month.subscriptions.map(item => {
             const brand = findBrand(item.brand);
+            // Per currency, never summed: "+€2.00 back", "+€2.00 + $1.00 back".
+            const cashback = cashbackFiguresByCurrency(
+              { USD: item.cashbackUsd, EUR: item.cashbackEur },
+              cashbackCurrency,
+            )
+              .filter(figure => figure.value > 0)
+              .map(figure => formatInsightAmount(figure.value, figure.currency))
+              .join(' + ');
             const categoryLabel = subscriptionCategoryLabel(item.category);
             const charged =
               item.charges > 1
@@ -213,11 +227,7 @@ function SubscriptionsCard({
                   <Text className="text-base font-semibold">
                     {formatInsightUsd(item.amountUsd)}
                   </Text>
-                  {item.cashbackUsd > 0 && (
-                    <Text className="text-sm text-brand">
-                      +{formatInsightUsd(item.cashbackUsd)} back
-                    </Text>
-                  )}
+                  {!!cashback && <Text className="text-sm text-brand">+{cashback} back</Text>}
                 </View>
               </View>
             );
@@ -300,6 +310,8 @@ export default function InsightsScreen() {
               previousMonthName={previous ? getMonthName(previous.key) : undefined}
               isFirstMonth={isFirstMonth}
               cashbackUsd={month.cashbackUsd}
+              cashbackEur={month.cashbackEur}
+              cashbackCurrency={insights.cashbackCurrency}
             />
           </View>
           <View className="mt-5">
@@ -339,6 +351,7 @@ export default function InsightsScreen() {
           categoryLimit={insights.subscriptionCategoryLimit}
           discountRate={insights.subscriptionDiscountRate}
           isCurrentMonth={isCurrentMonth}
+          cashbackCurrency={insights.cashbackCurrency}
         />
       </>
     );

@@ -12,6 +12,7 @@ const DISPLAY_NAMES: Record<VaultType, string> = {
   [VaultType.FUSE]: 'Fuse',
   [VaultType.ETH]: 'Ethereum',
   [VaultType.EUR]: 'Euro',
+  [VaultType.BTC]: 'Bitcoin',
 };
 
 export type SavingsVaultDisplay = {

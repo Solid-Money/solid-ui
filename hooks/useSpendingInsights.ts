@@ -5,7 +5,7 @@ import { spendingHistoryQueryKey } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { getCardTransactions } from '@/lib/api';
-import { CardTransaction } from '@/lib/types';
+import { CardTransaction, CashbackCurrency } from '@/lib/types';
 import {
   buildSpendingInsights,
   getMonthKey,
@@ -86,6 +86,8 @@ export type UseSpendingInsightsResult = SpendingInsights & {
   subscriptionCategoryLimit: number;
   /** The tier's subscription cashback, in percent (0 = none). */
   subscriptionDiscountRate: number;
+  /** The cardholder's cashback currency: listed first wherever cashback is shown per currency. */
+  cashbackCurrency: CashbackCurrency;
 };
 
 /**
@@ -122,6 +124,7 @@ export const useSpendingInsights = (options?: { enabled?: boolean }): UseSpendin
     currentMonth: insights.months[insights.months.length - 1],
     subscriptionCategoryLimit: rewards?.subscriptionCategoryLimit ?? 0,
     subscriptionDiscountRate: rewards?.subscriptionDiscountRate ?? 0,
+    cashbackCurrency: rewards?.cashbackCurrency === 'EUR' ? 'EUR' : 'USD',
     isLoading: enabled && (history.isLoading || isCashbackLoading),
     isError: history.isError,
     refetch: () => void history.refetch(),

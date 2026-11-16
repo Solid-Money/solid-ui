@@ -5,6 +5,7 @@ import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
 import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 import { ADDRESSES } from '@/lib/config';
+import { isSoBtcConfigured, SOBTC_ADDRESSES } from '@/lib/soBtc';
 
 /**
  * One asset a card is allowed to spend.
@@ -106,14 +107,17 @@ export const baseEurcSpendableAsset = (addresses: string[]): CardSpendableAsset 
 /** Coinbase's wrapped ZEC on Base. Not in the deposit token table, which takes ZEC on BSC. */
 const BASE_CBZEC = '0xb2000000000000000000008501b13360000cb2ec';
 
+/** WBTC on Base (the LayerZero OFT). Retired from the deposit token table, still card-spendable. */
+const BASE_WBTC = '0x0555e30da8f98308edb960aa94c0db47230d2b9c';
+
 /** A configured Base vault share, lowercased; undefined in a build without that vault. */
 const baseShare = (address: string): string | undefined =>
   address === zeroAddress ? undefined : address.toLowerCase();
 
 /**
- * A Base spend token's ticker, from its address: soEUR, soUSD and soETH by this build's vaults
- * (soUSD and soETH deposited on Base keep their shares there), EURC by the bridge config's Base
- * EURC, cbZEC by the one address above, the rest — USDC, USDT, cbBTC, WETH, SOL, AAVE — by the
+ * A Base spend token's ticker, from its address: soEUR, soUSD, soETH and soBTC by this build's
+ * vaults (soUSD, soETH and soBTC deposited on Base keep their shares there), EURC by the bridge
+ * config's Base EURC, cbZEC and WBTC by the addresses above, the rest — USDC, USDT, cbBTC, WETH, SOL, AAVE — by the
  * deposit token table, which already holds each one's Base contract. EURC is matched directly
  * rather than through that table because it is the one that carries the euro qualifier.
  * `undefined` for an address this build cannot name.
@@ -122,8 +126,10 @@ const baseTokenSymbol = (address: string): string | undefined => {
   if (address === ADDRESSES.base.soEurcVault.toLowerCase()) return 'soEUR';
   if (address === baseShare(ADDRESSES.base.vault)) return 'soUSD';
   if (address === baseShare(ADDRESSES.base.soEthVault)) return 'soETH';
+  if (isSoBtcConfigured && address === baseShare(SOBTC_ADDRESSES.base.vault)) return 'soBTC';
   if (address === EURC_TOKENS[base.id]?.address.toLowerCase()) return 'EURC';
   if (address === BASE_CBZEC) return 'cbZEC';
+  if (address === BASE_WBTC) return 'WBTC';
   return WALLET_DEPOSIT_TOKENS.find(token => token.contracts[base.id]?.toLowerCase() === address)
     ?.symbol;
 };

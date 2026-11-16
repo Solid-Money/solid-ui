@@ -109,6 +109,11 @@ export interface BankAccountDetailsViewProps {
   rows: BankAccountDetailRow[];
   /** Rendered between the title and the banner — the rail switcher, when there is one. */
   header?: ReactNode;
+  /**
+   * Rendered under the header, above the banner — something the user should
+   * read before they send money, like their next deposits being free.
+   */
+  notice?: ReactNode;
   /** Rendered under the details card, above the link rows. */
   footer?: ReactNode;
   /** Fired with the row's label when a value is copied. Never the value itself. */
@@ -129,6 +134,7 @@ export const BankAccountDetailsView = ({
   blurb,
   rows,
   header,
+  notice,
   footer,
   onCopyField,
 }: BankAccountDetailsViewProps) => {
@@ -160,6 +166,8 @@ export const BankAccountDetailsView = ({
         </View>
 
         {header}
+
+        {notice}
 
         {/* Banknote-textured intro banner; the details card overlaps its lower half. */}
         <View style={styles.banner} className="overflow-hidden rounded-twice bg-[#323232]">

@@ -37,6 +37,7 @@ import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/Borr
 import useCreditModeFigures from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
+import RainClosingCardNotice from '@/components/Card/RainSunset/RainClosingCardNotice';
 import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
@@ -56,9 +57,14 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
+import { useRainSunset } from '@/hooks/useRainSunset';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { monthlyCashbackCap } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackCap,
+  resolveAllTimeCashback,
+  resolveCashbackMonth,
+} from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardProvider, CardStatus } from '@/lib/types';
 import {
@@ -114,6 +120,9 @@ const CardDetailsPane = () => {
 
   const { data: cardDetails, refetch, dataUpdatedAt } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
+  // Rain sunset: the card-closing notice under the card art.
+  const { sunset: rainSunset } = useRainSunset();
+  const showsClosingNotice = Boolean(rainSunset?.notice && rainSunset.hasRainCard);
   const { data: customer } = useCustomer();
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
@@ -331,8 +340,10 @@ const CardDetailsPane = () => {
     router.push(path.REWARDS_BENEFITS);
   }, [closePane]);
 
-  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  // In the cardholder's cashback currency — euros, euro caps and a euro
+  // lifetime for a euro cardholder, never mixed with dollars.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
   // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
   // while this absolute pane does not. Keep the pane on the measured card centre so
   // opening it never adds the resulting half-scrollbar horizontal drift.
@@ -370,6 +381,13 @@ const CardDetailsPane = () => {
             // country the status endpoint reports (it's absent for test overrides).
             issuingCountryCode={cardDetails?.issuing_country ?? cardStatus?.country}
           />
+          {/* Rain sunset: right under the card art (Figma "2 · Card screen · closing
+              notice"), above the action row. */}
+          {showsClosingNotice ? (
+            <HeroEnter spec={HERO_ENTER.closingNotice} style={styles.closingNotice}>
+              <RainClosingCardNotice />
+            </HeroEnter>
+          ) : null}
           <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
             <CardActionsRow
               isCardFrozen={isCardFrozen}
@@ -456,11 +474,12 @@ const CardDetailsPane = () => {
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
               cashbackRate={resolveUserCashbackRate(rewardsData)}
-              cashbackThisMonth={cashbackThisMonth}
-              cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-              maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-              tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-              allTimeCashback={allTimeCashback}
+              currency={cashbackMonth?.currency}
+              cashbackThisMonth={cashbackMonth?.cashbackThisMonth ?? 0}
+              cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+              maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+              tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
+              {...allTimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
             />
           </HeroEnter>
@@ -583,6 +602,7 @@ const styles = StyleSheet.create({
   },
   // Figma vertical rhythm (26134:23654): 51 from the panel to the action icons, 53
   // to the spend-mode row, then 20 between each card down the stack.
+  closingNotice: { marginTop: 24 },
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
   realTimeFundingCard: { marginTop: 20 },

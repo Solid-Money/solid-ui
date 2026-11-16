@@ -3,6 +3,7 @@ import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { VAULTS } from '@/constants/vaults';
+import { useBtcPriceQuery } from '@/hooks/useBtcPriceUsd';
 import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
@@ -20,6 +21,8 @@ const usdcVault = liveVault(VaultType.USDC) ?? VAULTS[0];
 const fuseVault = liveVault(VaultType.FUSE);
 const ethVault = liveVault(VaultType.ETH);
 const eurVault = liveVault(VaultType.EUR);
+// Listed only in a build with both soBTC deployments.
+const btcVault = liveVault(VaultType.BTC);
 
 /**
  * Total redeemable savings in USD across the USD-valued vaults: soUSD + soFUSE +
@@ -70,6 +73,11 @@ export const useTotalSavingsUSD = (): {
     isLoading: isLoadingBalanceEur,
     isError: isErrorBalanceEur,
   } = useVaultBalance(address, eurVault ?? usdcVault);
+  const {
+    data: balanceBtc,
+    isLoading: isLoadingBalanceBtc,
+    isError: isErrorBalanceBtc,
+  } = useVaultBalance(address, btcVault ?? usdcVault);
 
   const {
     data: exchangeRateUsdc,
@@ -95,6 +103,18 @@ export const useTotalSavingsUSD = (): {
   const hasFuseBalance = !!fuseVault && (balanceFuse ?? 0) > 0;
   const hasEthBalance = !!ethVault && (balanceEth ?? 0) > 0;
   const hasEurBalance = !!eurVault && (balanceEur ?? 0) > 0;
+  const hasBtcBalance = !!btcVault && (balanceBtc ?? 0) > 0;
+
+  const {
+    data: exchangeRateBtc,
+    isLoading: isLoadingRateBtc,
+    isError: isErrorRateBtc,
+  } = useVaultExchangeRate(btcVault?.name ?? usdcVault.name, hasBtcBalance);
+  const {
+    data: btcPriceUsd,
+    isLoading: isLoadingBtcPrice,
+    isError: isErrorBtcPrice,
+  } = useBtcPriceQuery(hasBtcBalance);
 
   const {
     data: fusePriceUsd,
@@ -111,9 +131,11 @@ export const useTotalSavingsUSD = (): {
     isLoadingBalanceUsdc ||
     isLoadingBalanceFuse ||
     isLoadingBalanceEth ||
+    (!!btcVault && isLoadingBalanceBtc) ||
     isLoadingRateUsdc ||
     (hasFuseBalance && (isLoadingRateFuse || isLoadingFusePrice)) ||
-    (hasEthBalance && (isLoadingRateEth || isLoadingEthPrice));
+    (hasEthBalance && (isLoadingRateEth || isLoadingEthPrice)) ||
+    (hasBtcBalance && (isLoadingRateBtc || isLoadingBtcPrice));
 
   // Lenient, as before: Savings, Earn and the savings card treat `undefined` as "still loading",
   // so a missing price must not hold them on a skeleton. A missing rate reads as 1:1 and a
@@ -122,25 +144,31 @@ export const useTotalSavingsUSD = (): {
     if (isLoading) return undefined;
     const fusePrice = hasFuseBalance ? Number(fusePriceUsd) || 0 : 0;
     const ethPrice = hasEthBalance ? Number(ethPriceUsd) || 0 : 0;
+    const btcPrice = hasBtcBalance ? Number(btcPriceUsd) || 0 : 0;
     return {
       [VaultType.USDC]: (balanceUsdc ?? 0) * (exchangeRateUsdc ?? 1),
       [VaultType.FUSE]: hasFuseBalance
         ? (balanceFuse ?? 0) * (exchangeRateFuse ?? 1) * fusePrice
         : 0,
       [VaultType.ETH]: hasEthBalance ? (balanceEth ?? 0) * (exchangeRateEth ?? 1) * ethPrice : 0,
+      [VaultType.BTC]: hasBtcBalance ? (balanceBtc ?? 0) * (exchangeRateBtc ?? 1) * btcPrice : 0,
     };
   }, [
     isLoading,
     hasFuseBalance,
     hasEthBalance,
+    hasBtcBalance,
     balanceUsdc,
     balanceFuse,
     balanceEth,
+    balanceBtc,
     exchangeRateUsdc,
     exchangeRateFuse,
     exchangeRateEth,
+    exchangeRateBtc,
     fusePriceUsd,
     ethPriceUsd,
+    btcPriceUsd,
   ]);
 
   // Strict, per vault, for the Assets overview: a vault whose balance, rate or price is
@@ -157,20 +185,30 @@ export const useTotalSavingsUSD = (): {
       [VaultType.ETH]: isErrorBalanceEth
         ? undefined
         : savingsUsdValue(balanceEth, exchangeRateEth, Number(ethPriceUsd)),
+      // A build without soBTC holds none of it: 0, not unknown.
+      [VaultType.BTC]: !btcVault
+        ? 0
+        : isErrorBalanceBtc
+          ? undefined
+          : savingsUsdValue(balanceBtc, exchangeRateBtc, Number(btcPriceUsd)),
     };
   }, [
     isLoading,
     isErrorBalanceUsdc,
     isErrorBalanceFuse,
     isErrorBalanceEth,
+    isErrorBalanceBtc,
     balanceUsdc,
     balanceFuse,
     balanceEth,
+    balanceBtc,
     exchangeRateUsdc,
     exchangeRateFuse,
     exchangeRateEth,
+    exchangeRateBtc,
     fusePriceUsd,
     ethPriceUsd,
+    btcPriceUsd,
   ]);
 
   // soEURC in EUR: shares × the soEURC→EURC rate, EURC read at par with the euro.
@@ -203,6 +241,8 @@ export const useTotalSavingsUSD = (): {
       ((balanceUsdc ?? 0) > 0 && isErrorRateUsdc) ||
       (hasFuseBalance && (isErrorRateFuse || isErrorFusePrice)) ||
       (hasEthBalance && (isErrorRateEth || isErrorEthPrice)) ||
+      (!!btcVault && isErrorBalanceBtc) ||
+      (hasBtcBalance && (isErrorRateBtc || isErrorBtcPrice)) ||
       (!!exactValuesByVault && Object.values(exactValuesByVault).some(v => v === undefined)),
   };
 };

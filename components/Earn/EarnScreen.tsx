@@ -38,16 +38,19 @@ export default function EarnScreen() {
     [VaultType.USDC]: useMaxAPY(VaultType.USDC),
     [VaultType.ETH]: useMaxAPY(VaultType.ETH),
     [VaultType.FUSE]: useMaxAPY(VaultType.FUSE),
+    [VaultType.BTC]: useMaxAPY(VaultType.BTC),
   };
   const thirtyDay = {
     [VaultType.USDC]: useAPYs(VaultType.USDC).data?.thirtyDay,
     [VaultType.ETH]: useAPYs(VaultType.ETH).data?.thirtyDay,
     [VaultType.FUSE]: useAPYs(VaultType.FUSE).data?.thirtyDay,
+    [VaultType.BTC]: useAPYs(VaultType.BTC).data?.thirtyDay,
   };
   const interest = {
     [VaultType.USDC]: useVaultInterestEarned(VaultType.USDC),
     [VaultType.ETH]: useVaultInterestEarned(VaultType.ETH),
     [VaultType.FUSE]: useVaultInterestEarned(VaultType.FUSE),
+    [VaultType.BTC]: useVaultInterestEarned(VaultType.BTC),
   };
 
   const isLoading = portfolio.isLoading;

@@ -209,6 +209,8 @@ import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
+import type { UserFeePromotionsResponse } from '@/lib/utils/feePromotion';
+
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
   const headers: Record<string, string> = {};
@@ -2812,9 +2814,14 @@ export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };
 
-export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
+/**
+ * The tier comparison. `currency: 'EUR'` asks for the monthly caps in euros, at the tiers' euro
+ * caps — what a euro cardholder's cashback is capped at.
+ */
+export const fetchTierBenefits = async (currency?: MainCurrency): Promise<TierBenefits[]> => {
+  const query = currency === 'EUR' ? '?currency=EUR' : '';
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits${query}`,
     {
       method: 'GET',
       headers: {
@@ -2847,6 +2854,30 @@ export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
     },
     credentials: 'include',
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The fee promotions running now that would save this user something, with
+ * how many free fees they have left under each — e.g. their next SEPA deposits
+ * to the euro account being free. Empty when nothing is running, and for a
+ * user whose plan already pays nothing on the promoted fee.
+ */
+export const fetchFeePromotions = async (): Promise<UserFeePromotionsResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/promotions`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };
@@ -5148,6 +5179,9 @@ export const fetchHistoricalAPY = async (
       break;
     case VaultType.EUR:
       params.set('vault', VaultType.EUR);
+      break;
+    case VaultType.BTC:
+      params.set('vault', VaultType.BTC);
       break;
     default:
   }
