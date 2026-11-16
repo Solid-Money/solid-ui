@@ -134,7 +134,7 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
   if (vault?.type === VaultType.ETH && chainId === base.id && isSoEthBaseConfigured) {
     tokens.push(...Object.keys(SOETH_BASE_DEPOSIT_TOKENS));
   }
-  // WBTC on Ethereum and cbBTC on Base are offered to soBTC alone, from its own table.
+  // WBTC on Ethereum and on Base is offered to soBTC alone, from its own table.
   if (vault?.type === VaultType.BTC) {
     tokens.push(...Object.keys(SOBTC_DEPOSIT_TOKENS[chainId] ?? {}));
   }

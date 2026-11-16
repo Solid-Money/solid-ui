@@ -5,8 +5,8 @@ import { fetchCoinPricesById, fetchTokenPriceUsd } from '@/lib/api';
 
 /**
  * The BTC price in USD, for soBTC's dollar figures: Alchemy by symbol first, then CoinGecko
- * through the backend's shared cache, as for the native-token prices. WBTC and cbBTC are both
- * valued at it (soBTC treats them 1:1).
+ * through the backend's shared cache, as for the native-token prices. soBTC's WBTC (on Ethereum
+ * and on Base) is valued at it 1:1.
  */
 export const fetchBtcPriceUsd = async (): Promise<string | undefined> => {
   try {

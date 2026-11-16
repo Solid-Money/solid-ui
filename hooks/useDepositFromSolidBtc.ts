@@ -45,10 +45,10 @@ type DepositResult = {
 const DEPOSIT_REVERTED = 'Deposit failed';
 
 /**
- * WBTC or cbBTC from the Solid wallet into soBTC. The Safe calls the teller itself, in one user
- * operation, and nothing goes through the backend:
+ * WBTC on Ethereum or on Base from the Solid wallet into soBTC. The Safe calls the teller itself,
+ * in one user operation, and nothing goes through the backend:
  *
- * - cbBTC on Base: approve + `deposit`. The shares mint to the Safe on Base in that transaction.
+ * - WBTC on Base: approve + `deposit`. The shares mint to the Safe on Base in that transaction.
  * - WBTC on Ethereum: approve + `depositAndBridge`. The WBTC stays in the Ethereum vault and the
  *   shares are sent to the same Safe on Base over LayerZero, so they land a few minutes later.
  *   The LayerZero fee is paid in ETH from the Safe on Ethereum: the paymaster covers gas, not
@@ -69,7 +69,7 @@ const useDepositFromSolidBtc = (
 
   const safeAddress = user?.safeAddress as Address | undefined;
   const depositAsset = srcChainId ? getSoBtcDepositAsset(srcChainId) : undefined;
-  // Only the asset the chain's vault takes: WBTC on Ethereum, cbBTC on Base.
+  // Only the asset the chain's vault takes: WBTC, on Ethereum or on Base.
   const isSoBtcToken = !!depositAsset && tokenAddress?.toLowerCase() === depositAsset.toLowerCase();
 
   const { data: blockNumber } = useBlockNumber({
@@ -102,7 +102,7 @@ const useDepositFromSolidBtc = (
       chainId: srcChainId,
       chainName: isEthereum ? 'ethereum' : 'base',
       depositType: 'solid_wallet',
-      depositMethod: isEthereum ? 'wbtc_solid_ethereum' : 'cbbtc_solid_base',
+      depositMethod: isEthereum ? 'wbtc_solid_ethereum' : 'wbtc_solid_base',
       depositDestination: 'savings',
       operation: 'deposit_from_solid_btc',
     };

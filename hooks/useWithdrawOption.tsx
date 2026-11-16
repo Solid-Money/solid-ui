@@ -147,7 +147,7 @@ const useWithdrawOption = ({
       return <UnstakeVaultSelector />;
     }
 
-    // soBTC picks its payout (cbBTC on Base or WBTC on Ethereum) on its own form.
+    // soBTC withdraws to WBTC on Ethereum in two steps (bridge, then request) on its own form.
     if (selectedVault === 'BTC') {
       return <SoBtcWithdrawForm />;
     }

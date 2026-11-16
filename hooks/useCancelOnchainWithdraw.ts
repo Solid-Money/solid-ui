@@ -57,26 +57,17 @@ const CANCEL_TARGETS: Record<Exclude<VaultKey, 'USD'>, CancelWithdrawTarget | un
     shareSymbol: 'soEURC',
     shareAddress: ADDRESSES.base.soEurcVault,
   },
-  // soBTC requests on Base; an Ethereum one is picked by chain in getCancelWithdrawTarget.
+  // soBTC's only queue is on Ethereum: every request is for WBTC there, made after the shares
+  // were bridged from Base.
   BTC: isSoBtcConfigured
     ? {
-        chain: base,
-        queue: SOBTC_ADDRESSES.base.boringQueue,
+        chain: mainnet,
+        queue: SOBTC_ADDRESSES.ethereum.boringQueue,
         shareSymbol: 'soBTC',
-        shareAddress: SOBTC_ADDRESSES.base.vault,
+        shareAddress: SOBTC_ADDRESSES.ethereum.vault,
       }
     : undefined,
 };
-
-/** soBTC's queue on Ethereum, for a WBTC request made there after the shares were bridged. */
-const SOBTC_ETHEREUM_CANCEL_TARGET: CancelWithdrawTarget | undefined = isSoBtcConfigured
-  ? {
-      chain: mainnet,
-      queue: SOBTC_ADDRESSES.ethereum.boringQueue,
-      shareSymbol: 'soBTC',
-      shareAddress: SOBTC_ADDRESSES.ethereum.vault,
-    }
-  : undefined;
 
 /** soUSD's queue on the chain the request was queued on; Ethereum when it names none. */
 const soUsdCancelTarget = (chainId: number | undefined): CancelWithdrawTarget => {
@@ -112,7 +103,8 @@ export const getCancelWithdrawTarget = (
   const key = getVaultKey(symbol) ?? 'USD';
   if (key === 'USD') return soUsdCancelTarget(chainId);
   if (key === 'ETH' && chainId === base.id) return SOETH_BASE_CANCEL_TARGET;
-  if (key === 'BTC' && chainId === mainnet.id) return SOBTC_ETHEREUM_CANCEL_TARGET;
+  // A soBTC request from the retired Base queue (cbBTC) has nowhere to be cancelled from here.
+  if (key === 'BTC' && chainId !== mainnet.id) return undefined;
   return CANCEL_TARGETS[key];
 };
 

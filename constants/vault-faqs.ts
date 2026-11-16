@@ -117,27 +117,27 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'What is soBTC?',
       answer:
-        'Your yield-bearing bitcoin. Deposit WBTC on Ethereum or cbBTC on Base and receive soBTC on Base. It grows in BTC terms as yield accrues, so you keep your bitcoin exposure.',
+        'Your yield-bearing bitcoin. Deposit WBTC on Ethereum or on Base and receive soBTC on Base. It grows in BTC terms as yield accrues, so you keep your bitcoin exposure.',
     },
     {
-      question: 'Are WBTC and cbBTC treated the same?',
+      question: 'Is WBTC on Base the same as WBTC on Ethereum?',
       answer:
-        'Yes. soBTC counts 1 WBTC and 1 cbBTC as 1 BTC, so both earn the same rate and mint the same amount of soBTC. Your deposit stays on the network you sent it from and is never bridged.',
+        'Yes. WBTC on Base is the same BitGo WBTC, carried to Base over LayerZero. soBTC counts 1 WBTC on either network as 1 BTC, so both earn the same rate and mint the same amount of soBTC.',
     },
     {
-      question: 'Who backs WBTC and cbBTC?',
+      question: 'Who backs WBTC?',
       answer:
-        'Both are bitcoin held by a custodian: WBTC by BitGo, cbBTC by Coinbase. Each token represents 1 BTC of custodied bitcoin, but its market price can fall below 1 BTC. soBTC carries both the custodian risk and this market-price risk.',
+        'WBTC is bitcoin held by a custodian, BitGo. Each token represents 1 BTC of custodied bitcoin, but its market price can fall below 1 BTC. soBTC carries both the custodian risk and this market-price risk.',
     },
     {
       question: 'How do I withdraw?',
       answer:
-        'Choose what you receive: cbBTC on Base, in one step, or WBTC on Ethereum, in two steps (your soBTC moves to Ethereum first, for a small fee in ETH on Base). Withdrawals go through a queue and usually finish within about 3 days.',
+        'Withdrawals are paid in WBTC on Ethereum, in two steps: your soBTC moves from Base to Ethereum first, for a small fee in ETH on Base, then the withdrawal goes through a queue and usually finishes within about 3 days.',
     },
     {
-      question: 'Why does the amount I can withdraw differ between WBTC and cbBTC?',
+      question: 'Why can I withdraw less than I hold right now?',
       answer:
-        'Each withdrawal is paid from the BTC held on that network: WBTC on Ethereum, cbBTC on Base. If more people deposited one than the other, one side holds less, and you can withdraw up to what it holds right now. The rest is still yours: withdraw it from the other side, or later.',
+        'Withdrawals are paid from the WBTC the vault holds on Ethereum. While part of it is out earning or still on Base, you can withdraw up to what it holds right now. The rest is still yours: withdraw it later.',
     },
   ],
 };

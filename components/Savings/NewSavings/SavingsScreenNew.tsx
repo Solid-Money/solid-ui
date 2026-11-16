@@ -165,7 +165,7 @@ export default function SavingsScreenNew() {
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
-        // Only soUSD, soETH and soBTC withdraw through the Base queues these are read from.
+        // Only soUSD and soETH (on their Base queues) and soBTC (on its Ethereum queue) are read.
         pendingWithdrawals={
           vaultType === VaultType.USDC || vaultType === VaultType.ETH || vaultType === VaultType.BTC
             ? portfolio.pendingWithdrawals.filter(

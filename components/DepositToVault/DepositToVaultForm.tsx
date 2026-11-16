@@ -80,14 +80,14 @@ function getGaslessText(
 }
 
 /**
- * soBTC's note under the form. Either input ends as soBTC on Base; a WBTC deposit gets there over
- * LayerZero, whose fee is paid in ETH on Ethereum (from the Safe or the connected wallet).
+ * soBTC's note under the form. Either input ends as soBTC on Base; an Ethereum WBTC deposit gets
+ * there over LayerZero, whose fee is paid in ETH on Ethereum (from the Safe or the connected wallet).
  */
 function getSoBtcDepositNote(chainId: number | undefined): string {
   if (chainId === mainnet.id) {
     return 'You get soBTC on Base. Your WBTC stays on Ethereum; a small bridge fee in ETH applies and soBTC arrives in a few minutes.';
   }
-  return 'You get soBTC on Base right away. Your cbBTC stays on Base.';
+  return 'You get soBTC on Base right away. Your WBTC stays on Base.';
 }
 
 function DepositToVaultForm() {
@@ -376,10 +376,10 @@ function DepositToVaultForm() {
   const isFuseVault = vault.type === VaultType.FUSE;
   const isEthVault = vault.type === VaultType.ETH;
   const isEurVault = vault.type === VaultType.EUR;
-  // soBTC: WBTC on Ethereum or cbBTC on Base, both 8 decimals (lib/soBtc.ts).
+  // soBTC: WBTC on Ethereum or on Base, 8 decimals on both (lib/soBtc.ts).
   const isBtcVault = vault.type === VaultType.BTC;
   const useSolidForBtc = isBtcVault && depositFromSolid;
-  // A connected wallet can't deposit cbBTC on Base (the shares would mint to that wallet, not the
+  // A connected wallet can't deposit WBTC on Base (the shares would mint to that wallet, not the
   // Safe). Say so up front instead of reading a 0 balance and failing every amount.
   const isBtcEoaOnBase = isBtcVault && !depositFromSolid && normalizedSelection.chainId === base.id;
   /** One hook's value for the soBTC vault, from the Solid wallet or the external one. */
@@ -661,7 +661,7 @@ function DepositToVaultForm() {
   const showNoQuote = vault.name === 'USDC' && isQuoteUnavailable;
 
   const getButtonText = () => {
-    if (isBtcEoaOnBase) return 'Use your Solid wallet for cbBTC';
+    if (isBtcEoaOnBase) return 'Use your Solid wallet for WBTC on Base';
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
     if (depositStatusForVault.status === Status.PENDING) return depositStatusForVault.message;
@@ -679,7 +679,7 @@ function DepositToVaultForm() {
     setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
     if (!hashForVault) return;
 
-    // A cbBTC deposit lands on Base in its own transaction; a WBTC one bridges, like soUSD.
+    // A Base WBTC deposit lands on Base in its own transaction; an Ethereum one bridges, like soUSD.
     const isBtcOnBase = isBtcVault && normalizedSelection.chainId === base.id;
     const explorerUrl = isFuseVault
       ? explorerUrls[fuse.id]?.blockscout
@@ -697,9 +697,7 @@ function DepositToVaultForm() {
             ? 'EURC'
             : 'USDC';
     const toastIcon = isBtcVault
-      ? isBtcOnBase
-        ? 'images/cbbtc.png'
-        : 'images/wbtc.png'
+      ? 'images/wbtc.png'
       : isFuseVault
         ? 'images/fuse-4x.png'
         : isEthVault
