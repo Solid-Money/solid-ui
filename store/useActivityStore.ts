@@ -64,9 +64,23 @@ function isStatusDowngrade(existingStatus: string, incomingStatus: string): bool
  * not been paid.
  */
 function isStaleStatus(existing: ActivityEvent, incoming: ActivityEvent): boolean {
-  return (
-    isStatusDowngrade(existing.status, incoming.status) && !isPayoutAwaitingFunds(incoming.metadata)
-  );
+  if (!isStatusDowngrade(existing.status, incoming.status)) return false;
+  // The awaiting-funds correction, but only from a copy at least as new as the
+  // stored one: an older response landing after the payout's "complete" must
+  // not put the row back to Pending.
+  return !(isPayoutAwaitingFunds(incoming.metadata) && !isOlderCopy(existing, incoming));
+}
+
+/**
+ * Whether `incoming` was written by the backend before `existing` was.
+ *
+ * Read from `updatedAt`, which every REST page and realtime event carries. A
+ * copy without one is not called older: nothing then says it is.
+ */
+function isOlderCopy(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const incomingAt = Date.parse(incoming.updatedAt ?? '');
+  const existingAt = Date.parse(existing.updatedAt ?? '');
+  return Number.isFinite(incomingAt) && Number.isFinite(existingAt) && incomingAt < existingAt;
 }
 
 interface ActivityState {
@@ -119,9 +133,15 @@ function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): bool
   // A status downgrade is not a real change — it's a stale update
   const statusActuallyChanged =
     existing.status !== incoming.status && !isStaleStatus(existing, incoming);
+  // The payout flag coming or going is a change on its own, even with the
+  // status unchanged — unless the copy carrying it is the older one.
+  const payoutFlagChanged =
+    isPayoutAwaitingFunds(existing.metadata) !== isPayoutAwaitingFunds(incoming.metadata) &&
+    !isOlderCopy(existing, incoming);
 
   return (
     statusActuallyChanged ||
+    payoutFlagChanged ||
     existing.hash !== incoming.hash ||
     existing.deleted !== incoming.deleted ||
     existing.failureReason !== incoming.failureReason ||

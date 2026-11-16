@@ -3206,6 +3206,8 @@ export interface ActivityEvent {
   deleted?: boolean;
   deletedAt?: string;
   failureReason?: string;
+  /** When the backend last wrote this row (ISO). Orders two copies of it. */
+  updatedAt?: string;
 }
 
 export interface ActivityEvents {

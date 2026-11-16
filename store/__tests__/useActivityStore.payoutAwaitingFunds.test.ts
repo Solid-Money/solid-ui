@@ -75,6 +75,44 @@ describe('activity store - a payout waiting on our payout wallet', () => {
     expect(isPayoutAwaitingFunds(stored().metadata)).toBe(false);
   });
 
+  it('ignores an older awaiting-funds copy that lands after the payout completed', () => {
+    // A slow page read from before the payout went out arrives last.
+    useActivityStore
+      .getState()
+      .setEvents(USER, [{ ...deposit, updatedAt: '2026-11-15T10:05:00.000Z' }]);
+
+    useActivityStore
+      .getState()
+      .bulkUpsertEvent(USER, [{ ...awaiting, updatedAt: '2026-11-15T09:00:00.000Z' }]);
+
+    expect(stored().status).toBe(TransactionStatus.SUCCESS);
+    expect(isPayoutAwaitingFunds(stored().metadata)).toBe(false);
+  });
+
+  it('takes a newer awaiting-funds copy over a success', () => {
+    useActivityStore
+      .getState()
+      .setEvents(USER, [{ ...deposit, updatedAt: '2026-11-15T09:00:00.000Z' }]);
+
+    useActivityStore
+      .getState()
+      .upsertEvent(USER, { ...awaiting, updatedAt: '2026-11-15T09:01:00.000Z' });
+
+    expect(stored().status).toBe(TransactionStatus.PROCESSING);
+  });
+
+  it('stores the flag when it arrives on a row already in progress', () => {
+    // Same status both sides: the flag alone is the change, and must not be
+    // dropped as "nothing changed".
+    useActivityStore
+      .getState()
+      .setEvents(USER, [{ ...deposit, status: TransactionStatus.PROCESSING }]);
+
+    useActivityStore.getState().bulkUpsertEvent(USER, [awaiting]);
+
+    expect(isPayoutAwaitingFunds(stored().metadata)).toBe(true);
+  });
+
   it('still refuses any other downgrade from success', () => {
     useActivityStore.getState().setEvents(USER, [deposit]);
 
