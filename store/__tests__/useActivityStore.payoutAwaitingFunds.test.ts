@@ -75,6 +75,35 @@ describe('activity store - a payout waiting on our payout wallet', () => {
     expect(isPayoutAwaitingFunds(stored().metadata)).toBe(false);
   });
 
+  it('keeps the correction when a completion from before it arrives late', () => {
+    // Success at T1, corrected to awaiting funds at T2, then a delayed copy
+    // of the T1 success: the payout has not gone out, so the row stays put.
+    const t1 = { ...deposit, metadata: {}, updatedAt: '2026-11-15T09:00:00.000Z' };
+    const t2 = { ...awaiting, updatedAt: '2026-11-15T09:01:00.000Z' };
+
+    for (const write of [
+      (event: ActivityEvent) => useActivityStore.getState().bulkUpsertEvent(USER, [event]),
+      (event: ActivityEvent) => useActivityStore.getState().upsertEvent(USER, event),
+    ]) {
+      useActivityStore.getState().setEvents(USER, [t1]);
+
+      write(t2);
+      write(t1);
+      // Differing in another field too, so it is merged rather than skipped.
+      write({ ...t1, hash: '0xolder' });
+
+      expect(stored().status).toBe(TransactionStatus.PROCESSING);
+      expect(isPayoutAwaitingFunds(stored().metadata)).toBe(true);
+      expect(stored().updatedAt).toBe(t2.updatedAt);
+
+      // The payout landing, written after the correction, still completes it.
+      write({ ...deposit, metadata: {}, updatedAt: '2026-11-15T09:30:00.000Z' });
+
+      expect(stored().status).toBe(TransactionStatus.SUCCESS);
+      expect(isPayoutAwaitingFunds(stored().metadata)).toBe(false);
+    }
+  });
+
   it('ignores an older awaiting-funds copy that lands after the payout completed', () => {
     // A slow page read from before the payout went out arrives last.
     useActivityStore

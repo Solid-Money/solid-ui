@@ -62,8 +62,16 @@ function isStatusDowngrade(existingStatus: string, incomingStatus: string): bool
  * That is the backend correcting a premature "complete", not a stale write,
  * and refusing it would keep showing the deposit as done while the user has
  * not been paid.
+ *
+ * The same ordering holds the other way: once a row carries that correction,
+ * a copy written before it — a delayed "complete" from before the payout
+ * wallet ran short — must not move it, upgrade or not. The payout landing
+ * comes as a newer copy and completes it then. A copy without a usable
+ * `updatedAt` is not called older, as {@link keptFromNewerCopy} treats it,
+ * so the status and the flag it keeps never disagree.
  */
 function isStaleStatus(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  if (isPayoutAwaitingFunds(existing.metadata) && isOlderCopy(existing, incoming)) return true;
   if (!isStatusDowngrade(existing.status, incoming.status)) return false;
   // The awaiting-funds correction, but only from a copy known to be at least
   // as new as the stored one: an older response landing after the payout's
