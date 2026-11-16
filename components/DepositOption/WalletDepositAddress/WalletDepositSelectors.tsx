@@ -2,6 +2,7 @@ import { ReactNode, useMemo } from 'react';
 import { ImageSourcePropType, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
+import { base } from 'viem/chains';
 
 import RhinoChainIcon from '@/components/DepositOption/RhinoDeposit/RhinoChainIcon';
 import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
@@ -9,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { cn } from '@/lib/utils';
+import { DEPOSIT_FREE_ON_BASE_LABEL, isDepositFreeOnBase } from '@/lib/utils/depositFee';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
@@ -186,6 +188,8 @@ type WalletDepositNetworkListProps = {
  * card would drop its background, and paint order is what puts it in front —
  * `zIndex` does not carry from a nested child over a later sibling.
  *
+ * Base first, marked "Free" where a deposit there is (see `depositFee`).
+ *
  * It offers only the chains carrying the chosen currency, so changing network
  * can never quietly change the currency with it, and of those only the rows
  * with an address: every row rhino.fi serves, plus Base and Fuse, which are our
@@ -215,6 +219,9 @@ export const WalletDepositNetworkList = ({
   );
   const { retry: retryRhino } = useOfferedRhinoDepositAssets();
   const notice = getWalletDepositNetworksNotice(symbol, viewer);
+  // Base leads the list (see `WALLET_DEPOSIT_CHAIN_IDS`) and says so where the
+  // deposit is free there, which for the wallet's own address it always is.
+  const isBaseFree = isDepositFreeOnBase({ provider: viewer.provider, product: 'wallet', symbol });
 
   const rows = (
     <>
@@ -229,6 +236,9 @@ export const WalletDepositNetworkList = ({
         >
           <Image source={item.icon} style={ROW_ICON_STYLE} contentFit="cover" />
           <Text className="flex-1 text-base font-semibold text-white">{item.name}</Text>
+          {isBaseFree && item.chainId === base.id ? (
+            <Text className="text-sm font-semibold text-brand">{DEPOSIT_FREE_ON_BASE_LABEL}</Text>
+          ) : null}
           {item.chainId === chainId && !rhinoChain ? <Check size={18} color="#94F27F" /> : null}
         </Pressable>
       ))}

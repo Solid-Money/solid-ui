@@ -10,6 +10,7 @@ import {
 } from '@/hooks/useDepositDirectlyRhino';
 import { RHINO_ASSETS } from '@/lib/__tests__/rhinoFixtures';
 import { RhinoAssetsState } from '@/lib/rhinoDeposit';
+import { CardProvider } from '@/lib/types';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 
@@ -31,6 +32,10 @@ jest.mock('@/lib/utils', () => ({
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
 jest.mock('@/lib/errors', () => ({ showErrorToast: jest.fn() }));
 jest.mock('@/hooks/useUser', () => ({ __esModule: true, default: () => ({ user: undefined }) }));
+// Its query needs a client; the issuer only decides which deposits are free.
+jest.mock('@/hooks/useCardProvider', () => ({
+  useCardProvider: () => ({ provider: mockProvider.current, isLoading: false }),
+}));
 jest.mock('@/hooks/useDirectDepositSession', () => ({
   useDirectDepositSession: () => ({
     createDirectDepositSession: mockCreateSession,
@@ -52,6 +57,7 @@ const READY: OfferedRhinoDepositAssets = {
   retry: mockRetry,
 };
 const mockRhino: { current: OfferedRhinoDepositAssets } = { current: READY };
+const mockProvider: { current: CardProvider | null } = { current: null };
 const mockStore = {
   directDepositSession: {} as Record<string, unknown>,
   setModal: jest.fn(),
@@ -79,6 +85,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   mockRhino.current = READY;
+  mockProvider.current = null;
   mockStore.directDepositSession = {};
 });
 
@@ -119,7 +126,7 @@ describe('DepositDirectlyNetworks', () => {
   it('lists the chains with an address, none tagged with its provider', () => {
     render(<DepositDirectlyNetworks />);
 
-    expect(names()).toEqual(['Ethereum', 'Polygon', 'Base', 'Arbitrum', 'BNB Chain', 'Fuse']);
+    expect(names()).toEqual(['Base', 'Ethereum', 'Polygon', 'Arbitrum', 'BNB Chain', 'Fuse']);
     const descriptions = Object.fromEntries(
       networks().map((node: any) => [node.props.name, node.props.description]),
     );
@@ -127,6 +134,27 @@ describe('DepositDirectlyNetworks', () => {
     Object.values(descriptions).forEach(description =>
       expect(description).not.toContain('via rhino.fi'),
     );
+  });
+
+  // soUSD mints on Base, so a deposit sent there is the one not charged; for a
+  // Wirex cardholder no savings deposit is.
+  it('leads with Base, marked free, and marks no other chain', () => {
+    [null, CardProvider.RAIN, CardProvider.WIREX].forEach(provider => {
+      mockProvider.current = provider;
+      render(<DepositDirectlyNetworks />);
+
+      const descriptions = Object.fromEntries(
+        networks().map((node: any) => [node.props.name, node.props.description]),
+      );
+      expect(names()[0]).toBe('Base');
+      expect(descriptions.Base).toBe('Free · Estimated speed: 30 min');
+      expect(descriptions.Ethereum).toBe('Estimated speed: 5 min');
+      ['Polygon', 'Arbitrum', 'BNB Chain', 'Fuse'].forEach(name =>
+        expect(descriptions[name]).not.toContain('Free'),
+      );
+      act(() => root.unmount());
+      root = undefined;
+    });
   });
 
   // Base carries USDC alone, so there is no token step to take.

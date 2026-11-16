@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
@@ -9,18 +9,32 @@ import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { getDepositDirectlyTokens, useDepositDirectlyRhino } from '@/hooks/useDepositDirectlyRhino';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import {
+  DEPOSIT_DIRECTLY_VAULT,
+  getDepositDirectlyTokens,
+  useDepositDirectlyRhino,
+} from '@/hooks/useDepositDirectlyRhino';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { showErrorToast } from '@/lib/errors';
 import { getRhinoListNotice, isOfferedRhinoRow } from '@/lib/rhinoDeposit';
+import {
+  DEPOSIT_FREE_ON_BASE_LABEL,
+  isDepositFreeOnBase,
+  withBaseFirst,
+} from '@/lib/utils/depositFee';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const ESTIMATED_TIMES: Record<number, string> = {
   [mainnet.id]: 'Estimated speed: 5 min',
 };
 const DEFAULT_ESTIMATED_TIME = 'Estimated speed: 30 min';
+
+/** A row's line, led by "Free" on Base where a soUSD deposit there is. */
+const withFreeOnBase = (description: string, isFree: boolean): string =>
+  isFree ? `${DEPOSIT_FREE_ON_BASE_LABEL} · ${description}` : description;
 
 /** The stablecoins a chain carries, in the order the token step lists them. */
 const DEPOSIT_DIRECTLY_TOKENS = ['USDC', 'USDT'];
@@ -32,6 +46,9 @@ const DEPOSIT_DIRECTLY_TOKENS = ['USDC', 'USDT'];
  * rhino.fi address; Fuse mints our own direct-deposit session, as before. A
  * chain with no address for either token is not offered, and while rhino.fi's
  * routes are not in, or cannot be had, a loader or a retry stands in for them.
+ *
+ * Base is listed first, where soUSD mints, and marked free where the deposit
+ * is (see `getDepositFeeRatePpm`).
  */
 const DepositDirectlyNetworks = () => {
   const { setModal, setDirectDepositSession } = useDepositStore(
@@ -41,6 +58,7 @@ const DepositDirectlyNetworks = () => {
     })),
   );
   const { user } = useUser();
+  const { provider } = useCardProvider();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const { rhino, openRhino, clearRhino } = useDepositDirectlyRhino();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
@@ -48,19 +66,27 @@ const DepositDirectlyNetworks = () => {
 
   const rows = useMemo(
     () =>
-      Object.entries(BRIDGE_TOKENS)
-        .sort((a, b) => a[1].sort - b[1].sort)
-        .map(([id, network]) => {
-          const chainId = Number(id);
-          const tokens = getDepositDirectlyTokens(
-            rhino,
-            chainId,
-            DEPOSIT_DIRECTLY_TOKENS.filter(token => network.tokens?.[token]),
-          );
-          return { chainId, network, tokens };
-        }),
+      withBaseFirst(
+        Object.entries(BRIDGE_TOKENS)
+          .sort((a, b) => a[1].sort - b[1].sort)
+          .map(([id, network]) => {
+            const chainId = Number(id);
+            const tokens = getDepositDirectlyTokens(
+              rhino,
+              chainId,
+              DEPOSIT_DIRECTLY_TOKENS.filter(token => network.tokens?.[token]),
+            );
+            return { chainId, network, tokens };
+          }),
+        ({ chainId }) => chainId,
+      ),
     [rhino],
   );
+  const isBaseFree = isDepositFreeOnBase({
+    provider,
+    product: 'savings',
+    vaultToken: DEPOSIT_DIRECTLY_VAULT,
+  });
   const sortedNetworks = useMemo(
     () =>
       rows
@@ -166,7 +192,10 @@ const DepositDirectlyNetworks = () => {
             <DepositNetwork
               key={chainId}
               name={network.name}
-              description={ESTIMATED_TIMES[chainId] ?? DEFAULT_ESTIMATED_TIME}
+              description={withFreeOnBase(
+                ESTIMATED_TIMES[chainId] ?? DEFAULT_ESTIMATED_TIME,
+                isBaseFree && chainId === base.id,
+              )}
               icon={network.icon}
               isComingSoon={network.isComingSoon}
               onPress={() => handlePress(chainId)}

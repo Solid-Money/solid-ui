@@ -11,6 +11,7 @@ import {
 } from '@/lib/rhinoDeposit';
 import { CardProvider } from '@/lib/types';
 import { CardFundRoute } from '@/lib/utils/cardFundMove';
+import { withBaseFirst } from '@/lib/utils/depositFee';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
 /**
@@ -81,7 +82,9 @@ export interface CardFundChain {
 }
 
 /**
- * Chains that can receive a direct deposit of `symbol`, in display order.
+ * Chains that can receive a direct deposit of `symbol`, in display order: Base
+ * first, where every card deposit is free (see `getDepositFeeRatePpm`) and
+ * cheapest for us to take in, then the rest in `BRIDGE_TOKENS` order.
  *
  * The single source both the network picker and the route table read, so the
  * chips a user is shown and the transfers the move flow will offer cannot
@@ -95,7 +98,7 @@ export const getCardFundChains = (symbol: string): CardFundChain[] => {
       ? !!EURC_TOKENS[chainId]
       : getAllowedTokensForChain(chainId).includes(symbol);
 
-  return Object.entries(BRIDGE_TOKENS)
+  const chains = Object.entries(BRIDGE_TOKENS)
     .map(([id, chain]) => ({ chainId: Number(id), chain }))
     .filter(({ chainId }) => depositConfig.supportedChains.includes(chainId))
     .filter(({ chainId }) => carries(chainId))
@@ -105,6 +108,8 @@ export const getCardFundChains = (symbol: string): CardFundChain[] => {
       name: chain.name,
       isComingSoon: chain.isComingSoon,
     }));
+
+  return withBaseFirst(chains, chain => chain.chainId);
 };
 
 /**

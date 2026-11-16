@@ -56,16 +56,16 @@ jest.mock('@/hooks/useRhinoDepositAssets', () => {
   };
 });
 
-// As `getCardFundChains` lists them: Base carries no USDT in `BRIDGE_TOKENS`,
-// and no chain of the list's own carries BTC.
+// As `getCardFundChains` lists them: Base first, Base carries no USDT in
+// `BRIDGE_TOKENS`, and no chain of the list's own carries BTC.
 const mockNetworks = (symbol: string) =>
   symbol === 'BTC'
     ? []
     : symbol === 'EURC'
       ? [{ chainId: base.id, name: 'Base', icon: 'base' }]
       : [
-          { chainId: polygon.id, name: 'Polygon', icon: 'polygon' },
           ...(symbol === 'USDT' ? [] : [{ chainId: base.id, name: 'Base', icon: 'base' }]),
+          { chainId: polygon.id, name: 'Polygon', icon: 'polygon' },
           { chainId: arbitrum.id, name: 'Arbitrum', icon: 'arbitrum' },
           { chainId: fuse.id, name: 'Fuse', icon: 'fuse' },
         ];
@@ -117,11 +117,29 @@ describe('CardFundNetworks', () => {
   it('lists every row with an address, none tagged with its provider', () => {
     render();
 
-    expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
+    expect(titles()).toEqual(['Base', 'Polygon', 'Arbitrum', 'Fuse']);
     const chips = Object.fromEntries(rows().map((row: any) => [row.props.title, row.props.chips]));
     expect(chips.Polygon).not.toContain(RHINO_TAG);
     expect(chips.Base).not.toContain(RHINO_TAG);
     expect(chips.Fuse).not.toContain(RHINO_TAG);
+  });
+
+  // Every card deposit is free on Base, whoever issued the card, EURC included.
+  it('marks Base, and Base alone, free', () => {
+    [CardProvider.RAIN, CardProvider.WIREX].forEach(provider => {
+      ['USDC', 'EURC'].forEach(symbol => {
+        render(symbol, provider);
+        const chips = Object.fromEntries(
+          rows().map((row: any) => [row.props.title, row.props.chips]),
+        );
+        expect(chips.Base).toEqual(['Free', '~3 min']);
+        Object.entries(chips)
+          .filter(([title]) => title !== 'Base')
+          .forEach(([, rowChips]) => expect(rowChips).toEqual(['~3 min']));
+        act(() => root.unmount());
+        root = undefined;
+      });
+    });
   });
 
   it('leaves out a row rhino.fi has no card route from', () => {
@@ -134,7 +152,7 @@ describe('CardFundNetworks', () => {
     };
     render();
 
-    expect(titles()).toEqual(['Polygon', 'Base', 'Fuse']);
+    expect(titles()).toEqual(['Base', 'Polygon', 'Fuse']);
   });
 
   it('offers only Base and Fuse, with a loader for the rest, until rhino.fi’s routes are in', () => {
@@ -153,7 +171,7 @@ describe('CardFundNetworks', () => {
     mockRhino.current = { status: 'disabled', retry: mockRetry };
     render();
 
-    expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
+    expect(titles()).toEqual(['Base', 'Polygon', 'Arbitrum', 'Fuse']);
     rows().forEach((row: any) => expect(row.props.chips).not.toContain(RHINO_TAG));
     expect(texts()).not.toContain('Couldn’t load the other networks.');
     expect(root.root.findAllByType('Button')).toHaveLength(0);
@@ -264,7 +282,7 @@ describe('CardFundNetworks', () => {
   // A Wirex cardholder's USDC lands in their Safe on Base: the wallet route.
   it('matches a Wirex cardholder’s USDC against the wallet route, and Rain’s the card’s', () => {
     render('USDC', CardProvider.WIREX);
-    expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
+    expect(titles()).toEqual(['Base', 'Polygon', 'Arbitrum', 'Fuse']);
     expect(root.root.findByType('RhinoNetworkGroup').props).toMatchObject({
       destinationType: 'WALLET',
       symbol: 'USDC',
@@ -293,7 +311,7 @@ describe('CardFundNetworks', () => {
       },
     };
     render('USDC', CardProvider.WIREX);
-    expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum', 'Fuse']);
+    expect(titles()).toEqual(['Base', 'Polygon', 'Arbitrum', 'Fuse']);
     act(() => root.unmount());
 
     render('USDC', CardProvider.RAIN);

@@ -125,6 +125,20 @@ describe('getCardFundRoutesTooltip', () => {
   });
 });
 
+describe('getCardFundChains', () => {
+  // A card deposit is free on Base, and cheapest there for us to take in.
+  it('lists Base first for the dollars, then the rest in their usual order', () => {
+    const chainIds = getCardFundChains('USDC').map(chain => chain.chainId);
+    expect(chainIds[0]).toBe(base.id);
+    const rest = chainIds.slice(1);
+    expect(rest).toEqual([...rest].sort((a, b) => BRIDGE_TOKENS[a].sort - BRIDGE_TOKENS[b].sort));
+  });
+
+  it('names Base first in the copy that lists the networks', () => {
+    expect(getCardFundSupportedNetworkNames()[0]).toBe('Base');
+  });
+});
+
 describe('EURC', () => {
   it('is offered on Base only, Ethereum being held back for now', () => {
     expect(getCardFundChains(CARD_FUND_EURC_SYMBOL).map(chain => chain.chainId)).toEqual([base.id]);

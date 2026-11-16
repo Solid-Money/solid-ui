@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
+import { base } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import { BuyCryptoFlowContent } from '@/components/BuyCrypto/Transfi/BuyCryptoFlow';
@@ -55,6 +56,11 @@ import {
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import {
+  DEPOSIT_FREE_ON_BASE_LABEL,
+  isDepositFreeOnBase,
+  withBaseFirst,
+} from '@/lib/utils/depositFee';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -100,7 +106,8 @@ const CONNECTED_WALLET_TOKEN = 'USDC';
  * "Choose a network" for the connected-wallet send: the chains the form can send
  * USDC on, and of those only the ones with an address — Fuse's own, and those
  * rhino.fi has a card route from. While rhino.fi's routes are not in, or when
- * they cannot be had, a loader or a retry stands in for them.
+ * they cannot be had, a loader or a retry stands in for them. Base is listed
+ * first, and marked free where a card deposit there is.
  */
 const CardWalletNetworks = ({
   onSelect,
@@ -111,15 +118,23 @@ const CardWalletNetworks = ({
 }) => {
   const networks = useMemo(
     () =>
-      Object.entries(BRIDGE_TOKENS)
-        .sort((a, b) => a[1].sort - b[1].sort)
-        .map(([id, network]) => ({ chainId: Number(id), network }))
-        .filter(({ chainId }) => supportedChainIds.includes(chainId))
-        .filter(({ chainId }) =>
-          getAllowedTokensForChain(chainId).includes(CONNECTED_WALLET_TOKEN),
-        ),
+      withBaseFirst(
+        Object.entries(BRIDGE_TOKENS)
+          .sort((a, b) => a[1].sort - b[1].sort)
+          .map(([id, network]) => ({ chainId: Number(id), network }))
+          .filter(({ chainId }) => supportedChainIds.includes(chainId))
+          .filter(({ chainId }) =>
+            getAllowedTokensForChain(chainId).includes(CONNECTED_WALLET_TOKEN),
+          ),
+        ({ chainId }) => chainId,
+      ),
     [supportedChainIds],
   );
+  const isBaseFree = isDepositFreeOnBase({
+    provider: CardProvider.RAIN,
+    product: 'card',
+    symbol: CONNECTED_WALLET_TOKEN,
+  });
   const { rows, retry } = useRhinoNetworkRows(
     {
       destinationType: getCardFundRhinoDestination(CONNECTED_WALLET_TOKEN, CardProvider.RAIN),
@@ -141,7 +156,11 @@ const CardWalletNetworks = ({
             <DepositNetwork
               key={network.name}
               name={network.name}
-              description={estimatedDesc}
+              description={
+                isBaseFree && chainId === base.id
+                  ? `${DEPOSIT_FREE_ON_BASE_LABEL} · ${estimatedDesc}`
+                  : estimatedDesc
+              }
               icon={network.icon}
               isComingSoon={network.isComingSoon}
               onPress={() => onSelect(chainId)}

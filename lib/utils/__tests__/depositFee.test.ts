@@ -6,7 +6,10 @@ import {
   formatDepositFeePercent,
   getDepositFeeDestinationType,
   getDepositFeeRatePpm,
+  getDepositVaultChainId,
+  isDepositFreeOnBase,
   resolveDepositFeeRatePpm,
+  withBaseFirst,
 } from '@/lib/utils/depositFee';
 
 /** Every chain the deposit screens offer. */
@@ -234,5 +237,80 @@ describe('formatDepositFeePercent', () => {
     expect(formatDepositFeePercent(1)).toBe('0.0001%');
     expect(formatDepositFeePercent(10_000)).toBe('1%');
     expect(formatDepositFeePercent(12_500)).toBe('1.25%');
+  });
+});
+
+/**
+ * The network lists lead with Base and mark it free where it is, so what they
+ * say has to follow the same rules the address screen's notice does.
+ */
+describe('isDepositFreeOnBase', () => {
+  const PROVIDERS = [null, undefined, CardProvider.RAIN, CardProvider.WIREX];
+
+  it('is free for every card deposit, whoever issued the card', () => {
+    PROVIDERS.forEach(provider =>
+      ['USDC', 'USDT', 'EURC'].forEach(symbol =>
+        expect(isDepositFreeOnBase({ provider, product: 'card', symbol })).toBe(true),
+      ),
+    );
+  });
+
+  it('is free for every wallet deposit', () => {
+    PROVIDERS.forEach(provider =>
+      [...STABLECOINS, ...NON_STABLECOINS].forEach(symbol =>
+        expect(isDepositFreeOnBase({ provider, product: 'wallet', symbol })).toBe(true),
+      ),
+    );
+  });
+
+  it('is free for a savings deposit into a vault on Base, and not into soETH', () => {
+    ['soUSD', 'soEURC'].forEach(vaultToken =>
+      expect(
+        isDepositFreeOnBase({ provider: CardProvider.RAIN, product: 'savings', vaultToken }),
+      ).toBe(true),
+    );
+    expect(
+      isDepositFreeOnBase({ provider: CardProvider.RAIN, product: 'savings', vaultToken: 'soETH' }),
+    ).toBe(false);
+    // Nothing is charged to a Wirex cardholder's savings.
+    expect(
+      isDepositFreeOnBase({
+        provider: CardProvider.WIREX,
+        product: 'savings',
+        vaultToken: 'soETH',
+      }),
+    ).toBe(true);
+  });
+});
+
+describe('getDepositVaultChainId', () => {
+  it('places each vault on the chain its deposits mint on', () => {
+    expect(getDepositVaultChainId('soUSD')).toBe(base.id);
+    expect(getDepositVaultChainId('soEURC')).toBe(base.id);
+    expect(getDepositVaultChainId('soETH')).toBe(mainnet.id);
+    expect(getDepositVaultChainId('soFUSE')).toBe(fuse.id);
+    expect(getDepositVaultChainId('soXYZ')).toBeUndefined();
+    expect(getDepositVaultChainId(undefined)).toBeUndefined();
+  });
+});
+
+describe('withBaseFirst', () => {
+  it('moves Base to the front and keeps the rest in order', () => {
+    expect(withBaseFirst(CHAIN_IDS, chainId => chainId)).toEqual([
+      base.id,
+      mainnet.id,
+      polygon.id,
+      arbitrum.id,
+      bsc.id,
+      fuse.id,
+    ]);
+  });
+
+  it('leaves a list without Base as it was', () => {
+    expect(withBaseFirst([polygon.id, mainnet.id], chainId => chainId)).toEqual([
+      polygon.id,
+      mainnet.id,
+    ]);
+    expect(withBaseFirst([], chainId => chainId)).toEqual([]);
   });
 });

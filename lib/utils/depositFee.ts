@@ -72,6 +72,13 @@ const VAULT_CHAIN_IDS: Record<string, number> = {
   soEURC: base.id,
 };
 
+/**
+ * The chain a vault's deposits mint on, or undefined for a share token this
+ * table does not place.
+ */
+export const getDepositVaultChainId = (vaultToken: string | undefined): number | undefined =>
+  vaultToken ? VAULT_CHAIN_IDS[vaultToken] : undefined;
+
 /** The kind of address the backend prices a deposit on. */
 export type DepositFeeDestinationType = 'PROTOCOL' | 'RAIN_CARD' | 'WALLET';
 
@@ -131,7 +138,7 @@ export function getDepositFeeRatePpm({
     // A vault this table does not place gets no notice rather than a guess:
     // telling someone a free deposit will be charged is worse than leaving the
     // line off.
-    const vaultChainId = vaultToken ? VAULT_CHAIN_IDS[vaultToken] : undefined;
+    const vaultChainId = getDepositVaultChainId(vaultToken);
     if (vaultChainId === undefined) return 0;
 
     return chainId === vaultChainId ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
@@ -149,6 +156,32 @@ export function getDepositFeeRatePpm({
 
   return chainId === base.id ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
 }
+
+/**
+ * Whether a deposit sent on Base is free by rule for this flow: what
+ * `getDepositFeeRatePpm` says at Base. A rule of 0 is never sent to the backend
+ * to price (see `resolveDepositFeeRatePpm`), so the address screen will not
+ * contradict a network list that calls Base free.
+ */
+export const isDepositFreeOnBase = (
+  params: Omit<Parameters<typeof getDepositFeeRatePpm>[0], 'chainId'>,
+): boolean => getDepositFeeRatePpm({ ...params, chainId: base.id }) === 0;
+
+/** The label a deposit network list puts on Base where `isDepositFreeOnBase`. */
+export const DEPOSIT_FREE_ON_BASE_LABEL = 'Free';
+
+/**
+ * Lists Base first and keeps every other chain in the order it came in.
+ *
+ * The deposit network lists lead with Base: a deposit sent there costs Solid
+ * about $0.007 of gas to take in, against $0.15–$2 on Ethereum, and it is free
+ * to the user wherever `isDepositFreeOnBase`. Done per list rather than in
+ * `BRIDGE_TOKENS.sort`, which withdrawals and the move flows also read.
+ */
+export const withBaseFirst = <T>(items: readonly T[], chainIdOf: (item: T) => number): T[] => [
+  ...items.filter(item => chainIdOf(item) === base.id),
+  ...items.filter(item => chainIdOf(item) !== base.id),
+];
 
 /**
  * The deposit address the backend prices a flow's deposit on: savings'

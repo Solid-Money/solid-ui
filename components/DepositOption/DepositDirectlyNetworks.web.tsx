@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
+import { base } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
@@ -8,12 +9,22 @@ import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { getDepositDirectlyTokens, useDepositDirectlyRhino } from '@/hooks/useDepositDirectlyRhino';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import {
+  DEPOSIT_DIRECTLY_VAULT,
+  getDepositDirectlyTokens,
+  useDepositDirectlyRhino,
+} from '@/hooks/useDepositDirectlyRhino';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { showErrorToast } from '@/lib/errors';
 import { getRhinoListNotice, isOfferedRhinoRow } from '@/lib/rhinoDeposit';
+import {
+  DEPOSIT_FREE_ON_BASE_LABEL,
+  isDepositFreeOnBase,
+  withBaseFirst,
+} from '@/lib/utils/depositFee';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -25,6 +36,9 @@ import { useDepositStore } from '@/store/useDepositStore';
  * chain with no address for any of its tokens is not offered, and while
  * rhino.fi's routes are not in, or cannot be had, a loader or a retry stands in
  * for them.
+ *
+ * Base is listed first, where soUSD mints, and marked free where the deposit
+ * is (see `getDepositFeeRatePpm`).
  */
 const DepositDirectlyNetworks = () => {
   const { setModal, setDirectDepositSession } = useDepositStore(
@@ -34,6 +48,7 @@ const DepositDirectlyNetworks = () => {
     })),
   );
   const { user } = useUser();
+  const { provider } = useCardProvider();
   const depositConfig = getVaultDepositConfig();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const { rhino, openRhino, clearRhino } = useDepositDirectlyRhino();
@@ -41,20 +56,28 @@ const DepositDirectlyNetworks = () => {
 
   const rows = useMemo(
     () =>
-      Object.entries(BRIDGE_TOKENS)
-        .sort((a, b) => a[1].sort - b[1].sort)
-        .filter(([id]) => depositConfig.supportedChains.includes(Number(id)))
-        .map(([id, network]) => {
-          const chainId = Number(id);
-          return {
-            chainId,
-            network,
-            tokens: getDepositDirectlyTokens(rhino, chainId, getAllowedTokensForChain(chainId)),
-          };
-        })
-        .filter(({ tokens }) => tokens.length > 0),
+      withBaseFirst(
+        Object.entries(BRIDGE_TOKENS)
+          .sort((a, b) => a[1].sort - b[1].sort)
+          .filter(([id]) => depositConfig.supportedChains.includes(Number(id)))
+          .map(([id, network]) => {
+            const chainId = Number(id);
+            return {
+              chainId,
+              network,
+              tokens: getDepositDirectlyTokens(rhino, chainId, getAllowedTokensForChain(chainId)),
+            };
+          })
+          .filter(({ tokens }) => tokens.length > 0),
+        ({ chainId }) => chainId,
+      ),
     [depositConfig.supportedChains, rhino],
   );
+  const isBaseFree = isDepositFreeOnBase({
+    provider,
+    product: 'savings',
+    vaultToken: DEPOSIT_DIRECTLY_VAULT,
+  });
   const offeredRows = rows.filter(({ tokens }) =>
     tokens.some(({ state }) => isOfferedRhinoRow(state)),
   );
@@ -137,6 +160,9 @@ const DepositDirectlyNetworks = () => {
           // Get estimated time: 5 min for Ethereum; else 30 min
           let estimatedTime = 'Estimated speed: 30 min';
           if (chainId === 1) estimatedTime = 'Estimated speed: 5 min';
+          if (isBaseFree && chainId === base.id) {
+            estimatedTime = `${DEPOSIT_FREE_ON_BASE_LABEL} · ${estimatedTime}`;
+          }
 
           return (
             <DepositNetwork
