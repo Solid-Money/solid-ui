@@ -263,16 +263,6 @@ const findToken = (symbol?: string): WalletDepositTokenConfig | undefined =>
 const isMoreNetworksOnly = (token: WalletDepositTokenConfig): boolean =>
   Object.keys(token.contracts).length === 0;
 
-/**
- * Whether a currency is on offer to this person at all, on any chain. One only
- * "More networks" carries is a new deposit token on every chain it has, so it
- * is offered only with access (see `useDepositTokensAccess`).
- */
-const isOffered = (
-  token: WalletDepositTokenConfig,
-  { hasNewTokens = false }: WalletDepositViewer,
-): boolean => !isMoreNetworksOnly(token) || hasNewTokens;
-
 const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isComingSoon;
 
 /** Whether everyone is offered the currency on this chain, not only those with access. */
@@ -289,7 +279,6 @@ const getCandidateChainIds = (
   viewer: WalletDepositViewer,
 ): number[] => {
   const { hasNewTokens = false } = viewer;
-  if (!isOffered(token, viewer)) return [];
 
   return WALLET_DEPOSIT_CHAIN_IDS.filter(
     chainId =>
@@ -384,7 +373,7 @@ export const getWalletDepositExtraNetworks = (
   viewer: WalletDepositViewer = {},
 ): RhinoDepositChain[] => {
   const token = findToken(symbol);
-  if (!token || !isOffered(token, viewer) || viewer.rhino?.status !== 'ready') return [];
+  if (!token || viewer.rhino?.status !== 'ready') return [];
   return getRhinoExtraChains(viewer.rhino.assets, {
     destinationType: WALLET_RHINO_DESTINATION,
     symbol,

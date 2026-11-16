@@ -155,9 +155,9 @@ describe('WalletDepositTokens', () => {
     expect(shown).not.toContain('Gold & silver');
     expect(shown).not.toContain('PAXG');
     expect(shown).not.toContain('cbBTC');
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'EURC', 'ETH', 'WFUSE']));
-    // USDC, USDT, EURC, ETH, FUSE, WETH and WFUSE.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(7);
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'EURC', 'ETH', 'WBTC', 'WFUSE']));
+    // USDC, USDT, EURC, ETH, FUSE, WBTC, WETH and WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(8);
   });
 
   it('narrows the list to what matches the ticker or name', () => {

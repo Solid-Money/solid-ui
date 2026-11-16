@@ -658,19 +658,21 @@ describe('resolveWalletDepositChain', () => {
  * pipeline can take it.
  */
 describe('without the new deposit tokens', () => {
-  it('offers only the currencies everyone had', () => {
+  // WBTC included: it is everyone's on each chain it is taken on.
+  it('offers only the currencies released to everyone', () => {
     expect(symbolsOf(getAllWalletDepositTokens(BASIC))).toEqual([
       'USDC',
       'USDT',
       'EURC',
       'ETH',
       'FUSE',
+      'WBTC',
       'WETH',
       'WFUSE',
     ]);
     expect(
       symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX, rhino: READY })),
-    ).toEqual(['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WETH', 'WFUSE']);
+    ).toEqual(['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WBTC', 'WETH', 'WFUSE']);
   });
 
   it('offers each on the chains it was offered on, and none on Optimism', () => {
@@ -700,6 +702,7 @@ describe('without the new deposit tokens', () => {
       'USDT',
       'EURC',
       'ETH',
+      'WBTC',
       'WETH',
     ]);
     expect(symbolsOf(getWalletDepositTokens(mainnet.id, BASIC))).toEqual([
@@ -707,6 +710,7 @@ describe('without the new deposit tokens', () => {
       'USDT',
       'EURC',
       'ETH',
+      'WBTC',
     ]);
     expect(symbolsOf(getWalletDepositTokens(polygon.id, BASIC))).toEqual(['USDC', 'USDT']);
     expect(symbolsOf(getWalletDepositTokens(fuse.id, BASIC))).toEqual([
@@ -1138,13 +1142,14 @@ describe('native BTC', () => {
     ).not.toContain('BTC');
   });
 
-  // A new deposit token on every chain it has: the internal team in production
-  // until it is rolled out, everyone on qa/preview builds.
-  it('is offered only to those given the new deposit tokens', () => {
+  // Released to everyone, like every network only rhino.fi serves.
+  it('is offered to everyone, with or without the new deposit tokens', () => {
     const basic = { rhino: WITH_BITCOIN };
-    expect(symbolsOf(getAllWalletDepositTokens(basic))).not.toContain('BTC');
-    expect(getWalletDepositExtraNetworks('BTC', basic)).toEqual([]);
-    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', basic)).toEqual({ kind: 'none' });
+    expect(symbolsOf(getAllWalletDepositTokens(basic))).toContain('BTC');
+    expect(getWalletDepositExtraNetworks('BTC', basic).map(chain => chain.chain)).toEqual([
+      'BITCOIN',
+    ]);
+    expect(getWalletDepositExtraRow('BITCOIN', 'BTC', basic)).toMatchObject({ kind: 'rhino' });
   });
 
   it('has no row of the list’s own, only Bitcoin under "More networks"', () => {
@@ -1294,10 +1299,17 @@ describe('WBTC', () => {
     expect(getWalletDepositRow(base.id, 'WBTC', ALL)).toMatchObject({ kind: 'own' });
   });
 
-  // A new deposit token: offered to those given the new tokens alone, for now.
-  it('is offered only to those given the new deposit tokens', () => {
-    expect(symbolsOf(getAllWalletDepositTokens(BASIC))).not.toContain('WBTC');
-    expect(getWalletDepositNetworksForToken('WBTC', BASIC)).toEqual([]);
+  // Released to everyone on each chain it is taken on.
+  it('is offered to everyone, with or without the new deposit tokens', () => {
+    expect(symbolsOf(getAllWalletDepositTokens(BASIC))).toContain('WBTC');
+    expect(chainIdsOf(getWalletDepositNetworksForToken('WBTC', BASIC))).toEqual([
+      mainnet.id,
+      base.id,
+      bsc.id,
+    ]);
+    expect(getWalletDepositExtraNetworks('WBTC', BASIC).map(chain => chain.chain)).toEqual([
+      'AVALANCHE',
+    ]);
   });
 
   it('floors at about $10 until the pipeline prices it', () => {

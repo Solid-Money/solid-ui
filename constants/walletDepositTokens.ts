@@ -153,8 +153,9 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
   },
   {
     // Native BTC, sent on Bitcoin itself. No contract on any chain the list has a
-    // row for, so it is offered under "More networks" alone, once rhino.fi takes
-    // it there: its Bitcoin address pays WBTC to the Safe on Base.
+    // row for, so it is offered on rhino.fi's networks alone (Bitcoin), to
+    // everyone, once rhino.fi takes it there: its Bitcoin address pays WBTC to
+    // the Safe on Base.
     symbol: 'BTC',
     name: 'Bitcoin',
     group: 'crypto',
@@ -166,7 +167,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     // (BitGo's LayerZero WBTC, the same contract on BNB Chain), and the card
     // cannot spend it. Sent on Ethereum or BNB Chain, rhino.fi pays it to the
     // Safe on Base as WBTC; sent on Base, it goes to the Safe directly. rhino.fi
-    // takes it on no other chain the list has a row for.
+    // takes it on no other chain the list has a row for. Offered to everyone.
     symbol: 'WBTC',
     name: 'Wrapped Bitcoin',
     group: 'crypto',
@@ -177,6 +178,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [base.id]: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
       [bsc.id]: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
     },
+    releasedOn: [mainnet.id, base.id, bsc.id],
   },
   {
     symbol: 'cbBTC',

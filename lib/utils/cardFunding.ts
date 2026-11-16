@@ -54,16 +54,12 @@ export interface CardFundCryptoRow {
 
 /**
  * The crypto rows "Fund your card" lists: each that rhino.fi takes to the card
- * from somewhere (BTC from Bitcoin, where the backend has Bitcoin switched
- * on), named with those networks. Like the wallet's, only for those given the
- * new deposit tokens (see `useDepositTokensAccess`), and none until rhino.fi's
- * routes are in, since only they say a row has anywhere to be sent from.
+ * from somewhere (BTC from Bitcoin), named with those networks. Offered to
+ * everyone, and none until rhino.fi's routes are in, since only they say a row
+ * has anywhere to be sent from.
  */
-export const getCardFundCryptoRows = (
-  rhino: RhinoAssetsState,
-  hasNewTokens: boolean,
-): CardFundCryptoRow[] => {
-  if (rhino.status !== 'ready' || !hasNewTokens) return [];
+export const getCardFundCryptoRows = (rhino: RhinoAssetsState): CardFundCryptoRow[] => {
+  if (rhino.status !== 'ready') return [];
   return CARD_FUND_CRYPTO_SYMBOLS.flatMap(symbol => {
     const chains = getRhinoExtraChains(rhino.assets, {
       destinationType: CARD_FUND_DESTINATION_TYPE,

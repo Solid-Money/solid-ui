@@ -290,9 +290,9 @@ const APP_NETWORK_CHAIN_IDS: ReadonlySet<number> = new Set([
 ]);
 
 /**
- * Whether a rhino.fi chain is one the app has no row for, and so belongs under
- * "More networks": Tron, Solana, Avalanche, Celo, Gnosis, Mantle, Plasma, Kaia,
- * Tempo, Arc, whichever the backend lists. Never an app chain.
+ * Whether a rhino.fi chain is one the app has no row for, listed after the
+ * app's own rows: Tron, Solana, Bitcoin, Avalanche, Celo, Gnosis, Mantle,
+ * Plasma, Kaia, Tempo, Arc, whichever the backend lists. Never an app chain.
  */
 export const isRhinoExtraChain = (chain: Pick<RhinoDepositChain, 'chain' | 'chainId'>): boolean =>
   chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId);
