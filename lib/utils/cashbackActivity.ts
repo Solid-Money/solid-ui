@@ -5,11 +5,12 @@ import { getTransferContext, TransferContextKind } from '@/lib/utils/transferPre
  * Keeping cashback payouts out of the wallet feed.
  *
  * Cashback is paid as its own on-chain transfer from the payout wallet to the
- * cardholder's Safe, roughly two weeks after the purchase that earned it. The
- * indexers skip soUSD, today's payout token, but every earlier FUSE payout was
- * indexed like any other incoming transfer: a bare "Receive FUSE" row that says
- * nothing about what it is, one per purchase. Any future payout token that is
- * indexed would land the same way.
+ * cardholder's Safe, roughly two weeks after the purchase that earned it — in
+ * soUSD, on Base first and on Fuse when Base cannot cover it. Every earlier FUSE
+ * payout was indexed like any other incoming transfer: a bare "Receive FUSE" row
+ * that says nothing about what it is, one per purchase. soUSD on Base is indexed
+ * the same way (it is a listed token there), and so is any payout token that
+ * is: each would land as its own bare receive row.
  *
  * Cashback belongs to the purchase that earned it: the card transaction's own
  * screen shows it in its cashback section (`CashbackDetailsCard`), with the
@@ -25,7 +26,8 @@ import { getTransferContext, TransferContextKind } from '@/lib/utils/transferPre
  * has not named yet.
  *
  * Matching is by payout hash, taken from the cashback records themselves,
- * rather than by sender address: the same wallet also pays cardholder cash
+ * rather than by sender address or chain — a hash names one transfer on
+ * whichever chain paid it: the same wallet also pays cardholder cash
  * credits, which are their own thing and must stay visible. It is also why this
  * needs no issuer branch — Rain and Wirex cashback are the same records in the
  * same collection, paid by the same wallet to the same Safe, so the one rule
