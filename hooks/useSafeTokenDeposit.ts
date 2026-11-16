@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { type Address, erc20Abi } from 'viem';
 
@@ -41,16 +41,24 @@ export function useSafeTokenDeposit({
 }: UseSafeTokenDepositParams) {
   const watchKey =
     enabled && token && safe ? `${chainId}:${token}:${safe}`.toLowerCase() : undefined;
-  const [receivedKey, setReceivedKey] = useState<string>();
-  const isReceived = !!watchKey && receivedKey === watchKey;
-  const baselineRef = useRef<{ key?: string; balance?: bigint }>({});
+  // Each watch, a restart included, is a query of its own. A read still out when
+  // a watch ends keeps its query in the cache until it lands, gcTime 0 or not; were
+  // the next watch of the same token to share it, it would take that query's last
+  // balance as its baseline, and the late read as a deposit.
+  const mountId = useId();
+  const [watch, setWatch] = useState({ key: watchKey, run: 0 });
+  const run = watch.key === watchKey ? watch.run : watch.run + 1;
+  if (watch.key !== watchKey) setWatch({ key: watchKey, run });
+  const watchId = watchKey ? `${mountId}:${run}:${watchKey}` : undefined;
+
+  const [receivedId, setReceivedId] = useState<string>();
+  const isReceived = !!watchId && receivedId === watchId;
+  const baselineRef = useRef<{ id?: string; balance?: bigint }>({});
   const onReceivedRef = useRef(onReceived);
   onReceivedRef.current = onReceived;
 
-  // Keyed by the watch alone: with no observer left once it ends (gcTime 0), a
-  // watch that starts again reads afresh rather than from the cache.
   const { data: balance } = useQuery({
-    queryKey: ['safe-token-deposit', watchKey],
+    queryKey: ['safe-token-deposit', watchId],
     queryFn: () =>
       publicClient(chainId).readContract({
         address: token as Address,
@@ -58,7 +66,7 @@ export function useSafeTokenDeposit({
         functionName: 'balanceOf',
         args: [safe as Address],
       }),
-    enabled: !!watchKey && !isReceived,
+    enabled: !!watchId && !isReceived,
     refetchInterval: POLL_INTERVAL_MS,
     refetchIntervalInBackground: false,
     staleTime: 0,
@@ -67,12 +75,10 @@ export function useSafeTokenDeposit({
   });
 
   useEffect(() => {
-    if (baselineRef.current.key !== watchKey) {
-      // A new watch, or none: nothing seen yet, and nothing received.
-      baselineRef.current = { key: watchKey };
-      setReceivedKey(undefined);
-    }
-    if (!watchKey || balance === undefined || receivedKey === watchKey) return;
+    // A new watch, or none: nothing seen yet. (Nothing received either: what was
+    // received belongs to the watch it was received on.)
+    if (baselineRef.current.id !== watchId) baselineRef.current = { id: watchId };
+    if (!watchId || balance === undefined || receivedId === watchId) return;
 
     const baseline = baselineRef.current.balance;
     if (baseline === undefined || balance < baseline) {
@@ -80,10 +86,10 @@ export function useSafeTokenDeposit({
       return;
     }
     if (balance > baseline) {
-      setReceivedKey(watchKey);
+      setReceivedId(watchId);
       onReceivedRef.current?.();
     }
-  }, [watchKey, balance, receivedKey]);
+  }, [watchId, balance, receivedId]);
 
-  return { isWatching: !!watchKey, isReceived };
+  return { isWatching: !!watchId, isReceived };
 }

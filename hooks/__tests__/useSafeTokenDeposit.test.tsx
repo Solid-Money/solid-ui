@@ -116,6 +116,28 @@ it('starts over when the watch ends and starts again', async () => {
   expect(onReceived).toHaveBeenCalledTimes(1);
 });
 
+it('takes no baseline from a read still out when the watch started again', async () => {
+  let settleLateRead: (balance: bigint) => void = () => undefined;
+  mockRead
+    .mockResolvedValueOnce(5n)
+    .mockImplementationOnce(() => new Promise<bigint>(resolve => (settleLateRead = resolve)))
+    .mockResolvedValue(9n);
+  mount();
+  await flush();
+  // The second read goes out, and is still out when the watch ends.
+  await flush(6000);
+  act(() => root.update(tree({ enabled: false })));
+
+  // Shown again before it lands: the 5 it left in the cache is not the baseline.
+  act(() => root.update(tree()));
+  await flush();
+  await act(async () => settleLateRead(9n));
+  await flush(6000);
+
+  expect(result).toEqual({ isWatching: true, isReceived: false });
+  expect(onReceived).not.toHaveBeenCalled();
+});
+
 it('reads nothing without a token to read', async () => {
   mount({ token: '' });
   await flush(6000);
