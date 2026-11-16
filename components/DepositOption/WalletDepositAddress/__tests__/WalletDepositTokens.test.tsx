@@ -83,15 +83,21 @@ describe('WalletDepositTokens', () => {
 
     expect(shown).toEqual(expect.arrayContaining(['Stablecoins', 'Crypto']));
     expect(shown).toEqual(
-      expect.arrayContaining(['EURC', 'cbBTC', 'Coinbase Wrapped BTC', 'cbZEC']),
+      expect.arrayContaining([
+        'EURC',
+        'WBTC',
+        'Wrapped Bitcoin',
+        'cbBTC',
+        'Coinbase Wrapped BTC',
+        'cbZEC',
+      ]),
     );
     // Retired with the Base-only collateral list.
     expect(shown).not.toContain('Gold & silver');
     expect(shown).not.toContain('PAXG');
-    expect(shown).not.toContain('WBTC');
     expect(shown).not.toContain('OP');
-    // A row each: USDC, USDT, EURC, ETH, FUSE, cbBTC, cbZEC, AAVE, SOL, WETH, WFUSE.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(11);
+    // A row each: USDC, USDT, EURC, ETH, FUSE, WBTC, cbBTC, cbZEC, AAVE, SOL, WETH, WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(12);
   });
 
   // Which tokens have a row is rhino.fi's to say off Fuse: no list until it has.
@@ -111,8 +117,9 @@ describe('WalletDepositTokens', () => {
     const root = render();
     const shown = texts(root);
 
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'cbBTC', 'FUSE']));
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(11);
+    // WBTC included: Base is the Safe.
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'WBTC', 'cbBTC', 'FUSE']));
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(12);
     expect(shown).toContain('Couldn’t load the other tokens.');
 
     act(() => root.root.findByType('Button').props.onPress());
@@ -148,9 +155,9 @@ describe('WalletDepositTokens', () => {
     expect(shown).not.toContain('Gold & silver');
     expect(shown).not.toContain('PAXG');
     expect(shown).not.toContain('cbBTC');
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'EURC', 'ETH', 'WFUSE']));
-    // USDC, USDT, EURC, ETH, FUSE, WETH and WFUSE.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(7);
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'EURC', 'ETH', 'WBTC', 'WFUSE']));
+    // USDC, USDT, EURC, ETH, FUSE, WBTC, WETH and WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(8);
   });
 
   it('narrows the list to what matches the ticker or name', () => {
@@ -231,9 +238,8 @@ describe('WalletDepositTokens', () => {
     });
   });
 
-  // Avalanche is no longer offered under "More networks": a screen still on it
-  // (from before) leaves it for whichever token is picked next.
-  it('leaves a "More networks" chain that is no longer offered when the token changes', () => {
+  // Avalanche takes ETH and WBTC into the wallet; it takes no WETH.
+  it('keeps a "More networks" chain that takes the new token, and leaves one that does not', () => {
     mockDeposit.walletDeposit = {
       chainId: base.id,
       symbol: 'ETH',
@@ -241,13 +247,19 @@ describe('WalletDepositTokens', () => {
       isChangingToken: true,
     } as any;
     const root = render();
-    act(() =>
-      root.root
-        .find((node: any) => node.props.accessibilityLabel === 'USDC, USD Coin')
-        .props.onPress(),
-    );
+    const press = (label: string) =>
+      act(() =>
+        root.root.find((node: any) => node.props.accessibilityLabel === label).props.onPress(),
+      );
+
+    press('WBTC, Wrapped Bitcoin');
     expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
-      expect.objectContaining({ symbol: 'USDC', rhinoChain: undefined }),
+      expect.objectContaining({ symbol: 'WBTC', rhinoChain: 'AVALANCHE' }),
+    );
+
+    press('WETH, Wrapped Ether');
+    expect(mockDeposit.setWalletDeposit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ symbol: 'WETH', rhinoChain: undefined }),
     );
   });
 

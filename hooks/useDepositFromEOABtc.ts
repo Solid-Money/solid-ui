@@ -41,12 +41,12 @@ type DepositResult = {
   hash: Address | undefined;
 };
 
-/** Why a Base deposit from an external wallet is refused, shown as the form's error. */
-
 /** How long to keep re-reading a deposit receipt the first read missed. */
 const RECEIPT_RECHECK_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** Why a Base deposit from an external wallet is refused, shown as the form's error. */
 export const SOBTC_EOA_BASE_UNSUPPORTED =
-  'Deposit cbBTC on Base from your Solid wallet, or WBTC on Ethereum from this wallet';
+  'Deposit WBTC on Base from your Solid wallet, or WBTC on Ethereum from this wallet';
 
 /**
  * WBTC from a connected external wallet (EOA) on Ethereum into soBTC, with no backend: the
@@ -54,7 +54,7 @@ export const SOBTC_EOA_BASE_UNSUPPORTED =
  * Safe on Base as the recipient. The WBTC stays in the Ethereum vault; the shares reach the Safe
  * on Base over LayerZero, whose fee the wallet pays in ETH as the call's value.
  *
- * cbBTC on Base is not taken from an external wallet: the Base teller's `deposit` mints to the
+ * WBTC on Base is not taken from an external wallet: the Base teller's `deposit` mints to the
  * caller, which would leave the shares in that wallet rather than the Safe.
  */
 const useDepositFromEOABtc = (

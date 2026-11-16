@@ -35,7 +35,7 @@ const productDetails = (type: VaultType): Detail[] => {
       : type === VaultType.EUR
         ? `€${formatNumber(minimum, 2, 0)}`
         : type === VaultType.BTC
-          ? `${formatBtcAmount(minimum)} (WBTC or cbBTC)`
+          ? formatBtcAmount(minimum, 'WBTC')
           : `${formatNumber(minimum, 4, 0)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
   return [
     ...(type === VaultType.USDC ? [{ label: 'Fee', value: '10% of interest earned' }] : []),
@@ -43,10 +43,10 @@ const productDetails = (type: VaultType): Detail[] => {
     ...(type === VaultType.USDC ? [{ label: 'Withdrawals', value: 'Usually within minutes' }] : []),
     // The soEURC queue keeps a request open for at least three days.
     ...(type === VaultType.EUR ? [{ label: 'Withdrawals', value: 'Up to about 3 days' }] : []),
-    // Each side pays from what its own vault holds.
+    // Every soBTC withdrawal is paid in WBTC on Ethereum, after the shares move there.
     ...(type === VaultType.BTC
       ? [
-          { label: 'Withdraw to', value: 'cbBTC on Base or WBTC on Ethereum' },
+          { label: 'Withdraw to', value: 'WBTC on Ethereum' },
           { label: 'Withdrawals', value: 'Usually within 3 days' },
         ]
       : []),

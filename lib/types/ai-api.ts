@@ -196,4 +196,6 @@ export interface AiApiChargeMetadata {
   cashbackPayoutAt?: string | null;
   cashbackPaidAt?: string | null;
   cashbackTxHash?: string | null;
+  /** The chain `cashbackTxHash` is on: Base (8453) or Fuse (122). */
+  cashbackChainId?: number | null;
 }

@@ -706,7 +706,24 @@ export interface CardResponse {
   additional_funding_instructions?: AdditionalFundingInstructions[];
 }
 
+/**
+ * The currency a cashback row is earned, capped and paid in: dollars (soUSD on Fuse) or, for a
+ * Wirex cardholder whose main currency is EUR, euros (soEUR on Base). The two are never added
+ * together or converted into each other — every total is per currency.
+ */
+export type CashbackCurrency = 'USD' | 'EUR';
+
+/** Card details' euro cashback figures, all in EUR. Euro rows only. */
+export interface CashbackEurData {
+  monthlySoEurAmount: number;
+  monthlyEurValue: number;
+  monthlyPendingEurValue: number;
+  totalSoEurAmount: number;
+  totalEurValue: number;
+}
+
 export interface CashbackData {
+  /** The USD figures below count USD rows only; euro rows are in {@link eur}. */
   monthlySoUsdAmount: number;
   monthlyUsdValue: number;
   /**
@@ -717,6 +734,10 @@ export interface CashbackData {
   totalSoUsdAmount: number;
   totalUsdValue: number;
   percentage: number;
+  /** The cardholder's cashback currency. Absent on older backends, which is USD. */
+  currency?: CashbackCurrency;
+  /** Present when the cardholder has euro cashback or `currency` is EUR. */
+  eur?: CashbackEurData;
 }
 
 /** Card issuance provider; backend may add to details/status */
@@ -2130,6 +2151,33 @@ export interface Cashback {
   cashbackPercentage?: number;
   /** Which level set {@link cashbackPercentage}: one transaction, the cardholder, or their tier. */
   cashbackPercentageSource?: 'Transaction' | 'User' | 'Tier';
+  /**
+   * The currency this row is earned, capped and paid in. Absent means USD. On a EUR row
+   * `fiatAmount` is the euro amount the cashback is earned on, and the soUSD fields are unset.
+   */
+  currency?: CashbackCurrency;
+  /** soEUR shares paid on a EUR row (6dp), and the EUR per share at payout. */
+  soEurAmount?: string;
+  soEurRate?: string;
+  /** soEUR the payout transfer actually moved (6dp). */
+  sentSoEurAmount?: string;
+  /** Subscription discount amount in EUR (2dp), on a EUR subscription row. */
+  discountEur?: string;
+  /** The tier's euro monthly cap, frozen at purchase. */
+  monthlyCapEur?: number;
+  /** The EUR counterpart of {@link projectedUsdValue}, for an unpaid EUR row. */
+  projectedEurValue?: number;
+  /**
+   * Chain the payout was sent on: 8453 (Base) for soEUR, and for soUSD the
+   * Base float covered; 122 (Fuse) for soUSD it did not. Absent on soUSD rows
+   * paid before the backend recorded it — all on Fuse — and on unpaid rows.
+   * Matching a payout to its activity is by hash and needs no chain.
+   */
+  payoutChainId?: number;
+  /** Only when the purchase was billed in a non-EUR currency and converted once at accrual. */
+  billedAmount?: string;
+  billedCurrency?: string;
+  billedToEurRate?: number;
   createdAt: string;
 }
 
@@ -2311,11 +2359,12 @@ export interface RewardsUserData {
    */
   cashbackPendingThisMonth?: number;
   /**
-   * All the cashback this cardholder has earned, in USD: everything paid on
-   * any card they have held, plus what is still in escrow, held to the monthly
-   * caps. The "Lifetime cashback" figure — read it through
-   * `lifetimeCashbackTotal`, which falls back when this is absent (an older
-   * backend, or a paid total the backend couldn't read).
+   * All the dollar cashback this cardholder has earned, in USD: everything
+   * paid on any card they have held, plus what is still in escrow, held to the
+   * monthly caps. The "Lifetime cashback" figure — read it through
+   * `resolveLifetimeCashback`, which falls back when this is absent (an older
+   * backend, or a paid total the backend couldn't read). Euro cashback has its
+   * own, in `cashbackEur`.
    */
   cashbackLifetime?: number;
   /**
@@ -2339,6 +2388,14 @@ export interface RewardsUserData {
    * `monthlyCashbackHeadroom`.
    */
   cashbackHeadroomThisMonth?: number;
+  /**
+   * The cardholder's cashback currency: EUR when their Wirex main currency is EUR. The
+   * top-level cashback figures above count USD rows only; a euro cardholder's are in
+   * {@link cashbackEur}. Absent on older backends, which is USD.
+   */
+  cashbackCurrency?: CashbackCurrency;
+  /** This month's euro cashback, all in EUR. Present when `cashbackCurrency` is EUR. */
+  cashbackEur?: RewardsCashbackEur;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;
   /** The user's old Solid Points total prior to conversion. */
@@ -2411,6 +2468,23 @@ export interface RewardsUserData {
    * apply here.
    */
   activeTierTrial?: TierTrial | null;
+}
+
+/** A euro cardholder's month of cashback: the USD fields of the same names, in EUR. */
+export interface RewardsCashbackEur {
+  cashbackThisMonth: number;
+  cashbackPendingThisMonth: number;
+  cashbackLastMonth: number;
+  /** The tier's euro cap. */
+  maxCashbackMonthly: number;
+  cashbackCapThisMonth: number;
+  cashbackHeadroomThisMonth: number;
+  /**
+   * All the euro cashback earned, in EUR: paid on any card plus still in
+   * escrow — the euro counterpart of `RewardsUserData.cashbackLifetime`.
+   * Absent on older backends.
+   */
+  cashbackLifetime?: number;
 }
 
 /** The tiers a trial can grant. Core is the floor, not a gift. */
@@ -2645,6 +2719,8 @@ export interface TierThresholds {
 export interface TierCashbackConfig {
   percentage: number;
   monthlyCap: number;
+  /** The euro cardholder's monthly cap, in EUR. Absent on older backends. */
+  monthlyCapEur?: number;
 }
 
 export interface TierSubscriptionDiscountConfig {
@@ -2659,6 +2735,8 @@ export interface TierSubscriptionDiscountConfig {
    * Optional because a backend from before the per-tier caps does not send it.
    */
   monthlyCap?: number;
+  /** The same cap for a euro cardholder, in EUR. Absent on older backends. */
+  monthlyCapEur?: number;
 }
 
 export interface SubscriptionDiscountCategory {
@@ -2687,6 +2765,8 @@ export interface SubscriptionDiscountConfig {
    * `monthlyCap`. The name is left from an earlier reading.
    */
   eligibleAmountCap: number;
+  /** `eligibleAmountCap` for a euro cardholder, in EUR. Absent on older backends. */
+  eligibleAmountCapEur?: number;
   tier1: TierSubscriptionDiscountConfig;
   tier2: TierSubscriptionDiscountConfig;
   tier3: TierSubscriptionDiscountConfig;
@@ -3214,6 +3294,8 @@ export interface ActivityEvent {
   deleted?: boolean;
   deletedAt?: string;
   failureReason?: string;
+  /** When the backend last wrote this row (ISO). Orders two copies of it. */
+  updatedAt?: string;
 }
 
 export interface ActivityEvents {
@@ -3860,7 +3942,7 @@ export enum VaultType {
   /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
   EUR = 'eur',
   /**
-   * soBTC: WBTC on Ethereum and cbBTC on Base, one share on Base. Earns and is shown in BTC; its
+   * soBTC: WBTC on Ethereum and on Base, one share on Base. Earns and is shown in BTC; its
    * dollar value is BTC × the BTC price.
    */
   BTC = 'btc',

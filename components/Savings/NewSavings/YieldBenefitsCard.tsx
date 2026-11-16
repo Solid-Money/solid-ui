@@ -96,14 +96,14 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
     {
       key: 'either',
       icon: RefreshCw,
-      title: 'WBTC or cbBTC',
-      body: 'Deposit WBTC on Ethereum or cbBTC on Base. Both count 1:1 and earn the same rate.',
+      title: 'WBTC on Ethereum or Base',
+      body: 'Deposit WBTC on Ethereum or on Base. Both count 1:1 and earn the same rate.',
     },
     {
       key: 'withdraw',
       icon: ArrowUp,
-      title: 'Choose how to withdraw',
-      body: 'Take cbBTC on Base or WBTC on Ethereum, up to what each side holds at the time.',
+      title: 'Withdraw WBTC on Ethereum',
+      body: 'Withdrawals are paid in WBTC on Ethereum, up to what the vault there holds at the time.',
     },
   ],
 };

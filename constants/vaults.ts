@@ -45,8 +45,8 @@ export const EUR_VAULT: Vault = {
 };
 
 /**
- * soBTC — BTC Yield. WBTC on Ethereum and cbBTC on Base, each kept in its own chain's vault and
- * never bridged; one share, held on Base whichever was deposited (lib/soBtc.ts).
+ * soBTC — BTC Yield. WBTC on Ethereum and WBTC on Base, each kept in its own chain's vault; one
+ * share, held on Base whichever was deposited. Withdrawals pay WBTC on Ethereum (lib/soBtc.ts).
  *
  * Listed only in a build with both soBTC deployments (`isSoBtcConfigured`).
  */
@@ -60,13 +60,13 @@ export const BTC_VAULT: Vault = {
   vaults: [
     // Base first: screens that show one share address read vaults[0].
     { address: SOBTC_ADDRESSES.base.vault, chainId: base.id },
-    // Shares only sit on Ethereum between the two steps of a WBTC withdrawal.
+    // Shares only sit on Ethereum between the two steps of a withdrawal.
     { address: SOBTC_ADDRESSES.ethereum.vault, chainId: mainnet.id },
   ],
   depositConfig: {
     methods: ['wallet'],
     supportedChains: [mainnet.id, base.id],
-    supportedTokens: ['WBTC', 'cbBTC'],
+    supportedTokens: ['WBTC'],
   },
   vaultName: 'BTC Yield',
 };

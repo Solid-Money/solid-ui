@@ -28,7 +28,7 @@ export const YIELD_DEPOSIT_ASSETS: Record<VaultType, string> = {
   [VaultType.ETH]: 'ETH',
   [VaultType.FUSE]: 'FUSE',
   [VaultType.EUR]: 'EURC',
-  [VaultType.BTC]: 'WBTC, cbBTC',
+  [VaultType.BTC]: 'WBTC',
 };
 
 /** What the deposit is worth in, for the no-funds headline: "On your dollars." */

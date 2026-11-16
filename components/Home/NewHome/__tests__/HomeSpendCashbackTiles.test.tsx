@@ -8,28 +8,33 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 const mockOpenCashback = jest.fn();
+const mockSheetProps = jest.fn();
+const USD_REWARDS = {
+  cashbackRate: 4,
+  cashbackThisMonth: 2.5,
+  cashbackPendingThisMonth: 5.1,
+  maxCashbackMonthly: 100,
+};
+let mockRewards: Record<string, unknown> = USD_REWARDS;
+let mockCardCashback: Record<string, unknown> = { totalUsdValue: 25 };
 
 jest.mock('@/hooks/useRewards', () => ({
-  useRewardsUserData: () => ({
-    data: {
-      cashbackRate: 4,
-      cashbackThisMonth: 2.5,
-      cashbackPendingThisMonth: 5.1,
-      maxCashbackMonthly: 100,
-    },
-  }),
+  useRewardsUserData: () => ({ data: mockRewards }),
 }));
 jest.mock('@/hooks/useCardDetails', () => ({
-  useCardDetails: () => ({ data: { cashback: { totalUsdValue: 25 } } }),
+  useCardDetails: () => ({ data: { cashback: mockCardCashback } }),
 }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/lib/utils', () => ({
-  formatBalanceUSD: (value: number) => `$${value.toFixed(2)}`,
+  formatBalance: (value: number, symbol: string) => `${symbol}${value.toFixed(2)}`,
 }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/components/Rewards/NewRewards/CashbackDetailsSheet', () => {
   const React = jest.requireActual('react');
-  return ({ trigger }: any) => React.cloneElement(trigger, { onPress: mockOpenCashback });
+  return ({ trigger, ...props }: any) => {
+    mockSheetProps(props);
+    return React.cloneElement(trigger, { onPress: mockOpenCashback });
+  };
 });
 
 const render = (override: Partial<SpendModeFigures> = {}) => {
@@ -55,6 +60,8 @@ const texts = (tree: any) =>
 
 afterEach(() => {
   useCardPaneStore.getState().close();
+  mockRewards = USD_REWARDS;
+  mockCardCashback = { totalUsdValue: 25 };
   jest.clearAllMocks();
 });
 
@@ -62,6 +69,64 @@ test('shows spendable cash and earned plus pending cashback', () => {
   const tree = render();
   expect(texts(tree)).toEqual(
     expect.arrayContaining(['Cash mode', '$1,120.00', '4% Cashback', '+$7.60']),
+  );
+  act(() => tree.unmount());
+});
+
+test('hands the cashback sheet dollar figures for a dollar cardholder', () => {
+  const tree = render();
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      currency: 'USD',
+      cashbackThisMonth: 2.5,
+      maxCashbackMonthly: 100,
+      lifetimeCashback: 25,
+      lifetimeCashbackOther: undefined,
+    }),
+  );
+  act(() => tree.unmount());
+});
+
+test("hands the cashback sheet the backend's lifetime figure, escrow included", () => {
+  // Paid on every card plus escrow, worked out server-side: it outranks the
+  // card's own paid total, which misses a retired card's history.
+  mockRewards = { ...USD_REWARDS, cashbackLifetime: 40.25 };
+
+  const tree = render();
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({ lifetimeCashback: 40.25, lifetimeCashbackOther: undefined }),
+  );
+  act(() => tree.unmount());
+});
+
+test("shows a euro cardholder's cashback in euros, never added to dollars", () => {
+  mockRewards = {
+    ...USD_REWARDS,
+    cashbackCurrency: 'EUR',
+    cashbackEur: {
+      cashbackThisMonth: 1.2,
+      cashbackPendingThisMonth: 0.8,
+      cashbackLastMonth: 0,
+      maxCashbackMonthly: 50,
+      cashbackCapThisMonth: 50,
+      cashbackHeadroomThisMonth: 48,
+    },
+  };
+  mockCardCashback = { totalUsdValue: 25, currency: 'EUR', eur: { totalEurValue: 9 } };
+
+  const tree = render();
+  expect(texts(tree)).toContain('+€2.00');
+  expect(texts(tree)).not.toContain('+$7.60');
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      currency: 'EUR',
+      cashbackThisMonth: 1.2,
+      cashbackPendingThisMonth: 0.8,
+      maxCashbackMonthly: 50,
+      tierMonthlyCap: 50,
+      lifetimeCashback: 9,
+      lifetimeCashbackOther: { value: 25, currency: 'USD' },
+    }),
   );
   act(() => tree.unmount());
 });

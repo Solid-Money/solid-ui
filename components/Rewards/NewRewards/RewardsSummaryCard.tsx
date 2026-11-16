@@ -10,7 +10,8 @@ import Svg, {
 } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
-import { formatBalanceUSD } from '@/lib/utils';
+import { formatBalance } from '@/lib/utils';
+import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
 
@@ -74,10 +75,13 @@ const RewardsGradient = () => (
 );
 
 interface RewardsSummaryCardProps {
-  /** Everything earned, paid and still escrowed — see `lifetimeCashbackTotal`. */
-  lifetimeCashback: number;
   /** Everything earned from referrals so far. */
   referrals: number;
+  /**
+   * What the cashback sheet shows. The card's own figure is its
+   * `lifetimeCashback` (with `lifetimeCashbackOther` beneath it), so the card
+   * and the sheet it opens can't disagree.
+   */
   cashbackDetails: CashbackDetailsData;
   onGetMoreCashback: () => void;
   onReferralsPress: () => void;
@@ -100,14 +104,21 @@ const RewardsIcon = () => (
 interface SummaryStatProps {
   label: string;
   value: number;
+  /** "$" unless the figure is in another currency (a euro cardholder's cashback). */
+  symbol?: string;
+  /**
+   * A second figure printed small beneath the first, never added to it — the
+   * cashback earned in the cardholder's other currency.
+   */
+  secondary?: string;
   onPress?: () => void;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
+const SummaryStat = ({ label, value, symbol = '$', secondary, onPress }: SummaryStatProps) => (
   <Pressable
     accessibilityRole={onPress ? 'button' : undefined}
-    accessibilityLabel={`${label}. ${formatBalanceUSD(value)}`}
+    accessibilityLabel={`${label}. ${formatBalance(value, symbol)}${secondary ? ` ${secondary}` : ''}`}
     disabled={!onPress}
     onPress={onPress}
     className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
@@ -122,13 +133,23 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
     >
       {label}
     </Text>
-    <Text
-      className="text-[26px] text-white"
-      // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
-      style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
-    >
-      {formatBalanceUSD(value)}
-    </Text>
+    <View className="items-center">
+      <Text
+        className="text-[26px] text-white"
+        // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
+        style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
+      >
+        {formatBalance(value, symbol)}
+      </Text>
+      {secondary ? (
+        <Text
+          className="text-sm text-white/50"
+          style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
+        >
+          {secondary}
+        </Text>
+      ) : null}
+    </View>
   </Pressable>
 );
 
@@ -138,11 +159,11 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
  *
  * Both are totals over everything earned so far, so the two columns measure the
  * same thing. The cashback figure counts what is still in escrow alongside what
- * has been paid — see `lifetimeCashbackTotal`, which the caller applies — and is
- * the same figure as the sheet's "Lifetime cashback" row.
+ * has been paid — see `resolveLifetimeCashback`, which the caller applies — and
+ * is the same figure as the sheet's "Lifetime cashback" row. Cashback in the
+ * cardholder's other currency sits beneath it, never added in.
  */
 const RewardsSummaryCard = ({
-  lifetimeCashback,
   referrals,
   cashbackDetails,
   onGetMoreCashback,
@@ -164,7 +185,21 @@ const RewardsSummaryCard = ({
 
       <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
-          trigger={<SummaryStat label="Lifetime cashback" value={lifetimeCashback} />}
+          trigger={
+            <SummaryStat
+              label="Lifetime cashback"
+              value={cashbackDetails.lifetimeCashback}
+              symbol={CURRENCY_SYMBOLS[cashbackDetails.currency ?? 'USD']}
+              secondary={
+                cashbackDetails.lifetimeCashbackOther
+                  ? `+ ${formatBalance(
+                      cashbackDetails.lifetimeCashbackOther.value,
+                      CURRENCY_SYMBOLS[cashbackDetails.lifetimeCashbackOther.currency],
+                    )}`
+                  : undefined
+              }
+            />
+          }
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />

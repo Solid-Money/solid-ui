@@ -262,8 +262,9 @@ export const SOETH_BASE_DEPOSIT_TOKENS: Record<string, BridgeToken> = {
 };
 
 /**
- * What soBTC takes, by chain: WBTC on Ethereum, cbBTC on Base. Offered to the BTC vault alone,
- * like SOETH_BASE_DEPOSIT_TOKENS, so neither appears in bridging or card funding.
+ * What soBTC takes, by chain: WBTC on Ethereum and WBTC on Base (BitGo's LayerZero OFT). Offered
+ * to the BTC vault alone, like SOETH_BASE_DEPOSIT_TOKENS, so neither appears in bridging or card
+ * funding.
  */
 export const SOBTC_DEPOSIT_TOKENS: Record<number, Record<string, BridgeToken>> = {
   [mainnet.id]: {
@@ -277,12 +278,12 @@ export const SOBTC_DEPOSIT_TOKENS: Record<number, Record<string, BridgeToken>> =
     },
   },
   [base.id]: {
-    cbBTC: {
-      name: 'cbBTC',
-      fullName: 'Coinbase Wrapped BTC',
-      address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+    WBTC: {
+      name: 'WBTC',
+      fullName: 'Wrapped BTC',
+      address: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
       decimals: 8,
-      icon: require('@/assets/images/cbbtc.png'),
+      icon: require('@/assets/images/wbtc.png'),
       isPermit: false,
     },
   },

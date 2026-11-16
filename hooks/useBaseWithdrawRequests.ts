@@ -24,9 +24,10 @@ const PENDING_REFETCH_MS = 60_000;
 const PENDING_STALE_MS = 30_000;
 
 /**
- * A soUSD, soETH or soBTC withdraw request made on its Base queue, or a soBTC one on its Ethereum
- * queue (the WBTC route): its transaction confirmed, so it is in the queue or has left it. Both
- * soBTC queues track requests on-chain, so neither needs a subgraph.
+ * A soUSD or soETH withdraw request made on its Base queue, or a soBTC one on its Ethereum queue
+ * (soBTC has no Base queue; every request is for WBTC on Ethereum): its transaction confirmed, so
+ * it is in the queue or has left it. The soBTC queue tracks requests on-chain, so it needs no
+ * subgraph.
  *
  * soEURC withdraws on Base too, but its status comes from the EUR subgraph (see
  * useActivity). An activity naming no vault is soUSD, as every withdraw was
@@ -47,22 +48,14 @@ export const isBaseWithdrawRequest = (
   const vault = getVaultKey(activity.symbol) ?? 'USD';
   if (activity.chainId === mainnet.id) return vault === 'BTC' && isSoBtcConfigured;
   if (activity.chainId !== base.id) return false;
-  return (
-    (vault === 'USD' && isSoUsdBaseConfigured) ||
-    (vault === 'ETH' && isSoEthBaseConfigured) ||
-    (vault === 'BTC' && isSoBtcConfigured)
-  );
+  return (vault === 'USD' && isSoUsdBaseConfigured) || (vault === 'ETH' && isSoEthBaseConfigured);
 };
 
 /** The queue a request from {@link isBaseWithdrawRequest} was made on. */
 const baseWithdrawQueueOf = (activity: ActivityEvent) => {
   const vault = getVaultKey(activity.symbol);
   if (vault === 'ETH') return ADDRESSES.base.soEthBoringQueue;
-  if (vault === 'BTC') {
-    return activity.chainId === mainnet.id
-      ? SOBTC_ADDRESSES.ethereum.boringQueue
-      : SOBTC_ADDRESSES.base.boringQueue;
-  }
+  if (vault === 'BTC') return SOBTC_ADDRESSES.ethereum.boringQueue;
   return ADDRESSES.base.boringQueue;
 };
 
@@ -146,7 +139,7 @@ export type PendingWithdrawal = {
   /** Which vault it leaves, so a product screen lists only its own. */
   vault: Extract<VaultKey, 'USD' | 'ETH' | 'BTC'>;
   /**
-   * In dollars: the USDC paid out, the WETH at the ETH price, or the cbBTC at the BTC price.
+   * In dollars: the USDC paid out, the WETH at the ETH price, or the WBTC at the BTC price.
    * Undefined until both are known.
    */
   amountUsd: number | undefined;
@@ -157,7 +150,7 @@ export type PendingWithdrawal = {
 /**
  * The dollar value of `amount` base units of an asset with `decimals` at `priceUsd`, in fixed
  * point: the price is taken to micro-dollars and multiplied in bigint, so only the final figure
- * becomes a float, for display and totals. WETH (18 decimals) and cbBTC/WBTC (8).
+ * becomes a float, for display and totals. WETH (18 decimals) and WBTC (8).
  */
 const assetUsd = (amount: string, decimals: number, priceUsd: number): number => {
   const microUsdPerUnit = BigInt(Math.round(priceUsd * 1e6));

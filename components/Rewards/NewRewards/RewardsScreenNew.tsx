@@ -25,7 +25,11 @@ import {
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import { lifetimeCashbackTotal, monthlyCashbackCap } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackCap,
+  resolveCashbackMonth,
+  resolveLifetimeCashback,
+} from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { isReferralV4Live } from '@/lib/referral/referralV4';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
@@ -220,16 +224,21 @@ export default function RewardsScreenNew() {
     );
   }
 
-  const cashbackSettled = rewardsData?.cashbackThisMonth ?? 0;
-  const cashbackPending = rewardsData?.cashbackPendingThisMonth;
+  // In the cardholder's cashback currency: a euro cardholder's figures and caps
+  // are all in EUR — see `resolveCashbackMonth`.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
+  const cashbackSettled = cashbackMonth?.cashbackThisMonth ?? 0;
+  const cashbackPending = cashbackMonth?.cashbackPendingThisMonth;
   // v4's total already includes the legacy rewards paid, so it replaces today's figure.
   const referrals = isReferralV4
     ? (referralV4?.totals.earnedUsd ?? 0)
     : (referralSummary?.totalRewardedUsd ?? 0);
   // Everything earned, paid and still escrowed, on every card held — the
   // summary card's headline and the sheet's row, so they can't disagree. A
-  // lifetime figure, like the referrals total beside it.
-  const lifetimeCashback = lifetimeCashbackTotal(rewardsData, cardDetails?.cashback?.totalUsdValue);
+  // lifetime figure, like the referrals total beside it. Per currency, never
+  // summed.
+  const lifetimeCashback = resolveLifetimeCashback(rewardsData, cardDetails?.cashback);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
   // cashback rate" row read this, so they can't disagree with each other.
   const cashbackRate = resolveUserCashbackRate(rewardsData, currentTier);
@@ -309,17 +318,17 @@ export default function RewardsScreenNew() {
         </View>
 
         <RewardsSummaryCard
-          lifetimeCashback={lifetimeCashback}
           referrals={referrals}
           cashbackDetails={{
             cashbackRate,
+            currency: cashbackCurrency,
             // The settled and escrowed halves go in separately: the sheet sums
             // them itself into the month's figure.
             cashbackThisMonth: cashbackSettled,
             cashbackPendingThisMonth: cashbackPending,
-            maxCashbackMonthly: monthlyCashbackCap(rewardsData),
-            tierMonthlyCap: rewardsData?.maxCashbackMonthly,
-            lifetimeCashback,
+            maxCashbackMonthly: monthlyCashbackCap(cashbackMonth),
+            tierMonthlyCap: cashbackMonth?.maxCashbackMonthly,
+            ...lifetimeCashback,
           }}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           onReferralsPress={openReferral}
@@ -331,13 +340,14 @@ export default function RewardsScreenNew() {
             actualSubscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
             subscriptionCategoryRates={rewardsData?.subscriptionCategoryRates}
             cashbackRate={cashbackRate}
+            currency={cashbackCurrency}
             // The settled and escrowed halves go down separately: the sheet
             // sums them itself into the month's figure.
             cashbackThisMonth={cashbackSettled}
             cashbackPendingThisMonth={cashbackPending}
-            maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-            tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-            lifetimeCashback={lifetimeCashback}
+            maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+            tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
+            {...lifetimeCashback}
             {...benefitRates}
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}

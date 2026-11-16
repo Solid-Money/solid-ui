@@ -42,7 +42,7 @@ const INTRO: Record<VaultType, string> = {
   [VaultType.EUR]:
     'On your euros. Your EURC is held and shown in euros, and you can withdraw it whenever you want.',
   [VaultType.BTC]:
-    'On your bitcoin. Deposit WBTC or cbBTC, earn in BTC, and keep your BTC exposure.',
+    'On your bitcoin. Deposit WBTC on Ethereum or Base, earn in BTC, and keep your BTC exposure.',
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (

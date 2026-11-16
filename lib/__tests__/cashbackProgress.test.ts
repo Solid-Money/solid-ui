@@ -1,11 +1,15 @@
 import {
+  cashbackFiguresByCurrency,
   isMonthlyCashbackCapReached,
-  lifetimeCashbackTotal,
   monthlyCashbackCap,
   monthlyCashbackHeadroom,
   monthlyCashbackTotal,
+  resolveCashbackMonth,
   resolveCashbackProgress,
+  resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
+
+import type { CashbackData, RewardsUserData } from '@/lib/types';
 
 describe('monthlyCashbackTotal', () => {
   it('counts settled and escrowed cashback as one figure', () => {
@@ -25,72 +29,6 @@ describe('monthlyCashbackTotal', () => {
     expect(monthlyCashbackTotal(undefined, undefined)).toBe(0);
     expect(monthlyCashbackTotal(Number.NaN, -5)).toBe(0);
     expect(monthlyCashbackTotal(-20, 10)).toBe(10);
-  });
-});
-
-describe('lifetimeCashbackTotal', () => {
-  it("takes the backend's lifetime figure when it sends one", () => {
-    // Paid on every card held plus escrow, worked out server-side; the card's
-    // own paid total (which misses a retired card) is not consulted.
-    expect(
-      lifetimeCashbackTotal(
-        { cashbackLifetime: 131.75, cashbackThisMonth: 20, cashbackPendingThisMonth: 9 },
-        10,
-      ),
-    ).toBe(131.75);
-  });
-
-  it("counts a new cardholder's escrowed cashback rather than reading $0", () => {
-    expect(
-      lifetimeCashbackTotal(
-        { cashbackLifetime: 3.2, cashbackThisMonth: 0, cashbackPendingThisMonth: 3.2 },
-        0,
-      ),
-    ).toBeCloseTo(3.2);
-  });
-
-  it("reports zero for someone who hasn't earned any", () => {
-    expect(
-      lifetimeCashbackTotal(
-        { cashbackLifetime: 0, cashbackThisMonth: 0, cashbackPendingThisMonth: 0 },
-        0,
-      ),
-    ).toBe(0);
-  });
-
-  describe('on an older backend, with no lifetime figure', () => {
-    const month = { cashbackThisMonth: 20, cashbackPendingThisMonth: 9 };
-
-    it("rebuilds it from the card's paid total and this month's escrow", () => {
-      expect(lifetimeCashbackTotal(month, 120)).toBe(129);
-    });
-
-    it("floors the card's paid total at this month's settled figure, which it can trail", () => {
-      expect(lifetimeCashbackTotal(month, 15)).toBe(29);
-    });
-  });
-
-  it("never reads below this month's figure", () => {
-    expect(
-      lifetimeCashbackTotal(
-        { cashbackLifetime: 5, cashbackThisMonth: 20, cashbackPendingThisMonth: 9 },
-        0,
-      ),
-    ).toBe(29);
-  });
-
-  it('shows the card total while the rewards data is still loading', () => {
-    expect(lifetimeCashbackTotal(undefined, 42.5)).toBe(42.5);
-    expect(lifetimeCashbackTotal(undefined, undefined)).toBe(0);
-  });
-
-  it('treats nonsensical amounts as nothing', () => {
-    expect(
-      lifetimeCashbackTotal(
-        { cashbackLifetime: Number.NaN, cashbackThisMonth: 0, cashbackPendingThisMonth: 0 },
-        Number.NaN,
-      ),
-    ).toBe(0);
   });
 });
 
@@ -174,5 +112,202 @@ describe('isMonthlyCashbackCapReached', () => {
   it('treats nonsensical headroom as none', () => {
     expect(isMonthlyCashbackCapReached(Number.NaN)).toBe(true);
     expect(isMonthlyCashbackCapReached(-3)).toBe(true);
+  });
+});
+
+/** A cardholder with $8 settled this month in dollars and a euro month of their own. */
+const usdMonth = {
+  cashbackThisMonth: 8,
+  cashbackPendingThisMonth: 2,
+  maxCashbackMonthly: 100,
+  cashbackCapThisMonth: 100,
+  cashbackHeadroomThisMonth: 90,
+};
+const eurMonth = {
+  cashbackThisMonth: 12.4,
+  cashbackPendingThisMonth: 1.6,
+  cashbackLastMonth: 20,
+  maxCashbackMonthly: 50,
+  cashbackCapThisMonth: 50,
+  cashbackHeadroomThisMonth: 36,
+};
+const rewardsFor = (overrides: Partial<RewardsUserData>): RewardsUserData =>
+  ({ ...usdMonth, ...overrides }) as RewardsUserData;
+const cardCashback = (overrides: Partial<CashbackData>): CashbackData =>
+  ({ totalUsdValue: 0, ...overrides }) as CashbackData;
+
+describe('resolveCashbackMonth', () => {
+  it("reads a euro cardholder's month from the euro block, in EUR", () => {
+    const month = resolveCashbackMonth(
+      rewardsFor({ cashbackCurrency: 'EUR', cashbackEur: eurMonth }),
+    );
+
+    expect(month).toMatchObject({ currency: 'EUR', ...eurMonth });
+    // The euro caps are what the cap and headroom helpers then measure.
+    expect(monthlyCashbackCap(month)).toBe(50);
+    expect(monthlyCashbackHeadroom(month, 14)).toBe(36);
+  });
+
+  it('reads a dollar cardholder exactly as before', () => {
+    for (const cashbackCurrency of ['USD', undefined] as const) {
+      expect(resolveCashbackMonth(rewardsFor({ cashbackCurrency }))).toEqual({
+        currency: 'USD',
+        ...usdMonth,
+      });
+    }
+  });
+
+  it('stays in dollars, and says so, when a euro block is missing', () => {
+    expect(resolveCashbackMonth(rewardsFor({ cashbackCurrency: 'EUR' }))?.currency).toBe('USD');
+  });
+
+  it('reads nothing before the rewards data lands', () => {
+    expect(resolveCashbackMonth(undefined)).toBeUndefined();
+  });
+});
+
+describe('cashbackFiguresByCurrency', () => {
+  it("lists the cardholder's own currency first and never adds the two", () => {
+    expect(cashbackFiguresByCurrency({ USD: 150, EUR: 12.4 }, 'EUR')).toEqual([
+      { value: 12.4, currency: 'EUR' },
+      { value: 150, currency: 'USD' },
+    ]);
+  });
+
+  it('always lists the own currency, and the other only when there is some', () => {
+    expect(cashbackFiguresByCurrency({ USD: 0, EUR: 0 }, 'EUR')).toEqual([
+      { value: 0, currency: 'EUR' },
+    ]);
+    expect(cashbackFiguresByCurrency({ USD: 25 }, 'USD')).toEqual([{ value: 25, currency: 'USD' }]);
+  });
+});
+
+describe('resolveLifetimeCashback', () => {
+  it("takes the backend's lifetime figure, escrow included, over the card's paid total", () => {
+    // Paid on every card held plus escrow, worked out server-side; the card's
+    // own paid total misses a retired card's history.
+    expect(
+      resolveLifetimeCashback(
+        rewardsFor({ cashbackLifetime: 131.75 }),
+        cardCashback({ totalUsdValue: 25 }),
+      ),
+    ).toEqual({ lifetimeCashback: 131.75, lifetimeCashbackOther: undefined });
+  });
+
+  it("counts a new cardholder's escrowed cashback rather than reading $0", () => {
+    expect(
+      resolveLifetimeCashback(
+        rewardsFor({ cashbackThisMonth: 0, cashbackPendingThisMonth: 3.2, cashbackLifetime: 3.2 }),
+        cardCashback({}),
+      ).lifetimeCashback,
+    ).toBeCloseTo(3.2);
+  });
+
+  it("never reads below this month's figure", () => {
+    expect(
+      resolveLifetimeCashback(rewardsFor({ cashbackLifetime: 5 }), cardCashback({}))
+        .lifetimeCashback,
+    ).toBe(10);
+  });
+
+  describe('without a lifetime figure from the backend', () => {
+    it("takes the card's paid total, floored at this month's figure", () => {
+      expect(resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))).toEqual({
+        lifetimeCashback: 25,
+        lifetimeCashbackOther: undefined,
+      });
+      // The details lag behind this month's settled and escrowed $10.
+      expect(resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 3 }))).toEqual({
+        lifetimeCashback: 10,
+        lifetimeCashbackOther: undefined,
+      });
+    });
+
+    it('never counts a payout twice when the card details are newer than the rewards data', () => {
+      // $120 paid + $9 pending; the $9 then pays out. The card details already
+      // say $129 while the cached rewards data still says $9 pending: $129,
+      // not $138.
+      expect(
+        resolveLifetimeCashback(
+          rewardsFor({ cashbackThisMonth: 20, cashbackPendingThisMonth: 9 }),
+          cardCashback({ totalUsdValue: 129 }),
+        ).lifetimeCashback,
+      ).toBe(129);
+    });
+
+    it('shows the card total while the rewards data is still loading', () => {
+      expect(resolveLifetimeCashback(undefined, cardCashback({ totalUsdValue: 42.5 }))).toEqual({
+        lifetimeCashback: 42.5,
+        lifetimeCashbackOther: undefined,
+      });
+      expect(resolveLifetimeCashback(undefined, undefined).lifetimeCashback).toBe(0);
+    });
+  });
+
+  it('gives a euro cardholder their euro lifetime, with any dollar lifetime beside it', () => {
+    const result = resolveLifetimeCashback(
+      rewardsFor({ cashbackCurrency: 'EUR', cashbackEur: eurMonth }),
+      cardCashback({
+        currency: 'EUR',
+        totalUsdValue: 150,
+        eur: {
+          monthlySoEurAmount: 0,
+          monthlyEurValue: 0,
+          monthlyPendingEurValue: 0,
+          totalSoEurAmount: 9,
+          totalEurValue: 9.2,
+        },
+      }),
+    );
+
+    // €14.00 (this month's settled and escrowed euros beat the lagging €9.20)
+    // and $150 — not €164.
+    expect(result).toEqual({
+      lifetimeCashback: 14,
+      lifetimeCashbackOther: { value: 150, currency: 'USD' },
+    });
+  });
+
+  it("takes each currency's lifetime from the backend when it sends both", () => {
+    expect(
+      resolveLifetimeCashback(
+        rewardsFor({
+          cashbackCurrency: 'EUR',
+          cashbackEur: { ...eurMonth, cashbackLifetime: 33.5 },
+          cashbackLifetime: 151.2,
+        }),
+        cardCashback({ totalUsdValue: 150 }),
+      ),
+    ).toEqual({
+      lifetimeCashback: 33.5,
+      lifetimeCashbackOther: { value: 151.2, currency: 'USD' },
+    });
+  });
+
+  it('leaves the dollar side out for a euro cardholder who never earned in dollars', () => {
+    expect(
+      resolveLifetimeCashback(
+        rewardsFor({
+          cashbackCurrency: 'EUR',
+          cashbackEur: eurMonth,
+          cashbackThisMonth: 0,
+          cashbackPendingThisMonth: 0,
+        }),
+        cardCashback({ currency: 'EUR' }),
+      ),
+    ).toEqual({ lifetimeCashback: 14, lifetimeCashbackOther: undefined });
+  });
+
+  it('treats nonsensical amounts as nothing', () => {
+    expect(
+      resolveLifetimeCashback(
+        rewardsFor({
+          cashbackThisMonth: 0,
+          cashbackPendingThisMonth: 0,
+          cashbackLifetime: Number.NaN,
+        }),
+        cardCashback({ totalUsdValue: Number.NaN }),
+      ).lifetimeCashback,
+    ).toBe(0);
   });
 });

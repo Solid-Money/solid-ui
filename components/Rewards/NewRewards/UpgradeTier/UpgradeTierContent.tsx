@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { CHAIN_NAMES } from '@/constants/chains';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
@@ -44,7 +43,6 @@ import {
 import { tokenAmount, tokenUsd } from '@/lib/tierUpgradeFunding';
 import { RewardsTier, VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import TierDetailRow from './TierDetailRow';
@@ -53,9 +51,11 @@ import UpgradeRouteSwitch from './UpgradeRouteSwitch';
 import UpgradeTierHeroCard from './UpgradeTierHeroCard';
 
 import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
+import type { UpgradeTopUpContext } from '@/store/useDepositStore';
 
 interface UpgradeTierContentProps {
   onRouteSelected?: (route: TierUpgradeRoute, changed: boolean) => void;
+  onTopUp: (context?: UpgradeTopUpContext) => void;
 }
 
 /** Where "Learn more" and "How to earn points?" send the user. */
@@ -77,7 +77,7 @@ export const MEMBERSHIP_HELP_URL =
  * answer from, and the benefits pager is the one with the tier's case laid out
  * beside it.
  */
-const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
+const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProps) => {
   const { data: membership, isLoading } = useTierMembership();
   const { data: tierBenefits } = useTierBenefits();
   const { data: chain } = useTierUpgradeChainState(membership?.contracts);
@@ -217,34 +217,9 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
     track(TRACKING_EVENTS.TIER_UPGRADE_ROUTE_SELECTED, { tier, route: next });
   };
 
-  /**
-   * Short of what the upgrade costs, so the press has to fix that first.
-   *
-   * Which flow depends on which balance is short, and the two are not
-   * interchangeable: the savings direct deposit mints share tokens, while the
-   * "Add funds" sheet funds the wallet, where a token stays the token that was
-   * sent. Sending a user short of native FUSE to the savings flow would hand
-   * them more soFUSE and leave the row they were looking at unmoved, with
-   * nothing on screen explaining why.
-   *
-   * Closes this modal before opening the funding one. Both are dialogs, and a
-   * dialog opened over a dialog leaves two overlays and a back gesture that
-   * dismisses the wrong one.
-   */
   const handleTopUp = () => {
-    const depositToSavings = route === 'lock' && paymentAsset === 'soFUSE';
-    close();
-
-    // The upgrade modal's native exit animation takes 180ms. Opening a second
-    // portal during that same render can leave Android with a black surface.
-    // Let the first dialog finish leaving before mounting the deposit flow.
-    setTimeout(() => {
-      const depositStore = useDepositStore.getState();
-      depositStore.resetDepositFlow();
-      // A cash upgrade is paid in USDC; buying FUSE would not fill that balance.
-      if (route === 'lock') depositStore.setUpgradeTopUp({ tier, depositToSavings });
-      depositStore.setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
-    }, 200);
+    // A cash upgrade needs USDC. For a FUSE lock, only soFUSE needs a Savings deposit.
+    onTopUp(route === 'lock' ? { tier, depositToSavings: paymentAsset === 'soFUSE' } : undefined);
   };
 
   const handleReview = () => {

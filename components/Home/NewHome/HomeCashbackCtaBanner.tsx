@@ -8,13 +8,15 @@ import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import {
-  lifetimeCashbackTotal,
   monthlyCashbackCap,
   monthlyCashbackTotal,
+  resolveCashbackMonth,
+  resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
-import { formatBalanceUSD } from '@/lib/utils';
+import { formatBalance } from '@/lib/utils';
+import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 /**
  * The terminal banner of the home CTA ladder (Figma 25740:4138): the user has a
@@ -35,22 +37,26 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
   const { data: cardDetails } = useCardDetails();
 
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
-  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
-  const lifetimeCashback = lifetimeCashbackTotal(rewardsData, cardDetails?.cashback?.totalUsdValue);
+  // In the cardholder's cashback currency: euros for a euro cardholder.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
+  const cashbackThisMonth = cashbackMonth?.cashbackThisMonth ?? 0;
+  const lifetimeCashback = resolveLifetimeCashback(rewardsData, cardDetails?.cashback);
   const earnedThisMonth = monthlyCashbackTotal(
-    rewardsData?.cashbackThisMonth,
-    rewardsData?.cashbackPendingThisMonth,
+    cashbackMonth?.cashbackThisMonth,
+    cashbackMonth?.cashbackPendingThisMonth,
   );
 
   return (
     <CashbackDetailsSheet
       triggerContainerClassName={className ?? ''}
       cashbackRate={rate}
+      currency={cashbackCurrency}
       cashbackThisMonth={cashbackThisMonth}
-      cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-      maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-      tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-      lifetimeCashback={lifetimeCashback}
+      cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+      maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+      tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
+      {...lifetimeCashback}
       onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
       trigger={
         <Pressable
@@ -64,7 +70,9 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
           </Text>
           <View style={styles.earned}>
             <Text style={styles.earnedLabel}>Earned this month</Text>
-            <Text style={styles.earnedAmount}>{formatBalanceUSD(earnedThisMonth)}</Text>
+            <Text style={styles.earnedAmount}>
+              {formatBalance(earnedThisMonth, CURRENCY_SYMBOLS[cashbackCurrency])}
+            </Text>
           </View>
         </Pressable>
       }

@@ -1,10 +1,14 @@
+import { formatUnits } from 'viem';
+
+import { formatTokenUnits, TokenUnits } from '@/lib/utils/tokenUnits';
+
 /**
  * How the swap screens write numbers: token amounts with thousands separators
  * and only the digits worth reading, dollars to the cent.
  *
  *   18.43 → "18.43"    0.00081234 → "0.0008123"    145000 → "145,000"
  */
-export function formatSwapAmount(value: number): string {
+export function formatSwapAmount(value: number, minimumFractionDigits = 0): string {
   if (!Number.isFinite(value) || value === 0) return '0';
   const abs = Math.abs(value);
   if (abs < 0.000001) return '<0.000001';
@@ -13,8 +17,18 @@ export function formatSwapAmount(value: number): string {
     abs >= 1 ? 2 : Math.min(6, Math.max(2, 3 - Math.floor(Math.log10(abs))));
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits,
-    minimumFractionDigits: 0,
+    minimumFractionDigits: Math.min(minimumFractionDigits, maximumFractionDigits),
   }).format(value);
+}
+
+/** Picker balances use the same display precision while keeping their exact token units. */
+export function formatSwapTokenAmount(value: TokenUnits, minimumFractionDigits = 0): string {
+  if (value.raw === 0n) return '0';
+  const [whole, fraction = ''] = formatUnits(value.raw, value.decimals).split('.');
+  const firstNonzero = fraction.search(/[1-9]/);
+  if (whole === '0' && firstNonzero >= 6) return '<0.000001';
+  const maximumFractionDigits = whole === '0' ? Math.min(6, firstNonzero + 4) : 2;
+  return formatTokenUnits(value, maximumFractionDigits, minimumFractionDigits);
 }
 
 /** "$19.94", "<$0.01", "$1,204.10". */

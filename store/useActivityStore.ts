@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { ActivityEvent, TransactionStatus } from '@/lib/types';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 
 // Maximum events stored per user in the Zustand store (and MMKV).
 // Oldest events beyond this cap are evicted to prevent unbounded memory/disk growth.
@@ -49,6 +50,99 @@ const STATUS_PRIORITY: Record<string, number> = {
 
 function isStatusDowngrade(existingStatus: string, incomingStatus: string): boolean {
   return (STATUS_PRIORITY[incomingStatus] ?? 0) < (STATUS_PRIORITY[existingStatus] ?? 0);
+}
+
+/**
+ * Whether an incoming status is stale and must not overwrite the stored one.
+ *
+ * A downgrade normally is. The exception is a row the backend has moved back
+ * to in-progress because its payout is waiting on our payout wallet
+ * (`metadata.payout.state === 'awaiting_funds'`): a Wirex bank deposit Wirex
+ * already reported complete, before our EURC transfer to the user went out.
+ * That is the backend correcting a premature "complete", not a stale write,
+ * and refusing it would keep showing the deposit as done while the user has
+ * not been paid.
+ *
+ * The same ordering holds the other way: once a row carries that correction,
+ * a copy written before it — a delayed "complete" from before the payout
+ * wallet ran short — must not move it, upgrade or not. The payout landing
+ * comes as a newer copy and completes it then. A copy without a usable
+ * `updatedAt` is not called older, as {@link keptFromNewerCopy} treats it,
+ * so the status and the flag it keeps never disagree.
+ */
+function isStaleStatus(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  if (isPayoutAwaitingFunds(existing.metadata) && isOlderCopy(existing, incoming)) return true;
+  if (!isStatusDowngrade(existing.status, incoming.status)) return false;
+  // The awaiting-funds correction, but only from a copy known to be at least
+  // as new as the stored one: an older response landing after the payout's
+  // "complete" must not put the row back to Pending.
+  return !(isPayoutAwaitingFunds(incoming.metadata) && isKnownNotOlder(existing, incoming));
+}
+
+/**
+ * Whether `incoming` can be trusted to be at least as new as `existing`, for
+ * the one exception that lets a status go backwards.
+ *
+ * Stricter than {@link isOlderCopy}: with a valid `updatedAt` on the stored
+ * copy, an incoming one must carry its own, or nothing orders the two and the
+ * downgrade is refused. A stored copy without one (a row this device created
+ * before the backend's first write) has nothing to order against, and the
+ * correction is taken.
+ */
+function isKnownNotOlder(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const existingAt = Date.parse(existing.updatedAt ?? '');
+  if (!Number.isFinite(existingAt)) return true;
+  const incomingAt = Date.parse(incoming.updatedAt ?? '');
+  return Number.isFinite(incomingAt) && incomingAt >= existingAt;
+}
+
+/** Whether `incoming` was written by the backend after `existing` was. */
+function isNewerCopy(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const incomingAt = Date.parse(incoming.updatedAt ?? '');
+  const existingAt = Date.parse(existing.updatedAt ?? '');
+  return Number.isFinite(incomingAt) && (!Number.isFinite(existingAt) || incomingAt > existingAt);
+}
+
+/**
+ * Whether `incoming` was written by the backend before `existing` was.
+ *
+ * Read from `updatedAt`, which every REST page and realtime event carries. A
+ * copy without one is not called older: nothing then says it is.
+ */
+function isOlderCopy(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const incomingAt = Date.parse(incoming.updatedAt ?? '');
+  const existingAt = Date.parse(existing.updatedAt ?? '');
+  return Number.isFinite(incomingAt) && Number.isFinite(existingAt) && incomingAt < existingAt;
+}
+
+/**
+ * What a merge keeps from the stored copy when the incoming one is older.
+ *
+ * An older copy can still be merged for a field it changes (a hash, say), but
+ * it must not carry back its older `updatedAt` or `metadata`: with those, a
+ * replay of the same stale copy would then look current and could put a
+ * completed payout back to Pending.
+ *
+ * A copy without a usable `updatedAt` is not ordered either way and merges as
+ * it always has, except that it never replaces a valid stored `updatedAt`:
+ * the row would then have nothing to order later copies against, and a replay
+ * of an awaiting-funds copy would pass as current.
+ */
+function keptFromNewerCopy(
+  existing: ActivityEvent,
+  incoming: ActivityEvent,
+): Partial<Pick<ActivityEvent, 'updatedAt' | 'metadata'>> {
+  if (isOlderCopy(existing, incoming)) {
+    return { updatedAt: existing.updatedAt, metadata: existing.metadata };
+  }
+  if (isValidTime(existing.updatedAt) && !isValidTime(incoming.updatedAt)) {
+    return { updatedAt: existing.updatedAt };
+  }
+  return {};
+}
+
+function isValidTime(value: string | undefined): boolean {
+  return Number.isFinite(Date.parse(value ?? ''));
 }
 
 interface ActivityState {
@@ -100,10 +194,21 @@ function stripNullish(event: ActivityEvent): Partial<ActivityEvent> {
 function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
   // A status downgrade is not a real change — it's a stale update
   const statusActuallyChanged =
-    existing.status !== incoming.status && !isStatusDowngrade(existing.status, incoming.status);
+    existing.status !== incoming.status && !isStaleStatus(existing, incoming);
+  // The payout flag coming or going is a change on its own, even with the
+  // status unchanged — unless the copy carrying it is the older one.
+  const payoutFlagChanged =
+    isPayoutAwaitingFunds(existing.metadata) !== isPayoutAwaitingFunds(incoming.metadata) &&
+    !isOlderCopy(existing, incoming);
+  // A newer copy is kept even when nothing else in it differs, so the stored
+  // `updatedAt` is always the newest seen: otherwise a copy from between the
+  // two would compare against the older one and pass as current.
+  const newerCopy = isNewerCopy(existing, incoming);
 
   return (
     statusActuallyChanged ||
+    payoutFlagChanged ||
+    newerCopy ||
     existing.hash !== incoming.hash ||
     existing.deleted !== incoming.deleted ||
     existing.failureReason !== incoming.failureReason ||
@@ -163,7 +268,7 @@ export const useActivityStore = create<ActivityState>()(
               if (!hasEventChanged(existing, event)) return;
 
               const mergedStatus =
-                event.status && isStatusDowngrade(existing.status, event.status)
+                event.status && isStaleStatus(existing, event)
                   ? existing.status
                   : (event.status ?? existing.status);
 
@@ -171,6 +276,7 @@ export const useActivityStore = create<ActivityState>()(
                 ...existing,
                 ...stripNullish(event),
                 status: mergedStatus,
+                ...keptFromNewerCopy(existing, event),
               };
             }
           }),
@@ -203,7 +309,7 @@ export const useActivityStore = create<ActivityState>()(
                 const existing = state.events[userId][existingIndex];
                 if (hasEventChanged(existing, event)) {
                   const mergedStatus =
-                    event.status && isStatusDowngrade(existing.status, event.status)
+                    event.status && isStaleStatus(existing, event)
                       ? existing.status
                       : (event.status ?? existing.status);
 
@@ -213,6 +319,7 @@ export const useActivityStore = create<ActivityState>()(
                     ...existing,
                     ...stripped,
                     status: mergedStatus,
+                    ...keptFromNewerCopy(existing, event),
                   };
                   changed = true;
                 }

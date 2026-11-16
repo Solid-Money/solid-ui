@@ -26,9 +26,9 @@ import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   formatBtcAmount,
+  SOBTC_CHAINS,
   SOBTC_DECIMALS,
-  SOBTC_WITHDRAW_OPTION_ORDER,
-  SOBTC_WITHDRAW_OPTIONS,
+  SOBTC_WITHDRAW,
   type SoBtcChainId,
   soBtcSharesToAssets,
 } from '@/lib/soBtc';
@@ -41,15 +41,15 @@ import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithd
 /** The queue's solver discount, as the other withdraw forms show it. */
 const SOLVER_FEE_BPS = 1n;
 
-/** An option is "limited" when it can pay some, but less than the user holds. */
-type OptionState = 'loading' | 'error' | 'available' | 'limited' | 'unavailable';
+/** "limited" when the Ethereum vault can pay some, but less than the user holds. */
+type AvailabilityState = 'loading' | 'error' | 'available' | 'limited' | 'unavailable';
 
-const optionState = (
+const availabilityState = (
   availability: SoBtcAvailability | undefined,
   isLoading: boolean,
   isError: boolean,
   balanceShares: bigint,
-): OptionState => {
+): AvailabilityState => {
   if (isLoading) return 'loading';
   if (isError || !availability) return 'error';
   if (availability.maxShares <= 0n) return 'unavailable';
@@ -60,14 +60,12 @@ const optionState = (
 const toBtc = (sats: bigint) => Number(formatUnits(sats, SOBTC_DECIMALS));
 
 /**
- * soBTC withdraw: the user picks what they receive, cbBTC on Base or WBTC on Ethereum.
+ * soBTC withdraw: every withdrawal pays WBTC on Ethereum.
  *
- * All soBTC sits on Base, so the choice is not where the shares are but which vault pays. Each
- * vault pays only from what it holds right now, so each option shows its "available now", Max is
- * capped at it, and an amount over it offers the available amount or the other option.
- *
- * cbBTC: one step on the Base queue. WBTC: move the shares to Ethereum (LayerZero, fee in ETH on
- * Base), then request on the Ethereum queue; a closed flow resumes on step 2, as for soETH.
+ * The shares sit on Base, so it takes two steps: move them to Ethereum (LayerZero, fee in ETH on
+ * Base), then request on the Ethereum queue; a closed flow resumes on step 2, as for soETH. The
+ * Ethereum vault pays only from what it holds right now, so the form shows its "available now",
+ * Max is capped at it, and an amount over it offers the available amount.
  */
 const SoBtcWithdrawForm = () => {
   const { user } = useUser();
@@ -80,23 +78,19 @@ const SoBtcWithdrawForm = () => {
   );
   const session = useMemo(() => selectWithdrawSession(sessions, 'BTC', safe), [sessions, safe]);
 
-  const [chainId, setChainId] = useState<SoBtcChainId>(base.id);
   const [amount, setAmount] = useState('');
-  // A resumed WBTC withdrawal: the shares are on Ethereum, step 2 is next.
+  // A resumed withdrawal: the shares are on Ethereum, step 2 is next.
   useEffect(() => {
-    if (session) {
-      setChainId(mainnet.id);
-      setAmount(session.amount);
-    }
+    if (session) setAmount(session.amount);
   }, [session]);
 
-  // Shares by chain: always on Base, except between the two steps of a WBTC withdrawal.
-  const shareRead = (chain: SoBtcChainId) => ({
+  // Shares by chain: always on Base, except between the two steps of a withdrawal.
+  const shareRead = (chainId: SoBtcChainId) => ({
     abi: erc20Abi,
-    address: SOBTC_WITHDRAW_OPTIONS[chain].vault,
+    address: SOBTC_CHAINS[chainId].vault,
     functionName: 'balanceOf' as const,
     args: [safe as Address] as const,
-    chainId: chain,
+    chainId,
     query: { enabled: !!safe, refetchInterval: 15_000 },
   });
   const { data: baseShares, isLoading: isBaseSharesLoading } = useReadContract(shareRead(base.id));
@@ -104,28 +98,23 @@ const SoBtcWithdrawForm = () => {
     shareRead(mainnet.id),
   );
 
-  const availability = {
-    [base.id]: useSoBtcAvailability(base.id),
-    [mainnet.id]: useSoBtcAvailability(mainnet.id),
-  } as const;
+  const availability = useSoBtcAvailability();
   const btcPrice = useBtcPriceUsd(true);
 
-  const option = SOBTC_WITHDRAW_OPTIONS[chainId];
-  const isWbtc = chainId === mainnet.id;
-  // WBTC goes straight to step 2 for a resumed withdrawal, or when the only soBTC left is on
-  // Ethereum (an earlier bridge whose request was cancelled). Shares left on Ethereum never
-  // block bridging the Base ones: with Base shares and no session, step 1 comes first.
+  const option = SOBTC_WITHDRAW;
+  // Straight to step 2 for a resumed withdrawal, or whenever soBTC already sits on Ethereum (an
+  // earlier bridge whose request was cancelled or only partly made). Those shares need no bridge,
+  // and no Base ETH for its fee, so they are requested first; once the queue holds them the
+  // Ethereum balance is zero and the Base shares come up on step 1.
   const hasEthereumShares = (ethereumShares ?? 0n) > 0n;
-  const hasBaseShares = (baseShares ?? 0n) > 0n;
-  const isStep2 = isWbtc && (!!session || (hasEthereumShares && !hasBaseShares));
+  const isStep2 = !!session || hasEthereumShares;
   const balanceShares = isStep2 ? (ethereumShares ?? 0n) : (baseShares ?? 0n);
   const isBalanceLoading = isStep2 ? isEthereumSharesLoading : isBaseSharesLoading;
 
-  const selected = availability[chainId];
-  const maxShares = selected.data
-    ? balanceShares < selected.data.maxShares
+  const maxShares = availability.data
+    ? balanceShares < availability.data.maxShares
       ? balanceShares
-      : selected.data.maxShares
+      : availability.data.maxShares
     : balanceShares;
 
   const amountShares = useMemo(() => {
@@ -136,16 +125,12 @@ const SoBtcWithdrawForm = () => {
     }
   }, [amount]);
 
-  const rate = selected.data?.rate;
+  const rate = availability.data?.rate;
   const receiveSats =
     amountShares && rate
       ? (soBtcSharesToAssets(amountShares, rate) * (10_000n - SOLVER_FEE_BPS)) / 10_000n
       : 0n;
   const amountBtc = amountShares && rate ? toBtc(soBtcSharesToAssets(amountShares, rate)) : 0;
-
-  const otherChainId: SoBtcChainId = isWbtc ? base.id : mainnet.id;
-  const other = availability[otherChainId].data;
-  const otherFits = !!other && !!amountShares && other.maxShares >= amountShares && !session;
 
   const validation: string | null = useMemo(() => {
     if (!amount) return null;
@@ -156,11 +141,14 @@ const SoBtcWithdrawForm = () => {
     }
     return null;
   }, [amount, amountShares, balanceShares]);
-  // Over what the chosen vault can pay right now: its own message, with the two ways out.
+  // Over what the Ethereum vault can pay right now: its own message, with the amount it can.
   const isOverAvailable =
-    !validation && !!amountShares && !!selected.data && amountShares > selected.data.maxShares;
+    !validation &&
+    !!amountShares &&
+    !!availability.data &&
+    amountShares > availability.data.maxShares;
 
-  const { withdrawSoBtc, withdrawSoBtcStatus } = useWithdrawSoBtc(chainId);
+  const { withdrawSoBtc, withdrawSoBtcStatus } = useWithdrawSoBtc();
   const { bridgeSoBtc, bridgeSoBtcStatus } = useBridgeSoBtcToEthereum();
   const isWithdrawing = withdrawSoBtcStatus === Status.PENDING;
   const isBridging = bridgeSoBtcStatus === Status.PENDING;
@@ -171,8 +159,8 @@ const SoBtcWithdrawForm = () => {
     amountShares > 0n &&
     !validation &&
     !isOverAvailable &&
-    !selected.isLoading &&
-    !selected.isError &&
+    !availability.isLoading &&
+    !availability.isError &&
     !isBusy;
 
   const setShares = (shares: bigint) => setAmount(formatUnits(shares, SOBTC_DECIMALS));
@@ -182,7 +170,7 @@ const SoBtcWithdrawForm = () => {
     try {
       const transaction = await withdrawSoBtc(amount.trim());
       setTransaction({ amount: Number(amount), symbol: 'soBTC' });
-      if (isWbtc) clearSession('BTC');
+      clearSession('BTC');
       setAmount('');
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
@@ -220,6 +208,12 @@ const SoBtcWithdrawForm = () => {
 
   const usdLabel =
     btcPrice > 0 && amountBtc > 0 ? `$${formatNumber(amountBtc * btcPrice, 2)}` : '$0.00';
+  const state = availabilityState(
+    availability.data,
+    availability.isLoading,
+    availability.isError,
+    balanceShares,
+  );
 
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
@@ -264,73 +258,55 @@ const SoBtcWithdrawForm = () => {
           {validation && <Text className="text-sm text-red-400">{validation}</Text>}
         </View>
 
-        {/* Receive as */}
+        {/* Receive as: WBTC on Ethereum, the only payout */}
         <View className="mt-4 gap-2">
           <Text className="text-base font-medium opacity-70">Receive as</Text>
-          {SOBTC_WITHDRAW_OPTION_ORDER.map(id => {
-            const item = SOBTC_WITHDRAW_OPTIONS[id];
-            const query = availability[id];
-            const shares =
-              id === mainnet.id && hasEthereumShares ? (ethereumShares ?? 0n) : (baseShares ?? 0n);
-            const state = optionState(query.data, query.isLoading, query.isError, shares);
-            const isSelected = id === chainId;
-            // A resumed WBTC withdrawal is locked to WBTC: its shares are already on Ethereum.
-            const isLocked = !!session && id !== mainnet.id;
-            return (
-              <Pressable
-                key={id}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: isSelected, disabled: isLocked }}
-                disabled={isLocked || isBusy}
-                onPress={() => setChainId(id)}
+          <View
+            className={cn(
+              'gap-1 rounded-2xl border border-brand bg-card p-4',
+              state === 'unavailable' && 'opacity-50',
+            )}
+          >
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center gap-2">
+                <RenderTokenIcon
+                  tokenIcon={getTokenIcon({ tokenSymbol: option.asset, size: 28 })}
+                  size={28}
+                />
+                <Text className="text-base font-semibold">
+                  {option.asset} on {option.networkName}
+                </Text>
+              </View>
+              <Text
                 className={cn(
-                  'gap-1 rounded-2xl border bg-card p-4',
-                  isSelected ? 'border-brand' : 'border-transparent',
-                  (isLocked || state === 'unavailable') && 'opacity-50',
+                  'text-sm',
+                  state === 'available' && 'text-brand',
+                  state === 'limited' && 'text-yellow-400',
+                  (state === 'unavailable' || state === 'error') && 'text-red-400',
+                  state === 'loading' && 'text-muted-foreground',
                 )}
               >
-                <View className="flex-row items-center justify-between gap-2">
-                  <View className="flex-row items-center gap-2">
-                    <RenderTokenIcon
-                      tokenIcon={getTokenIcon({ tokenSymbol: item.asset, size: 28 })}
-                      size={28}
-                    />
-                    <Text className="text-base font-semibold">
-                      {item.asset} on {item.networkName}
-                    </Text>
-                  </View>
-                  <Text
-                    className={cn(
-                      'text-sm',
-                      state === 'available' && 'text-brand',
-                      state === 'limited' && 'text-yellow-400',
-                      (state === 'unavailable' || state === 'error') && 'text-red-400',
-                      state === 'loading' && 'text-muted-foreground',
-                    )}
-                  >
-                    {state === 'loading'
-                      ? 'Checking…'
-                      : state === 'error'
-                        ? "Couldn't check"
-                        : state === 'unavailable'
-                          ? 'None available now'
-                          : `Up to ${formatBtcAmount(toBtc(query.data!.availableSats))} now`}
-                  </Text>
-                </View>
-                <Text className="text-sm text-muted-foreground">
-                  {item.timeLabel} · {item.costLabel}
-                </Text>
-              </Pressable>
-            );
-          })}
-          {isOverAvailable && selected.data && (
+                {state === 'loading'
+                  ? 'Checking…'
+                  : state === 'error'
+                    ? "Couldn't check"
+                    : state === 'unavailable'
+                      ? 'None available now'
+                      : `Up to ${formatBtcAmount(toBtc(availability.data!.availableSats))} now`}
+              </Text>
+            </View>
+            <Text className="text-sm text-muted-foreground">
+              {option.timeLabel} · {option.costLabel}
+            </Text>
+          </View>
+          {isOverAvailable && availability.data && (
             <View className="gap-3 rounded-2xl bg-card p-4">
               <Text className="text-sm text-yellow-400">
-                Only {formatBtcAmount(toBtc(selected.data.availableSats))} can be withdrawn as{' '}
+                Only {formatBtcAmount(toBtc(availability.data.availableSats))} can be withdrawn as{' '}
                 {option.asset} right now.
               </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {maxShares > 0n && (
+              {maxShares > 0n && (
+                <View className="flex-row flex-wrap gap-2">
                   <Button
                     variant="secondary"
                     className="h-10 rounded-xl"
@@ -340,20 +316,8 @@ const SoBtcWithdrawForm = () => {
                       Withdraw {formatBtcAmount(toBtc(maxShares), '')}
                     </Text>
                   </Button>
-                )}
-                {otherFits && (
-                  <Button
-                    variant="secondary"
-                    className="h-10 rounded-xl"
-                    onPress={() => setChainId(otherChainId)}
-                  >
-                    <Text className="text-sm font-semibold">
-                      Switch to {SOBTC_WITHDRAW_OPTIONS[otherChainId].asset} on{' '}
-                      {SOBTC_WITHDRAW_OPTIONS[otherChainId].networkName}
-                    </Text>
-                  </Button>
-                )}
-              </View>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -373,44 +337,29 @@ const SoBtcWithdrawForm = () => {
 
         <Text className="text-base font-medium opacity-70">Actions</Text>
         <TokenDetails>
-          {isWbtc ? (
-            <>
-              <ActionStep
-                step={1}
-                icon="soBTC"
-                title="Move to Ethereum"
-                hint="~2 min"
-                label="Move"
-                isActive={!isStep2}
-                isLoading={isBridging}
-                disabled={isStep2 || !canSubmit}
-                onPress={onBridge}
-              />
-              <View className="border-b border-border/40" />
-              <ActionStep
-                step={2}
-                icon="WBTC"
-                title="Withdraw to WBTC"
-                hint="Usually within 3 days"
-                label="Withdraw"
-                isActive={isStep2}
-                isLoading={isWithdrawing}
-                disabled={!isStep2 || !canSubmit}
-                onPress={onWithdraw}
-              />
-            </>
-          ) : (
-            <ActionStep
-              icon="cbBTC"
-              title="Withdraw to cbBTC"
-              hint={SOBTC_WITHDRAW_OPTIONS[base.id].timeLabel}
-              label="Withdraw"
-              isActive
-              isLoading={isWithdrawing}
-              disabled={!canSubmit}
-              onPress={onWithdraw}
-            />
-          )}
+          <ActionStep
+            step={1}
+            icon="soBTC"
+            title="Move to Ethereum"
+            hint="~2 min"
+            label="Move"
+            isActive={!isStep2}
+            isLoading={isBridging}
+            disabled={isStep2 || !canSubmit}
+            onPress={onBridge}
+          />
+          <View className="border-b border-border/40" />
+          <ActionStep
+            step={2}
+            icon="WBTC"
+            title="Withdraw to WBTC"
+            hint="Usually within 3 days"
+            label="Withdraw"
+            isActive={isStep2}
+            isLoading={isWithdrawing}
+            disabled={!isStep2 || !canSubmit}
+            onPress={onWithdraw}
+          />
         </TokenDetails>
         <View className="mt-2 flex-row items-center justify-center gap-2 pb-16">
           <NeedHelp />
@@ -420,7 +369,7 @@ const SoBtcWithdrawForm = () => {
   );
 };
 
-/** One action row: a numbered step of the WBTC flow, or the single cbBTC withdraw. */
+/** One numbered action row of the withdrawal. */
 const ActionStep = ({
   step,
   icon,
@@ -432,7 +381,7 @@ const ActionStep = ({
   disabled,
   onPress,
 }: {
-  step?: number;
+  step: number;
   icon: string;
   title: string;
   hint: string;
@@ -446,11 +395,9 @@ const ActionStep = ({
   return (
     <View className="px-5 py-6 md:p-5">
       <View className="mb-4 flex-row items-center gap-2">
-        {step !== undefined && (
-          <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-muted-foreground/20">
-            <Text className="text-base font-medium text-muted-foreground">{step}</Text>
-          </View>
-        )}
+        <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-muted-foreground/20">
+          <Text className="text-base font-medium text-muted-foreground">{step}</Text>
+        </View>
         <View className="flex-1 flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <RenderTokenIcon tokenIcon={getTokenIcon({ tokenSymbol: icon, size: 22 })} size={22} />
