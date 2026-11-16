@@ -18,7 +18,7 @@ import type { CardCreditSummary } from '@/lib/types';
 const RULES = [
   'Always used first, before your balance',
   'Can’t be withdrawn or sent',
-  'No cashback on the part paid with credit',
+  'No cashback on the part paid with the bonus',
   'Doesn’t expire',
 ];
 
@@ -54,9 +54,7 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
   return (
     <ReferSheet isOpen={isOpen} onOpenChange={onOpenChange} contentKey="card-credit">
       <RewardIcon kind="welcome" size={56} />
-      <Text className="mt-[14px] text-center text-[22px] font-semibold text-white">
-        Card credit
-      </Text>
+      <Text className="mt-[14px] text-center text-[22px] font-semibold text-white">Card bonus</Text>
       {hasCredit ? (
         <View className="mt-[10px]">
           <ReferAmountChip label={formatUsdCents(availableUsd)} />
@@ -65,7 +63,7 @@ const CardCreditSheet = ({ isOpen, onOpenChange, credit }: CardCreditSheetProps)
       <Text className="mt-3 text-center text-[15px] leading-[21px] text-white/60">
         {hasCredit
           ? `${source ? `${source} ` : ''}${spendLine}`
-          : 'Your referral bonuses are paid as card credit, to spend with your Solid card.'}
+          : 'Your referral bonuses are paid as a card bonus, to spend with your Solid card.'}
       </Text>
       {pendingUsd > 0 ? (
         <Text className="mt-1 text-center text-[13px] text-white/40">

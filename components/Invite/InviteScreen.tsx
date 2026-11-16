@@ -53,7 +53,7 @@ const inviteCopy = (lookup: ReferralInviteLookup | undefined): InviteCopy => {
         'Get your free card',
         `Spend ${formatUsdWhole(spendTargetUsd)} at ${merchantTarget} or more shops`,
       ],
-      footnote: 'Card credit can only be spent with your Solid card.',
+      footnote: 'Card bonus can only be spent with your Solid card.',
     };
   }
 

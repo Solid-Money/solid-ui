@@ -66,7 +66,7 @@ const HomeBalancePills = ({
           <Pressable
             onPress={openCardCredit}
             accessibilityRole="button"
-            accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. What is card credit?`}
+            accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. What is the card bonus?`}
             className="h-[35px] flex-row items-center gap-1.5 rounded-full bg-card pl-3 pr-[14px] active:opacity-70 web:hover:bg-card-hover"
           >
             <ReferIcon asset="images/referral-v4/gift-16.svg" size={16} />

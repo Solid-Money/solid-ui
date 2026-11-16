@@ -120,7 +120,7 @@ const ReferAllRewardsSheet = ({
       ))}
       <Row
         icon={<ReferIcon asset="images/referral-v4/card-40.svg" size={40} />}
-        title="Card credit"
+        title="Card bonus"
         subtitle="How your bonuses are paid"
         onPress={onOpenCardCredit}
       />

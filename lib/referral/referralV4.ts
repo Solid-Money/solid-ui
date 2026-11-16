@@ -62,6 +62,19 @@ export const formatUsdShort = (value: number): string => {
   return Number.isInteger(amount) ? formatUsdWhole(amount) : formatUsdCents(amount);
 };
 
+/**
+ * "a $10 card bonus", or "an $8 card bonus": the article goes by how the amount is read aloud, and
+ * eight, eleven and eighteen (thousand) start with a vowel sound. The amounts are admin-set, so
+ * the copy cannot hard-code "a".
+ */
+export const cardBonusPhrase = (amountUsd: number): string => {
+  const amount = formatUsdWhole(amountUsd);
+  // "$18,000" is read "eighteen thousand": the leading digit group decides.
+  const lead = amount.slice(1).split(',')[0];
+  const article = lead.startsWith('8') || lead === '11' || lead === '18' ? 'an' : 'a';
+  return `${article} ${amount} card bonus`;
+};
+
 /** "1%" from 0.01; "1.5%" from 0.015. */
 export const formatRate = (rate: number): string => `${Math.round((rate || 0) * 10000) / 100}%`;
 
@@ -537,7 +550,7 @@ export const spendShareLine = (
 
 /**
  * The friend's own welcome progress, on the Refer screen of someone who was
- * invited: "Spend $54 more at 2 more shops in 9 days to get $10 card credit".
+ * invited: "Spend $54 more at 2 more shops in 9 days to get a $10 card bonus".
  * Null once there is nothing left to do (or nothing to do it for).
  */
 export const asFriendProgressLine = (
@@ -557,7 +570,7 @@ export const asFriendProgressLine = (
     spendLeft > 0 ? `Spend ${formatUsdShort(spendLeft)} more` : 'Spend',
     shopsLeft > 0 ? `at ${shopsLeft} more ${plural(shopsLeft, 'shop', 'shops')}` : null,
     days === null ? null : days <= 0 ? 'today' : `in ${days} ${plural(days, 'day', 'days')}`,
-    `to get ${formatUsdWhole(step.amountUsd)} card credit`,
+    `to get ${cardBonusPhrase(step.amountUsd)}`,
   ].filter(Boolean);
   return parts.join(' ');
 };

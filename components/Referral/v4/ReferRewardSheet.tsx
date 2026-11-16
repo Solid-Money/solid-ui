@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import {
+  cardBonusPhrase,
   formatRate,
   formatShortDay,
   formatUsdShort,
@@ -48,6 +49,12 @@ const TITLES: Record<ReferRewardKind, string> = {
 export const eachLabel = (referrerUsd: number, friendUsd: number) =>
   referrerUsd === friendUsd ? `${formatUsdWhole(referrerUsd)} each` : formatUsdWhole(referrerUsd);
 
+/** "You and your friend each get a $10 card bonus", or each their own when the two differ. */
+const bothGet = (referrerUsd: number, friendUsd: number): string =>
+  referrerUsd === friendUsd
+    ? `You and your friend each get ${cardBonusPhrase(referrerUsd)}`
+    : `You get ${cardBonusPhrase(referrerUsd)} and your friend gets ${cardBonusPhrase(friendUsd)}`;
+
 /** The chip and the paragraph, worded from the live terms. */
 export const rewardCopy = (
   kind: ReferRewardKind,
@@ -66,26 +73,20 @@ export const rewardCopy = (
       };
     case 'welcome': {
       const { referrerUsd, friendUsd, spendTargetUsd, merchantTarget, windowDays } = terms.welcome;
-      const who =
-        referrerUsd === friendUsd
-          ? `You and your friend each get ${formatUsdWhole(referrerUsd)}`
-          : `You get ${formatUsdWhole(referrerUsd)} and your friend gets ${formatUsdWhole(friendUsd)}`;
       return {
         chip: eachLabel(referrerUsd, friendUsd),
-        description: `${who} of card credit when they spend ${formatUsdWhole(spendTargetUsd)}${
+        description: `${bothGet(referrerUsd, friendUsd)} when they spend ${formatUsdWhole(
+          spendTargetUsd,
+        )}${
           merchantTarget > 0 ? ` at ${merchantTarget} or more shops` : ''
         } in their first ${windowDays} days.`,
       };
     }
     case 'bigSpender': {
       const { referrerUsd, friendUsd, spendTargetUsd, windowDays } = terms.bigSpender;
-      const who =
-        referrerUsd === friendUsd
-          ? `You and your friend each get ${formatUsdWhole(referrerUsd)}`
-          : `You get ${formatUsdWhole(referrerUsd)} and your friend gets ${formatUsdWhole(friendUsd)}`;
       return {
         chip: eachLabel(referrerUsd, friendUsd),
-        description: `${who} of card credit when they spend ${formatUsdWhole(
+        description: `${bothGet(referrerUsd, friendUsd)} when they spend ${formatUsdWhole(
           spendTargetUsd,
         )} in their first ${windowDays} days.`,
       };
@@ -93,9 +94,9 @@ export const rewardCopy = (
     case 'upgrade':
       return {
         chip: `${formatUsdWhole(terms.upgrade.primeUsd)} or ${formatUsdWhole(terms.upgrade.ultraUsd)}`,
-        description: `Get ${formatUsdWhole(
+        description: `Get ${cardBonusPhrase(
           terms.upgrade.primeUsd,
-        )} of card credit when your friend gets Prime, or ${formatUsdWhole(
+        )} when your friend gets Prime, or ${formatUsdWhole(
           terms.upgrade.ultraUsd,
         )} when they get Ultra.`,
       };
