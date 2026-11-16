@@ -107,7 +107,7 @@ const CardActivityRow = ({
           )}
           {paidWithCardCredit && (
             <Text className="text-sm font-medium text-white/70" numberOfLines={1}>
-              Paid with card credit
+              Paid with card bonus
             </Text>
           )}
           {statusLabel && (

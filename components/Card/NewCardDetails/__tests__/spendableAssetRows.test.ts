@@ -287,7 +287,7 @@ describe('buildSpendableAssetRows', () => {
       expect(cardCreditAssetRow(credit({ availableUsd: 12.5 }))).toEqual({
         key: 'card-credit',
         icon: 'cardCredit',
-        name: 'Card credit',
+        name: 'Card bonus',
         subtitle: 'Used first',
         value: '$12.50',
         usd: 0,

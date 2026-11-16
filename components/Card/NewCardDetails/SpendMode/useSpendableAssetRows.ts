@@ -252,7 +252,7 @@ export const cardCreditAssetRow = (
     ? {
         key: 'card-credit',
         icon: 'cardCredit',
-        name: 'Card credit',
+        name: 'Card bonus',
         subtitle: 'Used first',
         value: money(credit.availableUsd, 'USD'),
         usd: 0,

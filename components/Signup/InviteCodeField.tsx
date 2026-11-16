@@ -17,10 +17,10 @@ export type InviteCodeStatus =
   /** The lookup itself failed: say nothing, signup sends the code and the backend decides. */
   | { kind: 'unverified' };
 
-/** "Dana invited you · $10 card credit". */
+/** "Dana invited you · $10 card bonus". */
 const validLine = (lookup: Extract<ReferralInviteLookup, { valid: true }>) => {
   const who = `${lookup.referrer.username} invited you`;
-  if (lookup.offer) return `${who} · ${formatUsdWhole(lookup.offer.friendCreditUsd)} card credit`;
+  if (lookup.offer) return `${who} · ${formatUsdWhole(lookup.offer.friendCreditUsd)} card bonus`;
   if (lookup.legacyOffer) {
     return `${who} · ${formatUsdWhole(lookup.legacyOffer.friendRewardUsd)} in ${lookup.legacyOffer.payoutToken}`;
   }
