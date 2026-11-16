@@ -2134,13 +2134,6 @@ export interface Cashback {
    */
   payoutTxHash?: string;
   /**
-   * The chain `payoutTxHash` is on: Base (8453), where cashback is paid first,
-   * or Fuse (122), the fallback. Absent on rows paid before the backend
-   * recorded it — every one of those was paid on Fuse — and on unpaid rows.
-   * Matching a payout to its activity is by hash and needs no chain.
-   */
-  payoutChainId?: number;
-  /**
    * USD this row is projected to pay out when its escrow matures.
    *
    * An escrowed row has no payout amount yet — `soUsdAmount` is written when it
@@ -2174,7 +2167,12 @@ export interface Cashback {
   monthlyCapEur?: number;
   /** The EUR counterpart of {@link projectedUsdValue}, for an unpaid EUR row. */
   projectedEurValue?: number;
-  /** Chain the payout was sent on: 8453 (Base) for soEUR. Absent means Fuse. */
+  /**
+   * Chain the payout was sent on: 8453 (Base) for soEUR, and for soUSD the
+   * Base float covered; 122 (Fuse) for soUSD it did not. Absent on soUSD rows
+   * paid before the backend recorded it — all on Fuse — and on unpaid rows.
+   * Matching a payout to its activity is by hash and needs no chain.
+   */
   payoutChainId?: number;
   /** Only when the purchase was billed in a non-EUR currency and converted once at accrual. */
   billedAmount?: string;

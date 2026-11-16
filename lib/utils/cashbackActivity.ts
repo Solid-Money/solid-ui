@@ -6,7 +6,8 @@ import { getTransferContext, TransferContextKind } from '@/lib/utils/transferPre
  *
  * Cashback is paid as its own on-chain transfer from the payout wallet to the
  * cardholder's Safe, roughly two weeks after the purchase that earned it — in
- * soUSD, on Base first and on Fuse when Base cannot cover it. Every earlier FUSE
+ * soUSD, on Base first and on Fuse when Base cannot cover it, or in soEUR on
+ * Base for a euro cardholder. Every earlier FUSE
  * payout was indexed like any other incoming transfer: a bare "Receive FUSE" row
  * that says nothing about what it is, one per purchase. soUSD on Base is indexed
  * the same way (it is a listed token there), and so is any payout token that
