@@ -114,6 +114,37 @@ describe('activity store - a payout waiting on our payout wallet', () => {
     }
   });
 
+  it('orders against the newest copy seen, even one that changed nothing else', () => {
+    // T1 success, then T3 success with nothing else different, then a delayed
+    // awaiting copy from T2: it is older than what the device has seen.
+    const t1 = { ...deposit, updatedAt: '2026-11-15T09:00:00.000Z' };
+    const t3 = { ...deposit, updatedAt: '2026-11-15T09:30:00.000Z' };
+    const t2 = { ...awaiting, updatedAt: '2026-11-15T09:15:00.000Z' };
+
+    for (const write of [
+      (event: ActivityEvent) => useActivityStore.getState().bulkUpsertEvent(USER, [event]),
+      (event: ActivityEvent) => useActivityStore.getState().upsertEvent(USER, event),
+    ]) {
+      useActivityStore.getState().setEvents(USER, [t1]);
+
+      write(t3);
+      write(t2);
+
+      expect(stored().status).toBe(TransactionStatus.SUCCESS);
+      expect(stored().updatedAt).toBe(t3.updatedAt);
+    }
+  });
+
+  it('refuses an awaiting copy with no updatedAt against a stored one that has it', () => {
+    useActivityStore
+      .getState()
+      .setEvents(USER, [{ ...deposit, updatedAt: '2026-11-15T09:00:00.000Z' }]);
+
+    useActivityStore.getState().bulkUpsertEvent(USER, [awaiting]);
+
+    expect(stored().status).toBe(TransactionStatus.SUCCESS);
+  });
+
   it('takes a newer awaiting-funds copy over a success', () => {
     useActivityStore
       .getState()

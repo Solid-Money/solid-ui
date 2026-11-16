@@ -65,10 +65,34 @@ function isStatusDowngrade(existingStatus: string, incomingStatus: string): bool
  */
 function isStaleStatus(existing: ActivityEvent, incoming: ActivityEvent): boolean {
   if (!isStatusDowngrade(existing.status, incoming.status)) return false;
-  // The awaiting-funds correction, but only from a copy at least as new as the
-  // stored one: an older response landing after the payout's "complete" must
-  // not put the row back to Pending.
-  return !(isPayoutAwaitingFunds(incoming.metadata) && !isOlderCopy(existing, incoming));
+  // The awaiting-funds correction, but only from a copy known to be at least
+  // as new as the stored one: an older response landing after the payout's
+  // "complete" must not put the row back to Pending.
+  return !(isPayoutAwaitingFunds(incoming.metadata) && isKnownNotOlder(existing, incoming));
+}
+
+/**
+ * Whether `incoming` can be trusted to be at least as new as `existing`, for
+ * the one exception that lets a status go backwards.
+ *
+ * Stricter than {@link isOlderCopy}: with a valid `updatedAt` on the stored
+ * copy, an incoming one must carry its own, or nothing orders the two and the
+ * downgrade is refused. A stored copy without one (a row this device created
+ * before the backend's first write) has nothing to order against, and the
+ * correction is taken.
+ */
+function isKnownNotOlder(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const existingAt = Date.parse(existing.updatedAt ?? '');
+  if (!Number.isFinite(existingAt)) return true;
+  const incomingAt = Date.parse(incoming.updatedAt ?? '');
+  return Number.isFinite(incomingAt) && incomingAt >= existingAt;
+}
+
+/** Whether `incoming` was written by the backend after `existing` was. */
+function isNewerCopy(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const incomingAt = Date.parse(incoming.updatedAt ?? '');
+  const existingAt = Date.parse(existing.updatedAt ?? '');
+  return Number.isFinite(incomingAt) && (!Number.isFinite(existingAt) || incomingAt > existingAt);
 }
 
 /**
@@ -156,10 +180,15 @@ function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): bool
   const payoutFlagChanged =
     isPayoutAwaitingFunds(existing.metadata) !== isPayoutAwaitingFunds(incoming.metadata) &&
     !isOlderCopy(existing, incoming);
+  // A newer copy is kept even when nothing else in it differs, so the stored
+  // `updatedAt` is always the newest seen: otherwise a copy from between the
+  // two would compare against the older one and pass as current.
+  const newerCopy = isNewerCopy(existing, incoming);
 
   return (
     statusActuallyChanged ||
     payoutFlagChanged ||
+    newerCopy ||
     existing.hash !== incoming.hash ||
     existing.deleted !== incoming.deleted ||
     existing.failureReason !== incoming.failureReason ||
