@@ -9,10 +9,12 @@ import {
   monthlyCashbackCap,
   monthlyCashbackHeadroom,
   monthlyCashbackTotal,
+  resolveCashbackMonth,
   resolveCashbackProgress,
 } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { formatNumber } from '@/lib/utils';
+import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 /**
  * "Cashback earned: $38 / $150" card with the progress track and the spend-more
@@ -30,14 +32,15 @@ interface CardCashbackCardProps {
 
 const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
   const { data: rewardsData } = useRewardsUserData();
+  // Earned, cap, headroom and the spend hint all in the cardholder's cashback
+  // currency: "€12 / €50" and "Spend €X more" for a euro cardholder.
+  const month = resolveCashbackMonth(rewardsData);
+  const symbol = CURRENCY_SYMBOLS[month?.currency ?? 'USD'];
 
-  const earned = monthlyCashbackTotal(
-    rewardsData?.cashbackThisMonth,
-    rewardsData?.cashbackPendingThisMonth,
-  );
+  const earned = monthlyCashbackTotal(month?.cashbackThisMonth, month?.cashbackPendingThisMonth);
   // What this month's purchases are paid up to — above the tier's cap after a
   // trial ends mid-month, since purchases made during it keep the trial's cap.
-  const cap = monthlyCashbackCap(rewardsData);
+  const cap = monthlyCashbackCap(month);
   // The rate this card's own sheet quotes, so "spend $X more" is the spend that
   // actually reaches the cap at the advertised rate.
   const rate = resolveUserCashbackRate(rewardsData);
@@ -47,7 +50,7 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
   // same cap when it matures, so it counts against the target too — otherwise
   // this asks for spend that will be capped. Measured against what a purchase
   // made now can still earn, which a month carried by a trial may have none of.
-  const headroom = monthlyCashbackHeadroom(rewardsData, earned);
+  const headroom = monthlyCashbackHeadroom(month, earned);
   const capReached = isMonthlyCashbackCapReached(headroom);
   const remainingSpend = rate > 0 ? (headroom * 100) / rate : 0;
 
@@ -64,9 +67,9 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
         <Text className="ml-[6px] text-[18px] font-medium text-white">
           Cashback earned:{' '}
           <Text className="text-[18px] font-medium text-[#94F27F]" style={styles.earnedAmount}>
-            ${formatNumber(earned, 0, 0)}
+            {`${symbol}${formatNumber(earned, 0, 0)}`}
           </Text>{' '}
-          / ${formatNumber(cap, 0, 0)}
+          / {`${symbol}${formatNumber(cap, 0, 0)}`}
         </Text>
       </View>
       <View style={styles.track}>
@@ -79,7 +82,7 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
           <Text className="text-[14px] font-normal text-white/70">
             {capReached
               ? "You've reached max cashback this month"
-              : `Spend $${formatNumber(remainingSpend, 0, 0)} more for max cashback this month`}
+              : `Spend ${symbol}${formatNumber(remainingSpend, 0, 0)} more for max cashback this month`}
           </Text>
         )}
       </View>

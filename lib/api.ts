@@ -2814,9 +2814,14 @@ export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };
 
-export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
+/**
+ * The tier comparison. `currency: 'EUR'` asks for the monthly caps in euros, at the tiers' euro
+ * caps — what a euro cardholder's cashback is capped at.
+ */
+export const fetchTierBenefits = async (currency?: MainCurrency): Promise<TierBenefits[]> => {
+  const query = currency === 'EUR' ? '?currency=EUR' : '';
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits${query}`,
     {
       method: 'GET',
       headers: {

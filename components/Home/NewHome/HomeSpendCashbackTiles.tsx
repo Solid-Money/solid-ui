@@ -14,10 +14,13 @@ import {
   CASHBACK_EARNED_COLOR,
   monthlyCashbackCap,
   monthlyCashbackTotal,
+  resolveAllTimeCashback,
+  resolveCashbackMonth,
 } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
-import { formatBalanceUSD } from '@/lib/utils';
+import { formatBalance } from '@/lib/utils';
+import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
@@ -57,10 +60,13 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
   const { data: rewardsData } = useRewardsUserData();
   const { data: cardDetails } = useCardDetails();
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
-  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
+  // In the cardholder's cashback currency: euros for a euro cardholder.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
+  const cashbackThisMonth = cashbackMonth?.cashbackThisMonth ?? 0;
   const earnedThisMonth = monthlyCashbackTotal(
     cashbackThisMonth,
-    rewardsData?.cashbackPendingThisMonth,
+    cashbackMonth?.cashbackPendingThisMonth,
   );
   // The Cash segment's empty-state text is "Add funds"; the home tile always
   // shows a balance. Credit and Smart use the same availability as the picker.
@@ -131,11 +137,12 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
         <CashbackDetailsSheet
           triggerContainerClassName=""
           cashbackRate={rate}
+          currency={cashbackCurrency}
           cashbackThisMonth={cashbackThisMonth}
-          cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-          maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-          tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-          allTimeCashback={Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth)}
+          cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+          maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+          tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
+          {...resolveAllTimeCashback(rewardsData, cardDetails?.cashback)}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           trigger={
             <Pressable
@@ -176,7 +183,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
                   minimumFontScale={0.7}
                   style={[styles.amount, styles.cashbackAmount]}
                 >
-                  +{formatBalanceUSD(earnedThisMonth)}
+                  +{formatBalance(earnedThisMonth, CURRENCY_SYMBOLS[cashbackCurrency])}
                 </Text>
                 <Text
                   numberOfLines={1}

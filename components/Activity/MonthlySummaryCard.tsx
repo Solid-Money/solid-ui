@@ -123,6 +123,8 @@ export default function MonthlySummaryCard() {
               previousMonthName={previous ? getMonthName(previous.key) : undefined}
               isFirstMonth={isFirstMonth}
               cashbackUsd={month.cashbackUsd}
+              cashbackEur={month.cashbackEur}
+              cashbackCurrency={insights.cashbackCurrency}
             />
           </View>
         </View>

@@ -2,9 +2,11 @@ import {
   CardTransaction,
   CardTransactionCategory,
   Cashback,
+  CashbackCurrency,
   CashbackStatus,
   CashbackType,
 } from '@/lib/types';
+import { CURRENCY_SYMBOLS, getCashbackValue } from '@/lib/utils/cardHelpers';
 import {
   getSpendingCategory,
   matchSubscriptionBrand,
@@ -148,24 +150,24 @@ const EARNED_CASHBACK_STATUSES = new Set<CashbackStatus>([
 ]);
 
 /**
- * A cashback row in dollars: the payout when it has been paid (token amount ×
- * its rate, soUSD or legacy FUSE), otherwise the backend's projection. Mirrors
- * `getCashbackAmount`, which formats the same figure for one receipt.
+ * A cashback row in its own currency — euros for a EUR row, dollars otherwise:
+ * the payout when it has been paid, otherwise the backend's projection, and 0
+ * for a row that stands for nothing earned. Mirrors `getCashbackAmount`, which
+ * formats the same figure for one receipt.
+ *
+ * The currency comes with the value because the two are never added together:
+ * every total built from these is kept per currency.
  */
-export const getCashbackUsdValue = (cashback: Cashback): number => {
-  if (!EARNED_CASHBACK_STATUSES.has(cashback.status)) return 0;
-
-  const tokenAmount = cashback.soUsdAmount ?? cashback.fuseAmount;
-  if (!tokenAmount) {
-    const projected = cashback.projectedUsdValue;
-    return typeof projected === 'number' && Number.isFinite(projected) && projected > 0
-      ? projected
-      : 0;
-  }
-
-  const rate = cashback.soUsdAmount ? cashback.soUsdRate : cashback.fuseUsdPrice;
-  const value = parseFloat(tokenAmount) * parseFloat(rate || '0');
-  return Number.isFinite(value) && value > 0 ? value : 0;
+export const getEarnedCashbackValue = (
+  cashback: Cashback,
+): { value: number; currency: CashbackCurrency } => {
+  const { value, currency } = getCashbackValue(cashback);
+  const earned =
+    EARNED_CASHBACK_STATUSES.has(cashback.status) &&
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value > 0;
+  return { value: earned ? value : 0, currency };
 };
 
 // ---------------------------------------------------------------------------
@@ -183,7 +185,9 @@ export interface SubscriptionCashbackItem {
   merchant: string;
   /** Backend category key ("ai", "streaming", …); configured server-side. */
   category?: string;
-  amountUsd: number;
+  /** The cashback, in `currency` — the row's own. */
+  amount: number;
+  currency: CashbackCurrency;
 }
 
 export interface SubscriptionItem {
@@ -197,15 +201,21 @@ export interface SubscriptionItem {
   amountUsd: number;
   charges: number;
   lastChargedAt: number;
-  /** Cashback actually earned on these charges; 0 when none. */
+  /** Cashback actually earned on these charges, per currency (never summed); 0 when none. */
   cashbackUsd: number;
+  cashbackEur: number;
 }
 
 export interface MonthSummary {
   key: string;
   total: number;
   purchaseCount: number;
+  /**
+   * Cashback earned on the month's purchases, per currency: USD rows and EUR
+   * rows are summed apart and never added together.
+   */
   cashbackUsd: number;
+  cashbackEur: number;
   /** Largest first, Other always last. Empty categories are left out. */
   categories: CategorySummary[];
   /** Spend per day of the month, index 0 = the 1st. */
@@ -242,6 +252,7 @@ const emptyMonth = (key: string): MonthSummary => ({
   total: 0,
   purchaseCount: 0,
   cashbackUsd: 0,
+  cashbackEur: 0,
   categories: [],
   daily: Array.from({ length: getDaysInMonth(key) }, () => 0),
   subscriptionCashback: [],
@@ -336,6 +347,7 @@ export const buildSpendingInsights = (
         charges: 0,
         lastChargedAt: 0,
         cashbackUsd: 0,
+        cashbackEur: 0,
       };
       item.amountUsd += signed;
       if (isPurchase) {
@@ -357,20 +369,22 @@ export const buildSpendingInsights = (
 
   // Cashback lands in the month of the purchase that earned it; a row whose
   // purchase is outside the loaded history falls back to when it was written.
+  // Each row is added to the total of its own currency only.
   for (const cashback of cashbacks ?? []) {
-    const value = getCashbackUsdValue(cashback);
+    const { value, currency } = getEarnedCashbackValue(cashback);
     if (!value) continue;
     const ms = timestampOf.get(cashback.transactionId) ?? new Date(cashback.createdAt).getTime();
     const month = months.get(getMonthKey(ms));
     if (!month) continue;
-    month.cashbackUsd += value;
+    const cashbackKey = currency === 'EUR' ? 'cashbackEur' : 'cashbackUsd';
+    month[cashbackKey] += value;
 
     const subscriptionKey = subscriptionKeyByTransaction.get(cashback.transactionId);
     const subscriptionItem = subscriptionKey
       ? subscriptionsByMonth.get(month.key)?.get(subscriptionKey)
       : undefined;
     if (subscriptionItem) {
-      subscriptionItem.cashbackUsd += value;
+      subscriptionItem[cashbackKey] += value;
       // The backend's category beats the one guessed from the name.
       subscriptionItem.category = cashback.subscriptionCategory ?? subscriptionItem.category;
     }
@@ -385,7 +399,8 @@ export const buildSpendingInsights = (
           transaction?.description?.trim() ||
           'Subscription',
         category: cashback.subscriptionCategory,
-        amountUsd: round2(value),
+        amount: round2(value),
+        currency,
       });
       const subscriptionCategory = cashback.subscriptionCategory;
       if (
@@ -400,13 +415,15 @@ export const buildSpendingInsights = (
   for (const month of months.values()) {
     month.total = Math.max(0, round2(month.total));
     month.cashbackUsd = round2(month.cashbackUsd);
+    month.cashbackEur = round2(month.cashbackEur);
     month.daily = month.daily.map(value => Math.max(0, round2(value)));
-    month.subscriptionCashback.sort((a, b) => b.amountUsd - a.amountUsd);
+    month.subscriptionCashback.sort((a, b) => b.amount - a.amount);
     month.subscriptions = Array.from(subscriptionsByMonth.get(month.key)?.values() ?? [])
       .map(item => ({
         ...item,
         amountUsd: round2(Math.max(0, item.amountUsd)),
         cashbackUsd: round2(item.cashbackUsd),
+        cashbackEur: round2(item.cashbackEur),
       }))
       .filter(item => item.amountUsd > 0)
       .sort((a, b) => b.amountUsd - a.amountUsd);
@@ -453,8 +470,11 @@ export const getMonthOverMonthChange = (
   return Math.round(((current.total - previous.total) / previous.total) * 100);
 };
 
-export const formatInsightUsd = (value: number): string =>
-  `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** "$38.20", or "€38.20" for a euro figure. */
+export const formatInsightAmount = (value: number, currency: CashbackCurrency): string =>
+  `${CURRENCY_SYMBOLS[currency]}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export const formatInsightUsd = (value: number): string => formatInsightAmount(value, 'USD');
 
 /** Months worth showing: none from before the first purchase, when that is known. */
 export const getVisibleMonths = (insights: SpendingInsights): MonthSummary[] => {

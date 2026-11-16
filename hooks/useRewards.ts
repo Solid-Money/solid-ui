@@ -13,10 +13,12 @@ import {
   optInToRewards,
 } from '@/lib/api';
 import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
-import { RewardsUserData, YieldBoostSummary } from '@/lib/types';
+import { MainCurrency, RewardsUserData, YieldBoostSummary } from '@/lib/types';
 import { isAnyHTTPError, withRefreshToken } from '@/lib/utils';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
+
+import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
 
 const REWARDS = 'rewards';
 
@@ -120,9 +122,15 @@ export const useRewardsUserData = (options?: {
 };
 
 export const useTierBenefits = () => {
+  // A euro cardholder's caps are in euros, so the comparison is asked for in their main currency.
+  // Read off the card details already cached for the card screens; dollars until they answer.
+  const userId = useSelectedUserId();
+  const { data: cardDetails } = useQuery(cardDetailsQueryOptions(userId));
+  const currency: MainCurrency = cardDetails?.main_currency === 'EUR' ? 'EUR' : 'USD';
+
   return useQuery({
-    queryKey: [REWARDS, 'tierBenefits'],
-    queryFn: fetchTierBenefits,
+    queryKey: [REWARDS, 'tierBenefits', currency],
+    queryFn: () => fetchTierBenefits(currency),
     staleTime: secondsToMilliseconds(60),
   });
 };

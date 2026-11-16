@@ -148,6 +148,80 @@ describe('getCashbackAmount', () => {
     }
   });
 
+  describe('a euro row', () => {
+    /**
+     * A cardholder whose Wirex main currency is EUR earns, is capped and is
+     * paid in euros (soEUR on Base). Their rows read "+€", and the dollar
+     * fields — absent on such a row anyway — are never what values it.
+     */
+    it('quotes the euro projection while the row is escrowed', () => {
+      const info = getCashbackAmount('tx-1', [
+        cashback({
+          currency: 'EUR',
+          fiatAmount: '100.00',
+          fiatCurrency: 'EUR',
+          projectedEurValue: 2.994,
+          payoutAt: '2026-09-16T09:03:23.823Z',
+        }),
+      ]);
+
+      expect(info).toEqual({
+        amount: '+€2.99',
+        isPending: true,
+        isEscrowed: true,
+        isPaid: false,
+        isIneligible: false,
+        payoutAt: '2026-09-16T09:03:23.823Z',
+      });
+    });
+
+    it('values a paid row at its soEUR shares times their euro rate', () => {
+      const info = getCashbackAmount('tx-1', [
+        cashback({
+          currency: 'EUR',
+          status: CashbackStatus.Paid,
+          soEurAmount: '2.5',
+          soEurRate: '1.02',
+          payoutChainId: 8453,
+        }),
+      ]);
+
+      expect(info).toMatchObject({ amount: '+€2.55', isPaid: true, isPending: false });
+    });
+
+    it('ignores the dollar projection on a euro row', () => {
+      // Should a backend ever send both, the euro row is still not priced in dollars.
+      const info = getCashbackAmount('tx-1', [
+        cashback({ currency: 'EUR', projectedUsdValue: 3.3, projectedEurValue: 3 }),
+      ]);
+
+      expect(info).toMatchObject({ amount: '+€3.00' });
+    });
+
+    it('leaves the amount unset when no euro projection is sent', () => {
+      expect(getCashbackAmount('tx-1', [cashback({ currency: 'EUR' })])).toMatchObject({
+        amount: null,
+        isEscrowed: true,
+      });
+    });
+
+    it('reports nothing for a paid euro row with no usable payout', () => {
+      expect(
+        getCashbackAmount('tx-1', [
+          cashback({ currency: 'EUR', status: CashbackStatus.Paid, soEurAmount: '0' }),
+        ]),
+      ).toBeNull();
+    });
+  });
+
+  it('reads a row that names USD exactly as one that names no currency', () => {
+    const row = { status: CashbackStatus.Paid, soUsdAmount: '5.5', soUsdRate: '1.05' };
+
+    expect(getCashbackAmount('tx-1', [cashback({ ...row, currency: 'USD' })])).toEqual(
+      getCashbackAmount('tx-1', [cashback(row)]),
+    );
+  });
+
   it('hides cashback that will never pay', () => {
     for (const status of [
       CashbackStatus.Canceled,
