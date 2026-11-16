@@ -108,6 +108,7 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
   FUSE: '500',
   WFUSE: '500',
   BTC: '0.00015',
+  WBTC: '0.00015',
   cbBTC: '0.00015',
   cbZEC: '0.01',
   AAVE: '0.07',

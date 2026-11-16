@@ -83,15 +83,21 @@ describe('WalletDepositTokens', () => {
 
     expect(shown).toEqual(expect.arrayContaining(['Stablecoins', 'Crypto']));
     expect(shown).toEqual(
-      expect.arrayContaining(['EURC', 'cbBTC', 'Coinbase Wrapped BTC', 'cbZEC']),
+      expect.arrayContaining([
+        'EURC',
+        'WBTC',
+        'Wrapped Bitcoin',
+        'cbBTC',
+        'Coinbase Wrapped BTC',
+        'cbZEC',
+      ]),
     );
     // Retired with the Base-only collateral list.
     expect(shown).not.toContain('Gold & silver');
     expect(shown).not.toContain('PAXG');
-    expect(shown).not.toContain('WBTC');
     expect(shown).not.toContain('OP');
-    // A row each: USDC, USDT, EURC, ETH, FUSE, cbBTC, cbZEC, AAVE, SOL, WETH, WFUSE.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(11);
+    // A row each: USDC, USDT, EURC, ETH, FUSE, WBTC, cbBTC, cbZEC, AAVE, SOL, WETH, WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(12);
   });
 
   // Which tokens have a row is rhino.fi's to say off Fuse: no list until it has.
@@ -111,8 +117,9 @@ describe('WalletDepositTokens', () => {
     const root = render();
     const shown = texts(root);
 
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'cbBTC', 'FUSE']));
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(11);
+    // WBTC included: Base is the Safe.
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'WBTC', 'cbBTC', 'FUSE']));
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(12);
     expect(shown).toContain('Couldn’t load the other tokens.');
 
     act(() => root.root.findByType('Button').props.onPress());

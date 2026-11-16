@@ -49,7 +49,18 @@ const BASIC = { rhino: READY };
 /** Someone offered the new deposit tokens, as everyone is on qa/preview builds. */
 const ALL = { hasNewTokens: true, rhino: READY };
 /** Base's currencies, each the Safe there but ETH (see `getWalletOwnAddress`). */
-const BASE_SYMBOLS = ['USDC', 'USDT', 'EURC', 'ETH', 'cbBTC', 'cbZEC', 'AAVE', 'SOL', 'WETH'];
+const BASE_SYMBOLS = [
+  'USDC',
+  'USDT',
+  'EURC',
+  'ETH',
+  'WBTC',
+  'cbBTC',
+  'cbZEC',
+  'AAVE',
+  'SOL',
+  'WETH',
+];
 /** rhino.fi's routes, less its ETH on Arbitrum. */
 const withoutArbitrumEth = (): RhinoAssetsState => ({
   status: 'ready',
@@ -157,7 +168,7 @@ describe('getWalletDepositTokens', () => {
     ]);
     // Not a chain of the list, though rhino.fi takes dollars there.
     expect(getWalletDepositTokens(optimism.id, ALL)).toEqual([]);
-    expect(symbolsOf(getWalletDepositTokens(bsc.id, ALL))).toEqual(['USDC', 'USDT', 'ETH']);
+    expect(symbolsOf(getWalletDepositTokens(bsc.id, ALL))).toEqual(['USDC', 'USDT', 'ETH', 'WBTC']);
     expect(symbolsOf(getWalletDepositTokens(arbitrum.id, ALL))).toEqual(['USDC', 'USDT', 'ETH']);
     // No WETH: rhino.fi takes none, and it would stay on Ethereum in the Safe.
     expect(symbolsOf(getWalletDepositTokens(mainnet.id, ALL))).toEqual([
@@ -165,6 +176,7 @@ describe('getWalletDepositTokens', () => {
       'USDT',
       'EURC',
       'ETH',
+      'WBTC',
     ]);
     expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual(BASE_SYMBOLS);
   });
@@ -422,6 +434,7 @@ describe('getAllWalletDepositTokens', () => {
       'EURC',
       'ETH',
       'FUSE',
+      'WBTC',
       'cbBTC',
       'cbZEC',
       'AAVE',
@@ -431,10 +444,10 @@ describe('getAllWalletDepositTokens', () => {
     ]);
   });
 
-  // The tokens retired with the Base-only collateral list.
+  // The tokens retired with the Base-only collateral list. WBTC is back, for soBTC.
   it('leaves out the retired tokens', () => {
     const symbols = symbolsOf(getAllWalletDepositTokens(ALL));
-    ['PAXG', 'SLVx', 'ZEC', 'NEAR', 'WLD', 'ARB', 'OP', 'UNI', 'ENA', 'WBTC'].forEach(symbol =>
+    ['PAXG', 'SLVx', 'ZEC', 'NEAR', 'WLD', 'ARB', 'OP', 'UNI', 'ENA'].forEach(symbol =>
       expect(symbols).not.toContain(symbol),
     );
   });
@@ -496,12 +509,12 @@ describe('matchesWalletDepositSearch', () => {
     );
 
   it('matches a ticker, whatever the case', () => {
-    expect(search('btc')).toEqual(['cbBTC']);
+    expect(search('btc')).toEqual(['WBTC', 'cbBTC']);
     expect(search('USDC')).toEqual(['USDC']);
   });
 
   it('matches a name', () => {
-    expect(search('bitcoin')).toEqual(['cbBTC']);
+    expect(search('bitcoin')).toEqual(['WBTC', 'cbBTC']);
     expect(search('solana')).toEqual(['SOL']);
   });
 
@@ -1073,10 +1086,10 @@ describe('native BTC', () => {
   const WITH_BITCOIN: RhinoAssetsState = { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN };
   const NEW_TOKENS = { hasNewTokens: true, rhino: WITH_BITCOIN };
 
-  it('is listed once rhino.fi takes it on Bitcoin, just before cbBTC', () => {
+  it('is listed once rhino.fi takes it on Bitcoin, just before WBTC', () => {
     const symbols = symbolsOf(getAllWalletDepositTokens(NEW_TOKENS));
     expect(symbols).toContain('BTC');
-    expect(symbols.indexOf('BTC')).toBe(symbols.indexOf('cbBTC') - 1);
+    expect(symbols.indexOf('BTC')).toBe(symbols.indexOf('WBTC') - 1);
     // Not while rhino.fi does not list it there: Bitcoin off, or routes not in.
     expect(symbolsOf(getAllWalletDepositTokens(ALL))).not.toContain('BTC');
     expect(
@@ -1221,5 +1234,32 @@ describe('with rhino.fi off', () => {
   it('opens on USDC over Base, as it does with rhino.fi on', () => {
     expect(resolveWalletDepositChain('USDC', undefined, OFF)).toBe(base.id);
     expect(resolveWalletDepositChain('ETH', mainnet.id, OFF)).toBe(base.id);
+  });
+});
+
+/** WBTC, for soBTC: into the Safe on Base, which the Base vault takes. */
+describe('WBTC', () => {
+  // rhino.fi pays WBTC sent on Ethereum or BNB Chain to the Safe on Base; Base
+  // itself is the Safe. Polygon and Arbitrum carry WBTC, but rhino.fi takes
+  // none there, so they are not offered.
+  it('is taken on Ethereum and BNB Chain through rhino.fi, and on Base to the Safe', () => {
+    expect(getWalletDepositNetworksForToken('WBTC', ALL).map(network => network.chainId)).toEqual([
+      mainnet.id,
+      base.id,
+      bsc.id,
+    ]);
+    expect(getWalletDepositRow(mainnet.id, 'WBTC', ALL)).toMatchObject({ kind: 'rhino' });
+    expect(getWalletDepositRow(bsc.id, 'WBTC', ALL)).toMatchObject({ kind: 'rhino' });
+    expect(getWalletDepositRow(base.id, 'WBTC', ALL)).toMatchObject({ kind: 'own' });
+  });
+
+  // A new deposit token: offered to those given the new tokens alone, for now.
+  it('is offered only to those given the new deposit tokens', () => {
+    expect(symbolsOf(getAllWalletDepositTokens(BASIC))).not.toContain('WBTC');
+    expect(getWalletDepositNetworksForToken('WBTC', BASIC)).toEqual([]);
+  });
+
+  it('floors at about $10 until the pipeline prices it', () => {
+    expect(getWalletDepositMinimum(base.id, 'WBTC')).toBe('0.00015');
   });
 });
