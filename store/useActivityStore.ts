@@ -83,6 +83,24 @@ function isOlderCopy(existing: ActivityEvent, incoming: ActivityEvent): boolean 
   return Number.isFinite(incomingAt) && Number.isFinite(existingAt) && incomingAt < existingAt;
 }
 
+/**
+ * What a merge keeps from the stored copy when the incoming one is older.
+ *
+ * An older copy can still be merged for a field it changes (a hash, say), but
+ * it must not carry back its older `updatedAt` or `metadata`: with those, a
+ * replay of the same stale copy would then look current and could put a
+ * completed payout back to Pending. A copy without a usable `updatedAt` is not
+ * ordered either way, and merges as it always has.
+ */
+function keptFromNewerCopy(
+  existing: ActivityEvent,
+  incoming: ActivityEvent,
+): Pick<ActivityEvent, 'updatedAt' | 'metadata'> | Record<string, never> {
+  return isOlderCopy(existing, incoming)
+    ? { updatedAt: existing.updatedAt, metadata: existing.metadata }
+    : {};
+}
+
 interface ActivityState {
   events: Record<string, ActivityEvent[]>;
   setEvents: (userId: string, events: ActivityEvent[]) => void;
@@ -209,6 +227,7 @@ export const useActivityStore = create<ActivityState>()(
                 ...existing,
                 ...stripNullish(event),
                 status: mergedStatus,
+                ...keptFromNewerCopy(existing, event),
               };
             }
           }),
@@ -251,6 +270,7 @@ export const useActivityStore = create<ActivityState>()(
                     ...existing,
                     ...stripped,
                     status: mergedStatus,
+                    ...keptFromNewerCopy(existing, event),
                   };
                   changed = true;
                 }

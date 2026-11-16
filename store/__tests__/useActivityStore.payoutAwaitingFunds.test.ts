@@ -89,6 +89,31 @@ describe('activity store - a payout waiting on our payout wallet', () => {
     expect(isPayoutAwaitingFunds(stored().metadata)).toBe(false);
   });
 
+  it('stays complete when an older awaiting copy that also changes another field is replayed', () => {
+    // The older copy differs in its hash, so it is merged; it must not carry
+    // back its older timestamp or flag, or the replay would look current.
+    const completed = { ...deposit, updatedAt: '2026-11-15T10:05:00.000Z' };
+    const stale = {
+      ...awaiting,
+      hash: '0xolder',
+      updatedAt: '2026-11-15T09:00:00.000Z',
+    };
+
+    for (const write of [
+      (event: ActivityEvent) => useActivityStore.getState().bulkUpsertEvent(USER, [event]),
+      (event: ActivityEvent) => useActivityStore.getState().upsertEvent(USER, event),
+    ]) {
+      useActivityStore.getState().setEvents(USER, [completed]);
+
+      write(stale);
+      write(stale);
+
+      expect(stored().status).toBe(TransactionStatus.SUCCESS);
+      expect(stored().updatedAt).toBe(completed.updatedAt);
+      expect(isPayoutAwaitingFunds(stored().metadata)).toBe(false);
+    }
+  });
+
   it('takes a newer awaiting-funds copy over a success', () => {
     useActivityStore
       .getState()
