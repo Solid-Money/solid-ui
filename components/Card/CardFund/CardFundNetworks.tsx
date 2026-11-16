@@ -9,13 +9,9 @@ import {
   getCardFundNetworks,
   getCardFundRhinoDestination,
 } from '@/components/Card/CardFund/constants';
-import RhinoNetworkGroup from '@/components/DepositOption/RhinoDeposit/RhinoNetworkGroup';
 import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
-import {
-  useOfferedRhinoDepositAssets,
-  useRhinoExtraNetworks,
-  useRhinoNetworkRows,
-} from '@/hooks/useRhinoDepositAssets';
+import { useRhinoExtraNetworkRows } from '@/components/DepositOption/RhinoDeposit/useRhinoExtraNetworkRows';
+import { useOfferedRhinoDepositAssets, useRhinoNetworkRows } from '@/hooks/useRhinoDepositAssets';
 import {
   getRhinoAssetsNotice,
   getRhinoListNotice,
@@ -39,7 +35,7 @@ type CardFundNetworksProps = {
    * chain but Base and Fuse, our own session on Base and Fuse. Every host shows the address of the row picked, and nothing else.
    */
   onSelect: (chainId: number) => void;
-  /** A "More networks" chain from the group under the list. */
+  /** A rhino.fi chain the app has no row of its own for (Tron, Solana, …). */
   onSelectRhino: (selection: RhinoDepositSelection) => void;
   /** Chain whose session is currently being created. */
   loadingChainId?: number;
@@ -52,7 +48,7 @@ type CardFundNetworksProps = {
  * on each chain our pipeline takes it on, and the chains rhino.fi has a route
  * from for this issuer (see `useRhinoNetworkRows`). Until rhino.fi's routes are
  * in, or when they cannot be had, a loader or a retry stands in for its rows
- * rather than an address of ours. Under them, "More networks": the chains the
+ * rather than an address of ours. After them, in the same list: the chains the
  * app has no row for that rhino.fi takes the token from (Tron, Solana, …).
  */
 const CardFundNetworks = ({
@@ -66,23 +62,28 @@ const CardFundNetworks = ({
   const destinationType = getCardFundRhinoDestination(symbol, cardProvider);
   const { rows, retry } = useRhinoNetworkRows({ destinationType, symbol }, networks);
   const { status: rhinoStatus } = useOfferedRhinoDepositAssets();
-  const extraNetworks = useRhinoExtraNetworks({ destinationType, symbol });
+  const extraRows = useRhinoExtraNetworkRows({
+    destinationType,
+    symbol,
+    onSelect: onSelectRhino,
+    disabled: !!loadingChainId,
+  });
   const offered = rows.filter(({ state }) => isOfferedRhinoRow(state));
   const listNotice = getRhinoListNotice(rows.map(({ state }) => state));
   // A token with no row of the list's own (BTC, only Bitcoin takes) waits on
-  // rhino.fi's routes all the same; and a list "More networks" adds to under it
-  // is not empty.
+  // rhino.fi's routes all the same; and a list with rhino.fi's other chains in
+  // it is not empty.
   const rhinoNotice = getRhinoAssetsNotice(rhinoStatus);
   const notice =
     !networks.length && rhinoNotice
       ? rhinoNotice
-      : listNotice === 'empty' && extraNetworks.length
+      : listNotice === 'empty' && extraRows.length
         ? undefined
         : listNotice;
 
   return (
     <View className="gap-y-4">
-      {offered.length ? (
+      {offered.length || extraRows.length ? (
         <CardFundGroup>
           {offered.map(({ row: network }) => (
             <CardFundRow
@@ -98,6 +99,7 @@ const CardFundNetworks = ({
               isLoading={loadingChainId === network.chainId}
             />
           ))}
+          {extraRows}
         </CardFundGroup>
       ) : null}
       {notice ? (
@@ -109,12 +111,6 @@ const CardFundNetworks = ({
           className="rounded-[15px] bg-card"
         />
       ) : null}
-      <RhinoNetworkGroup
-        destinationType={destinationType}
-        symbol={symbol}
-        onSelect={onSelectRhino}
-        disabled={!!loadingChainId}
-      />
     </View>
   );
 };
