@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { ActivityEvent, TransactionStatus } from '@/lib/types';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 
 // Maximum events stored per user in the Zustand store (and MMKV).
 // Oldest events beyond this cap are evicted to prevent unbounded memory/disk growth.
@@ -49,6 +50,23 @@ const STATUS_PRIORITY: Record<string, number> = {
 
 function isStatusDowngrade(existingStatus: string, incomingStatus: string): boolean {
   return (STATUS_PRIORITY[incomingStatus] ?? 0) < (STATUS_PRIORITY[existingStatus] ?? 0);
+}
+
+/**
+ * Whether an incoming status is stale and must not overwrite the stored one.
+ *
+ * A downgrade normally is. The exception is a row the backend has moved back
+ * to in-progress because its payout is waiting on our payout wallet
+ * (`metadata.payout.state === 'awaiting_funds'`): a Wirex bank deposit Wirex
+ * already reported complete, before our EURC transfer to the user went out.
+ * That is the backend correcting a premature "complete", not a stale write,
+ * and refusing it would keep showing the deposit as done while the user has
+ * not been paid.
+ */
+function isStaleStatus(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  return (
+    isStatusDowngrade(existing.status, incoming.status) && !isPayoutAwaitingFunds(incoming.metadata)
+  );
 }
 
 interface ActivityState {
@@ -100,7 +118,7 @@ function stripNullish(event: ActivityEvent): Partial<ActivityEvent> {
 function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
   // A status downgrade is not a real change — it's a stale update
   const statusActuallyChanged =
-    existing.status !== incoming.status && !isStatusDowngrade(existing.status, incoming.status);
+    existing.status !== incoming.status && !isStaleStatus(existing, incoming);
 
   return (
     statusActuallyChanged ||
@@ -163,7 +181,7 @@ export const useActivityStore = create<ActivityState>()(
               if (!hasEventChanged(existing, event)) return;
 
               const mergedStatus =
-                event.status && isStatusDowngrade(existing.status, event.status)
+                event.status && isStaleStatus(existing, event)
                   ? existing.status
                   : (event.status ?? existing.status);
 
@@ -203,7 +221,7 @@ export const useActivityStore = create<ActivityState>()(
                 const existing = state.events[userId][existingIndex];
                 if (hasEventChanged(existing, event)) {
                   const mergedStatus =
-                    event.status && isStatusDowngrade(existing.status, event.status)
+                    event.status && isStaleStatus(existing, event)
                       ? existing.status
                       : (event.status ?? existing.status);
 
