@@ -23,6 +23,7 @@ import {
 } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPresentation';
 
 type TransactionClassNames = {
@@ -253,9 +254,13 @@ const Transaction = ({
   // A direct deposit that has no amount yet is the exception: its whole right
   // column is already the status message, and a chip saying the same thing twice
   // on one row is noise.
+  //
+  // A payout waiting on our payout wallet reads "Pending": it is held on our
+  // side and goes out by itself once the wallet is topped up, with nothing for
+  // the user to do — "Processing" would suggest it is already moving.
   const pendingPill = directDepositStatusMessage
     ? null
-    : isPending
+    : isPending || (isProcessing && isPayoutAwaitingFunds(metadata))
       ? isCardDeposit && isDirectDeposit
         ? 'Processing'
         : 'Pending'

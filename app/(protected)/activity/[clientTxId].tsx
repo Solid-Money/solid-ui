@@ -89,6 +89,7 @@ import {
 } from '@/lib/utils/deposit-steps';
 import { bankDepositFeeLine, readBankDepositFee } from '@/lib/utils/feePromotion';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 import {
   getMonthKey,
   getSpendingCategory,
@@ -1238,7 +1239,15 @@ export default function ActivityDetail() {
       status && {
         key: 'status',
         label: <Label>Status</Label>,
-        value: <Value>{toTitleCase(status)}</Value>,
+        // Held on our side until our payout wallet is topped up, then sent by
+        // itself: pending, as the list row says, not "Processing".
+        value: (
+          <Value>
+            {status === TransactionStatus.PROCESSING && isPayoutAwaitingFunds(metadata)
+              ? 'Pending'
+              : toTitleCase(status)}
+          </Value>
+        ),
       },
       isCrossChainSend &&
         crossChainNetwork && {
