@@ -113,16 +113,28 @@ function isOlderCopy(existing: ActivityEvent, incoming: ActivityEvent): boolean 
  * An older copy can still be merged for a field it changes (a hash, say), but
  * it must not carry back its older `updatedAt` or `metadata`: with those, a
  * replay of the same stale copy would then look current and could put a
- * completed payout back to Pending. A copy without a usable `updatedAt` is not
- * ordered either way, and merges as it always has.
+ * completed payout back to Pending.
+ *
+ * A copy without a usable `updatedAt` is not ordered either way and merges as
+ * it always has, except that it never replaces a valid stored `updatedAt`:
+ * the row would then have nothing to order later copies against, and a replay
+ * of an awaiting-funds copy would pass as current.
  */
 function keptFromNewerCopy(
   existing: ActivityEvent,
   incoming: ActivityEvent,
-): Pick<ActivityEvent, 'updatedAt' | 'metadata'> | Record<string, never> {
-  return isOlderCopy(existing, incoming)
-    ? { updatedAt: existing.updatedAt, metadata: existing.metadata }
-    : {};
+): Partial<Pick<ActivityEvent, 'updatedAt' | 'metadata'>> {
+  if (isOlderCopy(existing, incoming)) {
+    return { updatedAt: existing.updatedAt, metadata: existing.metadata };
+  }
+  if (isValidTime(existing.updatedAt) && !isValidTime(incoming.updatedAt)) {
+    return { updatedAt: existing.updatedAt };
+  }
+  return {};
+}
+
+function isValidTime(value: string | undefined): boolean {
+  return Number.isFinite(Date.parse(value ?? ''));
 }
 
 interface ActivityState {

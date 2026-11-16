@@ -145,6 +145,29 @@ describe('activity store - a payout waiting on our payout wallet', () => {
     expect(stored().status).toBe(TransactionStatus.SUCCESS);
   });
 
+  it('keeps the stored updatedAt when an awaiting copy carries an unreadable one', () => {
+    // The flag alone makes the first copy a change, so it is merged. Its
+    // unreadable timestamp must not replace the stored one, or the replay
+    // would have nothing to be ordered against and would downgrade the row.
+    const completed = { ...deposit, updatedAt: '2026-11-15T10:05:00.000Z' };
+
+    for (const updatedAt of ['invalid', '']) {
+      const unreadable = { ...awaiting, updatedAt };
+      for (const write of [
+        (event: ActivityEvent) => useActivityStore.getState().bulkUpsertEvent(USER, [event]),
+        (event: ActivityEvent) => useActivityStore.getState().upsertEvent(USER, event),
+      ]) {
+        useActivityStore.getState().setEvents(USER, [completed]);
+
+        write(unreadable);
+        write(unreadable);
+
+        expect(stored().status).toBe(TransactionStatus.SUCCESS);
+        expect(stored().updatedAt).toBe(completed.updatedAt);
+      }
+    }
+  });
+
   it('takes a newer awaiting-funds copy over a success', () => {
     useActivityStore
       .getState()
