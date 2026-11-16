@@ -1,14 +1,12 @@
 import { useId } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Bot, KeyRound } from 'lucide-react-native';
+import { KeyRound } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { type AssetPath, getAsset } from '@/lib/assets';
 
+import AiApiAgentLogo, { AI_API_AGENT_LOGOS } from './AiApiAgentLogo';
 import {
   aiApiSharedTierRate,
   formatAiApiCashback,
@@ -19,67 +17,9 @@ import {
 } from './aiApiFormat';
 import AiApiHeroOrbit from './AiApiHeroOrbit';
 import { AiApiAntseedCard, AiApiModelList } from './AiApiModels';
-import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiInfoRow } from './AiApiPrimitives';
+import { AI_API_ICON_STROKE, AiApiInfoRow } from './AiApiPrimitives';
 
 import type { AiApiCashbackTier, AiApiModel } from '@/lib/types/ai-api';
-
-interface Agent {
-  label: string;
-  /** The logo tile's fill, top to bottom. */
-  colors: readonly [string, string, ...string[]];
-  /** The agent's mark; without one, the tile shows a bot for the user's own agent. */
-  mark?: { asset: AssetPath; size: number };
-}
-
-const AGENTS: Agent[] = [
-  {
-    label: 'Claude Code',
-    colors: ['#D97757', '#D97757'],
-    mark: { asset: 'images/ai-api/agent-claude-code.svg', size: 19 },
-  },
-  {
-    label: 'Codex',
-    colors: ['#B1A7FF', '#7A9DFF', '#3941FF'],
-    mark: { asset: 'images/ai-api/agent-codex.svg', size: 18 },
-  },
-  {
-    label: 'OpenClaw',
-    colors: ['#FF4D4D', '#991B1B'],
-    mark: { asset: 'images/ai-api/agent-openclaw.svg', size: 20 },
-  },
-  {
-    label: 'Hermes',
-    colors: ['#000000', '#000000'],
-    mark: { asset: 'images/ai-api/agent-hermes.svg', size: 22 },
-  },
-  {
-    label: 'OpenCode',
-    colors: ['#000000', '#000000'],
-    mark: { asset: 'images/ai-api/agent-opencode.svg', size: 16 },
-  },
-  { label: 'Your own agent', colors: [AI_API_BRAND, AI_API_BRAND] },
-];
-
-/** An agent's logo: its colour, a white sheen from the top, a hairline edge, its mark. */
-const AgentLogo = ({ agent }: { agent: Agent }) => (
-  <LinearGradient colors={agent.colors} style={styles.agentLogo}>
-    <LinearGradient
-      colors={['rgba(255, 255, 255, 0.22)', 'rgba(255, 255, 255, 0)']}
-      locations={[0, 0.6]}
-      style={StyleSheet.absoluteFill}
-    />
-    <View className="absolute inset-0 rounded-2xl border border-white/[0.12]" />
-    {agent.mark ? (
-      <Image
-        source={getAsset(agent.mark.asset)}
-        style={{ width: agent.mark.size, height: agent.mark.size }}
-        contentFit="contain"
-      />
-    ) : (
-      <Bot size={18} color="#111111" strokeWidth={1.36} />
-    )}
-  </LinearGradient>
-);
 
 /** The example the intro prices: a round number, so the halving reads at a glance. */
 const EXAMPLE_SPEND_USD = 100;
@@ -202,12 +142,12 @@ const AiApiIntro = ({
           className="-mx-4"
           contentContainerClassName="gap-2 px-4"
         >
-          {AGENTS.map(agent => (
+          {AI_API_AGENT_LOGOS.map(agent => (
             <View
-              key={agent.label}
+              key={agent.id}
               className="flex-row items-center gap-2 rounded-full bg-card py-1 pl-1 pr-3.5"
             >
-              <AgentLogo agent={agent} />
+              <AiApiAgentLogo agent={agent} />
               <Text className="text-[14px] font-medium text-white">{agent.label}</Text>
             </View>
           ))}
@@ -290,16 +230,5 @@ const AiApiIntro = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  agentLogo: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderRadius: 16,
-  },
-});
 
 export default AiApiIntro;
