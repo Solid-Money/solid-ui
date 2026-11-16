@@ -18,21 +18,21 @@ import { publicClient } from '@/lib/wagmi';
 /**
  * soBTC: BTC Yield.
  *
- * One share, two vaults that never bridge their assets. WBTC deposited on Ethereum stays in the
- * Ethereum vault and its shares are bridged to Base in the same transaction; cbBTC deposited on
- * Base stays in the Base vault. Both accountants carry the same rate, so 1 WBTC and 1 cbBTC mint
- * the same number of shares. All shares sit on Base, where the card can use them.
+ * One share, two vaults, both taking WBTC. WBTC deposited on Ethereum stays in the Ethereum vault
+ * and its shares are bridged to Base in the same transaction; WBTC deposited on Base (BitGo's
+ * LayerZero OFT) stays in the Base vault and its shares mint there. All shares sit on Base, where
+ * the card can use them.
  *
- * A withdrawal picks what it pays out: cbBTC from the Base vault (one step, on Base), or WBTC
- * from the Ethereum vault (bridge the shares to Ethereum, then request there). Each side can only
- * pay what its vault holds right now, which is why the withdraw form shows "available now" per
- * option.
+ * Every withdrawal pays WBTC on Ethereum: the shares are bridged Base → Ethereum through the Base
+ * teller, then requested on the Ethereum queue. Base has no withdraw queue.
  */
 
 /**
- * Every soBTC contract this build talks to, deployed 2026-11-13 (boring-vault
- * deployments/addresses/{Mainnet,Base}/soBTC.json). Owned by the Ethereum Safe 0x6B26 and the
- * Base Safe 0x5Eb1. Zeroing them keeps soBTC out of the app entirely (see {@link isSoBtcConfigured}).
+ * Every soBTC contract this build talks to (boring-vault deployments/addresses/{Mainnet,Base}/
+ * soBTC.json). The Ethereum stack was deployed 2026-11-13. The Base stack was redeployed to take
+ * WBTC; the cbBTC one it replaces (vault 0xb5Fb…7B52, its queue and solver) is retired and must not
+ * be used. Base has no withdraw queue. Zeroing any of these keeps soBTC out of the app entirely
+ * (see {@link isSoBtcConfigured}).
  */
 export const SOBTC_ADDRESSES = {
   ethereum: {
@@ -42,17 +42,16 @@ export const SOBTC_ADDRESSES = {
     boringQueue: '0x0800bb6AF4668e14186F5cd6CD357e1aA81A3802' as Address,
   },
   base: {
-    vault: '0xb5Fb6a807c1B35419CCC90480287305314D77B52' as Address,
-    accountant: '0x0C5BB76738BD2D095dBAb4a9Fe97D369284F9dD7' as Address,
-    teller: '0xBBd9100Be5712594B5db736e5280A4C0535Ee4Ec' as Address,
-    boringQueue: '0x7d61eac254d9510f10cc40C07BB59a112792E832' as Address,
+    vault: '0xBd51647c783A917c797873c6c5A489ff197fb51e' as Address,
+    accountant: '0xaC88737d45421EA93eEe11f0E30d2D2c6eC51382' as Address,
+    teller: '0x49d88bd2b250d57Fc2c14a16A3420Fb149078d00' as Address,
   },
 } as const;
 
-/** WBTC on Ethereum: the Ethereum vault's base asset and what an Ethereum withdrawal pays. */
+/** WBTC on Ethereum: the Ethereum vault's base asset, and what every withdrawal pays. */
 export const WBTC_ETHEREUM: Address = '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599';
-/** Coinbase cbBTC on Base: the Base vault's base asset and what a Base withdrawal pays. */
-export const CBBTC_BASE: Address = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
+/** WBTC on Base (BitGo's LayerZero OFT): the Base vault's base asset. */
+export const WBTC_BASE: Address = '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c';
 
 /** Whether this build has both soBTC deployments. Every soBTC surface is off without them. */
 export const isSoBtcConfigured = [
@@ -60,7 +59,7 @@ export const isSoBtcConfigured = [
   ...Object.values(SOBTC_ADDRESSES.base),
 ].every(address => address !== zeroAddress);
 
-/** Shares, WBTC and cbBTC all have 8 decimals. */
+/** Shares and WBTC (on both chains) all have 8 decimals. */
 export const SOBTC_DECIMALS = 8;
 
 /** LayerZero endpoint ids of the two soBTC tellers' chains. */
@@ -90,63 +89,49 @@ export const soBtcBridgeWildCard = (toChainId: SoBtcChainId) =>
 
 export type SoBtcChainId = typeof mainnet.id | typeof base.id;
 
-/** What a soBTC withdrawal can pay out, and where. */
-export type SoBtcWithdrawOption = {
-  chainId: SoBtcChainId;
-  chain: Chain;
-  /** The asset paid out, as the app names it. */
-  asset: 'cbBTC' | 'WBTC';
-  assetAddress: Address;
-  networkName: string;
+/** soBTC's contracts on one chain, and the WBTC its vault takes there. */
+export type SoBtcChainConfig = {
   vault: Address;
   accountant: Address;
   teller: Address;
-  boringQueue: Address;
-  /** Whether the shares (always on Base) must be bridged before the request. */
-  requiresBridge: boolean;
-  /** Rough time to the payout, shown before the user picks the option. */
-  timeLabel: string;
-  /** What the option costs beyond the solver fee, shown before the user picks it. */
-  costLabel: string;
+  /** The vault's base asset: WBTC on that chain. */
+  asset: Address;
 };
 
-export const SOBTC_WITHDRAW_OPTIONS: Record<SoBtcChainId, SoBtcWithdrawOption> = {
-  [base.id]: {
-    chainId: base.id,
-    chain: base,
-    asset: 'cbBTC',
-    assetAddress: CBBTC_BASE,
-    networkName: 'Base',
-    vault: SOBTC_ADDRESSES.base.vault,
-    accountant: SOBTC_ADDRESSES.base.accountant,
-    teller: SOBTC_ADDRESSES.base.teller,
-    boringQueue: SOBTC_ADDRESSES.base.boringQueue,
-    requiresBridge: false,
-    timeLabel: 'Usually within 3 days',
-    costLabel: 'No network fee',
-  },
+export const SOBTC_CHAINS: Record<SoBtcChainId, SoBtcChainConfig> = {
   [mainnet.id]: {
-    chainId: mainnet.id,
-    chain: mainnet,
-    asset: 'WBTC',
-    assetAddress: WBTC_ETHEREUM,
-    networkName: 'Ethereum',
     vault: SOBTC_ADDRESSES.ethereum.vault,
     accountant: SOBTC_ADDRESSES.ethereum.accountant,
     teller: SOBTC_ADDRESSES.ethereum.teller,
-    boringQueue: SOBTC_ADDRESSES.ethereum.boringQueue,
-    requiresBridge: true,
-    timeLabel: '2 steps, usually within 3 days',
-    costLabel: 'Bridge fee in ETH on Base',
+    asset: WBTC_ETHEREUM,
+  },
+  [base.id]: {
+    vault: SOBTC_ADDRESSES.base.vault,
+    accountant: SOBTC_ADDRESSES.base.accountant,
+    teller: SOBTC_ADDRESSES.base.teller,
+    asset: WBTC_BASE,
   },
 };
 
-/** The order the withdraw form lists the options in: the fast, cheap one first. */
-export const SOBTC_WITHDRAW_OPTION_ORDER: SoBtcChainId[] = [base.id, mainnet.id];
+/** The one way out of soBTC: WBTC on Ethereum, from the Ethereum queue. */
+export const SOBTC_WITHDRAW = {
+  chainId: mainnet.id,
+  chain: mainnet as Chain,
+  /** The asset paid out, as the app names it. */
+  asset: 'WBTC',
+  assetAddress: WBTC_ETHEREUM,
+  networkName: 'Ethereum',
+  vault: SOBTC_ADDRESSES.ethereum.vault,
+  boringQueue: SOBTC_ADDRESSES.ethereum.boringQueue,
+  /** Rough time to the payout. */
+  timeLabel: '2 steps, usually within 3 days',
+  /** What it costs beyond the solver fee. */
+  costLabel: 'Bridge fee in ETH on Base',
+} as const;
 
-/** The deposit asset the vault on `chainId` takes. */
+/** The deposit asset the vault on `chainId` takes: WBTC on Ethereum or on Base. */
 export const getSoBtcDepositAsset = (chainId: number): Address | undefined =>
-  chainId === mainnet.id ? WBTC_ETHEREUM : chainId === base.id ? CBBTC_BASE : undefined;
+  chainId === mainnet.id || chainId === base.id ? SOBTC_CHAINS[chainId].asset : undefined;
 
 // ── Display ──────────────────────────────────────────────────────────────────
 
@@ -177,29 +162,29 @@ export const formatBtcAmount = (amount: number | undefined, unit = 'BTC'): strin
  */
 export const readSoBtcRate = (chainId: SoBtcChainId) =>
   readContract(publicClient(chainId), {
-    address: SOBTC_WITHDRAW_OPTIONS[chainId].accountant,
+    address: SOBTC_CHAINS[chainId].accountant,
     abi: Accountant,
     functionName: 'getRateInQuoteSafe',
-    args: [SOBTC_WITHDRAW_OPTIONS[chainId].assetAddress],
+    args: [SOBTC_CHAINS[chainId].asset],
   });
 
-/** The base asset `chainId`'s vault holds right now, before any queued request is paid. */
-export const readSoBtcVaultBalance = (chainId: SoBtcChainId) =>
-  readContract(publicClient(chainId), {
-    address: SOBTC_WITHDRAW_OPTIONS[chainId].assetAddress,
+/** The WBTC the Ethereum vault holds right now, before any queued request is paid. */
+export const readSoBtcVaultBalance = () =>
+  readContract(publicClient(SOBTC_WITHDRAW.chainId), {
+    address: SOBTC_WITHDRAW.assetAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [SOBTC_WITHDRAW_OPTIONS[chainId].vault],
+    args: [SOBTC_WITHDRAW.vault],
   });
 
 /**
- * Shares in `chainId`'s queue that the solver can still pay out of that vault: every open request
- * for the chain's asset that hasn't passed its deadline. Expired requests can't be solved (only
- * cancelled), so they hold no liquidity. The queue tracks requests on-chain, so one read covers them.
+ * Shares in the Ethereum queue that the solver can still pay out of the Ethereum vault: every open
+ * WBTC request that hasn't passed its deadline. Expired requests can't be solved (only cancelled),
+ * so they hold no liquidity. The queue tracks requests on-chain, so one read covers them.
  */
-export const readSoBtcQueuedShares = async (chainId: SoBtcChainId): Promise<bigint> => {
-  const option = SOBTC_WITHDRAW_OPTIONS[chainId];
-  const [, requests] = await readContract(publicClient(chainId), {
+export const readSoBtcQueuedShares = async (): Promise<bigint> => {
+  const option = SOBTC_WITHDRAW;
+  const [, requests] = await readContract(publicClient(option.chainId), {
     address: option.boringQueue,
     abi: BoringQueue_ABI,
     functionName: 'getWithdrawRequests',
@@ -223,7 +208,7 @@ export const readSoBtcBridgeFee = (
   to: Address,
 ) =>
   readContract(publicClient(fromChainId), {
-    address: SOBTC_WITHDRAW_OPTIONS[fromChainId].teller,
+    address: SOBTC_CHAINS[fromChainId].teller,
     abi: ETHEREUM_TELLER_ABI,
     functionName: 'previewFee',
     args: [0n, to, soBtcBridgeWildCard(toChainId), NATIVE_FEE_TOKEN],
@@ -254,13 +239,13 @@ export const soBtcAssetsToShares = (assets: bigint, rate: bigint): bigint =>
 type Call = { to: Address; data: `0x${string}`; value: bigint };
 
 /**
- * cbBTC on Base: approve the Base VAULT (the BoringVault pulls the asset in `enter`) for exactly
+ * WBTC on Base: approve the Base VAULT (the BoringVault pulls the asset in `enter`) for exactly
  * the amount, then deposit through the teller, which mints to the caller. Both from the Safe in
  * one user operation.
  */
 export const buildSoBtcBaseDepositCalls = (amount: bigint, minimumMint: bigint): Call[] => [
   {
-    to: CBBTC_BASE,
+    to: WBTC_BASE,
     data: encodeFunctionData({
       abi: erc20Abi,
       functionName: 'approve',
@@ -273,7 +258,7 @@ export const buildSoBtcBaseDepositCalls = (amount: bigint, minimumMint: bigint):
     data: encodeFunctionData({
       abi: ETHEREUM_TELLER_ABI,
       functionName: 'deposit',
-      args: [CBBTC_BASE, amount, minimumMint],
+      args: [WBTC_BASE, amount, minimumMint],
     }),
     value: 0n,
   },
@@ -321,7 +306,7 @@ export const buildSoBtcEthereumDepositCall = (
   value: fee,
 });
 
-/** Step 1 of a WBTC withdrawal: send `shares` from Base to the same Safe on Ethereum. */
+/** Step 1 of a withdrawal: send `shares` from Base to the same Safe on Ethereum. */
 export const buildSoBtcBridgeToEthereumCall = (shares: bigint, to: Address, fee: bigint): Call => ({
   to: SOBTC_ADDRESSES.base.teller,
   data: encodeFunctionData({
@@ -332,13 +317,9 @@ export const buildSoBtcBridgeToEthereumCall = (shares: bigint, to: Address, fee:
   value: fee,
 });
 
-/** The withdraw request on `chainId`'s queue, paying that chain's asset. */
-export const buildSoBtcWithdrawRequestCall = (
-  chainId: SoBtcChainId,
-  shares: bigint,
-  secondsToDeadline: number,
-): Call => {
-  const option = SOBTC_WITHDRAW_OPTIONS[chainId];
+/** Step 2 of a withdrawal: the request on the Ethereum queue, paying WBTC there. */
+export const buildSoBtcWithdrawRequestCall = (shares: bigint, secondsToDeadline: number): Call => {
+  const option = SOBTC_WITHDRAW;
   return {
     to: option.boringQueue,
     data: encodeFunctionData({

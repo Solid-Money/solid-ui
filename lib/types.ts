@@ -3852,7 +3852,7 @@ export enum VaultType {
   /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
   EUR = 'eur',
   /**
-   * soBTC: WBTC on Ethereum and cbBTC on Base, one share on Base. Earns and is shown in BTC; its
+   * soBTC: WBTC on Ethereum and on Base, one share on Base. Earns and is shown in BTC; its
    * dollar value is BTC × the BTC price.
    */
   BTC = 'btc',
