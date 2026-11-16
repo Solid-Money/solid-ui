@@ -1,10 +1,11 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { KeyRound } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useWebHorizontalScroll } from '@/hooks/useWebHorizontalScroll';
 
 import AiApiAgentLogo, { AI_API_AGENT_LOGOS } from './AiApiAgentLogo';
 import {
@@ -115,6 +116,10 @@ const AiApiIntro = ({
 }) => {
   const rate = formatAiApiRate(cashbackRate);
   const cashbackUsd = EXAMPLE_SPEND_USD * cashbackRate;
+  const agentsRef = useRef<ScrollView>(null);
+  // The desktop web cuts the strip off at its column, where a mouse could not
+  // otherwise move it.
+  useWebHorizontalScroll(agentsRef);
 
   return (
     <View className="w-full gap-5 px-4">
@@ -137,6 +142,7 @@ const AiApiIntro = ({
         <Text className="text-[14px] text-white/55">Works with</Text>
         {/* Runs to the screen's edges, so it reads as a strip that scrolls. */}
         <ScrollView
+          ref={agentsRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           className="-mx-4"

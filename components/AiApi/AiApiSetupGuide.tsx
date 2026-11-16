@@ -4,6 +4,7 @@ import { Terminal } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useWebHorizontalScroll } from '@/hooks/useWebHorizontalScroll';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,7 @@ const AiApiSetupGuide = ({
   const tabsWidth = useRef(0);
   const tabsContentWidth = useRef(0);
   const tabFrames = useRef<Partial<Record<AiApiAgent, { x: number; width: number }>>>({});
+  useWebHorizontalScroll(tabsRef);
 
   const selectTab = (id: AiApiAgent) => {
     setAgent(id);
