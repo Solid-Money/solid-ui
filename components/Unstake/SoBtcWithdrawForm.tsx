@@ -102,12 +102,12 @@ const SoBtcWithdrawForm = () => {
   const btcPrice = useBtcPriceUsd(true);
 
   const option = SOBTC_WITHDRAW;
-  // Straight to step 2 for a resumed withdrawal, or when the only soBTC left is on Ethereum (an
-  // earlier bridge whose request was cancelled). Shares left on Ethereum never block bridging the
-  // Base ones: with Base shares and no session, step 1 comes first.
+  // Straight to step 2 for a resumed withdrawal, or whenever soBTC already sits on Ethereum (an
+  // earlier bridge whose request was cancelled or only partly made). Those shares need no bridge,
+  // and no Base ETH for its fee, so they are requested first; once the queue holds them the
+  // Ethereum balance is zero and the Base shares come up on step 1.
   const hasEthereumShares = (ethereumShares ?? 0n) > 0n;
-  const hasBaseShares = (baseShares ?? 0n) > 0n;
-  const isStep2 = !!session || (hasEthereumShares && !hasBaseShares);
+  const isStep2 = !!session || hasEthereumShares;
   const balanceShares = isStep2 ? (ethereumShares ?? 0n) : (baseShares ?? 0n);
   const isBalanceLoading = isStep2 ? isEthereumSharesLoading : isBaseSharesLoading;
 

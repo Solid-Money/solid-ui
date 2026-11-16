@@ -35,7 +35,7 @@ const productDetails = (type: VaultType): Detail[] => {
       : type === VaultType.EUR
         ? `€${formatNumber(minimum, 2, 0)}`
         : type === VaultType.BTC
-          ? `${formatBtcAmount(minimum)} WBTC`
+          ? formatBtcAmount(minimum, 'WBTC')
           : `${formatNumber(minimum, 4, 0)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
   return [
     ...(type === VaultType.USDC ? [{ label: 'Fee', value: '10% of interest earned' }] : []),
