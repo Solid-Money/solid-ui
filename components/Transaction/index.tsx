@@ -15,6 +15,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { formatBtcAmount } from '@/lib/soBtc';
 import {
   TransactionCategory,
   TransactionDirection,
@@ -353,7 +354,11 @@ const Transaction = ({
             style={statusColorStyle}
           >
             {statusSign}
-            {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
+            {/* BTC amounts are fractions of a coin: two places would round them to 0. */}
+            {/btc/i.test(symbol ?? '')
+              ? formatBtcAmount(Number(amount), '')
+              : formatNumber(Number(amount), 2)}{' '}
+            {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
         {directDepositIsPendingOrProcessing && !isCardDeposit && (
