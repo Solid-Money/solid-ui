@@ -798,6 +798,18 @@ export const ASSETS = {
     hash: '6fe74800',
   },
   'images/info-error.tsx': { module: require('@/assets/images/info-error.tsx'), hash: '75c1c092' },
+  'images/invite/card-glass-desktop.png': {
+    module: require('@/assets/images/invite/card-glass-desktop.png'),
+    hash: '983b39bd',
+  },
+  'images/invite/card-glass-mobile.png': {
+    module: require('@/assets/images/invite/card-glass-mobile.png'),
+    hash: 'aaf51c63',
+  },
+  'images/invite/hero-light.jpg': {
+    module: require('@/assets/images/invite/hero-light.jpg'),
+    hash: 'dd5a0829',
+  },
   'images/invite-yellow.png': {
     module: require('@/assets/images/invite-yellow.png'),
     hash: '0175f2e5',

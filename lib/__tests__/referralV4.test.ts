@@ -3,6 +3,7 @@ import {
   asFriendReversedLine,
   bigSpenderStepLine,
   capProgress,
+  cardBonusPhrase,
   closedNote,
   debtLine,
   formatPayoutDay,
@@ -90,6 +91,21 @@ describe('formatting', () => {
     expect(formatUsdShort(1820)).toBe('$1,820');
     expect(formatRate(0.01)).toBe('1%');
     expect(formatRate(0.015)).toBe('1.5%');
+  });
+
+  it('names a card bonus with the article its amount is read with', () => {
+    expect(cardBonusPhrase(10)).toBe('a $10 card bonus');
+    expect(cardBonusPhrase(100)).toBe('a $100 card bonus');
+    expect(cardBonusPhrase(1800)).toBe('a $1,800 card bonus');
+    // Eight, eleven and eighteen start with a vowel sound.
+    expect(cardBonusPhrase(8)).toBe('an $8 card bonus');
+    expect(cardBonusPhrase(11)).toBe('an $11 card bonus');
+    expect(cardBonusPhrase(18)).toBe('an $18 card bonus');
+    expect(cardBonusPhrase(80)).toBe('an $80 card bonus');
+    expect(cardBonusPhrase(850)).toBe('an $850 card bonus');
+    expect(cardBonusPhrase(18000)).toBe('an $18,000 card bonus');
+    // "One hundred ten", not "eleven".
+    expect(cardBonusPhrase(110)).toBe('a $110 card bonus');
   });
 
   it('formats the payout day', () => {
@@ -494,7 +510,7 @@ describe('asFriendProgressLine', () => {
         terms,
         NOW,
       ),
-    ).toBe('Spend $54 more at 2 more shops in 9 days to get $10 card credit');
+    ).toBe('Spend $54 more at 2 more shops in 9 days to get a $10 card bonus');
   });
 
   it('stays quiet once the bonus is earned or out of reach', () => {
