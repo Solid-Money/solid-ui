@@ -57,8 +57,24 @@ export function useWebHorizontalScroll(ref: RefObject<ScrollView | null>) {
       };
     };
 
+    /** Drops the gesture, and undoes a pan's capture and styles if one began. */
+    const clearDrag = (pointerId: number) => {
+      if (drag?.dragging) {
+        if (node.hasPointerCapture(pointerId)) node.releasePointerCapture(pointerId);
+        node.style.cursor = '';
+        node.style.userSelect = '';
+      }
+      drag = null;
+    };
+
     const onPointerMove = (event: PointerEvent) => {
       if (!drag || event.pointerId !== drag.pointerId) return;
+      // Released outside the strip before the pan began, so its pointerup never
+      // reached here: a mouse keeps its pointerId, and this hover is not a drag.
+      if ((event.buttons & 1) === 0) {
+        clearDrag(event.pointerId);
+        return;
+      }
       const dx = event.clientX - drag.startX;
       if (!drag.dragging) {
         if (Math.abs(dx) < DRAG_THRESHOLD_PX) return;
@@ -78,11 +94,8 @@ export function useWebHorizontalScroll(ref: RefObject<ScrollView | null>) {
         setTimeout(() => {
           swallowClick = false;
         }, 0);
-        if (node.hasPointerCapture(event.pointerId)) node.releasePointerCapture(event.pointerId);
-        node.style.cursor = '';
-        node.style.userSelect = '';
       }
-      drag = null;
+      clearDrag(event.pointerId);
     };
 
     const onClickCapture = (event: MouseEvent) => {
