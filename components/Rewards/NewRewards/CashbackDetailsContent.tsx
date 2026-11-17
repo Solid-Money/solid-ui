@@ -38,6 +38,25 @@ const Divider = () => <View className="h-px bg-white/10" />;
 const formatWhole = (value: number, currency: CashbackCurrency): string =>
   currency === 'EUR' ? formatCurrencyAmount(value || 0, 'EUR', 0, 0) : formatWholeDollars(value);
 
+/** Lifetime cashback in each currency, side by side and never added. */
+const LifetimeCashbackValue = ({
+  lifetimeCashback,
+  lifetimeCashbackOther,
+  currency,
+}: Pick<CashbackDetailsData, 'lifetimeCashback' | 'lifetimeCashbackOther'> & {
+  currency: CashbackCurrency;
+}) => (
+  <Text className="text-lg font-medium text-white">
+    {formatBalance(lifetimeCashback, CURRENCY_SYMBOLS[currency])}
+    {lifetimeCashbackOther
+      ? ` + ${formatBalance(
+          lifetimeCashbackOther.value,
+          CURRENCY_SYMBOLS[lifetimeCashbackOther.currency],
+        )}`
+      : ''}
+  </Text>
+);
+
 const CashbackDetailsContent = ({
   cashbackRate,
   currency = 'USD',
@@ -47,6 +66,7 @@ const CashbackDetailsContent = ({
   tierMonthlyCap,
   lifetimeCashback,
   lifetimeCashbackOther,
+  lifetimeCashbackIsPartial,
   onGetMoreCashback,
   animationSession,
   isSheet = true,
@@ -127,17 +147,30 @@ const CashbackDetailsContent = ({
           In cents, the same figure as the rewards card that opens this sheet:
           it includes escrow, so a new cardholder's first purchase reads here
           as it does on the card rather than rounding to $0. */}
-      <StatRow label="Lifetime cashback">
-        <Text className="text-lg font-medium text-white">
-          {formatBalance(lifetimeCashback, CURRENCY_SYMBOLS[currency])}
-          {lifetimeCashbackOther
-            ? ` + ${formatBalance(
-                lifetimeCashbackOther.value,
-                CURRENCY_SYMBOLS[lifetimeCashbackOther.currency],
-              )}`
-            : ''}
-        </Text>
-      </StatRow>
+      {lifetimeCashbackIsPartial ? (
+        // The app's own lower bound, not the backend's complete total (an
+        // older backend, or one that couldn't read it): said so, rather than
+        // passed off as the whole lifetime.
+        <View className="gap-0.5 px-[19px] py-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-medium text-white/70">Lifetime cashback</Text>
+            <LifetimeCashbackValue
+              lifetimeCashback={lifetimeCashback}
+              lifetimeCashbackOther={lifetimeCashbackOther}
+              currency={currency}
+            />
+          </View>
+          <Text className="text-xs text-white/50">Some recent cashback may not show here yet.</Text>
+        </View>
+      ) : (
+        <StatRow label="Lifetime cashback">
+          <LifetimeCashbackValue
+            lifetimeCashback={lifetimeCashback}
+            lifetimeCashbackOther={lifetimeCashbackOther}
+            currency={currency}
+          />
+        </StatRow>
+      )}
     </View>
 
     <Text

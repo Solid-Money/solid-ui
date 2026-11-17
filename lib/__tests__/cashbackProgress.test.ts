@@ -215,11 +215,13 @@ describe('resolveLifetimeCashback', () => {
       expect(resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))).toEqual({
         lifetimeCashback: 25,
         lifetimeCashbackOther: undefined,
+        lifetimeCashbackIsPartial: true,
       });
       // The details lag behind this month's settled and escrowed $10.
       expect(resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 3 }))).toEqual({
         lifetimeCashback: 10,
         lifetimeCashbackOther: undefined,
+        lifetimeCashbackIsPartial: true,
       });
     });
 
@@ -265,6 +267,7 @@ describe('resolveLifetimeCashback', () => {
     expect(result).toEqual({
       lifetimeCashback: 14,
       lifetimeCashbackOther: { value: 150, currency: 'USD' },
+      lifetimeCashbackIsPartial: true,
     });
   });
 
@@ -295,7 +298,51 @@ describe('resolveLifetimeCashback', () => {
         }),
         cardCashback({ currency: 'EUR' }),
       ),
-    ).toEqual({ lifetimeCashback: 14, lifetimeCashbackOther: undefined });
+    ).toEqual({
+      lifetimeCashback: 14,
+      lifetimeCashbackOther: undefined,
+      lifetimeCashbackIsPartial: true,
+    });
+  });
+
+  describe('lifetimeCashbackIsPartial', () => {
+    it("is unset when every figure on show is the backend's", () => {
+      expect(
+        resolveLifetimeCashback(rewardsFor({ cashbackLifetime: 40 }), cardCashback({}))
+          .lifetimeCashbackIsPartial,
+      ).toBeUndefined();
+    });
+
+    it('is set when the figure on show is the fallback', () => {
+      expect(
+        resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))
+          .lifetimeCashbackIsPartial,
+      ).toBe(true);
+    });
+
+    it("is set when only the other currency's figure is the fallback", () => {
+      // Euros from the backend, dollars beside them from the card details.
+      expect(
+        resolveLifetimeCashback(
+          rewardsFor({
+            cashbackCurrency: 'EUR',
+            cashbackEur: { ...eurMonth, cashbackLifetime: 33.5 },
+          }),
+          cardCashback({ totalUsdValue: 150 }),
+        ),
+      ).toEqual({
+        lifetimeCashback: 33.5,
+        lifetimeCashbackOther: { value: 150, currency: 'USD' },
+        lifetimeCashbackIsPartial: true,
+      });
+    });
+
+    it('is unset while the rewards data is still loading', () => {
+      expect(
+        resolveLifetimeCashback(undefined, cardCashback({ totalUsdValue: 25 }))
+          .lifetimeCashbackIsPartial,
+      ).toBeUndefined();
+    });
   });
 
   it('treats nonsensical amounts as nothing', () => {

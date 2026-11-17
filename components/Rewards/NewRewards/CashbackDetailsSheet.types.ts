@@ -30,6 +30,12 @@ export interface CashbackDetailsData {
    * `lifetimeCashback`, never added to it.
    */
   lifetimeCashbackOther?: CashbackFigure;
+  /**
+   * The lifetime figures are the app's own lower bound, not the backend's
+   * complete total, so the sheet notes some cashback may not show yet — see
+   * `resolveLifetimeCashback`.
+   */
+  lifetimeCashbackIsPartial?: boolean;
 }
 
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {

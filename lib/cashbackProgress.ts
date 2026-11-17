@@ -186,24 +186,41 @@ const laneLifetime = (
  * currency, and `lifetimeCashbackOther` when the cardholder also has cashback
  * in the other one — shown beside it, never added to it. See `laneLifetime`
  * for what each figure counts.
+ *
+ * `lifetimeCashbackIsPartial` says a figure on show is the fallback rather
+ * than the backend's complete one: it can still be missing escrow from last
+ * month, or cashback from a card the cardholder no longer holds, so the sheet
+ * says so rather than presenting it as the whole lifetime. Never set while the
+ * rewards data is still loading.
  */
 export const resolveLifetimeCashback = (
   rewards: RewardsUserData | undefined,
   cardCashback: CashbackData | undefined,
-): { lifetimeCashback: number; lifetimeCashbackOther?: CashbackFigure } => {
+): {
+  lifetimeCashback: number;
+  lifetimeCashbackOther?: CashbackFigure;
+  lifetimeCashbackIsPartial?: boolean;
+} => {
   const currency = resolveCashbackMonth(rewards)?.currency ?? 'USD';
+  const fromBackend: Record<CashbackCurrency, number | undefined> = {
+    USD: rewards?.cashbackLifetime,
+    EUR: rewards?.cashbackEur?.cashbackLifetime,
+  };
   const [own, other] = cashbackFiguresByCurrency(
     {
-      USD: laneLifetime(rewards?.cashbackLifetime, cardCashback?.totalUsdValue, rewards),
-      EUR: laneLifetime(
-        rewards?.cashbackEur?.cashbackLifetime,
-        cardCashback?.eur?.totalEurValue,
-        rewards?.cashbackEur,
-      ),
+      USD: laneLifetime(fromBackend.USD, cardCashback?.totalUsdValue, rewards),
+      EUR: laneLifetime(fromBackend.EUR, cardCashback?.eur?.totalEurValue, rewards?.cashbackEur),
     },
     currency,
   );
-  return { lifetimeCashback: own.value, lifetimeCashbackOther: other };
+  const isPartial =
+    rewards !== undefined &&
+    [own, other].some(figure => figure && typeof fromBackend[figure.currency] !== 'number');
+  return {
+    lifetimeCashback: own.value,
+    lifetimeCashbackOther: other,
+    ...(isPartial && { lifetimeCashbackIsPartial: true }),
+  };
 };
 
 /** A non-finite or negative amount contributes nothing rather than NaN. */
