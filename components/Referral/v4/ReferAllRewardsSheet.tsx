@@ -82,7 +82,7 @@ interface ReferAllRewardsSheetProps {
   terms: ReferralV4Terms;
   /** Opens one reward's sheet; this one closes first. */
   onOpenReward: (kind: ReferRewardKind) => void;
-  /** Opens the card credit sheet; this one closes first. */
+  /** Opens the Card bonus explainer after this sheet closes. */
   onOpenCardCredit: () => void;
 }
 

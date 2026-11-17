@@ -1129,9 +1129,17 @@ export const ASSETS = {
     module: require('@/assets/images/referral-new-whatsapp.png'),
     hash: '6a535fd2',
   },
+  'images/referral-v4/card-16.svg': {
+    module: require('@/assets/images/referral-v4/card-16.svg'),
+    hash: '83913ba2',
+  },
   'images/referral-v4/card-40.svg': {
     module: require('@/assets/images/referral-v4/card-40.svg'),
     hash: '795f910d',
+  },
+  'images/referral-v4/card-bonus-16.svg': {
+    module: require('@/assets/images/referral-v4/card-bonus-16.svg'),
+    hash: 'bfb16c04',
   },
   'images/referral-v4/chevron-16.svg': {
     module: require('@/assets/images/referral-v4/chevron-16.svg'),

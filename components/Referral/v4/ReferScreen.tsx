@@ -8,7 +8,6 @@ import ReferralHeroAnimation from '@/components/Referral/ReferralHeroAnimation';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useCardCredit } from '@/hooks/useCardCredit';
 import { useReferralV4Summary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
@@ -205,9 +204,6 @@ export default function ReferScreen() {
   const [rewardSheet, setRewardSheet] = useState<ReferRewardKind | null>(null);
   const [isAllRewardsOpen, setIsAllRewardsOpen] = useState(false);
   const [isCardCreditOpen, setIsCardCreditOpen] = useState(false);
-  // Read once "How you earn" opens, the only way to the sheet that shows it,
-  // so it is usually in by the time that sheet opens.
-  const { data: cardCredit } = useCardCredit({ enabled: isAllRewardsOpen || isCardCreditOpen });
   const hasTrackedView = useRef(false);
 
   const isLive = isReferralV4Live(summary);
@@ -233,8 +229,9 @@ export default function ReferScreen() {
     [openReward],
   );
 
-  const openCardCreditFromList = useCallback(() => {
+  const openCardBonus = useCallback(() => {
     setIsAllRewardsOpen(false);
+    setRewardSheet(null);
     setIsCardCreditOpen(true);
   }, []);
 
@@ -368,20 +365,21 @@ export default function ReferScreen() {
         ) : null}
       </View>
 
-      {/* Before the sheets its rows open, so its close runs before their open. */}
+      {/* A sheet closes before the sheet its row opens. */}
       <ReferAllRewardsSheet
         isOpen={isAllRewardsOpen}
         onOpenChange={setIsAllRewardsOpen}
         terms={terms}
         onOpenReward={openRewardFromList}
-        onOpenCardCredit={openCardCreditFromList}
+        onOpenCardCredit={openCardBonus}
       />
-      <ReferRewardSheet kind={rewardSheet} onClose={() => setRewardSheet(null)} summary={summary} />
-      <CardCreditSheet
-        isOpen={isCardCreditOpen}
-        onOpenChange={setIsCardCreditOpen}
-        credit={cardCredit}
+      <ReferRewardSheet
+        kind={rewardSheet}
+        onClose={() => setRewardSheet(null)}
+        onOpenCardBonus={openCardBonus}
+        summary={summary}
       />
+      <CardCreditSheet isOpen={isCardCreditOpen} onOpenChange={setIsCardCreditOpen} />
     </PageLayout>
   );
 }
