@@ -142,16 +142,6 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, base.id],
   },
   {
-    symbol: 'FUSE',
-    name: 'Fuse',
-    group: 'crypto',
-    icon: 'images/fuse-4x.png',
-    contracts: {
-      [fuse.id]: NATIVE_COIN,
-    },
-    releasedOn: [fuse.id],
-  },
-  {
     // Native BTC, sent on Bitcoin itself. No contract on any chain the list has a
     // row for, so it is offered on rhino.fi's networks alone (Bitcoin), to
     // everyone, once rhino.fi takes it there: its Bitcoin address pays WBTC to
@@ -189,6 +179,16 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     contracts: {
       [base.id]: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
     },
+  },
+  {
+    symbol: 'FUSE',
+    name: 'Fuse',
+    group: 'crypto',
+    icon: 'images/fuse-4x.png',
+    contracts: {
+      [fuse.id]: NATIVE_COIN,
+    },
+    releasedOn: [fuse.id],
   },
   {
     symbol: 'cbZEC',
@@ -241,6 +241,49 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [fuse.id]: WRAPPED_FUSE,
     },
     releasedOn: [fuse.id],
+  },
+];
+
+/**
+ * A coin that comes as more than one token: Bitcoin as BTC, WBTC and cbBTC.
+ * "Select token" lists it once, under its own name, and opens onto its tokens.
+ */
+export type WalletDepositCoinConfig = {
+  key: string;
+  /** The row's title, and the title of the screen it opens. */
+  name: string;
+  group: WalletDepositTokenGroup;
+  icon: AssetPath;
+  /** Its tokens in `WALLET_DEPOSIT_TOKENS`, in the order its screen lists them. */
+  symbols: string[];
+};
+
+/**
+ * The coins "Select token" folds into one row each, where it lists the first
+ * of their tokens. Each is one coin to the person sending it, whichever token
+ * they hold, so a list of three Bitcoins read as three things to choose from.
+ */
+export const WALLET_DEPOSIT_COINS: WalletDepositCoinConfig[] = [
+  {
+    key: 'ether',
+    name: 'Ether',
+    group: 'crypto',
+    icon: 'images/eth.png',
+    symbols: ['ETH', 'WETH'],
+  },
+  {
+    key: 'bitcoin',
+    name: 'Bitcoin',
+    group: 'crypto',
+    icon: 'images/btc.png',
+    symbols: ['BTC', 'WBTC', 'cbBTC'],
+  },
+  {
+    key: 'fuse',
+    name: 'Fuse',
+    group: 'crypto',
+    icon: 'images/fuse-4x.png',
+    symbols: ['FUSE', 'WFUSE'],
   },
 ];
 

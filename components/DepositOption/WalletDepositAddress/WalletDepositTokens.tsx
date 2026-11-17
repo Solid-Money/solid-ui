@@ -13,12 +13,14 @@ import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
-  getAllWalletDepositTokens,
+  getWalletDepositChoices,
   groupWalletDepositTokens,
+  isWalletDepositCoin,
   matchesWalletDepositSearch,
   resolveWalletDepositChain,
   resolveWalletDepositExtraChain,
-  WalletDepositToken,
+  WalletDepositChoice,
+  WalletDepositViewer,
 } from './constants';
 import { useWalletDepositViewer } from './useWalletDepositViewer';
 
@@ -67,7 +69,8 @@ const TokenSearchField = ({
   );
 };
 
-const DepositTokenRow = ({
+/** A row of a token list: a ticker over its full name, or a coin over its tickers. */
+export const DepositTokenRow = ({
   icon,
   ticker,
   name,
@@ -123,13 +126,45 @@ const NoMatchingToken = ({ onShowAll }: { onShowAll: () => void }) => (
 );
 
 /**
+ * Opens the address for a token picked from "Select token" or a coin's screen.
+ * The chain follows from the pick (see `resolveWalletDepositChain`), and the
+ * address screen's network pill is there to change it.
+ */
+export const useSelectWalletDepositToken = (viewer: WalletDepositViewer) => {
+  const setModal = useDepositStore(state => state.setModal);
+  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
+  const walletDeposit = useDepositStore(state => state.walletDeposit);
+
+  return (symbol: string) => {
+    Keyboard.dismiss();
+    setWalletDeposit({
+      symbol,
+      chainId: resolveWalletDepositChain(symbol, walletDeposit.chainId, viewer),
+      rhinoChain: resolveWalletDepositExtraChain(symbol, walletDeposit.rhinoChain, viewer),
+      isChangingToken: false,
+    });
+    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+  };
+};
+
+/** The words a row of "Select token" shows: a coin over the tickers it comes as. */
+const describeChoice = (choice: WalletDepositChoice) =>
+  isWalletDepositCoin(choice)
+    ? {
+        key: choice.coin,
+        ticker: choice.name,
+        name: choice.tokens.map(token => token.symbol).join(' · '),
+      }
+    : { key: choice.symbol, ticker: choice.symbol, name: choice.name };
+
+/**
  * "Select token" — which currency the deposit address is for, and the first step
  * after "Show deposit address".
  *
  * It lists every currency some chain accepts, grouped the way Assets groups
- * holdings, with a search over ticker and name above them. The chain follows
- * from the pick (see `resolveWalletDepositChain`), and the address screen's
- * network pill is there to change it.
+ * holdings, with a search over ticker and name above them. A coin that comes as
+ * several tokens (Ether, Bitcoin, Fuse) is one row, which opens onto them; the
+ * rest open the address.
  *
  * Which currencies there are, and on which chains, is rhino.fi's to say on every
  * chain but Fuse, so the list waits for its routes rather than offering a pick
@@ -153,23 +188,28 @@ const WalletDepositTokens = () => {
   // Nothing in place of rhino.fi's tokens once its routes are in, or when it is
   // off: every token then has the rows it has, ours included.
   const rhinoNotice = getRhinoAssetsNotice(rhinoStatus);
-  const tokens = useMemo(() => getAllWalletDepositTokens(viewer), [viewer]);
+  const choices = useMemo(() => getWalletDepositChoices(viewer), [viewer]);
   const groups = useMemo(
     () =>
-      groupWalletDepositTokens(tokens.filter(token => matchesWalletDepositSearch(token, query))),
-    [tokens, query],
+      groupWalletDepositTokens(choices.filter(choice => matchesWalletDepositSearch(choice, query))),
+    [choices, query],
   );
+  const selectToken = useSelectWalletDepositToken(viewer);
 
-  const handleSelect = (token: WalletDepositToken) => {
+  const handleSelect = (choice: WalletDepositChoice) => {
+    if (!isWalletDepositCoin(choice)) {
+      selectToken(choice.symbol);
+      return;
+    }
     Keyboard.dismiss();
-    setWalletDeposit({
-      symbol: token.symbol,
-      chainId: resolveWalletDepositChain(token.symbol, walletDeposit.chainId, viewer),
-      rhinoChain: resolveWalletDepositExtraChain(token.symbol, walletDeposit.rhinoChain, viewer),
-      isChangingToken: false,
-    });
-    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+    setWalletDeposit({ coin: choice.coin });
+    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_COIN);
   };
+
+  const isSelected = (choice: WalletDepositChoice) =>
+    isWalletDepositCoin(choice)
+      ? choice.tokens.some(token => token.symbol === selected)
+      : choice.symbol === selected;
 
   return (
     <View className="gap-y-5">
@@ -180,7 +220,7 @@ const WalletDepositTokens = () => {
           notice={rhinoNotice}
           symbol=""
           noun="tokens"
-          hasRows={tokens.length > 0}
+          hasRows={choices.length > 0}
           onRetry={retryRhino}
           className={rhinoNotice === 'loading' ? 'py-14' : 'rounded-[15px] bg-card'}
         />
@@ -191,17 +231,20 @@ const WalletDepositTokens = () => {
           <View key={group.key} className="gap-y-2">
             <Text className="text-sm font-medium text-white/50">{group.label}</Text>
             <View className="overflow-hidden rounded-[15px] bg-card">
-              {group.tokens.map((token, index) => (
-                <DepositTokenRow
-                  key={token.symbol}
-                  icon={token.icon}
-                  ticker={token.symbol}
-                  name={token.name}
-                  isSelected={token.symbol === selected}
-                  hasDivider={index < group.tokens.length - 1}
-                  onPress={() => handleSelect(token)}
-                />
-              ))}
+              {group.tokens.map((choice, index) => {
+                const { key, ticker, name } = describeChoice(choice);
+                return (
+                  <DepositTokenRow
+                    key={key}
+                    icon={choice.icon}
+                    ticker={ticker}
+                    name={name}
+                    isSelected={isSelected(choice)}
+                    hasDivider={index < group.tokens.length - 1}
+                    onPress={() => handleSelect(choice)}
+                  />
+                );
+              })}
             </View>
           </View>
         ))

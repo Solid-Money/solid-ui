@@ -111,9 +111,15 @@ export interface WalletDepositSelection {
   /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
-   * token", so the previous step alone cannot tell the two apart.
+   * token", so the previous step alone cannot tell the two apart. Kept through
+   * a coin's own screen (see `coin`), which it ticks the same way.
    */
   isChangingToken?: boolean;
+  /**
+   * The coin whose tokens its own screen lists (`bitcoin`: BTC, WBTC, cbBTC),
+   * set by the "Select token" row or the currency pill that opens it.
+   */
+  coin?: string;
   /**
    * Set when the address is opened to fund something paid from the Safe itself:
    * the AI API, which charges the Safe on Base. The screen then shows the Safe
