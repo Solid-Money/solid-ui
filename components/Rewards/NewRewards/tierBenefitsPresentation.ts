@@ -1,7 +1,18 @@
 import { formatTierCashbackRate } from '@/lib/tierCashback';
-import { formatPriceUsd, isOfferOnSale, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
+import {
+  canPayCashFor,
+  formatPriceUsd,
+  isOfferOnSale,
+  offerFirstYearFeeUsd,
+} from '@/lib/tierUpgrade';
 import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
-import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
+import {
+  RewardsTier,
+  type TierBenefits,
+  type TierFees,
+  type TierMembershipContracts,
+  type TierOffer,
+} from '@/lib/types';
 
 import {
   type CashbackCategory,
@@ -244,12 +255,27 @@ export interface TierOfferRow {
   listValue?: string;
 }
 
-export function tierOfferRows(offer: TierOffer | undefined): TierOfferRow[] {
+/** The addresses that decide whether the cash route can be built — see `canPayCashFor`. */
+type OfferContracts = Pick<
+  TierMembershipContracts,
+  'billingTokenAddress' | 'revenueTreasuryAddress'
+>;
+
+/**
+ * The ways to get a tier, priced. Pass the membership's contracts: the price is
+ * only shown when the cash route can actually be taken — the same test
+ * `availableRoutes` sells by — so an upgrade paid by transfer with no treasury
+ * to pay is offered by its lock alone rather than at a price no button takes.
+ */
+export function tierOfferRows(
+  offer: TierOffer | undefined,
+  contracts?: OfferContracts,
+): TierOfferRow[] {
   if (!offer) return [];
   const rows: TierOfferRow[] = [];
   // The first year's price is what is paid now — the sale price during a sale.
   const firstYear = offerFirstYearFeeUsd(offer);
-  if (offer.cashAvailable && firstYear != null && firstYear > 0) {
+  if (canPayCashFor(offer, contracts) && firstYear != null && firstYear > 0) {
     rows.push({
       label: 'Annual membership',
       value: `${formatPriceUsd(firstYear)}/year`,
@@ -271,8 +297,8 @@ export function tierOfferRows(offer: TierOffer | undefined): TierOfferRow[] {
 const offerRowText = (row: TierOfferRow) =>
   row.listValue ? `${row.value} (was ${row.listValue})` : row.value;
 
-export function tierOfferSubtitle(offer: TierOffer | undefined) {
-  const rows = tierOfferRows(offer);
+export function tierOfferSubtitle(offer: TierOffer | undefined, contracts?: OfferContracts) {
+  const rows = tierOfferRows(offer, contracts);
   if (rows.length === 2) return `${offerRowText(rows[0])} or ${rows[1].value} locked`;
   if (rows.length === 1)
     return rows[0].label === 'Lock FUSE'

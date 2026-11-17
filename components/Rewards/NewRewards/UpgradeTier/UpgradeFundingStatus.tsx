@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { KeyRound } from 'lucide-react-native';
 
@@ -17,6 +17,7 @@ import { getTierDisplayName } from '@/lib/tierNames';
 import {
   canPayCashFor,
   findOffer,
+  formatUsd,
   isTierOnTrial,
   offerFirstYearFeeUsd,
   offerPaymentMode,
@@ -45,10 +46,13 @@ import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
  */
 const UpgradeFundingStatus = () => {
   const { data: membership } = useTierMembership();
-  const { data: chain } = useTierUpgradeChainState(membership?.contracts);
+  const { data: chain, dataUpdatedAt: balancesReadAt } = useTierUpgradeChainState(
+    membership?.contracts,
+  );
   const tier = useTierUpgradeStore(state => state.tier);
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
+  const selectToken = useTierUpgradeStore(state => state.selectToken);
   const offer = tier ? findOffer(membership, tier) : undefined;
   // The first year is what is charged now, and what has to have landed.
   const feeUsd = offerFirstYearFeeUsd(offer) ?? 0;
@@ -67,6 +71,20 @@ const UpgradeFundingStatus = () => {
     if (swap && activeClientTxId !== swap.clientTxId) setActive(swap.clientTxId);
   }, [swap, activeClientTxId, setActive]);
 
+  // When this screen first saw the payment land. A shortfall is only believed
+  // from a balance read after that: until the poll catches up, the USDC that
+  // just landed is missing from the balance, and "short by the whole fee"
+  // would be the wrong thing to say.
+  const arrivedClientTxId = funding.state === 'arrived' ? funding.swap.clientTxId : undefined;
+  const [arrival, setArrival] = useState<{ clientTxId: string; seenAt: number }>();
+  useEffect(() => {
+    if (arrivedClientTxId && arrival?.clientTxId !== arrivedClientTxId) {
+      setArrival({ clientTxId: arrivedClientTxId, seenAt: Date.now() });
+    }
+  }, [arrivedClientTxId, arrival?.clientTxId]);
+  const balanceReadSinceArrival =
+    !!arrival && arrival.clientTxId === arrivedClientTxId && balancesReadAt > arrival.seenAt;
+
   if (!swap || !tier || !offer || !membership) {
     return (
       <View className="mx-auto w-full max-w-[414px]">
@@ -81,9 +99,19 @@ const UpgradeFundingStatus = () => {
   }
 
   const keeping = isTierOnTrial(membership, tier);
-  // Read off the chain, not the swap: the balance poll is what says the USDC
-  // is actually spendable, and it is what the charge will be taken from.
-  const ready = funding.state === 'arrived' && payment.affordable;
+  // An upgrade paid by transfer that is still unconfirmed has already taken
+  // the USDC, so the balance can no longer vouch for it — and Finish is the
+  // only way to confirm it. Pressed then, it confirms that payment and never
+  // signs a new one.
+  const confirmingEarlier = payment.awaitingConfirm && !payment.fuseCoversFee;
+  // Otherwise read off the chain, not the swap: the balance poll is what says
+  // the USDC is actually spendable, and it is what the charge will be taken
+  // from — whichever token the offer row names.
+  const ready = confirmingEarlier || (funding.state === 'arrived' && payment.fuseCoversFee);
+  // A transfer upgrade's payment that landed short stays short — nothing
+  // covers its bridge — so the rest has to be sent, not waited for.
+  const shortUsd =
+    funding.state === 'arrived' && balanceReadSinceArrival ? payment.arrivedShortUsd : 0;
 
   const handleFinish = async () => {
     if (
@@ -106,6 +134,7 @@ const UpgradeFundingStatus = () => {
       contracts: membership.contracts,
       moduleEnabled: chain?.moduleEnabled ?? false,
       funding: { transactionHash: swap.txHash, fromChainId: swap.fromChainId },
+      confirmPendingOnly: confirmingEarlier,
     }).catch(() => null);
     if (!result) return;
     markUpgradeFundingSpent(swap.clientTxId);
@@ -117,6 +146,17 @@ const UpgradeFundingStatus = () => {
       <Button variant="brand" className="h-12 w-full rounded-2xl" onPress={back}>
         <Text className="w-full text-center text-base font-bold">Back to upgrade</Text>
       </Button>
+    ) : shortUsd > 0 && !ready ? (
+      <View className="gap-3">
+        <Text className="text-center text-[14px] leading-5 text-white/50">
+          {`Your USDC has landed, but you’re still ${formatUsd(
+            Math.ceil(shortUsd * 100) / 100,
+          )} short of the ${formatUsd(feeUsd)} fee. Add the rest to finish.`}
+        </Text>
+        <Button variant="brand" className="h-12 w-full rounded-2xl" onPress={selectToken}>
+          <Text className="w-full text-center text-base font-bold text-black">Add the rest</Text>
+        </Button>
+      </View>
     ) : (
       <View className="gap-3">
         {error ? (

@@ -134,8 +134,10 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
   if (isLoading) return <Loading />;
 
   // Nothing to sell: the routes are switched off, or the user already holds
-  // everything. Either way this is the wrong thing to be looking at.
-  if (!membership?.enabled || !tier || !offer || !route) {
+  // everything. Either way this is the wrong thing to be looking at. A route
+  // held over from before is no route at all once it stops being on offer — a
+  // "Cash" tab kept after the treasury went would sell what cannot be paid.
+  if (!membership?.enabled || !tier || !offer || !route || !routes.includes(route)) {
     return (
       <UpgradeUnavailable
         message={
@@ -203,18 +205,21 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
 
   // The cash route pays from whichever token the row above names, and only
   // falls back to the Fuse-only check when the backend has not said which USDC
-  // it bills in — an older backend, which has no bridged route to offer.
+  // it bills in — an older backend, which has no bridged route to offer. An
+  // upgrade already paid by transfer and not yet confirmed goes on to the
+  // review whatever the balance, which only confirms it.
   const affordable =
     route === 'cash'
-      ? payment.billingTokenAddress
-        ? payment.affordable
-        : canAffordUpgrade({
-            route,
-            offer,
-            lockedFuse: membership.lock.lockedFuse,
-            availableFuse: balances.sofuse,
-            availableUsdc,
-          })
+      ? payment.awaitingConfirm ||
+        (payment.billingTokenAddress
+          ? payment.affordable
+          : canAffordUpgrade({
+              route,
+              offer,
+              lockedFuse: membership.lock.lockedFuse,
+              availableFuse: balances.sofuse,
+              availableUsdc,
+            }))
       : canPayLockWith(paymentAsset, remainingFuse, balances);
   // A bridged payment already on its way: the next step is to watch it land,
   // not to start a second one.

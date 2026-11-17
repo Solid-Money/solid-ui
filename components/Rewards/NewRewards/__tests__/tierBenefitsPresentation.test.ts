@@ -249,4 +249,41 @@ describe('membership offer presentation', () => {
 
     expect(cash).toEqual({ label: 'Annual membership', value: '$199/year' });
   });
+
+  /**
+   * An upgrade paid by transfer needs the treasury to pay. Without it the
+   * routes offer the lock alone, so the price must not be advertised beside a
+   * button that cannot take it — the same test `availableRoutes` sells by.
+   */
+  describe('an upgrade paid by transfer', () => {
+    const upgrade = offer({
+      tier: ULTRA,
+      annualFeeUsd: 999,
+      firstYearFeeUsd: 799,
+      lockFuse: 600_000,
+      paymentMode: 'transfer',
+    });
+    const contracts = {
+      billingTokenAddress: '0x3333333333333333333333333333333333333333',
+      revenueTreasuryAddress: '0x4444444444444444444444444444444444444444',
+    };
+
+    it('is priced in cash when the treasury is known', () => {
+      expect(tierOfferSubtitle(upgrade, contracts)).toBe(
+        '$799/year (was $999) or 600K FUSE locked',
+      );
+    });
+
+    it('is offered by its lock alone without the treasury', () => {
+      const noTreasury = { ...contracts, revenueTreasuryAddress: null };
+
+      expect(tierOfferRows(upgrade, noTreasury)).toEqual([
+        { label: 'Lock FUSE', value: '600K FUSE' },
+      ]);
+      expect(tierOfferSubtitle(upgrade, noTreasury)).toBe('Requires 600K FUSE locked');
+      // No contracts at all is the same answer, never a price.
+      expect(tierOfferSubtitle(upgrade)).toBe('Requires 600K FUSE locked');
+      expect(tierOfferSubtitle({ ...upgrade, lockAvailable: false }, noTreasury)).toBeNull();
+    });
+  });
 });

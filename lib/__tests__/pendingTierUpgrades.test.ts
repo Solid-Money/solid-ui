@@ -15,7 +15,10 @@ const mockUpgrade = jest.fn();
 jest.mock('@/lib/api', () => ({
   upgradeTierSubscription: (body: unknown) => mockUpgrade(body),
 }));
-jest.mock('@/lib/utils', () => ({ withRefreshToken: (call: () => unknown) => call() }));
+const mockWithRefreshToken = jest.fn();
+jest.mock('@/lib/utils', () => ({
+  withRefreshToken: (call: () => Promise<unknown>) => mockWithRefreshToken(call),
+}));
 jest.mock('@/lib/mmvkStorage', () => {
   const memory = new Map<string, string>();
   return {
@@ -57,6 +60,7 @@ beforeEach(() => {
   usePendingTierUpgradeStore.setState({ upgrades: {} });
   mockGetReceipt.mockReset();
   mockUpgrade.mockReset().mockResolvedValue(STATE);
+  mockWithRefreshToken.mockReset().mockImplementation((call: () => Promise<unknown>) => call());
 });
 
 it('has nothing to settle for an account with no earlier upgrade', async () => {
@@ -161,6 +165,40 @@ it('keeps a payment the backend says has not landed yet as pending', async () =>
 
   await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'pending' });
   expect(stored()).toEqual([expect.not.objectContaining({ rejectedAt: expect.anything() })]);
+});
+
+/**
+ * A 401 on the upgrade call sends `withRefreshToken` to refresh the session,
+ * and a refresh that fails throws its own error — a 404 when the backend has
+ * no refresh token. That is about the session, not the payment: it must never
+ * be read as the backend refusing the upgrade.
+ */
+it('keeps the payment pending when only the session refresh failed', async () => {
+  remember({ transactionHash: TX });
+  mockUpgrade.mockRejectedValue(httpError(401));
+  mockWithRefreshToken.mockImplementation(async (call: () => Promise<unknown>) => {
+    await call().catch(() => undefined);
+    throw httpError(404, 'Refresh token not found');
+  });
+
+  await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'pending' });
+  expect(stored()).toEqual([expect.not.objectContaining({ rejectedAt: expect.anything() })]);
+});
+
+it('still reads a refusal from the upgrade call retried after a refresh', async () => {
+  remember({ transactionHash: TX });
+  mockUpgrade
+    .mockRejectedValueOnce(httpError(401))
+    .mockRejectedValueOnce(httpError(409, 'You already have this membership.'));
+  mockWithRefreshToken.mockImplementation(async (call: () => Promise<unknown>) => {
+    await call().catch(() => undefined);
+    return call();
+  });
+
+  await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+    status: 'rejected',
+    message: 'You already have this membership.',
+  });
 });
 
 it('lets a refused payment go a day after it was refused', async () => {

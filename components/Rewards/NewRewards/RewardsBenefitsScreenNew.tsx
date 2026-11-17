@@ -314,7 +314,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       // to keep it once the trial ends.
       trialTier: isError ? undefined : rewardsData?.activeTierTrial?.tier,
     });
-    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer) : null;
+    // Priced by the routes the button sells, so it never quotes a cash price
+    // for an upgrade it can only offer by lock.
+    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer, membership.contracts) : null;
     // Same verb as the button: a tier the trial is lending is kept, not gained.
     const purpose = cta.label === 'Keep' ? 'to keep it' : 'to upgrade';
     return cta.enabled && !isError && !pending && upgradeRoutes(tier).length > 0 && offerCopy
@@ -547,6 +549,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   allBenefits={tierBenefits}
                   fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
+                  contracts={membership?.contracts}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))
@@ -554,7 +557,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   subtitle={(() => {
                     const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
                     const offerCopy = membership?.enabled
-                      ? tierOfferSubtitle(findOffer(membership, tier))
+                      ? tierOfferSubtitle(findOffer(membership, tier), membership.contracts)
                       : null;
                     const copy =
                       tier === RewardsTier.CORE

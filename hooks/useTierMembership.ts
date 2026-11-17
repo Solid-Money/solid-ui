@@ -481,6 +481,13 @@ export const useLockFuseForTier = () => {
 };
 
 /**
+ * An upgrade paid by transfer that was sent and is still landing. Shown to the
+ * user like any refusal of ours, but it is not a failed upgrade, and is not
+ * reported as one.
+ */
+class TierUpgradeConfirmingError extends UserCopyError {}
+
+/**
  * Buy a tier with the annual fee, the way the offer says it is paid.
  *
  * One user operation either way. For `module` — a first membership — that is
@@ -513,6 +520,7 @@ export const useSubscribeToTier = () => {
       contracts,
       moduleEnabled,
       funding,
+      confirmPendingOnly = false,
     }: {
       /** The offer being bought, exactly as the screen priced it. */
       offer: TierOffer;
@@ -527,6 +535,13 @@ export const useSubscribeToTier = () => {
        * upgrade, which has no bridge-fee cover.
        */
       funding?: { transactionHash: string; fromChainId: number };
+      /**
+       * Only finish an earlier `transfer` payment that is still unconfirmed;
+       * never sign a new one. For a screen whose balance no longer covers the
+       * fee — because that payment has already taken it — and so has not
+       * checked that a new payment could go through.
+       */
+      confirmPendingOnly?: boolean;
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
@@ -562,6 +577,12 @@ export const useSubscribeToTier = () => {
         }
       }
 
+      // There was nothing earlier left to finish, and the balance a new payment
+      // would come out of was never checked: the caller only asked to confirm.
+      if (confirmPendingOnly) {
+        throw new UserCopyError('Your USDC on Fuse no longer covers this upgrade.');
+      }
+
       const transactions = buildSubscriptionTransactions({
         mode,
         safeAddress: user.safeAddress as Address,
@@ -575,22 +596,46 @@ export const useSubscribeToTier = () => {
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        mode === 'transfer'
-          ? 'Failed to upgrade your membership'
-          : 'Failed to start your membership',
-        fuse,
-        // Remembered the moment the bundler accepts it: from here the payment
-        // can land whatever happens to the app, and a retry must find it.
-        mode === 'transfer'
-          ? userOpHash =>
-              usePendingTierUpgradeStore
-                .getState()
-                .remember({ userOpHash, userId, submittedAt: Date.now(), tier })
-          : undefined,
-      );
+      let userOpHash: `0x${string}` | undefined;
+      let result: Awaited<ReturnType<typeof executeTransactions>>;
+      try {
+        result = await executeTransactions(
+          smartAccountClient,
+          transactions,
+          mode === 'transfer'
+            ? 'Failed to upgrade your membership'
+            : 'Failed to start your membership',
+          fuse,
+          // Remembered the moment the bundler accepts it: from here the payment
+          // can land whatever happens to the app, and a retry must find it.
+          mode === 'transfer'
+            ? hash => {
+                userOpHash = hash;
+                usePendingTierUpgradeStore
+                  .getState()
+                  .remember({ userOpHash: hash, userId, submittedAt: Date.now(), tier });
+              }
+            : undefined,
+        );
+      } catch (sendError) {
+        // Paid by transfer, sent, and only the wait gave up — usually because
+        // the app was in the background. The payment has most likely landed:
+        // the record stays, the next press confirms it, and saying "failed"
+        // here is what would make the user pay again. Anything else is shown
+        // as it always was; the record lets the next press settle it either way.
+        if (mode === 'transfer' && userOpHash && isReceiptTimeout(sendError)) {
+          track(TRACKING_EVENTS.TIER_SUBSCRIBE_PENDING, {
+            tier,
+            price_usd: priceUsd,
+            payment_mode: mode,
+            user_op_hash: userOpHash,
+          });
+          throw new TierUpgradeConfirmingError(
+            'Your upgrade payment is still confirming. Try again in a moment to finish — you won’t be charged twice.',
+          );
+        }
+        throw sendError;
+      }
 
       if (result === USER_CANCELLED_TRANSACTION) {
         track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
@@ -647,6 +692,8 @@ export const useSubscribeToTier = () => {
           ? mutationError.message
           : getUserErrorMessage(mutationError, { action: 'subscription' }) || null,
       );
+      // Tracked as pending where it was thrown.
+      if (mutationError instanceof TierUpgradeConfirmingError) return;
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'Failed to start your membership',
       });

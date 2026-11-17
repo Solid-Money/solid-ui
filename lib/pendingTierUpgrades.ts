@@ -98,14 +98,28 @@ export const settlePendingTierUpgrades = async (
       landed(upgrade.userOpHash, transactionHash);
     }
 
+    // What the upgrade endpoint itself last threw. `withRefreshToken` can also
+    // throw the session refresh's own error after a 401 — a 404 from the
+    // refresh endpoint, say — and that says nothing about this payment.
+    let upgradeError: unknown;
     try {
-      const state = await withRefreshToken(() =>
-        upgradeTierSubscription({ tier: upgrade.tier, transactionHash: transactionHash! }),
-      );
+      const state = await withRefreshToken(async () => {
+        try {
+          return await upgradeTierSubscription({
+            tier: upgrade.tier,
+            transactionHash: transactionHash!,
+          });
+        } catch (error) {
+          upgradeError = error;
+          throw error;
+        }
+      });
       forget(upgrade.userOpHash);
       return { status: 'confirmed', state };
     } catch (error) {
-      const message = await upgradeRejectionMessage(error);
+      // Only the endpoint's own answer can refuse the payment for good; any
+      // other failure leaves it pending, to be confirmed on the next press.
+      const message = error === upgradeError ? await upgradeRejectionMessage(error) : null;
       if (!message) return { status: 'pending' };
       rejected(upgrade.userOpHash, now);
       return { status: 'rejected', message };

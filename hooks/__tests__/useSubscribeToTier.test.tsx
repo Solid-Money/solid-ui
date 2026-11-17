@@ -12,11 +12,13 @@ const { act, create } = require('react-test-renderer');
 
 type MutationFn = (variables: Record<string, unknown>) => Promise<unknown>;
 let mockMutationFn: MutationFn | undefined;
+let mockOnError: ((error: Error) => void) | undefined;
 jest.mock('@tanstack/react-query', () => ({
   useQuery: () => ({}),
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),
-  useMutation: (options: { mutationFn: MutationFn }) => {
+  useMutation: (options: { mutationFn: MutationFn; onError: (error: Error) => void }) => {
     mockMutationFn = options.mutationFn;
+    mockOnError = options.onError;
     return {};
   },
 }));
@@ -32,7 +34,10 @@ jest.mock('@/hooks/useUser', () => ({
     safeAA: jest.fn().mockResolvedValue({}),
   }),
 }));
-jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+const mockTrack = jest.fn();
+jest.mock('@/lib/analytics', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
+}));
 const mockConfirm = jest.fn();
 const mockUpgrade = jest.fn();
 jest.mock('@/lib/api', () => ({
@@ -50,7 +55,9 @@ jest.mock('@/lib/execute', () => ({
   USER_CANCELLED_TRANSACTION: 'cancelled',
   executeTransactions: (...args: unknown[]) => mockExecuteTransactions(...args),
 }));
-jest.mock('@/lib/pendingTierLocks', () => ({}));
+jest.mock('@/lib/pendingTierLocks', () => ({
+  isReceiptTimeout: (error: Error) => error.name === 'WaitForUserOperationReceiptTimeoutError',
+}));
 const mockSettle = jest.fn();
 jest.mock('@/lib/pendingTierUpgrades', () => ({
   settlePendingTierUpgrades: (userId: string) => mockSettle(userId),
@@ -135,6 +142,26 @@ const lands = () =>
     },
   );
 
+const receiptTimeout = () =>
+  Object.assign(new Error('Timed out while waiting for User Operation'), {
+    name: 'WaitForUserOperationReceiptTimeoutError',
+  });
+
+/** The bundler accepted the operation, then the wait for its receipt gave up. */
+const timesOut = () =>
+  mockExecuteTransactions.mockImplementation(
+    async (
+      _client: unknown,
+      _calls: unknown,
+      _message: string,
+      _chain: unknown,
+      onUserOpHash?: (hash: string) => void,
+    ) => {
+      onUserOpHash?.(HASH);
+      throw receiptTimeout();
+    },
+  );
+
 /** The calls the Safe was asked to sign. */
 const signed = (): { to: string; data: `0x${string}`; value: bigint }[] =>
   mockExecuteTransactions.mock.calls[0][1];
@@ -161,8 +188,11 @@ beforeEach(() => {
   mockConfirm.mockReset().mockResolvedValue(STATE);
   mockUpgrade.mockReset().mockResolvedValue(STATE);
   mockSettle.mockReset().mockResolvedValue({ status: 'none' });
+  mockTrack.mockReset();
   lands();
 });
+
+const tracked = () => mockTrack.mock.calls.map(([event]) => event);
 
 describe('a module subscription', () => {
   it('signs the mandate at the annual fee during a sale, and confirms', async () => {
@@ -310,6 +340,112 @@ describe('an upgrade paid by transfer', () => {
         subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
       ).rejects.toThrow('no need to pay again');
       expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * A screen whose balance the earlier payment has already taken presses on
+   * only to confirm it. It must never become a second payment.
+   */
+  describe('confirming an earlier payment only', () => {
+    it('finishes the earlier payment', async () => {
+      mockSettle.mockResolvedValue({ status: 'confirmed', state: STATE });
+
+      await expect(
+        subscribe({
+          offer: ultraUpgrade,
+          contracts,
+          moduleEnabled: true,
+          confirmPendingOnly: true,
+        }),
+      ).resolves.toEqual(expect.objectContaining({ state: STATE, mode: 'transfer' }));
+      expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+
+    it('signs nothing when there is no earlier payment left to finish', async () => {
+      await expect(
+        subscribe({
+          offer: ultraUpgrade,
+          contracts,
+          moduleEnabled: true,
+          confirmPendingOnly: true,
+        }),
+      ).rejects.toThrow(UserCopyError);
+      expect(mockSettle).toHaveBeenCalledWith('user-1');
+      expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+
+    it('never signs a module subscription either', async () => {
+      await expect(
+        subscribe({
+          offer: primeSale,
+          contracts,
+          moduleEnabled: true,
+          confirmPendingOnly: true,
+        }),
+      ).rejects.toThrow(UserCopyError);
+      expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Sent, and only the wait for the receipt gave up — the app was
+   * backgrounded. The payment has most likely landed, so the user is told it
+   * is confirming rather than that it failed, and the record stays so the next
+   * press confirms it instead of paying again.
+   */
+  describe('when the receipt wait gives up after sending', () => {
+    it('says the payment is confirming, keeps the record, and is not a failure', async () => {
+      timesOut();
+
+      const failure = await subscribe({
+        offer: ultraUpgrade,
+        contracts,
+        moduleEnabled: true,
+      }).catch((error: Error) => error);
+
+      expect(failure).toBeInstanceOf(UserCopyError);
+      expect((failure as Error).message).toMatch(/still confirming/);
+      expect((failure as Error).message).toMatch(/won’t be charged twice/);
+      expect(stored()).toEqual([
+        expect.objectContaining({ userOpHash: HASH, tier: RewardsTier.ULTRA }),
+      ]);
+      expect(stored()[0].transactionHash).toBeUndefined();
+      expect(mockUpgrade).not.toHaveBeenCalled();
+      expect(tracked()).toEqual(['tier_subscribe_pending']);
+
+      mockOnError!(failure as Error);
+      expect(tracked()).not.toContain('tier_subscribe_failed');
+    });
+
+    it('is still a failure when it gave up before the bundler took it', async () => {
+      mockExecuteTransactions.mockRejectedValue(receiptTimeout());
+
+      const failure = await subscribe({
+        offer: ultraUpgrade,
+        contracts,
+        moduleEnabled: true,
+      }).catch((error: Error) => error);
+
+      expect(failure).not.toBeInstanceOf(UserCopyError);
+      mockOnError!(failure as Error);
+      expect(tracked()).toEqual(['tier_subscribe_failed']);
+    });
+
+    it('leaves a module subscription as it was', async () => {
+      timesOut();
+
+      const failure = await subscribe({
+        offer: primeSale,
+        contracts,
+        moduleEnabled: true,
+      }).catch((error: Error) => error);
+
+      expect(failure).not.toBeInstanceOf(UserCopyError);
+      expect((failure as Error).name).toBe('WaitForUserOperationReceiptTimeoutError');
+      expect(stored()).toEqual([]);
+      mockOnError!(failure as Error);
+      expect(tracked()).toEqual(['tier_subscribe_failed']);
     });
   });
 });

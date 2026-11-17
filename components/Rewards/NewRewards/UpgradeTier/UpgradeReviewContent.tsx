@@ -103,8 +103,15 @@ const UpgradeReviewContent = () => {
   }
 
   // Paying from another chain is its own review: a quote, a bridge and a
-  // second signature once the USDC lands.
-  if (route === 'cash' && !payment.payingFromFuse && firstYearFeeUsd !== null) {
+  // second signature once the USDC lands. Only for a purchase that can then be
+  // completed — an upgrade by transfer with no treasury to pay would leave the
+  // user with USDC moved to Fuse for nothing.
+  if (
+    route === 'cash' &&
+    !payment.payingFromFuse &&
+    firstYearFeeUsd !== null &&
+    canPayCashFor(offer, membership.contracts)
+  ) {
     return <BridgedCashReview offer={offer} feeUsd={firstYearFeeUsd} payment={payment} />;
   }
 
@@ -144,21 +151,25 @@ const UpgradeReviewContent = () => {
   // presses this.
   //
   // For cash, a bridged payment that has landed counts with what the bridge
-  // took off it covered — the same answer the offer step gave.
+  // took off it covered — the same answer the offer step gave. An upgrade
+  // already paid by transfer and not yet confirmed has taken the USDC this
+  // would check, so it can always be pressed on — to confirm, never to pay.
+  const cashConfirmOnly = payment.awaitingConfirm && !payment.affordable;
   const canPay =
     chain !== undefined &&
     balances !== undefined &&
     (route === 'lock'
       ? canPayLockWith(paymentAsset, remainingFuse, balances)
-      : payment.billingTokenAddress
-        ? payment.affordable
-        : canAffordUpgrade({
-            route,
-            offer,
-            lockedFuse: membership.lock.lockedFuse,
-            availableFuse: chain.fuse,
-            availableUsdc: chain.usdcAmount,
-          }));
+      : cashConfirmOnly ||
+        (payment.billingTokenAddress
+          ? payment.affordable
+          : canAffordUpgrade({
+              route,
+              offer,
+              lockedFuse: membership.lock.lockedFuse,
+              availableFuse: chain.fuse,
+              availableUsdc: chain.usdcAmount,
+            })));
 
   // Only once we have actually read the balances. Nothing to say while they load.
   const shortOfFunds = chain !== undefined && !canPay;
@@ -255,6 +266,7 @@ const UpgradeReviewContent = () => {
         ...(arrived
           ? { funding: { transactionHash: arrived.txHash, fromChainId: arrived.fromChainId } }
           : {}),
+        confirmPendingOnly: cashConfirmOnly,
       });
 
       if (!result) return;

@@ -21,7 +21,13 @@ import {
 import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
-import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
+import {
+  RewardsTier,
+  type TierBenefits,
+  type TierFees,
+  type TierMembershipContracts,
+  type TierOffer,
+} from '@/lib/types';
 
 import {
   type CashbackCategoryKey,
@@ -798,6 +804,7 @@ export function TierBenefitsPage({
   benefits,
   allBenefits,
   offer,
+  contracts,
   showUpgradeSpace,
 }: {
   tier: RewardsTier;
@@ -817,12 +824,14 @@ export function TierBenefitsPage({
    */
   allBenefits?: TierBenefits[];
   offer?: TierOffer;
+  /** The membership's contracts, which decide whether the cash price is one that can be paid. */
+  contracts?: Pick<TierMembershipContracts, 'billingTokenAddress' | 'revenueTreasuryAddress'>;
   showUpgradeSpace: boolean;
 }) {
   const s = scaleFor(width);
   const table = tierPresentationFees(tier, fees);
   const visibleFeeLines = table.lines.filter(line => line.key !== 'fx');
-  const offers = tierOfferRows(offer);
+  const offers = tierOfferRows(offer, contracts);
   const focused = useIsFocused();
   const reduceMotion = useReducedMotion();
   const entrance = useSharedValue(reduceMotion ? 1 : 0);

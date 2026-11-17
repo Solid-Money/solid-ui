@@ -9,7 +9,11 @@ import { CHAIN_NAMES } from '@/constants/chains';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useLifiSwapCallback } from '@/hooks/swap/useLifiSwapCallback';
 import { useBalances } from '@/hooks/useBalances';
-import { type CashPayment, useCashFundingQuote } from '@/hooks/useTierUpgradeFunding';
+import {
+  type CashPayment,
+  markUpgradeFundingSpent,
+  useCashFundingQuote,
+} from '@/hooks/useTierUpgradeFunding';
 import { track } from '@/lib/analytics';
 import { getUserErrorMessage } from '@/lib/errors';
 import { getTierDisplayName } from '@/lib/tierNames';
@@ -186,6 +190,13 @@ const BridgedCashReview = ({ offer, feeUsd, payment }: BridgedCashReviewProps) =
         from_chain_id: fresh.fromChainId,
         transaction_hash: result.transactionHash,
       });
+
+      // This sends the rest of a payment that landed short. The one before it
+      // is done with: its USDC is in the Safe and counted there, and left
+      // unspent it would come back as "arrived" once this one is used.
+      if (payment.arrivedShortUsd > 0 && payment.funding.state === 'arrived') {
+        markUpgradeFundingSpent(payment.funding.swap.clientTxId);
+      }
 
       // Every route from another chain is cross-chain, so this is the
       // expected outcome. A same-chain completion would mean the USDC is

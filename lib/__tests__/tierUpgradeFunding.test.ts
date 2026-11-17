@@ -13,11 +13,16 @@ import {
   fundingSendAmount,
   fundingSendUsd,
   latestUpgradeFunding,
+  resolveCashPayment,
   UNCOVERED_FUNDING_HEADROOM,
 } from '@/lib/tierUpgradeFunding';
 import { TokenBalance, TokenType } from '@/lib/types';
 
 import type { TrackedLifiSwap } from '@/store/lifiSwapStore';
+
+// Reached through the card's asset table (soBTC), and never called here. The
+// real module loads wagmi's ESM build, which this jest setup cannot parse.
+jest.mock('@/lib/wagmi', () => ({ publicClient: jest.fn() }));
 
 const BILLING = '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9';
 const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -337,6 +342,105 @@ describe('fundingNeedUsd', () => {
   it('is what Fuse is still missing, never negative', () => {
     expect(fundingNeedUsd(199, 50)).toBe(149);
     expect(fundingNeedUsd(199, 250)).toBe(0);
+  });
+});
+
+describe('resolveCashPayment', () => {
+  const baseUsdc = row({});
+  const BASE_KEY = { chainId: base.id, address: BASE_USDC };
+  const arrived = {
+    state: 'arrived' as const,
+    swap: swap({ status: 'DONE', substatus: 'COMPLETED' }),
+  };
+
+  /** Ultra by transfer: $799 now, and nothing covers what a bridge takes. */
+  const resolve = (overrides: Partial<Parameters<typeof resolveCashPayment>[0]> = {}) => {
+    const fuseUsdc = overrides.fuseUsdc ?? 0;
+    return resolveCashPayment({
+      tokens: [usdcOnFuse(fuseUsdc), baseUsdc],
+      chosen: null,
+      billingTokenAddress: BILLING,
+      feeUsd: 799,
+      fuseUsdc,
+      coverPct: 0,
+      funding: { state: 'none' },
+      balancesLoaded: true,
+      paymentMode: 'transfer',
+      awaitingConfirm: false,
+      ...overrides,
+    });
+  };
+
+  /**
+   * A bridged payment for a transfer upgrade landed $19 short. Nothing will
+   * cover it, so waiting gets nowhere: the rest has to be sent, and only the
+   * rest.
+   */
+  describe('a bridged payment that left a transfer upgrade short', () => {
+    it('lets the rest be sent from another chain, sized to what is missing', () => {
+      const payment = resolve({ fuseUsdc: 780, funding: arrived, chosen: BASE_KEY });
+
+      expect(payment.arrivedShortUsd).toBeCloseTo(19, 6);
+      expect(payment.token?.chainId).toBe(base.id);
+      expect(payment.payingFromFuse).toBe(false);
+      expect(payment.needUsd).toBeCloseTo(19, 6);
+      expect(payment.sendUsd).toBeCloseTo(19 * (1 + UNCOVERED_FUNDING_HEADROOM), 6);
+      // The token can pay the rest; the USDC on Fuse cannot pay the fee yet.
+      expect(payment.affordable).toBe(true);
+      expect(payment.fuseCoversFee).toBe(false);
+    });
+
+    it('opens on a holding that can send the rest', () => {
+      expect(resolve({ fuseUsdc: 780, funding: arrived }).token?.chainId).toBe(base.id);
+    });
+
+    it('keeps USDC on Fuse once the rest has landed', () => {
+      const payment = resolve({ fuseUsdc: 800, funding: arrived, chosen: BASE_KEY });
+
+      expect(payment.arrivedShortUsd).toBe(0);
+      expect(payment.token?.chainId).toBe(fuse.id);
+      expect(payment.affordable).toBe(true);
+      expect(payment.fuseCoversFee).toBe(true);
+    });
+
+    /** A module subscription's arrived payment is still judged with its cover. */
+    it('changes nothing for a module subscription', () => {
+      const payment = resolve({
+        fuseUsdc: 780,
+        funding: arrived,
+        chosen: BASE_KEY,
+        paymentMode: 'module',
+        coverPct: 5,
+      });
+
+      expect(payment.arrivedShortUsd).toBe(0);
+      expect(payment.token?.chainId).toBe(fuse.id);
+    });
+  });
+
+  /**
+   * An upgrade paid by transfer and not yet confirmed has already taken the
+   * USDC. The gap on Fuse is that payment: nothing more is to be sent for it.
+   */
+  describe('while an earlier payment awaits confirmation', () => {
+    it('does not read the gap as a shortfall to send', () => {
+      const payment = resolve({
+        fuseUsdc: 0,
+        funding: arrived,
+        chosen: BASE_KEY,
+        awaitingConfirm: true,
+      });
+
+      expect(payment.arrivedShortUsd).toBe(0);
+      expect(payment.token?.chainId).toBe(fuse.id);
+      expect(payment.payingFromFuse).toBe(true);
+      expect(payment.affordable).toBe(false);
+    });
+
+    it('stays on USDC on Fuse with no bridged payment either', () => {
+      expect(resolve({ chosen: BASE_KEY, awaitingConfirm: true }).token?.chainId).toBe(fuse.id);
+      expect(resolve({ chosen: BASE_KEY, awaitingConfirm: false }).token?.chainId).toBe(base.id);
+    });
   });
 });
 

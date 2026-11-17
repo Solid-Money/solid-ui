@@ -76,6 +76,15 @@ export const usePendingTierUpgradeStore = create<PendingTierUpgradeState>()(
   ),
 );
 
+/**
+ * Whether an account has an upgrade payment still to confirm, for a screen
+ * that has to re-render when one is remembered or settled.
+ */
+export const useHasPendingTierUpgrade = (userId: string | undefined): boolean =>
+  usePendingTierUpgradeStore(
+    state => !!userId && Object.values(state.upgrades).some(upgrade => upgrade.userId === userId),
+  );
+
 /** One account's unconfirmed upgrades, oldest first. */
 export const pendingTierUpgradesFor = (userId: string): PendingTierUpgrade[] =>
   Object.values(usePendingTierUpgradeStore.getState().upgrades)
