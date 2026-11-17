@@ -5,11 +5,12 @@ import { fuse } from 'viem/chains';
 
 import { upgradeTierSubscription } from '@/lib/api';
 import { pimlicoClient } from '@/lib/pimlico';
-import { upgradeRejectionMessage } from '@/lib/upgradeRejection';
+import { isNoPaymentInTransaction, upgradeRejectionMessage } from '@/lib/upgradeRejection';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import {
   PendingTierUpgrade,
+  pendingTierUpgradeKey,
   pendingTierUpgradesFor,
   usePendingTierUpgradeStore,
 } from '@/store/usePendingTierUpgradeStore';
@@ -18,13 +19,19 @@ import type { RewardsTier, TierMembershipState } from '@/lib/types';
 import type { UserOperationReceipt } from 'viem/account-abstraction';
 
 /**
- * How long an upgrade with no receipt is waited on before anything else is
- * asked about it. A user operation is mined within a few blocks or dropped —
- * the same reasoning, and the same figure, as `PENDING_TIER_LOCK_TTL_MS`.
+ * How long an upgrade the bundler accepted, and has no receipt for, is waited
+ * on before anything else is asked about it. A user operation is mined within
+ * a few blocks or dropped — the same reasoning, and the same figure, as
+ * `PENDING_TIER_LOCK_TTL_MS`.
  *
- * Past it, the record is settled by its nonce — see `settleUnreceipted`. A
- * record from before the nonce was kept goes on this alone, as every record
- * used to.
+ * Past it, the record is settled by its nonce — see `settleUnreceipted`.
+ *
+ * A record missing its sender, nonce or block goes on this alone, and is let
+ * go once past it. No released build writes one: all three were added before
+ * this feature shipped, and every record is now written with them before
+ * anything is signed. Only a development build of the feature can have left
+ * one, and with nothing to settle it by, letting it go beats holding that
+ * account up for good.
  */
 export const PENDING_TIER_UPGRADE_TTL_MS = 15 * 60 * 1000;
 
@@ -75,10 +82,10 @@ export type PendingTierUpgradeSettlement =
   /**
    * An earlier upgrade has not landed, and a new payment may go ahead only as
    * its replacement: sent with `nonce`, the earlier one's own, so that only
-   * one of the two can ever be included. Its record stays, marked
-   * `replaceable`, until that nonce is used.
+   * one of the two can ever be included. Its record — `upgrade`, as kept
+   * under `key` — stays, marked `replaceable`, until that nonce is used.
    */
-  | { status: 'replaceable'; upgrade: PendingTierUpgrade; nonce: bigint };
+  | { status: 'replaceable'; key: string; upgrade: PendingTierUpgrade; nonce: bigint };
 
 /** viem's "the bundler has no receipt for this hash (yet)". */
 const isReceiptNotFound = (error: unknown): boolean => {
@@ -89,79 +96,99 @@ const isReceiptNotFound = (error: unknown): boolean => {
   return false;
 };
 
-/** One operation a record stands for, and the tier it pays for. */
-type RecordedOperation = { userOpHash: `0x${string}`; tier: RewardsTier };
+/**
+ * Where a new upgrade payment starts, read before anything is signed: the
+ * latest block, then the nonce it is to be sent with.
+ *
+ * In that order, so that whatever uses the nonce — unused when it was read —
+ * is included at or after the block, and a search of the chain from there
+ * finds it. The payment is sent with exactly this nonce, not one read again
+ * while sending, so the record written with it stands for what is sent.
+ */
+export const readTierUpgradeStart = async (
+  sender: Address,
+): Promise<{ block: string; nonce: bigint }> => {
+  const client = publicClient(fuse.id);
+  const block = await client.getBlockNumber();
+  const nonce = await getAccountNonce(client, {
+    address: sender,
+    entryPointAddress: entryPoint07Address,
+  });
+  return { block: block.toString(), nonce };
+};
 
 /** What an upgrade the bundler has no receipt for turned out to be. */
 type Unreceipted =
   /** It may still land, or it is too soon to ask. */
   | { outcome: 'wait' }
-  /** It never landed, and never can. */
+  /** Nothing it stands for landed, and nothing ever can. */
   | { outcome: 'forget' }
   /** It has not landed, and a new payment sent with `nonce` may replace it. */
   | { outcome: 'replace'; nonce: bigint }
-  /** One of its operations was included — found on the chain. */
-  | ({ outcome: 'landed'; transactionHash: `0x${string}`; success: boolean } & RecordedOperation);
+  /**
+   * Its nonce was used by an operation that succeeded, found on the chain, and
+   * taken for the one of its operations that pays for `tier`. `unmatched` when
+   * it is none of those with a hash — see `PendingTierUpgrade.unmatched`.
+   */
+  | {
+      outcome: 'landed';
+      userOpHash: `0x${string}`;
+      tier: RewardsTier;
+      transactionHash: `0x${string}`;
+      unmatched: boolean;
+    };
 
 /**
- * Which of a record's operations the EntryPoint included, if any, read off the
- * chain: the `UserOperationEvent` for any of their hashes, from the block read
- * before the first of them was sent. Throws when the search fails, which says
- * nothing either way.
+ * The operation that used `nonce` on `sender`, read off the chain: the
+ * EntryPoint's `UserOperationEvent`s for the Safe from `fromBlock`, matched on
+ * the nonce each carries. Undefined when there is none; throws when the search
+ * fails, which says nothing either way.
  *
- * The chain rather than the bundler, whose receipt lookup answers for the
- * operations it still remembers, and whose "not found" is what is being
- * second-guessed here.
+ * Searched by the Safe rather than by the hashes on record: the operation that
+ * used the nonce may be one whose hash never arrived, or not this upgrade's at
+ * all. The chain rather than the bundler, whose receipt lookup answers only
+ * for a hash, and only while it remembers it.
  */
-const findIncluded = async (
-  upgrade: PendingTierUpgrade,
-): Promise<Extract<Unreceipted, { outcome: 'landed' }> | undefined> => {
-  const operations: RecordedOperation[] = [
-    { userOpHash: upgrade.userOpHash, tier: upgrade.tier },
-    ...(upgrade.replaced ?? []),
-  ];
-  const [event] = await publicClient(fuse.id).getContractEvents({
+const findOperationWithNonce = async (sender: Address, nonce: bigint, fromBlock: bigint) => {
+  const events = await publicClient(fuse.id).getContractEvents({
     address: entryPoint07Address,
     abi: entryPoint07Abi,
     eventName: 'UserOperationEvent',
-    args: { userOpHash: operations.map(operation => operation.userOpHash) },
-    // A record from before the block was kept is searched for from the start
-    // of the chain: a wider search, but one that still finds the operation or
-    // positively does not.
-    fromBlock: upgrade.block === undefined ? 0n : BigInt(upgrade.block),
+    args: { sender },
+    fromBlock,
     toBlock: 'latest',
   });
+  const event = events.find(({ args }) => args.nonce === nonce);
   if (!event) return undefined;
 
-  const hash = event.args.userOpHash?.toLowerCase();
-  const operation = operations.find(({ userOpHash }) => userOpHash.toLowerCase() === hash);
-  if (!operation || !event.transactionHash || event.args.success === undefined) {
+  const { userOpHash, success } = event.args;
+  if (!userOpHash || success === undefined || !event.transactionHash) {
     throw new Error('Unreadable UserOperationEvent');
   }
-  return {
-    outcome: 'landed',
-    ...operation,
-    transactionHash: event.transactionHash,
-    success: event.args.success,
-  };
+  return { userOpHash, success, transactionHash: event.transactionHash };
 };
 
 /**
- * What to do with an upgrade the bundler has no receipt for. Throws when the
- * chain or the bundler cannot be asked, which says nothing either way.
+ * What to do with an upgrade the bundler has no receipt for, or whose latest
+ * operation has no hash to ask about. Throws when the chain or the bundler
+ * cannot be asked, which says nothing either way.
  *
  * The operation carries no expiry of ours, so time alone never settles it —
  * an upgrade forgotten while it can still land is a payment that reaches the
  * treasury with nothing left to confirm it, and the next press pays again.
- * What does settle it is the Safe's nonce:
+ * What does settle it is the Safe's nonce, which every operation that may
+ * pay for it was sent with:
  *
- * - Moved past the one it was sent with: nothing sent with that nonce can be
- *   included any more. But it may have been this upgrade that used it — in
- *   the moment between the receipt lookup and the nonce read, say — so the
- *   nonce alone proves nothing about the payment. The chain is asked again,
- *   after the read: if one of the record's operations is found, it landed,
- *   and is confirmed or dropped on its own success flag; if none is, none
- *   ever will be, and it goes.
+ * - Moved past it: exactly one operation used it, and nothing else sent with
+ *   it can ever be included. That one is found on the chain. Reverted, it
+ *   moved nothing. Succeeded, and one of the record's operations, it is the
+ *   payment, confirmed as the tier that one paid for. None of them, with
+ *   every one of them hashed, it is another operation of the Safe's, and
+ *   nothing was paid. None of the hashed ones, with one that has no hash — a
+ *   send whose answer was lost — it may be that one: it is confirmed as that
+ *   one's tier, and the backend says whether it holds a payment at all. Not
+ *   found — the chain read from a node behind the one that read the nonce —
+ *   it waits, and is looked for again on the next press.
  * - Not moved: it can still land. It waits until the bundler says it no
  *   longer has it — never seen, dropped, or failed — or, failing that, for
  *   `PENDING_TIER_UPGRADE_MAX_HOLD_MS` from when it was sent, the bound on how
@@ -169,29 +196,60 @@ const findIncluded = async (
  *   failing, holds the user up. Then it may be replaced — never forgotten: a
  *   new payment goes out with this same unused nonce, so the two cannot both
  *   land, and the record keeps this operation until the nonce says which did.
+ *   With no hash there is no bundler to ask, and it may be replaced at once:
+ *   a bundler that does hold it turns the replacement away, and the record
+ *   stays as it was.
  *
- * Nothing is asked inside `PENDING_TIER_UPGRADE_TTL_MS`: a receipt can take
- * that long, and the answer there is always to wait. A record with no nonce,
- * from before one was kept, goes once past it, as every record used to.
+ * An operation with a hash is not asked about inside
+ * `PENDING_TIER_UPGRADE_TTL_MS`: a receipt can take that long, and the answer
+ * there is always to wait.
  */
 const settleUnreceipted = async (
   upgrade: PendingTierUpgrade,
   now: number,
 ): Promise<Unreceipted> => {
   const age = now - upgrade.submittedAt;
-  if (age <= PENDING_TIER_UPGRADE_TTL_MS) return { outcome: 'wait' };
-  if (upgrade.nonce === undefined || !upgrade.sender) return { outcome: 'forget' };
+  if (!upgrade.sender || upgrade.nonce === undefined || upgrade.block === undefined) {
+    return age > PENDING_TIER_UPGRADE_TTL_MS ? { outcome: 'forget' } : { outcome: 'wait' };
+  }
+  if (upgrade.userOpHash && age <= PENDING_TIER_UPGRADE_TTL_MS) return { outcome: 'wait' };
+  const sender = upgrade.sender as Address;
   const nonce = BigInt(upgrade.nonce);
 
   const current = await getAccountNonce(publicClient(fuse.id), {
-    address: upgrade.sender as Address,
+    address: sender,
     entryPointAddress: entryPoint07Address,
   });
-  if (current > nonce) return (await findIncluded(upgrade)) ?? { outcome: 'forget' };
+  if (current > nonce) {
+    const used = await findOperationWithNonce(sender, nonce, BigInt(upgrade.block));
+    if (!used) return { outcome: 'wait' };
+    if (!used.success) return { outcome: 'forget' };
+
+    // Newest first: of several with no hash, the latest is the likeliest to
+    // have been accepted, since a bundler holding an earlier one turns its
+    // replacement away.
+    const operations = [
+      { userOpHash: upgrade.userOpHash, tier: upgrade.tier },
+      ...(upgrade.replaced ?? []),
+    ];
+    const hash = used.userOpHash.toLowerCase();
+    const matched = operations.find(({ userOpHash }) => userOpHash?.toLowerCase() === hash);
+    const taken = matched ?? operations.find(({ userOpHash }) => !userOpHash);
+    if (!taken) return { outcome: 'forget' };
+    return {
+      outcome: 'landed',
+      userOpHash: used.userOpHash,
+      tier: taken.tier,
+      transactionHash: used.transactionHash,
+      unmatched: !matched,
+    };
+  }
 
   // The bound, ahead of the bundler so that a lookup which keeps failing
   // cannot stretch it.
-  if (age > PENDING_TIER_UPGRADE_MAX_HOLD_MS) return { outcome: 'replace', nonce };
+  if (!upgrade.userOpHash || age > PENDING_TIER_UPGRADE_MAX_HOLD_MS) {
+    return { outcome: 'replace', nonce };
+  }
   const { status } = await pimlicoClient(fuse.id).getUserOperationStatus({
     hash: upgrade.userOpHash,
   });
@@ -204,13 +262,13 @@ const settleUnreceipted = async (
  * Finish whatever earlier `transfer`-mode upgrade this account sent, before a
  * new one can be signed.
  *
- * An upgrade that reverted, or that can no longer land and has no receipt, is
- * dropped — no money moved. One that landed is confirmed with the hash it
- * landed under, so the payment already made is the one the membership is
- * started from. One that has not landed and is past waiting for answers
- * `replaceable`, and the caller may pay again only with its nonce. Anything
- * still unsettled — including one with no receipt that may yet land — answers
- * `pending`, and the caller must not pay again.
+ * An upgrade that reverted, or whose nonce went to an operation that paid
+ * nothing for it, is dropped — no money moved. One that landed is confirmed
+ * with the hash it landed under, so the payment already made is the one the
+ * membership is started from. One that has not landed and is past waiting for
+ * answers `replaceable`, and the caller may pay again only with its nonce.
+ * Anything still unsettled — including one with no receipt that may yet land
+ * — answers `pending`, and the caller must not pay again.
  *
  * Never throws.
  */
@@ -221,28 +279,32 @@ export const settlePendingTierUpgrades = async (
   const { landed, rejected, markReplaceable, replace, forget } =
     usePendingTierUpgradeStore.getState();
 
-  for (let upgrade of pendingTierUpgradesFor(userId)) {
+  for (let { key, upgrade } of pendingTierUpgradesFor(userId)) {
     if (upgrade.rejectedAt && now - upgrade.rejectedAt > REJECTED_TIER_UPGRADE_HOLD_MS) {
-      forget(upgrade.userOpHash);
+      forget(key);
       continue;
     }
 
     if (!upgrade.transactionHash) {
+      // The bundler's receipt for the latest operation, while it has a hash:
+      // the quick answer, before the nonce is read at all.
       let receipt: UserOperationReceipt | undefined;
-      try {
-        receipt = await pimlicoClient(fuse.id).getUserOperationReceipt({
-          hash: upgrade.userOpHash,
-        });
-      } catch (error) {
-        if (!isReceiptNotFound(error)) return { status: 'pending' };
+      if (upgrade.userOpHash) {
+        try {
+          receipt = await pimlicoClient(fuse.id).getUserOperationReceipt({
+            hash: upgrade.userOpHash,
+          });
+        } catch (error) {
+          if (!isReceiptNotFound(error)) return { status: 'pending' };
+        }
       }
 
       if (receipt) {
         if (!receipt.success) {
-          forget(upgrade.userOpHash);
+          forget(key);
           continue;
         }
-        landed(upgrade.userOpHash, receipt.receipt.transactionHash);
+        landed(key, receipt.receipt.transactionHash);
         upgrade = { ...upgrade, transactionHash: receipt.receipt.transactionHash };
       } else {
         // A failed lookup of the nonce, the chain or the status is as
@@ -252,29 +314,37 @@ export const settlePendingTierUpgrades = async (
         );
         if (found.outcome === 'wait') return { status: 'pending' };
         if (found.outcome === 'replace') {
-          markReplaceable(upgrade.userOpHash);
-          return { status: 'replaceable', upgrade, nonce: found.nonce };
+          markReplaceable(key);
+          return {
+            status: 'replaceable',
+            key,
+            upgrade: { ...upgrade, replaceable: true },
+            nonce: found.nonce,
+          };
         }
-        if (found.outcome === 'forget' || !found.success) {
-          forget(upgrade.userOpHash);
+        if (found.outcome === 'forget') {
+          forget(key);
           continue;
         }
-        // Narrowed to the operation that landed — possibly one this replaced —
-        // so it is confirmed as the tier that one paid for.
+        // Narrowed to the operation that used the nonce — possibly one this
+        // replaced, or one whose hash never arrived — so it is confirmed as
+        // the tier that one paid for.
         const settled: PendingTierUpgrade = {
           ...upgrade,
           userOpHash: found.userOpHash,
           tier: found.tier,
           transactionHash: found.transactionHash,
+          unmatched: found.unmatched || undefined,
           replaced: undefined,
           replaceable: undefined,
         };
-        replace(upgrade.userOpHash, settled);
+        replace(key, settled);
+        key = pendingTierUpgradeKey(settled);
         upgrade = settled;
       }
     }
 
-    const { userOpHash, tier, transactionHash } = upgrade;
+    const { tier, transactionHash } = upgrade;
 
     // What the upgrade endpoint itself last threw. `withRefreshToken` can also
     // throw the session refresh's own error after a 401 — a 404 from the
@@ -289,14 +359,24 @@ export const settlePendingTierUpgrades = async (
           throw error;
         }
       });
-      forget(userOpHash);
+      forget(key);
       return { status: 'confirmed', state };
     } catch (error) {
-      // Only the endpoint's own answer can refuse the payment for good; any
+      // Only the endpoint's own answer can settle the payment for good; any
       // other failure leaves it pending, to be confirmed on the next press.
-      const message = error === upgradeError ? await upgradeRejectionMessage(error) : null;
+      if (error !== upgradeError) return { status: 'pending' };
+      // The nonce went to an operation not known to be this payment, and the
+      // backend finds no payment from the wallet in it: another operation of
+      // the Safe's used the nonce, so nothing was paid for the upgrade, and
+      // nothing sent for it can land now. Not a refusal — there is no money
+      // at the treasury to hold against a new payment.
+      if (upgrade.unmatched && (await isNoPaymentInTransaction(error))) {
+        forget(key);
+        continue;
+      }
+      const message = await upgradeRejectionMessage(error);
       if (!message) return { status: 'pending' };
-      rejected(userOpHash, now);
+      rejected(key, now);
       return { status: 'rejected', message };
     }
   }

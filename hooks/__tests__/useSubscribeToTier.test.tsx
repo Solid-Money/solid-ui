@@ -59,8 +59,10 @@ jest.mock('@/lib/pendingTierLocks', () => ({
   isReceiptTimeout: (error: Error) => error.name === 'WaitForUserOperationReceiptTimeoutError',
 }));
 const mockSettle = jest.fn();
+const mockStart = jest.fn();
 jest.mock('@/lib/pendingTierUpgrades', () => ({
   settlePendingTierUpgrades: (userId: string) => mockSettle(userId),
+  readTierUpgradeStart: (sender: string) => mockStart(sender),
 }));
 jest.mock('@/lib/mmvkStorage', () => {
   const memory = new Map<string, string>();
@@ -73,10 +75,7 @@ jest.mock('@/lib/mmvkStorage', () => {
     }),
   };
 });
-const mockGetBlockNumber = jest.fn();
-jest.mock('@/lib/wagmi', () => ({
-  publicClient: () => ({ getBlockNumber: () => mockGetBlockNumber() }),
-}));
+jest.mock('@/lib/wagmi', () => ({ publicClient: () => ({}) }));
 jest.mock('@/lib/utils', () => ({}));
 jest.mock('@/store/useUserStore', () => ({}));
 jest.mock('@/store/useRewardsUpgradeStore', () => ({}));
@@ -131,8 +130,8 @@ const ultraUpgrade: TierOffer = {
 const FUNDING = { transactionHash: '0xbridge', fromChainId: 8453 };
 /** The EntryPoint nonce the operation is sent with. */
 const NONCE = 7n;
-/** The latest Fuse block before it was sent. */
-const BLOCK = 45_000_000n;
+/** The latest Fuse block, read before the nonce. */
+const BLOCK = '45000000';
 
 /** The bundler accepted the operation, then it landed. */
 const lands = () =>
@@ -195,7 +194,7 @@ beforeEach(() => {
   mockConfirm.mockReset().mockResolvedValue(STATE);
   mockUpgrade.mockReset().mockResolvedValue(STATE);
   mockSettle.mockReset().mockResolvedValue({ status: 'none' });
-  mockGetBlockNumber.mockReset().mockResolvedValue(BLOCK);
+  mockStart.mockReset().mockResolvedValue({ block: BLOCK, nonce: NONCE });
   mockTrack.mockReset();
   lands();
 });
@@ -263,8 +262,136 @@ describe('an upgrade paid by transfer', () => {
     expect(
       decodeFunctionData({ abi: SolidSubscriptionModule_ABI, data: calls[1].data }).args?.[0],
     ).toBe(999_000_000n);
-    // A first payment takes the Safe's next nonce: no override.
-    expect(mockExecuteTransactions.mock.calls[0][6]).toBeUndefined();
+    // Sent with the nonce read for its record, not one read again.
+    expect(mockStart).toHaveBeenCalledWith(SAFE);
+    expect(mockExecuteTransactions.mock.calls[0][6]).toBe(NONCE);
+  });
+
+  /**
+   * On record before the passkey is asked for, under the Safe and the nonce
+   * it is sent with: a payment the bundler accepts is always on record, even
+   * when the answer carrying its hash is lost.
+   */
+  it('puts the payment on record before signing, then adds its hash', async () => {
+    let atSigning: unknown[] = [];
+    mockExecuteTransactions.mockImplementation(
+      async (
+        _client: unknown,
+        _calls: unknown,
+        _message: string,
+        _chain: unknown,
+        onUserOpHash?: (hash: string, nonce: bigint) => void,
+      ) => {
+        atSigning = stored();
+        onUserOpHash?.(HASH, NONCE);
+        throw receiptTimeout();
+      },
+    );
+
+    await expect(
+      subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+    ).rejects.toThrow(/still confirming/);
+
+    expect(atSigning).toEqual([
+      {
+        userId: 'user-1',
+        submittedAt: expect.any(Number),
+        tier: RewardsTier.ULTRA,
+        sender: SAFE,
+        nonce: '7',
+        block: BLOCK,
+      },
+    ]);
+    expect(stored()).toEqual([expect.objectContaining({ userOpHash: HASH, nonce: '7' })]);
+  });
+
+  /** Dismissed before the bundler had anything: nothing can land, so nothing stays on record. */
+  it('takes the record back when the passkey prompt is dismissed', async () => {
+    let atSigning: unknown[] = [];
+    mockExecuteTransactions.mockImplementation(async () => {
+      atSigning = stored();
+      return 'cancelled';
+    });
+
+    await expect(
+      subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+    ).resolves.toBeNull();
+    expect(atSigning).toHaveLength(1);
+    expect(stored()).toEqual([]);
+    expect(tracked()).toEqual(['tier_subscribe_cancelled']);
+  });
+
+  /** Read as a cancel after the bundler accepted it: sent all the same, so it stays. */
+  it('keeps the record when a cancel comes after the bundler accepted it', async () => {
+    mockExecuteTransactions.mockImplementation(
+      async (
+        _client: unknown,
+        _calls: unknown,
+        _message: string,
+        _chain: unknown,
+        onUserOpHash?: (hash: string, nonce: bigint) => void,
+      ) => {
+        onUserOpHash?.(HASH, NONCE);
+        return 'cancelled';
+      },
+    );
+
+    await expect(
+      subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+    ).resolves.toBeNull();
+    expect(stored()).toEqual([expect.objectContaining({ userOpHash: HASH })]);
+  });
+
+  it('takes the record back when the bundler refuses the payment', async () => {
+    const refusal = Object.assign(new Error('UserOperation reverted during simulation'), {
+      details: 'AA23 reverted: transfer amount exceeds balance',
+    });
+    mockExecuteTransactions.mockRejectedValue(refusal);
+
+    await expect(subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true })).rejects.toBe(
+      refusal,
+    );
+    expect(stored()).toEqual([]);
+  });
+
+  /**
+   * Failed with no hash, in a way that may have reached the bundler — the
+   * connection dropped while it answered. It may be a payment accepted with
+   * only the answer lost: it stays on record, to be settled by its nonce.
+   */
+  it('keeps the record, with no hash, when the send may have reached the bundler', async () => {
+    for (const failure of [
+      new TypeError('Network request failed'),
+      Object.assign(new Error('The request took too long to respond.'), { name: 'TimeoutError' }),
+      new Error('UserOperation already known'),
+    ]) {
+      usePendingTierUpgradeStore.setState({ upgrades: {} });
+      mockExecuteTransactions.mockRejectedValueOnce(failure);
+
+      await expect(subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true })).rejects.toBe(
+        failure,
+      );
+      expect(stored()).toEqual([
+        {
+          userId: 'user-1',
+          submittedAt: expect.any(Number),
+          tier: RewardsTier.ULTRA,
+          sender: SAFE,
+          nonce: '7',
+          block: BLOCK,
+        },
+      ]);
+    }
+  });
+
+  it('writes nothing when the nonce cannot be read', async () => {
+    mockStart.mockRejectedValue(new Error('rpc'));
+
+    await expect(
+      subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+    ).rejects.toThrow('rpc');
+    expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    expect(stored()).toEqual([]);
   });
 
   /** The module allows one charge a period, and Prime's has been taken. */
@@ -465,7 +592,12 @@ describe('an upgrade paid by transfer', () => {
 
     beforeEach(() => {
       usePendingTierUpgradeStore.getState().remember({ ...earlier });
-      mockSettle.mockResolvedValue({ status: 'replaceable', upgrade: earlier, nonce: NONCE });
+      mockSettle.mockResolvedValue({
+        status: 'replaceable',
+        key: `${SAFE}:7`,
+        upgrade: earlier,
+        nonce: NONCE,
+      });
     });
 
     it('sends with the earlier payment’s nonce, and moves the record to the new one', async () => {
@@ -475,10 +607,10 @@ describe('an upgrade paid by transfer', () => {
         subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
       ).rejects.toThrow(/still confirming/);
 
-      // The nonce override, and no fresh block: the search for either
-      // operation starts where the earlier one was sent.
+      // The nonce override, and no fresh block or nonce: the search for
+      // either operation starts where the earlier one was sent.
       expect(mockExecuteTransactions.mock.calls[0][6]).toBe(NONCE);
-      expect(mockGetBlockNumber).not.toHaveBeenCalled();
+      expect(mockStart).not.toHaveBeenCalled();
       // One record, now the replacement, still answering for the earlier
       // payment until nonce 7 says which of the two used it.
       expect(stored()).toEqual([
@@ -545,6 +677,49 @@ describe('an upgrade paid by transfer', () => {
         other,
       );
       expect(stored()).toEqual([earlier]);
+    });
+
+    /** Dismissed before the bundler had it: the earlier payment's record, as it was. */
+    it('puts the earlier record back when the passkey prompt is dismissed', async () => {
+      let atSigning: unknown[] = [];
+      mockExecuteTransactions.mockImplementation(async () => {
+        atSigning = stored();
+        return 'cancelled';
+      });
+
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).resolves.toBeNull();
+      expect(atSigning).toEqual([
+        expect.objectContaining({ replaced: [{ userOpHash: EARLIER, tier: RewardsTier.ULTRA }] }),
+      ]);
+      expect(stored()).toEqual([earlier]);
+    });
+
+    /**
+     * The review case, from the sending side: the bundler may have accepted
+     * the replacement, and the answer carrying its hash was lost. The record
+     * already stands for it — nonce 7, no hash — and still for the payment it
+     * replaced, so whichever uses the nonce is the one settled.
+     */
+    it('keeps the replacement on record, with no hash, when its answer is lost', async () => {
+      const lost = new TypeError('Network request failed');
+      mockExecuteTransactions.mockRejectedValue(lost);
+
+      await expect(subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true })).rejects.toBe(
+        lost,
+      );
+      expect(stored()).toEqual([
+        {
+          userId: 'user-1',
+          submittedAt: expect.any(Number),
+          tier: RewardsTier.ULTRA,
+          sender: SAFE,
+          nonce: '7',
+          block: '44000000',
+          replaced: [{ userOpHash: EARLIER, tier: RewardsTier.ULTRA }],
+        },
+      ]);
     });
 
     /**

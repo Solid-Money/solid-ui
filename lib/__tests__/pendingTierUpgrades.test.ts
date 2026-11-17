@@ -3,11 +3,13 @@ import React from 'react';
 import {
   PENDING_TIER_UPGRADE_MAX_HOLD_MS,
   PENDING_TIER_UPGRADE_TTL_MS,
+  readTierUpgradeStart,
   REJECTED_TIER_UPGRADE_HOLD_MS,
   settlePendingTierUpgrades,
   upgradeRejectionMessage,
 } from '@/lib/pendingTierUpgrades';
 import { RewardsTier } from '@/lib/types';
+import { isNoPaymentInTransaction } from '@/lib/upgradeRejection';
 import {
   type PendingTierUpgrade,
   useHasPendingTierUpgrade,
@@ -30,8 +32,12 @@ jest.mock('permissionless/actions', () => ({
   getAccountNonce: (_client: unknown, args: unknown) => mockGetNonce(args),
 }));
 const mockGetEvents = jest.fn();
+const mockGetBlockNumber = jest.fn();
 jest.mock('@/lib/wagmi', () => ({
-  publicClient: () => ({ getContractEvents: (args: unknown) => mockGetEvents(args) }),
+  publicClient: () => ({
+    getContractEvents: (args: unknown) => mockGetEvents(args),
+    getBlockNumber: () => mockGetBlockNumber(),
+  }),
 }));
 const mockUpgrade = jest.fn();
 jest.mock('@/lib/api', () => ({
@@ -82,6 +88,7 @@ beforeEach(() => {
   mockGetStatus.mockReset();
   mockGetNonce.mockReset();
   mockGetEvents.mockReset().mockResolvedValue([]);
+  mockGetBlockNumber.mockReset();
   mockUpgrade.mockReset().mockResolvedValue(STATE);
   mockWithRefreshToken.mockReset().mockImplementation((call: () => Promise<unknown>) => call());
 });
@@ -147,7 +154,10 @@ it('stays pending while the bundler has not seen it yet', async () => {
   expect(stored()).toHaveLength(1);
 });
 
-/** A record from before the nonce was kept goes on the TTL alone, as it always did. */
+/**
+ * A record from before the nonce was kept goes on the TTL alone. No released
+ * build writes one; only a development build of the feature can have left it.
+ */
 it('gives up on an older record with no nonce once it is past the TTL', async () => {
   remember({ submittedAt: NOW - PENDING_TIER_UPGRADE_TTL_MS - 1 });
   mockGetReceipt.mockRejectedValue(notFound());
@@ -163,14 +173,24 @@ it('gives up on an older record with no nonce once it is past the TTL', async ()
  */
 describe('an upgrade with no receipt, sent with a known nonce', () => {
   const SAFE = '0x1111111111111111111111111111111111111111';
+  const KEY = `${SAFE}:7`;
   const BLOCK = '45000000';
   const PAST_TTL = NOW - PENDING_TIER_UPGRADE_TTL_MS - 1;
   const sentAt = (submittedAt: number, overrides: Partial<PendingTierUpgrade> = {}) =>
     remember({ submittedAt, sender: SAFE, nonce: '7', block: BLOCK, ...overrides });
 
-  /** The EntryPoint's `UserOperationEvent` for an operation it included. */
-  const included = (userOpHash: string, success: boolean, transactionHash: string = TX) => ({
-    args: { userOpHash, success },
+  /** An operation of the Safe's that is none of the record's. */
+  const OTHER = '0x7777777777777777777777777777777777777777777777777777777777777777';
+  const OTHER_TX = '0x8888888888888888888888888888888888888888888888888888888888888888';
+
+  /** The EntryPoint's `UserOperationEvent` for an operation of the Safe's it included. */
+  const included = (
+    userOpHash: string,
+    success: boolean,
+    transactionHash: string = TX,
+    nonce: bigint = 7n,
+  ) => ({
+    args: { userOpHash, sender: SAFE, nonce, success },
     transactionHash,
   });
 
@@ -189,26 +209,39 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
 
   /**
    * Nonce 8 says only that nonce 7 is used — not by what. The chain, asked
-   * after the nonce was read, says whether it was this upgrade.
+   * after the nonce was read, says which operation of the Safe's used it.
    */
   describe('once the Safe’s nonce has moved past it', () => {
     beforeEach(() => mockGetNonce.mockResolvedValue(8n));
 
-    it('is let go once the chain shows it was never included', async () => {
+    /** Every operation on record has a hash, and none of them used it. */
+    it('is let go, without asking the backend, once the chain shows another operation used it', async () => {
       sentAt(PAST_TTL);
+      mockGetEvents.mockResolvedValue([included(OTHER, true, OTHER_TX)]);
 
       await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'none' });
       expect(mockGetNonce).toHaveBeenCalledWith(expect.objectContaining({ address: SAFE }));
       expect(mockGetEvents).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: 'UserOperationEvent',
-          args: { userOpHash: [HASH] },
+          args: { sender: SAFE },
           fromBlock: 45_000_000n,
           toBlock: 'latest',
         }),
       );
       expect(mockGetStatus).not.toHaveBeenCalled();
+      expect(mockUpgrade).not.toHaveBeenCalled();
       expect(stored()).toEqual([]);
+    });
+
+    /** Used, so something used it: a chain read that cannot see it yet is behind, not an answer. */
+    it('stays pending while the operation that used it cannot be found', async () => {
+      sentAt(PAST_TTL);
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'pending',
+      });
+      expect(stored()).toHaveLength(1);
     });
 
     /**
@@ -275,11 +308,18 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
       expect(stored()).toHaveLength(1);
     });
 
-    it('searches from the start of the chain for a record with no block', async () => {
+    /**
+     * Written by a development build before the block was kept: nothing to
+     * bound a search with, so it goes on the TTL like one with no nonce,
+     * rather than holding the account up on a search that may never answer.
+     */
+    it('goes on the TTL alone with no block', async () => {
       sentAt(PAST_TTL, { block: undefined });
 
       await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'none' });
-      expect(mockGetEvents).toHaveBeenCalledWith(expect.objectContaining({ fromBlock: 0n }));
+      expect(mockGetNonce).not.toHaveBeenCalled();
+      expect(mockGetEvents).not.toHaveBeenCalled();
+      expect(stored()).toEqual([]);
     });
 
     /** A replacement and the payment it replaced share nonce 7; either may be the one that used it. */
@@ -293,13 +333,146 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
         status: 'confirmed',
         state: STATE,
       });
-      expect(mockGetEvents).toHaveBeenCalledWith(
-        expect.objectContaining({ args: { userOpHash: [HASH, EARLIER] } }),
-      );
       expect(mockUpgrade).toHaveBeenCalledWith({
         tier: RewardsTier.PRIME,
         transactionHash: EARLIER_TX,
       });
+      expect(stored()).toEqual([]);
+    });
+
+    /**
+     * The review case. A replacement was written to the record before it was
+     * signed, the bundler accepted it, and the answer carrying its hash never
+     * arrived. It lands, and uses nonce 7. Searching by the hashes on record
+     * would find nothing, drop the record and let the next press pay again;
+     * the operation that used the nonce is the payment.
+     */
+    it('confirms a replacement whose hash never arrived, by the nonce it used', async () => {
+      const EARLIER = '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const REPLACEMENT = '0x4444444444444444444444444444444444444444444444444444444444444444';
+      const REPLACEMENT_TX = '0x5555555555555555555555555555555555555555555555555555555555555555';
+      // Written moments ago, so no TTL to wait out: with no hash there is no
+      // receipt to wait for.
+      sentAt(NOW - 60_000, {
+        userOpHash: undefined,
+        replaced: [{ userOpHash: EARLIER, tier: RewardsTier.PRIME }],
+      });
+      mockGetEvents.mockResolvedValue([
+        // An earlier operation of the Safe's, with an earlier nonce.
+        included(OTHER, true, OTHER_TX, 6n),
+        included(REPLACEMENT, true, REPLACEMENT_TX),
+      ]);
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'confirmed',
+        state: STATE,
+      });
+      expect(mockGetReceipt).not.toHaveBeenCalled();
+      expect(mockUpgrade).toHaveBeenCalledWith({
+        tier: RewardsTier.ULTRA,
+        transactionHash: REPLACEMENT_TX,
+      });
+      expect(stored()).toEqual([]);
+    });
+
+    /**
+     * No hash on record, and another operation of the Safe's — a swap, say —
+     * took nonce 7 first. Asked to confirm it, the backend finds no payment
+     * from the wallet in that transaction: nothing was paid for the upgrade,
+     * and nothing sent for it can land now. Dropped, not held as a refusal.
+     */
+    it('drops, and does not hold, a record whose nonce an unrelated operation used', async () => {
+      for (const reason of [
+        'that transaction is not a payment sent from your wallet',
+        'no payment from your wallet to Solid in that transaction',
+      ]) {
+        usePendingTierUpgradeStore.setState({ upgrades: {} });
+        sentAt(NOW - 60_000, { userOpHash: undefined });
+        mockGetEvents.mockResolvedValue([included(OTHER, true, OTHER_TX)]);
+        mockUpgrade
+          .mockReset()
+          .mockRejectedValue(httpError(400, `We could not find your payment: ${reason}.`));
+
+        await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+          status: 'none',
+        });
+        expect(mockUpgrade).toHaveBeenCalledWith({
+          tier: RewardsTier.ULTRA,
+          transactionHash: OTHER_TX,
+        });
+        expect(stored()).toEqual([]);
+      }
+    });
+
+    it('keeps that operation, still unmatched, while its confirm fails', async () => {
+      sentAt(NOW - 60_000, { userOpHash: undefined });
+      mockGetEvents.mockResolvedValue([included(OTHER, true, OTHER_TX)]);
+      mockUpgrade.mockRejectedValueOnce(httpError(503, 'Your payment has not landed yet.'));
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'pending',
+      });
+      expect(stored()).toEqual([
+        expect.objectContaining({ userOpHash: OTHER, transactionHash: OTHER_TX, unmatched: true }),
+      ]);
+
+      // Next press: straight to the confirm, and the backend's answer decides.
+      mockGetEvents.mockClear();
+      mockUpgrade.mockRejectedValueOnce(
+        httpError(
+          400,
+          'We could not find your payment: that transaction is not a payment sent from your wallet.',
+        ),
+      );
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'none' });
+      expect(mockGetEvents).not.toHaveBeenCalled();
+      expect(stored()).toEqual([]);
+    });
+
+    /** It was a payment after all, and the backend refused it: held, as any refusal is. */
+    it('still holds a refusal of the payment that used the nonce', async () => {
+      sentAt(NOW - 60_000, { userOpHash: undefined });
+      mockGetEvents.mockResolvedValue([included(OTHER, true, OTHER_TX)]);
+      mockUpgrade.mockRejectedValue(
+        httpError(400, 'Your payment of $799.00 is below the Ultra price of $999.00.'),
+      );
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'rejected',
+        message: 'Your payment of $799.00 is below the Ultra price of $999.00.',
+      });
+      expect(stored()).toEqual([expect.objectContaining({ rejectedAt: NOW })]);
+    });
+
+    /**
+     * The record's own operation landed, and it carried the payment: an answer
+     * that it holds none is not taken as leave to pay again.
+     */
+    it('holds “no payment” as a refusal for an operation known to be its own', async () => {
+      sentAt(PAST_TTL);
+      mockGetEvents.mockResolvedValue([included(HASH, true)]);
+      mockUpgrade.mockRejectedValue(
+        httpError(
+          400,
+          'We could not find your payment: no payment from your wallet to Solid in that transaction.',
+        ),
+      );
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'rejected',
+        message:
+          'We could not find your payment: no payment from your wallet to Solid in that transaction.',
+      });
+      expect(stored()).toEqual([expect.objectContaining({ rejectedAt: NOW })]);
+    });
+
+    /** Nonce 7 spent on a batch that moved nothing, whoever sent it. */
+    it('drops a record with no hash when the operation that used its nonce reverted', async () => {
+      sentAt(NOW - 60_000, { userOpHash: undefined });
+      mockGetEvents.mockResolvedValue([included(OTHER, false, OTHER_TX)]);
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'none' });
+      expect(mockUpgrade).not.toHaveBeenCalled();
       expect(stored()).toEqual([]);
     });
   });
@@ -334,13 +507,32 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
 
         await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
           status: 'replaceable',
-          upgrade: expect.objectContaining({ userOpHash: HASH, nonce: '7' }),
+          key: KEY,
+          upgrade: expect.objectContaining({ userOpHash: HASH, nonce: '7', replaceable: true }),
           nonce: 7n,
         });
         expect(stored()).toEqual([
           expect.objectContaining({ userOpHash: HASH, replaceable: true }),
         ]);
       }
+    });
+
+    /**
+     * Its send failed with the outcome unknown, so no hash: no receipt to
+     * wait for, no bundler to ask. A replacement with nonce 7 is safe at once —
+     * a bundler that does hold it turns the replacement away.
+     */
+    it('may be replaced at once when it has no hash to ask about', async () => {
+      sentAt(NOW - 60_000, { userOpHash: undefined });
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'replaceable',
+        key: KEY,
+        upgrade: expect.objectContaining({ nonce: '7', replaceable: true }),
+        nonce: 7n,
+      });
+      expect(mockGetReceipt).not.toHaveBeenCalled();
+      expect(mockGetStatus).not.toHaveBeenCalled();
     });
 
     it('stays pending when the nonce or the status cannot be read', async () => {
@@ -371,6 +563,7 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
 
       await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
         status: 'replaceable',
+        key: KEY,
         upgrade: expect.objectContaining({ userOpHash: HASH }),
         nonce: 7n,
       });
@@ -525,6 +718,44 @@ describe('useHasPendingTierUpgrade', () => {
     remember({ replaceable: true });
     expect(hasPending()).toBe('false');
   });
+
+  /** Written before signing: the screen does not change under the passkey prompt. */
+  it('does not count one the bundler has not accepted', () => {
+    remember({
+      userOpHash: undefined,
+      sender: '0x1111111111111111111111111111111111111111',
+      nonce: '7',
+      block: '1',
+    });
+    expect(hasPending()).toBe('false');
+  });
+});
+
+/**
+ * Whatever uses the nonce lands at or after the block only if the block was
+ * read first: the nonce unused when read, nothing has used it yet.
+ */
+it('reads where a payment starts: the block, then the nonce', async () => {
+  const asked: string[] = [];
+  mockGetBlockNumber.mockImplementation(async () => {
+    asked.push('block');
+    return 45_000_000n;
+  });
+  mockGetNonce.mockImplementation(async () => {
+    asked.push('nonce');
+    return 7n;
+  });
+
+  await expect(readTierUpgradeStart('0x1111111111111111111111111111111111111111')).resolves.toEqual(
+    {
+      block: '45000000',
+      nonce: 7n,
+    },
+  );
+  expect(asked).toEqual(['block', 'nonce']);
+  expect(mockGetNonce).toHaveBeenCalledWith(
+    expect.objectContaining({ address: '0x1111111111111111111111111111111111111111' }),
+  );
 });
 
 describe('upgradeRejectionMessage', () => {
@@ -541,6 +772,31 @@ describe('upgradeRejectionMessage', () => {
   it('treats 5xx, 401, 429 and network errors as not final', async () => {
     for (const error of [httpError(503), httpError(401), httpError(429), new Error('network')]) {
       await expect(upgradeRejectionMessage(error)).resolves.toBeNull();
+    }
+  });
+});
+
+describe('isNoPaymentInTransaction', () => {
+  it('reads the backend’s two answers for a transaction with no payment from the wallet', async () => {
+    for (const reason of [
+      'that transaction is not a payment sent from your wallet',
+      'no payment from your wallet to Solid in that transaction',
+    ]) {
+      await expect(
+        isNoPaymentInTransaction(httpError(400, `We could not find your payment: ${reason}.`)),
+      ).resolves.toBe(true);
+    }
+  });
+
+  it('does not take a refusal of a real payment, or anything else, for one', async () => {
+    for (const error of [
+      httpError(400, 'Your payment of $799.00 is below the Ultra price of $999.00.'),
+      httpError(400, 'We could not find your payment: the transaction reverted.'),
+      httpError(409, 'That payment has already paid for a membership.'),
+      httpError(400),
+      new Error('no payment from your wallet to Solid in that transaction'),
+    ]) {
+      await expect(isNoPaymentInTransaction(error)).resolves.toBe(false);
     }
   });
 });

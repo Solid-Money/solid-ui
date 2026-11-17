@@ -24,7 +24,7 @@ import {
   reconcilePendingTierLocks,
   releasePendingTierLock,
 } from '@/lib/pendingTierLocks';
-import { settlePendingTierUpgrades } from '@/lib/pendingTierUpgrades';
+import { readTierUpgradeStart, settlePendingTierUpgrades } from '@/lib/pendingTierUpgrades';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import {
   BILLING_DECIMALS,
@@ -41,7 +41,11 @@ import { upgradeRejectionMessage } from '@/lib/upgradeRejection';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePendingTierLockStore';
-import { PendingTierUpgrade, usePendingTierUpgradeStore } from '@/store/usePendingTierUpgradeStore';
+import {
+  PendingTierUpgrade,
+  pendingTierUpgradeKey,
+  usePendingTierUpgradeStore,
+} from '@/store/usePendingTierUpgradeStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -507,15 +511,106 @@ class TierUpgradeConfirmingError extends UserCopyError {}
  */
 const NONCE_REFUSAL = /\bAA25\b|invalid account nonce|nonce too low|replacement|already known/i;
 
-const isNonceRefusal = (error: unknown): boolean => {
+/** Whether the error, or anything that caused it, says something `pattern` matches. */
+const saysAnywhere = (error: unknown, pattern: RegExp): boolean => {
   for (
     let e = error as { message?: string; details?: string; cause?: unknown } | undefined;
     e;
     e = e.cause as typeof e
   ) {
-    if (NONCE_REFUSAL.test(`${e.message ?? ''} ${e.details ?? ''}`)) return true;
+    if (pattern.test(`${e.message ?? ''} ${e.details ?? ''}`)) return true;
   }
   return false;
+};
+
+const isNonceRefusal = (error: unknown): boolean => saysAnywhere(error, NONCE_REFUSAL);
+
+/**
+ * The bundler — or the paymaster or node asked while the operation was
+ * prepared — turning it away: it failed validation (an EntryPoint `AAxx`
+ * code, a revert in simulation) or its nonce was refused. Whatever was signed
+ * was never accepted, so it can never land.
+ *
+ * Narrow on purpose. A send that failed any other way — a dropped connection,
+ * a timeout — may have reached the bundler and been accepted with only the
+ * answer lost. "Already known" is left out for the same reason: it is the
+ * bundler saying it holds the operation.
+ */
+const REFUSED_BEFORE_ACCEPTANCE =
+  /\bAA[1-9]\d\b|reverted during simulation|execution reverted|invalid account nonce|nonce too low|replacement/i;
+
+/** A send that certainly left nothing with the bundler: refused, or stopped by our own check first. */
+const refusedBeforeAcceptance = (error: unknown): boolean =>
+  // Ours only before sending: the Safe cannot pay the network fee.
+  error instanceof UserCopyError ||
+  (saysAnywhere(error, REFUSED_BEFORE_ACCEPTANCE) && !saysAnywhere(error, /already known/i));
+
+/** An earlier payment by transfer that a new one may only replace, as settling found it. */
+type ReplaceableUpgrade = { key: string; upgrade: PendingTierUpgrade; nonce: bigint };
+
+/** A payment by transfer, on record from before it is signed. */
+interface TransferAttempt {
+  /** Where its record is kept. */
+  key: string;
+  /** The record as written, with no hash yet. */
+  record: PendingTierUpgrade;
+  /** The nonce it is sent with: the one on record. */
+  nonce: bigint;
+}
+
+/**
+ * Put a payment by transfer on record before anything is signed, under the
+ * Safe and the nonce it is then sent with: a new payment's read now, a
+ * replacement's the earlier payment's own.
+ *
+ * From the moment the bundler may have it, a retry finds it — even when the
+ * answer that carries its hash is lost, or the app stops before it arrives —
+ * and whatever uses that nonce settles it. A replacement keeps the block of
+ * the payment it replaces, and that payment's operations, any of which may
+ * still be the one that lands.
+ */
+const recordTransferAttempt = async ({
+  userId,
+  tier,
+  safeAddress,
+  replacing,
+}: {
+  userId: string;
+  tier: RewardsTier;
+  safeAddress: string;
+  replacing?: ReplaceableUpgrade;
+}): Promise<TransferAttempt> => {
+  const start = replacing
+    ? { block: replacing.upgrade.block, nonce: replacing.nonce }
+    : await readTierUpgradeStart(safeAddress as Address);
+  const record: PendingTierUpgrade = {
+    userId,
+    submittedAt: Date.now(),
+    tier,
+    sender: safeAddress,
+    nonce: start.nonce.toString(),
+    block: start.block,
+    ...(replacing && {
+      replaced: [
+        { userOpHash: replacing.upgrade.userOpHash, tier: replacing.upgrade.tier },
+        ...(replacing.upgrade.replaced ?? []),
+      ],
+    }),
+  };
+  const pending = usePendingTierUpgradeStore.getState();
+  if (replacing) pending.replace(replacing.key, record);
+  else pending.remember(record);
+  return { key: pendingTierUpgradeKey(record), record, nonce: start.nonce };
+};
+
+/**
+ * Take back a payment the bundler never accepted, so the record is as it was
+ * before it: nothing, or the payment it was to replace.
+ */
+const withdrawTransferAttempt = (attempt: TransferAttempt, replacing?: ReplaceableUpgrade) => {
+  const pending = usePendingTierUpgradeStore.getState();
+  if (replacing) pending.replace(attempt.key, replacing.upgrade);
+  else pending.forget(attempt.key);
 };
 
 /**
@@ -523,11 +618,11 @@ const isNonceRefusal = (error: unknown): boolean => {
  * earlier payment, signing a new one, or confirming it.
  *
  * The pending record is what stops a second payment, and it is only written
- * once the bundler has accepted the first: between the settlement check that
- * found nothing and that moment there is a passkey prompt and a send, and a
- * second press — a double tap, or another step's own copy of this hook — would
- * pass the same check and pay again. Module scope, so every instance of the
- * hook sees the same set; released when the attempt is over, whatever its end.
+ * once the settlement check has found nothing and the nonce has been read: a
+ * second press in between — a double tap, or another step's own copy of this
+ * hook — would pass the same check, and the two would sign over each other's
+ * record. Module scope, so every instance of the hook sees the same set;
+ * released when the attempt is over, whatever its end.
  */
 const transferUpgradesInFlight = new Set<string>();
 
@@ -618,7 +713,7 @@ export const useSubscribeToTier = () => {
 
       // An earlier payment that never landed, and that a new one may only
       // replace: sent with its nonce, so that only one of the two can land.
-      let replacing: { upgrade: PendingTierUpgrade; nonce: bigint } | undefined;
+      let replacing: ReplaceableUpgrade | undefined;
 
       try {
         if (settlesEarlier) {
@@ -674,16 +769,14 @@ export const useSubscribeToTier = () => {
 
         const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-        // Where a later search of the chain for this payment starts: read
-        // before it is sent, so it is no later than the block it lands in. A
-        // replacement keeps the block of the payment it replaces, which may
-        // still be the one that lands.
-        const block =
-          mode !== 'transfer'
-            ? undefined
-            : replacing
-              ? replacing.upgrade.block
-              : (await publicClient(fuse.id).getBlockNumber()).toString();
+        // Paid by transfer, the payment is on record before the passkey is
+        // asked for — see `recordTransferAttempt`. A replacement's record
+        // moves to it, and keeps the payment it replaces: until the nonce is
+        // used, either may land.
+        const attempt =
+          mode === 'transfer'
+            ? await recordTransferAttempt({ userId, tier, safeAddress, replacing })
+            : undefined;
 
         let userOpHash: `0x${string}` | undefined;
         let result: Awaited<ReturnType<typeof executeTransactions>>;
@@ -695,43 +788,20 @@ export const useSubscribeToTier = () => {
               ? 'Failed to upgrade your membership'
               : 'Failed to start your membership',
             fuse,
-            // Remembered the moment the bundler accepts it: from here the
-            // payment can land whatever happens to the app, and a retry must
-            // find it. With the Safe and the nonce it was sent with, which are
-            // what later tell an operation that can still land from one that
-            // never will.
-            mode === 'transfer'
-              ? (hash, nonce) => {
+            // The hash, the moment the bundler accepts it, and when it was
+            // sent. The record is already down: this only says more about it.
+            attempt
+              ? hash => {
                   userOpHash = hash;
-                  const sent: PendingTierUpgrade = {
-                    userOpHash: hash,
-                    userId,
-                    submittedAt: Date.now(),
-                    tier,
-                    sender: safeAddress,
-                    nonce: nonce.toString(),
-                    block,
-                  };
-                  const pending = usePendingTierUpgradeStore.getState();
-                  if (!replacing) {
-                    pending.remember(sent);
-                    return;
-                  }
-                  // The record moves to this operation, and keeps the one it
-                  // replaced: until the nonce is used, either may land.
-                  const earlier = replacing.upgrade;
-                  pending.replace(earlier.userOpHash, {
-                    ...sent,
-                    replaced: [
-                      { userOpHash: earlier.userOpHash, tier: earlier.tier },
-                      ...(earlier.replaced ?? []),
-                    ],
-                  });
+                  usePendingTierUpgradeStore
+                    .getState()
+                    .remember({ ...attempt.record, userOpHash: hash, submittedAt: Date.now() });
                 }
               : undefined,
             undefined,
-            // Sent with the earlier payment's own nonce, as its replacement.
-            replacing?.nonce,
+            // Sent with exactly the nonce on record: a new payment's own, or
+            // the earlier payment's, as its replacement.
+            attempt?.nonce,
           );
         } catch (sendError) {
           // Paid by transfer, sent, and only the wait gave up — usually because
@@ -751,6 +821,14 @@ export const useSubscribeToTier = () => {
               'Your upgrade payment is still confirming. Try again in a moment to finish — you won’t be charged twice.',
             );
           }
+          // Turned away before the bundler accepted anything: nothing signed
+          // can land, so the record goes back to what it was before this
+          // payment. Any other failure before the hash arrived may be a
+          // payment accepted with only the answer lost; it stays on record,
+          // and the next press settles it by its nonce.
+          if (attempt && !userOpHash && refusedBeforeAcceptance(sendError)) {
+            withdrawTransferAttempt(attempt, replacing);
+          }
           // A replacement the bundler turned away over its nonce: it still
           // holds the earlier payment, or that payment has just landed after
           // all. Nothing new was sent, and the earlier record stays for the
@@ -764,13 +842,17 @@ export const useSubscribeToTier = () => {
         }
 
         if (result === USER_CANCELLED_TRANSACTION) {
+          // Dismissed — the passkey prompt, or the network fee — before the
+          // bundler had anything: nothing can land, and the record is as it
+          // was before this payment.
+          if (attempt && !userOpHash) withdrawTransferAttempt(attempt, replacing);
           track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
           return null;
         }
 
-        if (mode === 'transfer') {
+        if (attempt) {
           const pending = usePendingTierUpgradeStore.getState();
-          pending.landed(result.userOpHash, result.transactionHash);
+          pending.landed(attempt.key, result.transactionHash);
           let state: TierMembershipState;
           try {
             state = await upgradeTierSubscription({
@@ -783,14 +865,14 @@ export const useSubscribeToTier = () => {
             // or, when the backend refused it for good, shows why again.
             const message = await upgradeRejectionMessage(error);
             if (message) {
-              pending.rejected(result.userOpHash, Date.now());
+              pending.rejected(attempt.key, Date.now());
               throw new UserCopyError(message);
             }
             throw new UserCopyError(
               'Your payment went through, but your upgrade isn’t confirmed yet. Tap Upgrade again to finish — you won’t be charged twice.',
             );
           }
-          pending.forget(result.userOpHash);
+          pending.forget(attempt.key);
           return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
         }
 
