@@ -15,7 +15,8 @@ import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { formatBtcAmount } from '@/lib/soBtc';
+import { BTC_DISPLAY_DECIMALS } from '@/lib/soBtc';
+import { formatDecimalAmount } from '@/lib/support/formatAmount';
 import {
   TransactionCategory,
   TransactionDirection,
@@ -26,6 +27,20 @@ import { cn, formatNumber } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
 import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPresentation';
+
+/**
+ * The row's amount. BTC amounts are fractions of a coin, so two places would round them to 0:
+ * they show six, cut from the decimal string rather than through a float, and an amount above
+ * zero that still cuts to 0 reads "< 0.000001".
+ */
+const formatRowAmount = (amount: string, symbol?: string) => {
+  if (!/btc/i.test(symbol ?? '')) return formatNumber(Number(amount), 2);
+  const shown = formatDecimalAmount(amount, BTC_DISPLAY_DECIMALS);
+  if (/^-?0$/.test(shown) && /[1-9]/.test(amount)) {
+    return `< 0.${'1'.padStart(BTC_DISPLAY_DECIMALS, '0')}`;
+  }
+  return shown;
+};
 
 type TransactionClassNames = {
   container?: string;
@@ -354,11 +369,7 @@ const Transaction = ({
             style={statusColorStyle}
           >
             {statusSign}
-            {/* BTC amounts are fractions of a coin: two places would round them to 0. */}
-            {/btc/i.test(symbol ?? '')
-              ? formatBtcAmount(Number(amount), '')
-              : formatNumber(Number(amount), 2)}{' '}
-            {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
+            {formatRowAmount(amount, symbol)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
         {directDepositIsPendingOrProcessing && !isCardDeposit && (
