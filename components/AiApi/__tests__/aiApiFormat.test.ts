@@ -2,6 +2,7 @@ import {
   aiApiLimitProgress,
   aiApiModelDiscount,
   aiApiModelIsFree,
+  aiApiModelPriceExample,
   aiApiModelTag,
   aiApiSharedTierRate,
   formatAiApiBillingFunds,
@@ -168,6 +169,7 @@ describe('model prices', () => {
     [0.266, '$0.27'],
     [0.2166, '$0.22'],
     [0.0722, '$0.072'],
+    [0.05, '$0.05'],
     [0.003612, '$0.004'],
     [0.00784, '$0.008'],
     [0.007288, '$0.007'],
@@ -204,6 +206,25 @@ describe('model prices', () => {
     expect(aiApiModelDiscount({ ...opus, officialInputUsdPerMTok: null })).toBeNull();
     expect(aiApiModelDiscount({ ...opus, officialOutputUsdPerMTok: 0 })).toBeNull();
     expect(aiApiModelDiscount({ ...opus, inputUsdPerMTok: 20, outputUsdPerMTok: 80 })).toBeNull();
+  });
+
+  it('prices a million blended tokens before and after cashback without rounding the inputs', () => {
+    const model = {
+      inputUsdPerMTok: 0.38,
+      outputUsdPerMTok: 1.2,
+      cachedInputUsdPerMTok: 0.1,
+      officialInputUsdPerMTok: 4,
+      officialOutputUsdPerMTok: 20,
+    };
+    const example = aiApiModelPriceExample(model, 0.5);
+    expect(example.official).toBe(8);
+    expect(formatAiApiTokenPrice(example.solid)).toBe('$0.59');
+    expect(formatAiApiTokenPrice(example.afterCashback)).toBe('$0.29');
+    expect(example.savingsAfterCashback).toBe(96);
+
+    const noComparison = aiApiModelPriceExample({ ...model, officialOutputUsdPerMTok: null }, 0.5);
+    expect(noComparison.official).toBeNull();
+    expect(noComparison.savingsAfterCashback).toBeNull();
   });
 
   it('tags a model we charge nothing for as free, list price or not', () => {

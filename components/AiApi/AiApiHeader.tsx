@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import { Info } from 'lucide-react-native';
+import { ArrowLeft, Info } from 'lucide-react-native';
 
 import { BackButton } from '@/components/ui/back-button';
 import { CIRCULAR_CONTROL_CLASS_NAME } from '@/components/ui/circular-control';
@@ -45,24 +45,37 @@ export const AiApiInfoButton = ({ onPress }: { onPress: () => void }) => (
  */
 const AiApiHeader = ({
   title,
+  compact = false,
   onBack,
   backIcon,
   backLabel,
   right,
 }: {
   title: string;
+  compact?: boolean;
   /** Replaces going back, e.g. to leave "How it works" for the dashboard. */
   onBack?: () => void;
   backIcon?: ReactNode;
   backLabel?: string;
   right?: ReactNode;
 }) => (
-  <View className="relative min-h-[50px] flex-row items-center justify-center px-4">
+  <View
+    className={cn(
+      'relative flex-row items-center justify-center px-4',
+      compact ? 'min-h-10 web:[font-synthesis:none]' : 'min-h-[50px]',
+    )}
+  >
     <View className="absolute left-4">
       <BackButton
         fallbackHref={path.REWARDS as string}
         onPress={onBack}
-        icon={backIcon}
+        className={compact ? '!h-10 !w-10' : undefined}
+        icon={
+          backIcon ??
+          (compact ? (
+            <ArrowLeft size={18} color="white" strokeWidth={AI_API_ICON_STROKE} />
+          ) : undefined)
+        }
         accessibilityLabel={backLabel}
       />
     </View>
