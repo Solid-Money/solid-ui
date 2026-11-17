@@ -84,6 +84,8 @@ const SAFE = '0x1111111111111111111111111111111111111111';
 const MODULE = '0x2222222222222222222222222222222222222222';
 const USDC = '0x3333333333333333333333333333333333333333';
 const TREASURY = '0x4444444444444444444444444444444444444444';
+/** The transfer an Ultra upgrade at $799 makes, as kept on its record. */
+const ULTRA_PAYMENT = { token: USDC, to: TREASURY, units: '799000000' };
 const HASH = '0x9418d2b5cd787c8accc4fa1d2a0844f0808c0945a1c8885dd33c9e4d8ce1a1f1';
 const TX = '0x616c8066046af09a5054d4eb060eb8e30a9c8b30e0892399daa175da3aadaeab';
 const STATE = { enabled: true };
@@ -189,7 +191,7 @@ const subscribe = (variables: Record<string, unknown>) => {
 const stored = () => Object.values(usePendingTierUpgradeStore.getState().upgrades);
 
 beforeEach(() => {
-  usePendingTierUpgradeStore.setState({ upgrades: {} });
+  usePendingTierUpgradeStore.setState({ upgrades: {}, sending: {} });
   mockExecuteTransactions.mockReset();
   mockConfirm.mockReset().mockResolvedValue(STATE);
   mockUpgrade.mockReset().mockResolvedValue(STATE);
@@ -274,6 +276,7 @@ describe('an upgrade paid by transfer', () => {
    */
   it('puts the payment on record before signing, then adds its hash', async () => {
     let atSigning: unknown[] = [];
+    let sendingAtSigning: Record<string, true> = {};
     mockExecuteTransactions.mockImplementation(
       async (
         _client: unknown,
@@ -283,6 +286,7 @@ describe('an upgrade paid by transfer', () => {
         onUserOpHash?: (hash: string, nonce: bigint) => void,
       ) => {
         atSigning = stored();
+        sendingAtSigning = { ...usePendingTierUpgradeStore.getState().sending };
         onUserOpHash?.(HASH, NONCE);
         throw receiptTimeout();
       },
@@ -297,11 +301,16 @@ describe('an upgrade paid by transfer', () => {
         userId: 'user-1',
         submittedAt: expect.any(Number),
         tier: RewardsTier.ULTRA,
+        payment: ULTRA_PAYMENT,
         sender: SAFE,
         nonce: '7',
         block: BLOCK,
       },
     ]);
+    // Being sent while the passkey is up, so no screen takes it for a payment
+    // to confirm; over once the attempt is.
+    expect(sendingAtSigning).toEqual({ [`${SAFE}:7`]: true });
+    expect(usePendingTierUpgradeStore.getState().sending).toEqual({});
     expect(stored()).toEqual([expect.objectContaining({ userOpHash: HASH, nonce: '7' })]);
   });
 
@@ -365,7 +374,7 @@ describe('an upgrade paid by transfer', () => {
       Object.assign(new Error('The request took too long to respond.'), { name: 'TimeoutError' }),
       new Error('UserOperation already known'),
     ]) {
-      usePendingTierUpgradeStore.setState({ upgrades: {} });
+      usePendingTierUpgradeStore.setState({ upgrades: {}, sending: {} });
       mockExecuteTransactions.mockRejectedValueOnce(failure);
 
       await expect(subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true })).rejects.toBe(
@@ -376,11 +385,14 @@ describe('an upgrade paid by transfer', () => {
           userId: 'user-1',
           submittedAt: expect.any(Number),
           tier: RewardsTier.ULTRA,
+          payment: ULTRA_PAYMENT,
           sender: SAFE,
           nonce: '7',
           block: BLOCK,
         },
       ]);
+      // The attempt is over: a payment that may have been made, to confirm.
+      expect(usePendingTierUpgradeStore.getState().sending).toEqual({});
     }
   });
 
@@ -619,6 +631,7 @@ describe('an upgrade paid by transfer', () => {
           userId: 'user-1',
           submittedAt: expect.any(Number),
           tier: RewardsTier.ULTRA,
+          payment: ULTRA_PAYMENT,
           sender: SAFE,
           nonce: '7',
           block: '44000000',
@@ -714,6 +727,7 @@ describe('an upgrade paid by transfer', () => {
           userId: 'user-1',
           submittedAt: expect.any(Number),
           tier: RewardsTier.ULTRA,
+          payment: ULTRA_PAYMENT,
           sender: SAFE,
           nonce: '7',
           block: '44000000',

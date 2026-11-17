@@ -29,6 +29,7 @@ import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import {
   BILLING_DECIMALS,
   buildSubscriptionTransactions,
+  usdToBillingUnits,
 } from '@/lib/tierSubscriptionTransactions';
 import {
   offerFirstYearFeeUsd,
@@ -44,6 +45,7 @@ import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePending
 import {
   PendingTierUpgrade,
   pendingTierUpgradeKey,
+  TierUpgradePayment,
   usePendingTierUpgradeStore,
 } from '@/store/usePendingTierUpgradeStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
@@ -572,11 +574,14 @@ interface TransferAttempt {
 const recordTransferAttempt = async ({
   userId,
   tier,
+  payment,
   safeAddress,
   replacing,
 }: {
   userId: string;
   tier: RewardsTier;
+  /** The transfer to the treasury the operation makes. */
+  payment: TierUpgradePayment;
   safeAddress: string;
   replacing?: ReplaceableUpgrade;
 }): Promise<TransferAttempt> => {
@@ -587,20 +592,30 @@ const recordTransferAttempt = async ({
     userId,
     submittedAt: Date.now(),
     tier,
+    payment,
     sender: safeAddress,
     nonce: start.nonce.toString(),
     block: start.block,
     ...(replacing && {
       replaced: [
-        { userOpHash: replacing.upgrade.userOpHash, tier: replacing.upgrade.tier },
+        {
+          userOpHash: replacing.upgrade.userOpHash,
+          tier: replacing.upgrade.tier,
+          payment: replacing.upgrade.payment,
+        },
         ...(replacing.upgrade.replaced ?? []),
       ],
     }),
   };
   const pending = usePendingTierUpgradeStore.getState();
+  const key = pendingTierUpgradeKey(record);
+  // Marked as being sent before it is written, so no screen takes it for a
+  // payment to confirm while its passkey prompt is up. Cleared when the
+  // attempt is over, whatever its end.
+  pending.setSending(key, true);
   if (replacing) pending.replace(replacing.key, record);
   else pending.remember(record);
-  return { key: pendingTierUpgradeKey(record), record, nonce: start.nonce };
+  return { key, record, nonce: start.nonce };
 };
 
 /**
@@ -714,6 +729,8 @@ export const useSubscribeToTier = () => {
       // An earlier payment that never landed, and that a new one may only
       // replace: sent with its nonce, so that only one of the two can land.
       let replacing: ReplaceableUpgrade | undefined;
+      // This attempt's record, while it is being sent — see `recordTransferAttempt`.
+      let sendingKey: string | undefined;
 
       try {
         if (settlesEarlier) {
@@ -775,8 +792,20 @@ export const useSubscribeToTier = () => {
         // used, either may land.
         const attempt =
           mode === 'transfer'
-            ? await recordTransferAttempt({ userId, tier, safeAddress, replacing })
+            ? await recordTransferAttempt({
+                userId,
+                tier,
+                // What `buildSubscriptionTransactions` has the Safe send.
+                payment: {
+                  token: String(contracts.billingTokenAddress),
+                  to: String(contracts.revenueTreasuryAddress),
+                  units: usdToBillingUnits(priceUsd).toString(),
+                },
+                safeAddress,
+                replacing,
+              })
             : undefined;
+        sendingKey = attempt?.key;
 
         let userOpHash: `0x${string}` | undefined;
         let result: Awaited<ReturnType<typeof executeTransactions>>;
@@ -887,6 +916,9 @@ export const useSubscribeToTier = () => {
 
         return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
       } finally {
+        // A record left without a hash now counts as a payment that may have
+        // been made: the next press confirms it, whatever the balance says.
+        if (sendingKey) usePendingTierUpgradeStore.getState().setSending(sendingKey, false);
         if (settlesEarlier) transferUpgradesInFlight.delete(userId);
       }
     },

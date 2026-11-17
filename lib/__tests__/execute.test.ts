@@ -125,10 +125,15 @@ describe('a replacement, sent with the nonce of the operation it replaces', () =
     sponsored.sendUserOperation.mockRejectedValue(policyRefusal);
     mockGetBalance.mockResolvedValue(prefund + calls[0].value);
     mockAsk.mockResolvedValue(true);
+    mockUnsponsored.prepareUserOperation.mockResolvedValueOnce({ ...prepared, nonce: 3n });
 
     await replace();
 
     expect(mockUnsponsored.prepareUserOperation).toHaveBeenCalledWith({ calls, nonce: 3n });
+    // What is sent is what was prepared with it: nothing re-reads the nonce.
+    expect(mockUnsponsored.sendUserOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ nonce: 3n }),
+    );
   });
 });
 

@@ -1,5 +1,5 @@
 import { getAccountNonce } from 'permissionless/actions';
-import { Address } from 'viem';
+import { Address, erc20Abi, parseEventLogs, toEventSelector } from 'viem';
 import { entryPoint07Abi, entryPoint07Address } from 'viem/account-abstraction';
 import { fuse } from 'viem/chains';
 
@@ -12,6 +12,7 @@ import {
   PendingTierUpgrade,
   pendingTierUpgradeKey,
   pendingTierUpgradesFor,
+  TierUpgradePayment,
   usePendingTierUpgradeStore,
 } from '@/store/usePendingTierUpgradeStore';
 
@@ -168,6 +169,73 @@ const findOperationWithNonce = async (sender: Address, nonce: bigint, fromBlock:
   return { userOpHash, success, transactionHash: event.transactionHash };
 };
 
+/** Whether a record carries what settling it by its nonce needs. */
+const settlesByNonce = (upgrade: PendingTierUpgrade): boolean =>
+  !!upgrade.sender && upgrade.nonce !== undefined && upgrade.block !== undefined;
+
+/** One operation a record stands for: the latest, or one it replaced. */
+type SentOperation = {
+  userOpHash?: `0x${string}`;
+  tier: RewardsTier;
+  payment?: TierUpgradePayment;
+};
+
+const USER_OPERATION_EVENT_TOPIC = toEventSelector(
+  'UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)',
+);
+const BEFORE_EXECUTION_TOPIC = toEventSelector('BeforeExecution()');
+
+/**
+ * Which of `candidates` — operations with no hash, sent for different tiers —
+ * the one that used the nonce was, told by what it paid: the transfer each was
+ * sent to make, among the logs of that operation alone. `null` when it made
+ * none of them, so none of them landed. `undefined` when that cannot be said:
+ * one of them has no payment on record (an unreleased build wrote it), or two
+ * made the same transfer. Throws when the transaction cannot be read.
+ *
+ * An operation's logs run from the bundle's `BeforeExecution`, or the
+ * operation before's `UserOperationEvent`, to its own — the bounds the backend
+ * reads a payment within.
+ */
+const operationPaying = async (
+  candidates: SentOperation[],
+  sender: Address,
+  used: { userOpHash: `0x${string}`; transactionHash: `0x${string}` },
+): Promise<SentOperation | null | undefined> => {
+  const { logs } = await publicClient(fuse.id).getTransactionReceipt({
+    hash: used.transactionHash,
+  });
+  const entryPoint = entryPoint07Address.toLowerCase();
+  const hash = used.userOpHash.toLowerCase();
+  let start = 0;
+  let own: typeof logs | undefined;
+  for (let i = 0; i < logs.length; i++) {
+    const [topic, opHash] = logs[i].topics;
+    if (logs[i].address.toLowerCase() !== entryPoint) continue;
+    if (topic !== USER_OPERATION_EVENT_TOPIC && topic !== BEFORE_EXECUTION_TOPIC) continue;
+    if (topic === USER_OPERATION_EVENT_TOPIC && opHash?.toLowerCase() === hash) {
+      own = logs.slice(start, i);
+      break;
+    }
+    start = i + 1;
+  }
+  if (!own) throw new Error('The operation is not in its transaction');
+
+  const transfers = parseEventLogs({ abi: erc20Abi, eventName: 'Transfer', logs: own });
+  const made = (payment: TierUpgradePayment) =>
+    transfers.some(
+      ({ address, args }) =>
+        address.toLowerCase() === payment.token.toLowerCase() &&
+        args.from.toLowerCase() === sender.toLowerCase() &&
+        args.to.toLowerCase() === payment.to.toLowerCase() &&
+        args.value === BigInt(payment.units),
+    );
+  const paying = candidates.filter(({ payment }) => payment && made(payment));
+  if (paying.length === 1) return paying[0];
+  if (paying.length > 1) return undefined;
+  return candidates.every(({ payment }) => payment) ? null : undefined;
+};
+
 /**
  * What to do with an upgrade the bundler has no receipt for, or whose latest
  * operation has no hash to ask about. Throws when the chain or the bundler
@@ -186,7 +254,11 @@ const findOperationWithNonce = async (sender: Address, nonce: bigint, fromBlock:
  *   every one of them hashed, it is another operation of the Safe's, and
  *   nothing was paid. None of the hashed ones, with one that has no hash — a
  *   send whose answer was lost — it may be that one: it is confirmed as that
- *   one's tier, and the backend says whether it holds a payment at all. Not
+ *   one's tier, and the backend says whether it holds a payment at all.
+ *   Several with no hash, for different tiers, are told apart by the transfer
+ *   the operation made, never guessed: confirming one tier with another's
+ *   payment would grant the wrong one or refuse a good payment. It made none
+ *   of theirs, and none of them landed. Not
  *   found — the chain read from a node behind the one that read the nonce —
  *   it waits, and is looked for again on the next press.
  * - Not moved: it can still land. It waits until the bundler says it no
@@ -209,7 +281,7 @@ const settleUnreceipted = async (
   now: number,
 ): Promise<Unreceipted> => {
   const age = now - upgrade.submittedAt;
-  if (!upgrade.sender || upgrade.nonce === undefined || upgrade.block === undefined) {
+  if (!settlesByNonce(upgrade)) {
     return age > PENDING_TIER_UPGRADE_TTL_MS ? { outcome: 'forget' } : { outcome: 'wait' };
   }
   if (upgrade.userOpHash && age <= PENDING_TIER_UPGRADE_TTL_MS) return { outcome: 'wait' };
@@ -225,16 +297,29 @@ const settleUnreceipted = async (
     if (!used) return { outcome: 'wait' };
     if (!used.success) return { outcome: 'forget' };
 
-    // Newest first: of several with no hash, the latest is the likeliest to
-    // have been accepted, since a bundler holding an earlier one turns its
-    // replacement away.
-    const operations = [
-      { userOpHash: upgrade.userOpHash, tier: upgrade.tier },
+    // Newest first.
+    const operations: SentOperation[] = [
+      { userOpHash: upgrade.userOpHash, tier: upgrade.tier, payment: upgrade.payment },
       ...(upgrade.replaced ?? []),
     ];
     const hash = used.userOpHash.toLowerCase();
     const matched = operations.find(({ userOpHash }) => userOpHash?.toLowerCase() === hash);
-    const taken = matched ?? operations.find(({ userOpHash }) => !userOpHash);
+    const hashless = operations.filter(({ userOpHash }) => !userOpHash);
+    let taken = matched;
+    if (!taken && hashless.length > 0) {
+      // One tier among those with no hash, and that is the tier, whichever of
+      // them it was — the backend says whether it holds a payment at all.
+      // Several, and guessing could confirm one tier with another's payment:
+      // it is told by the transfer the operation made instead.
+      const tiers = new Set(hashless.map(({ tier }) => tier));
+      const paying = tiers.size === 1 ? hashless[0] : await operationPaying(hashless, sender, used);
+      if (paying === null) return { outcome: 'forget' };
+      // Not told apart: an operation an unreleased build recorded without its
+      // payment, or two tiers priced alike. The latest is the likeliest to
+      // have been accepted, since a bundler holding an earlier one turns its
+      // replacement away.
+      taken = paying ?? hashless[0];
+    }
     if (!taken) return { outcome: 'forget' };
     return {
       outcome: 'landed',
@@ -288,6 +373,11 @@ export const settlePendingTierUpgrades = async (
     if (!upgrade.transactionHash) {
       // The bundler's receipt for the latest operation, while it has a hash:
       // the quick answer, before the nonce is read at all.
+      //
+      // A lookup that fails says nothing either way. A record with its nonce
+      // is then settled by the nonce all the same — on the chain, which does
+      // not need the bundler — so a bundler that keeps failing cannot hold it
+      // past what `settleUnreceipted` allows. One without stays pending.
       let receipt: UserOperationReceipt | undefined;
       if (upgrade.userOpHash) {
         try {
@@ -295,7 +385,9 @@ export const settlePendingTierUpgrades = async (
             hash: upgrade.userOpHash,
           });
         } catch (error) {
-          if (!isReceiptNotFound(error)) return { status: 'pending' };
+          if (!isReceiptNotFound(error) && !settlesByNonce(upgrade)) {
+            return { status: 'pending' };
+          }
         }
       }
 

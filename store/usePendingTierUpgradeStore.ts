@@ -6,6 +6,17 @@ import mmkvStorage from '@/lib/mmvkStorage';
 import type { RewardsTier } from '@/lib/types';
 
 /**
+ * The transfer an upgrade payment makes: `units` of `token`, raw, from the
+ * Safe to `to`, the treasury. Addresses and a decimal string, since the record
+ * is persisted as JSON.
+ */
+export interface TierUpgradePayment {
+  token: string;
+  to: string;
+  units: string;
+}
+
+/**
  * A `transfer`-mode upgrade that was sent but not yet confirmed to the backend.
  *
  * Unlike a module subscription, where the backend takes the money and a retry
@@ -35,6 +46,13 @@ export interface PendingTierUpgrade {
   submittedAt: number;
   /** The tier the latest operation pays for. */
   tier: RewardsTier;
+  /**
+   * What the latest operation pays the treasury. Tells which operation used
+   * the nonce when several were sent for different tiers and none of their
+   * hashes is the one that did — see `settlePendingTierUpgrades`. Absent from
+   * records written by unreleased builds of this feature.
+   */
+  payment?: TierUpgradePayment;
   /**
    * The Safe that sends it, and the EntryPoint nonce it is sent with — a
    * decimal string, since the record is persisted as JSON and JSON has no
@@ -66,7 +84,7 @@ export interface PendingTierUpgrade {
    * still be the one that lands, and is confirmed as the tier it paid for if
    * it does.
    */
-  replaced?: { userOpHash?: `0x${string}`; tier: RewardsTier }[];
+  replaced?: { userOpHash?: `0x${string}`; tier: RewardsTier; payment?: TierUpgradePayment }[];
   /**
    * Set when settling found it has not landed and may be replaced: its nonce
    * unused, and the bundler no longer holding it, the hold over, or no hash
@@ -110,6 +128,14 @@ export const pendingTierUpgradeKey = (upgrade: PendingTierUpgrade): string =>
 interface PendingTierUpgradeState {
   /** By `pendingTierUpgradeKey`. */
   upgrades: Record<string, PendingTierUpgrade>;
+  /**
+   * The records this app is signing and sending right now, by key. In memory
+   * only, never persisted: an app stopped mid-send has nothing in it on the
+   * next start, so the record it left is treated as the payment it may be.
+   */
+  sending: Record<string, true>;
+  /** Mark a record as being sent, or the send as over, whatever its end. */
+  setSending: (key: string, sending: boolean) => void;
   /** Write a record, over any already kept for its Safe and nonce. */
   remember: (upgrade: PendingTierUpgrade) => void;
   /** It landed after all, so it is a payment to confirm again, not one to replace. */
@@ -132,6 +158,14 @@ export const usePendingTierUpgradeStore = create<PendingTierUpgradeState>()(
   persist(
     set => ({
       upgrades: {},
+      sending: {},
+      setSending: (key, sending) =>
+        set(state => {
+          if (sending === !!state.sending[key]) return state;
+          if (sending) return { sending: { ...state.sending, [key]: true } };
+          const { [key]: _done, ...rest } = state.sending;
+          return { sending: rest };
+        }),
       remember: upgrade =>
         set(state => ({
           upgrades: { ...state.upgrades, [pendingTierUpgradeKey(upgrade)]: upgrade },
@@ -176,30 +210,40 @@ export const usePendingTierUpgradeStore = create<PendingTierUpgradeState>()(
     {
       name: PENDING_TIER_UPGRADE_STORAGE_KEY,
       storage: createJSONStorage(() => mmkvStorage(PENDING_TIER_UPGRADE_STORAGE_KEY)),
+      partialize: state => ({ upgrades: state.upgrades }),
     },
   ),
 );
 
 /**
- * Whether an account has an upgrade payment still to confirm, for a screen
- * that has to re-render when one is remembered or settled.
+ * Whether an account has an upgrade payment that may have been made and is
+ * not confirmed yet — what a press of the screen has to settle before it may
+ * pay again, whatever the balance now says.
  *
  * Not one found `replaceable`: it never landed, so there is nothing to
  * confirm, and the screen goes back to paying — which replaces it. Nor one
- * with no hash: written before signing, it is only an attempt until the
- * bundler accepts it, and the screen does not change under a passkey prompt.
- * One a send of unknown outcome left without a hash is settled by the next
- * press to pay — confirmed if its nonce was used by the payment, replaced
- * with that same nonce if not.
+ * this app is still signing and sending: the screen does not change under a
+ * passkey prompt. One with no hash counts once its send is over: a send of
+ * unknown outcome may have been accepted, its payment may already have left
+ * the Safe, and the balance it left cannot be what stops the press that
+ * confirms it — confirmed if its nonce was used by the payment, found
+ * replaceable if not.
  */
-export const useHasPendingTierUpgrade = (userId: string | undefined): boolean =>
-  usePendingTierUpgradeStore(
-    state =>
-      !!userId &&
-      Object.values(state.upgrades).some(
-        upgrade => upgrade.userId === userId && !!upgrade.userOpHash && !upgrade.replaceable,
-      ),
+export const hasTierUpgradeToConfirm = (
+  state: Pick<PendingTierUpgradeState, 'upgrades' | 'sending'>,
+  userId: string | undefined,
+): boolean =>
+  !!userId &&
+  Object.entries(state.upgrades).some(
+    ([key, upgrade]) =>
+      upgrade.userId === userId &&
+      !upgrade.replaceable &&
+      (!!upgrade.userOpHash || !state.sending[key]),
   );
+
+/** `hasTierUpgradeToConfirm`, for a screen that re-renders when it changes. */
+export const useHasPendingTierUpgrade = (userId: string | undefined): boolean =>
+  usePendingTierUpgradeStore(state => hasTierUpgradeToConfirm(state, userId));
 
 /** One account's unconfirmed upgrades, oldest first, each with the key it is kept under. */
 export const pendingTierUpgradesFor = (

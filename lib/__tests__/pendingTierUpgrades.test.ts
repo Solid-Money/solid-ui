@@ -1,4 +1,5 @@
 import React from 'react';
+import { encodeAbiParameters, encodeEventTopics, erc20Abi, pad, toEventSelector } from 'viem';
 
 import {
   PENDING_TIER_UPGRADE_MAX_HOLD_MS,
@@ -33,10 +34,12 @@ jest.mock('permissionless/actions', () => ({
 }));
 const mockGetEvents = jest.fn();
 const mockGetBlockNumber = jest.fn();
+const mockGetTransactionReceipt = jest.fn();
 jest.mock('@/lib/wagmi', () => ({
   publicClient: () => ({
     getContractEvents: (args: unknown) => mockGetEvents(args),
     getBlockNumber: () => mockGetBlockNumber(),
+    getTransactionReceipt: (args: unknown) => mockGetTransactionReceipt(args),
   }),
 }));
 const mockUpgrade = jest.fn();
@@ -83,12 +86,13 @@ const remember = (overrides: Partial<PendingTierUpgrade> = {}) =>
 const stored = () => Object.values(usePendingTierUpgradeStore.getState().upgrades);
 
 beforeEach(() => {
-  usePendingTierUpgradeStore.setState({ upgrades: {} });
+  usePendingTierUpgradeStore.setState({ upgrades: {}, sending: {} });
   mockGetReceipt.mockReset();
   mockGetStatus.mockReset();
   mockGetNonce.mockReset();
   mockGetEvents.mockReset().mockResolvedValue([]);
   mockGetBlockNumber.mockReset();
+  mockGetTransactionReceipt.mockReset();
   mockUpgrade.mockReset().mockResolvedValue(STATE);
   mockWithRefreshToken.mockReset().mockImplementation((call: () => Promise<unknown>) => call());
 });
@@ -466,6 +470,136 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
       expect(stored()).toEqual([expect.objectContaining({ rejectedAt: NOW })]);
     });
 
+    /**
+     * Two sends whose answers were both lost — Prime, then an Ultra
+     * replacement — and an operation with neither hash used nonce 7. Its
+     * transfer, not the order they were sent in, says which it was.
+     */
+    describe('with several operations of no hash, for different tiers', () => {
+      const USDC = '0x2222222222222222222222222222222222222222';
+      const TREASURY = '0x3333333333333333333333333333333333333333';
+      const ENTRY_POINT = '0x0000000071727De22E5E9d8BAf0edAc6f37da032';
+      const LANDED = '0x4444444444444444444444444444444444444444444444444444444444444444';
+      const PRIME_PAYMENT = { token: USDC, to: TREASURY, units: '199000000' };
+      const ULTRA_PAYMENT = { token: USDC, to: TREASURY, units: '799000000' };
+
+      const transfer = (value: bigint) => ({
+        address: USDC,
+        topics: encodeEventTopics({
+          abi: erc20Abi,
+          eventName: 'Transfer',
+          args: { from: SAFE, to: TREASURY },
+        }),
+        data: encodeAbiParameters([{ type: 'uint256' }], [value]),
+      });
+      const entryPointLog = (signature: string, topics: `0x${string}`[] = []) => ({
+        address: ENTRY_POINT,
+        topics: [toEventSelector(signature), ...topics],
+        data: '0x' as const,
+      });
+      const userOperationEvent = (userOpHash: `0x${string}`) =>
+        entryPointLog('UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)', [
+          userOpHash,
+          pad(SAFE),
+          pad('0x0000000000000000000000000000000000000000'),
+        ]);
+      /** The bundle: another operation of the Safe's that paid 199, then the one that used nonce 7. */
+      const bundle = (...ownLogs: object[]) => ({
+        logs: [
+          entryPointLog('BeforeExecution()'),
+          transfer(199_000_000n),
+          userOperationEvent(OTHER),
+          ...ownLogs,
+          userOperationEvent(LANDED),
+        ],
+      });
+
+      const sentBoth = () =>
+        sentAt(NOW - 60_000, {
+          userOpHash: undefined,
+          tier: RewardsTier.ULTRA,
+          payment: ULTRA_PAYMENT,
+          replaced: [{ tier: RewardsTier.PRIME, payment: PRIME_PAYMENT }],
+        });
+
+      beforeEach(() => mockGetEvents.mockResolvedValue([included(LANDED, true)]));
+
+      it('confirms the earlier one, as its tier, when it made that one’s transfer', async () => {
+        sentBoth();
+        mockGetTransactionReceipt.mockResolvedValue(bundle(transfer(199_000_000n)));
+
+        await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+          status: 'confirmed',
+          state: STATE,
+        });
+        expect(mockGetTransactionReceipt).toHaveBeenCalledWith({ hash: TX });
+        expect(mockUpgrade).toHaveBeenCalledWith({ tier: RewardsTier.PRIME, transactionHash: TX });
+      });
+
+      it('confirms the latest, as its tier, when it made that one’s', async () => {
+        sentBoth();
+        mockGetTransactionReceipt.mockResolvedValue(bundle(transfer(799_000_000n)));
+
+        await settlePendingTierUpgrades('user-1', NOW);
+
+        expect(mockUpgrade).toHaveBeenCalledWith({ tier: RewardsTier.ULTRA, transactionHash: TX });
+      });
+
+      /** Another operation in the bundle paid 199: only the one that used the nonce counts. */
+      it('drops the record, without asking the backend, when it made neither', async () => {
+        sentBoth();
+        mockGetTransactionReceipt.mockResolvedValue(bundle(transfer(5_000_000n)));
+
+        await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+          status: 'none',
+        });
+        expect(mockUpgrade).not.toHaveBeenCalled();
+        expect(stored()).toEqual([]);
+      });
+
+      it('stays pending when the transaction cannot be read', async () => {
+        sentBoth();
+        mockGetTransactionReceipt.mockRejectedValue(new Error('rpc'));
+
+        await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+          status: 'pending',
+        });
+        expect(mockUpgrade).not.toHaveBeenCalled();
+        expect(stored()).toHaveLength(1);
+      });
+
+      /** One tier among them: nothing to tell apart, and the transaction is not read. */
+      it('takes the one tier there is without reading the transaction', async () => {
+        sentAt(NOW - 60_000, {
+          userOpHash: undefined,
+          tier: RewardsTier.ULTRA,
+          payment: ULTRA_PAYMENT,
+          replaced: [{ tier: RewardsTier.ULTRA, payment: ULTRA_PAYMENT }],
+        });
+
+        await settlePendingTierUpgrades('user-1', NOW);
+
+        expect(mockGetTransactionReceipt).not.toHaveBeenCalled();
+        expect(mockUpgrade).toHaveBeenCalledWith({ tier: RewardsTier.ULTRA, transactionHash: TX });
+      });
+    });
+
+    /**
+     * The bundler cannot be asked for a receipt, however long it stays down:
+     * the chain still says what used the nonce.
+     */
+    it('is settled by its nonce when the receipt lookup keeps failing', async () => {
+      sentAt(PAST_TTL);
+      mockGetReceipt.mockRejectedValue(new Error('bundler down'));
+      mockGetEvents.mockResolvedValue([included(HASH, true)]);
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'confirmed',
+        state: STATE,
+      });
+      expect(mockUpgrade).toHaveBeenCalledWith({ tier: RewardsTier.ULTRA, transactionHash: TX });
+    });
+
     /** Nonce 7 spent on a batch that moved nothing, whoever sent it. */
     it('drops a record with no hash when the operation that used its nonce reverted', async () => {
       sentAt(NOW - 60_000, { userOpHash: undefined });
@@ -571,6 +705,19 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
       expect(stored()).toEqual([expect.objectContaining({ userOpHash: HASH, replaceable: true })]);
     });
 
+    /** A bundler down for good holds the user up no longer than the hold. */
+    it('may be replaced after the hold when the receipt lookup keeps failing', async () => {
+      sentAt(NOW - PENDING_TIER_UPGRADE_MAX_HOLD_MS - 1);
+      mockGetReceipt.mockRejectedValue(new Error('bundler down'));
+
+      await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+        status: 'replaceable',
+        key: KEY,
+        upgrade: expect.objectContaining({ userOpHash: HASH }),
+        nonce: 7n,
+      });
+    });
+
     /** Past the hold the nonce still decides: unread, nothing may take it. */
     it('stays pending past the hold while the nonce cannot be read', async () => {
       sentAt(NOW - PENDING_TIER_UPGRADE_MAX_HOLD_MS - 1);
@@ -609,8 +756,11 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
   });
 });
 
-/** An unreachable bundler says nothing about whether the payment landed. */
-it('stays pending when the lookup itself fails, however old', async () => {
+/**
+ * An unreachable bundler says nothing about whether the payment landed, and a
+ * record with no nonce has nothing else to be settled by.
+ */
+it('stays pending when the lookup itself fails, however old, with no nonce', async () => {
   remember({ submittedAt: NOW - PENDING_TIER_UPGRADE_TTL_MS - 1 });
   mockGetReceipt.mockRejectedValue(new Error('network'));
 
@@ -719,15 +869,32 @@ describe('useHasPendingTierUpgrade', () => {
     expect(hasPending()).toBe('false');
   });
 
+  const UNACCEPTED_KEY = '0x1111111111111111111111111111111111111111:7';
+  const unaccepted = {
+    userOpHash: undefined,
+    sender: '0x1111111111111111111111111111111111111111',
+    nonce: '7',
+    block: '1',
+  };
+
   /** Written before signing: the screen does not change under the passkey prompt. */
-  it('does not count one the bundler has not accepted', () => {
-    remember({
-      userOpHash: undefined,
-      sender: '0x1111111111111111111111111111111111111111',
-      nonce: '7',
-      block: '1',
-    });
+  it('does not count one this app is still sending', () => {
+    usePendingTierUpgradeStore.getState().setSending(UNACCEPTED_KEY, true);
+    remember(unaccepted);
     expect(hasPending()).toBe('false');
+  });
+
+  /**
+   * A send of unknown outcome left it with no hash, and its payment may have
+   * left the Safe: what the balance now says cannot stop the press that
+   * confirms it. So too after a restart, when nothing is being sent.
+   */
+  it('counts one with no hash once its send is over', () => {
+    const { setSending } = usePendingTierUpgradeStore.getState();
+    setSending(UNACCEPTED_KEY, true);
+    remember(unaccepted);
+    setSending(UNACCEPTED_KEY, false);
+    expect(hasPending()).toBe('true');
   });
 });
 
