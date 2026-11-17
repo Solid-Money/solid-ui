@@ -29,16 +29,49 @@ describe('tierUpgradeCta', () => {
       }),
     ).toEqual({
       label: 'Upgrade',
-      subtitle: '250$/Year or 50k FUSE to upgrade',
+      subtitle: '$250/year or 50k FUSE to upgrade',
       enabled: true,
       held: false,
     });
   });
 
+  /** Ultra is sold for cash too: priced the same way Prime is. */
+  it('prices Ultra by both routes', () => {
+    expect(
+      cta({
+        selectedTier: ULTRA,
+        currentTier: PRIME,
+        routes: ['cash', 'lock'],
+        annualFeeUsd: 999,
+        lockFuse: 600_000,
+      }).subtitle,
+    ).toBe('$999/year or 600k FUSE to upgrade');
+  });
+
+  /** A sale is shown against the price it replaces, which renews after the first year. */
+  it('shows a sale against the annual fee', () => {
+    expect(
+      cta({
+        selectedTier: ULTRA,
+        currentTier: PRIME,
+        routes: ['cash', 'lock'],
+        annualFeeUsd: 999,
+        firstYearFeeUsd: 799,
+        lockFuse: 600_000,
+      }).subtitle,
+    ).toBe('$799/year (was $999) or 600k FUSE to upgrade');
+  });
+
   it('names the only route when a tier is sold just one way', () => {
-    expect(cta({ selectedTier: ULTRA, routes: ['lock'], lockFuse: 400_000 }).subtitle).toBe(
-      'Deposit 400k FUSE to upgrade',
+    expect(cta({ selectedTier: ULTRA, routes: ['lock'], lockFuse: 600_000 }).subtitle).toBe(
+      'Deposit 600k FUSE to upgrade',
     );
+    // With its price, rather than a subtitle that never says what it costs.
+    expect(cta({ routes: ['cash'], annualFeeUsd: 199 }).subtitle).toBe('Pay $199/year to upgrade');
+    expect(cta({ routes: ['cash'], annualFeeUsd: 199, firstYearFeeUsd: 159 }).subtitle).toBe(
+      'Pay $159/year (was $199) to upgrade',
+    );
+    // Still says which route it is when the price has not arrived.
     expect(cta({ routes: ['cash'] }).subtitle).toBe('Pay the annual fee to hold the tier');
   });
 
@@ -180,7 +213,7 @@ describe('tierUpgradeCta', () => {
 
         expect(result.held).toBe(false);
         expect(result.label).toBe('Keep');
-        expect(result.subtitle).toBe('199$/Year or 50k FUSE to keep');
+        expect(result.subtitle).toBe('$199/year or 50k FUSE to keep');
       });
 
       it('still says Upgrade for a tier above the trial', () => {

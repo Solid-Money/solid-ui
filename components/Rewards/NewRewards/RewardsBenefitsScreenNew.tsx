@@ -28,7 +28,7 @@ import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
-import { availableRoutes, findOffer } from '@/lib/tierUpgrade';
+import { availableRoutes, findOffer, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -290,7 +290,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
   const upgradeRoutes = (tier: RewardsTier) => {
     const offer = findOffer(membership, tier);
     if (!membership?.enabled || !offer || offer.held) return [];
-    return availableRoutes(offer);
+    return availableRoutes(offer, membership.contracts);
   };
 
   const ctaFor = (tier: RewardsTier) => {
@@ -304,6 +304,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       pending,
       routes: upgradeRoutes(tier),
       annualFeeUsd: offer?.annualFeeUsd,
+      firstYearFeeUsd: offerFirstYearFeeUsd(offer),
       lockFuse: offer?.lockFuse,
       remainingFuse: upgradeTarget(tier)?.remainingFuse,
       // The membership endpoint's own verdict, so a skew between it and the

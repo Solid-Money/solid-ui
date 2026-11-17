@@ -1,4 +1,5 @@
 import { formatTierCashbackRate } from '@/lib/tierCashback';
+import { formatPriceUsd, isOfferOnSale, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
 import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
 import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
 
@@ -232,13 +233,29 @@ export function tierPresentationFees(tier: RewardsTier, live?: TierFees) {
   };
 }
 
-export function tierOfferRows(offer: TierOffer | undefined) {
+/** One way to get a tier, as the "Get Prime" panel and the pager subtitle write it. */
+export interface TierOfferRow {
+  label: string;
+  value: string;
+  /**
+   * The regular annual fee, during a sale: drawn struck through beside `value`
+   * where a component can do that, and as "(was $999)" where only text can.
+   */
+  listValue?: string;
+}
+
+export function tierOfferRows(offer: TierOffer | undefined): TierOfferRow[] {
   if (!offer) return [];
-  const rows: { label: string; value: string }[] = [];
-  if (offer.cashAvailable && offer.annualFeeUsd != null && offer.annualFeeUsd > 0) {
+  const rows: TierOfferRow[] = [];
+  // The first year's price is what is paid now — the sale price during a sale.
+  const firstYear = offerFirstYearFeeUsd(offer);
+  if (offer.cashAvailable && firstYear != null && firstYear > 0) {
     rows.push({
       label: 'Annual membership',
-      value: `$${offer.annualFeeUsd.toLocaleString('en-US')}/year`,
+      value: `${formatPriceUsd(firstYear)}/year`,
+      ...(isOfferOnSale(offer) && offer.annualFeeUsd !== null
+        ? { listValue: formatPriceUsd(offer.annualFeeUsd) }
+        : {}),
     });
   }
   if (offer.lockAvailable && offer.lockFuse > 0) {
@@ -250,10 +267,16 @@ export function tierOfferRows(offer: TierOffer | undefined) {
   return rows;
 }
 
+/** A row's value as plain text: "$799/year (was $999)" during a sale. */
+const offerRowText = (row: TierOfferRow) =>
+  row.listValue ? `${row.value} (was ${row.listValue})` : row.value;
+
 export function tierOfferSubtitle(offer: TierOffer | undefined) {
   const rows = tierOfferRows(offer);
-  if (rows.length === 2) return `${rows[0].value} or ${rows[1].value} locked`;
+  if (rows.length === 2) return `${offerRowText(rows[0])} or ${rows[1].value} locked`;
   if (rows.length === 1)
-    return rows[0].label === 'Lock FUSE' ? `Requires ${rows[0].value} locked` : rows[0].value;
+    return rows[0].label === 'Lock FUSE'
+      ? `Requires ${rows[0].value} locked`
+      : offerRowText(rows[0]);
   return null;
 }

@@ -222,4 +222,31 @@ describe('membership offer presentation', () => {
     expect(tierOfferSubtitle(offer({ cashAvailable: false }))).toBe('Requires 37.5K FUSE locked');
     expect(tierOfferSubtitle(offer({ lockAvailable: false }))).toBe('$149.5/year');
   });
+
+  /**
+   * The first year is on sale and the renewals are not, so the panel strikes
+   * the annual fee through beside the sale price, and the plain-text subtitle
+   * says what it was.
+   */
+  it('prices a sale at the first year, against the annual fee', () => {
+    const sale = offer({
+      tier: ULTRA,
+      annualFeeUsd: 999,
+      firstYearFeeUsd: 799,
+      lockFuse: 600_000,
+    });
+
+    expect(tierOfferRows(sale)).toEqual([
+      { label: 'Annual membership', value: '$799/year', listValue: '$999' },
+      { label: 'Or lock FUSE', value: '600K FUSE' },
+    ]);
+    expect(tierOfferSubtitle(sale)).toBe('$799/year (was $999) or 600K FUSE locked');
+    expect(tierOfferSubtitle({ ...sale, lockAvailable: false })).toBe('$799/year (was $999)');
+  });
+
+  it('strikes nothing through outside a sale', () => {
+    const [cash] = tierOfferRows(offer({ annualFeeUsd: 199, firstYearFeeUsd: 199 }));
+
+    expect(cash).toEqual({ label: 'Annual membership', value: '$199/year' });
+  });
 });

@@ -1,4 +1,5 @@
 import { getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
+import { formatYearlyPrice } from '@/lib/tierUpgrade';
 
 import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
 import type { RewardsTier } from '@/lib/types';
@@ -56,6 +57,7 @@ export const tierUpgradeCta = ({
   pending,
   routes,
   annualFeeUsd,
+  firstYearFeeUsd,
   lockFuse,
   remainingFuse,
   offerHeld,
@@ -71,8 +73,13 @@ export const tierUpgradeCta = ({
   pending: boolean;
   /** v3: the ways this tier is on sale right now. Empty when it is not. */
   routes: TierUpgradeRoute[];
-  /** The membership offer's cash price, used in the combined-route subtitle. */
+  /** The membership offer's annual fee — what it renews at. */
   annualFeeUsd?: number | null;
+  /**
+   * What the first year costs now (`offerFirstYearFeeUsd`). Below the annual
+   * fee during a sale, which the subtitle then shows as "(was $999)".
+   */
+  firstYearFeeUsd?: number | null;
   /** The membership offer's full lock requirement. */
   lockFuse?: number;
   /** v2: the FUSE still needed to unlock it, or undefined when that is off. */
@@ -157,12 +164,20 @@ export const tierUpgradeCta = ({
   if (routes.length > 0) {
     const routeKey = [...routes].sort().join(',');
     const fuseAmount = lockFuse != null && lockFuse > 0 ? `${lockFuse / 1000}k` : undefined;
+    const firstYear = firstYearFeeUsd ?? annualFeeUsd;
+    // "$799/year (was $999)" during a sale, "$999/year" otherwise.
+    const price =
+      annualFeeUsd != null && annualFeeUsd > 0 && firstYear != null && firstYear > 0
+        ? formatYearlyPrice(firstYear, annualFeeUsd)
+        : undefined;
     const pricedSubtitle =
-      routeKey === 'cash,lock' && annualFeeUsd != null && annualFeeUsd > 0 && fuseAmount
-        ? `${annualFeeUsd}$/Year or ${fuseAmount} FUSE to ${verb}`
+      routeKey === 'cash,lock' && price && fuseAmount
+        ? `${price} or ${fuseAmount} FUSE to ${verb}`
         : routeKey === 'lock' && fuseAmount
           ? `Deposit ${fuseAmount} FUSE to ${verb}`
-          : undefined;
+          : routeKey === 'cash' && price
+            ? `Pay ${price} to ${verb}`
+            : undefined;
 
     return {
       label: actionLabel,
