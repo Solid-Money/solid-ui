@@ -153,8 +153,10 @@ const UpgradeReviewContent = () => {
   // For cash, a bridged payment that has landed counts with what the bridge
   // took off it covered — the same answer the offer step gave. An upgrade
   // already paid by transfer and not yet confirmed has taken the USDC this
-  // would check, so it can always be pressed on — to confirm, never to pay.
-  const cashConfirmOnly = payment.awaitingConfirm && !payment.affordable;
+  // would check, so it can always be pressed on — to confirm, never to pay,
+  // even with the balance to: a new payment is a separate press once the
+  // earlier one is settled.
+  const cashConfirmOnly = route === 'cash' && payment.awaitingConfirm;
   const canPay =
     chain !== undefined &&
     balances !== undefined &&

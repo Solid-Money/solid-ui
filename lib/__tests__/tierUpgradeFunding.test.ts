@@ -200,6 +200,7 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 197.4,
         coverUsd: 0,
+        coverPct: 1,
       }),
     ).toBe(false);
     expect(
@@ -209,6 +210,7 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 197.4,
         coverUsd: 1.6,
+        coverPct: 1,
       }),
     ).toBe(true);
   });
@@ -221,6 +223,7 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 50,
         coverUsd: 0,
+        coverPct: 1,
       }),
     ).toBe(true);
     expect(
@@ -230,8 +233,42 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 50,
         coverUsd: 0,
+        coverPct: 1,
       }),
     ).toBe(false);
+  });
+});
+
+describe('canPayCashWith, with nothing to cover the bridge', () => {
+  /**
+   * A `transfer` upgrade sends the shortfall and its headroom: $19 short is
+   * $19.38 sent. A holding between the two would be quoted capped at the
+   * balance and land short, so it is not offered as able to pay.
+   */
+  it('wants the amount sent, not just the shortfall', () => {
+    const pay = (dollars: string) =>
+      canPayCashWith({
+        token: row({ balance: parseUnits(dollars, 6).toString() }),
+        billingTokenAddress: BILLING,
+        feeUsd: 799,
+        fuseUsdc: 780,
+        coverUsd: 0,
+        coverPct: 0,
+      });
+    expect(pay('19.10')).toBe(false);
+    expect(pay('19.38')).toBe(true);
+  });
+
+  it('opens on a holding only when it covers the amount sent', () => {
+    const token = defaultCashToken({
+      rows: [usdcOnFuse(780), row({ balance: parseUnits('19.10', 6).toString() })],
+      billingTokenAddress: BILLING,
+      feeUsd: 799,
+      fuseUsdc: 780,
+      funding: { state: 'none' },
+      coverPct: 0,
+    });
+    expect(token?.chainId).toBe(fuse.id);
   });
 });
 
@@ -249,6 +286,7 @@ describe('defaultCashToken', () => {
       feeUsd: 199,
       fuseUsdc: 0,
       funding: { state: 'none' },
+      coverPct: 1,
     });
     expect(token?.chainId).toBe(mainnet.id);
   });
@@ -260,6 +298,7 @@ describe('defaultCashToken', () => {
       feeUsd: 199,
       fuseUsdc: 205,
       funding: { state: 'none' },
+      coverPct: 1,
     });
     expect(token?.chainId).toBe(fuse.id);
   });
@@ -271,6 +310,7 @@ describe('defaultCashToken', () => {
       feeUsd: 199,
       fuseUsdc: 0,
       funding: { state: 'pending', swap: swap({}) },
+      coverPct: 1,
     });
     expect(token?.chainId).toBe(fuse.id);
   });

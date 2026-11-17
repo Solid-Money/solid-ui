@@ -102,8 +102,9 @@ const UpgradeFundingStatus = () => {
   // An upgrade paid by transfer that is still unconfirmed has already taken
   // the USDC, so the balance can no longer vouch for it — and Finish is the
   // only way to confirm it. Pressed then, it confirms that payment and never
-  // signs a new one.
-  const confirmingEarlier = payment.awaitingConfirm && !payment.fuseCoversFee;
+  // signs a new one, whatever the balance: a press that meant "finish" must
+  // not turn into a second payment if the earlier one is gone by then.
+  const confirmingEarlier = payment.awaitingConfirm;
   // Otherwise read off the chain, not the swap: the balance poll is what says
   // the USDC is actually spendable, and it is what the charge will be taken
   // from — whichever token the offer row names.

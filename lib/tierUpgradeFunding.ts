@@ -251,8 +251,11 @@ export const arrivedFundingCoverUsd = ({
  * Whether the cash route can go ahead with `token` right now.
  *
  * USDC on Fuse pays when it covers the fee, counting what an arrived bridge
- * payment earns. Anything else pays when it is worth the missing part: that is
- * what gets sent, and the bridge's cost comes out of the cover, not the user.
+ * payment earns. Anything else pays when it is worth what a bridged payment
+ * sends for the missing part (`fundingSendUsd`): the shortfall itself when the
+ * bridge's cost comes out of the cover, the shortfall and its headroom when
+ * nothing covers it. A holding between the two would be quoted capped at the
+ * balance and land short.
  */
 export const canPayCashWith = ({
   token,
@@ -260,19 +263,21 @@ export const canPayCashWith = ({
   feeUsd,
   fuseUsdc,
   coverUsd,
+  coverPct,
 }: {
   token: TokenBalance;
   billingTokenAddress: string;
   feeUsd: number;
   fuseUsdc: number;
   coverUsd: number;
+  coverPct: number;
 }): boolean => {
   if (!(feeUsd > 0)) return false;
   if (isBillingToken(token, billingTokenAddress)) {
     return covers(Math.max(0, fuseUsdc) + coverUsd, feeUsd);
   }
   const need = fundingNeedUsd(feeUsd, fuseUsdc);
-  return need > 0 && covers(tokenUsd(token), need);
+  return need > 0 && covers(tokenUsd(token), fundingSendUsd(need, coverPct));
 };
 
 /**
@@ -290,20 +295,23 @@ export const defaultCashToken = ({
   feeUsd,
   fuseUsdc,
   funding,
+  coverPct,
 }: {
   rows: TokenBalance[];
   billingTokenAddress: string;
   feeUsd: number;
   fuseUsdc: number;
   funding: UpgradeFunding;
+  /** Sizes what a bridged payment sends, as `canPayCashWith` judges it. */
+  coverPct: number;
 }): TokenBalance | undefined => {
   const billing = rows.find(row => isBillingToken(row, billingTokenAddress));
   if (covers(fuseUsdc, feeUsd) || funding.state === 'pending' || funding.state === 'arrived') {
     return billing;
   }
-  const need = fundingNeedUsd(feeUsd, fuseUsdc);
+  const sendUsd = fundingSendUsd(fundingNeedUsd(feeUsd, fuseUsdc), coverPct);
   const payer = rows
-    .filter(row => !isBillingToken(row, billingTokenAddress) && covers(tokenUsd(row), need))
+    .filter(row => !isBillingToken(row, billingTokenAddress) && covers(tokenUsd(row), sendUsd))
     .sort((a, b) => tokenUsd(b) - tokenUsd(a))[0];
   return payer ?? billing;
 };
@@ -395,6 +403,7 @@ export const resolveCashPayment = ({
             feeUsd,
             fuseUsdc,
             funding: arrivedShortUsd > 0 ? { state: 'none' } : funding,
+            coverPct,
           })
         : tokens[0]
       : undefined);
@@ -403,7 +412,7 @@ export const resolveCashPayment = ({
 
   const affordable =
     token && billingTokenAddress
-      ? canPayCashWith({ token, billingTokenAddress, feeUsd, fuseUsdc, coverUsd })
+      ? canPayCashWith({ token, billingTokenAddress, feeUsd, fuseUsdc, coverUsd, coverPct })
       : feeUsd > 0 && covers(fuseUsdc, feeUsd);
 
   return {

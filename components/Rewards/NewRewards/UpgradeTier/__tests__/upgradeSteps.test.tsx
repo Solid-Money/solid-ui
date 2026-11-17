@@ -278,6 +278,22 @@ describe('the review step', () => {
     );
   });
 
+  /**
+   * With the balance to pay again, a press meant to finish the earlier payment
+   * still only finishes it: if that one is gone by then, paying is the next,
+   * deliberate press.
+   */
+  it('only confirms an awaiting payment even when the balance would pay again', async () => {
+    mockPayment = { ...mockPayment, awaitingConfirm: true, affordable: true };
+
+    render(<UpgradeReviewContent />);
+    await act(async () => mainButton().props.onPress());
+
+    expect(mockSubscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmPendingOnly: true }),
+    );
+  });
+
   it('keeps the balance check otherwise', () => {
     render(<UpgradeReviewContent />);
 
@@ -318,6 +334,23 @@ describe('the funding status step', () => {
       expect.objectContaining({ confirmPendingOnly: true }),
     );
     expect(mockStore.close).toHaveBeenCalled();
+  });
+
+  it('only confirms an awaiting payment even when the USDC on Fuse covers the fee', async () => {
+    mockPayment = {
+      ...mockPayment,
+      funding: { state: 'arrived', swap: arrivedSwap },
+      awaitingConfirm: true,
+      fuseCoversFee: true,
+      affordable: true,
+    };
+
+    render(<UpgradeFundingStatus />);
+    await act(async () => mainButton().props.onPress());
+
+    expect(mockSubscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmPendingOnly: true }),
+    );
   });
 
   it('keeps the balance check with nothing awaiting confirmation', () => {

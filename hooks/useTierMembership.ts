@@ -577,10 +577,12 @@ export const useSubscribeToTier = () => {
         }
       }
 
-      // There was nothing earlier left to finish, and the balance a new payment
-      // would come out of was never checked: the caller only asked to confirm.
+      // There was nothing earlier left to finish, and the caller only asked to
+      // confirm: a new payment is the user's next, deliberate press.
       if (confirmPendingOnly) {
-        throw new UserCopyError('Your USDC on Fuse no longer covers this upgrade.');
+        throw new UserCopyError(
+          'There is no earlier payment left to confirm. Check your balance and tap again to upgrade.',
+        );
       }
 
       const transactions = buildSubscriptionTransactions({
