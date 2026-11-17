@@ -568,6 +568,56 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
         expect(stored()).toHaveLength(1);
       });
 
+      /**
+       * Two Prime attempts make the same transfer: matching both says Prime,
+       * whichever of them it was — not the newer Ultra attempt.
+       */
+      it('confirms the one tier several matching attempts share', async () => {
+        sentAt(NOW - 60_000, {
+          userOpHash: undefined,
+          tier: RewardsTier.ULTRA,
+          payment: ULTRA_PAYMENT,
+          replaced: [
+            { tier: RewardsTier.PRIME, payment: PRIME_PAYMENT },
+            { tier: RewardsTier.PRIME, payment: PRIME_PAYMENT },
+          ],
+        });
+        mockGetTransactionReceipt.mockResolvedValue(bundle(transfer(199_000_000n)));
+
+        await settlePendingTierUpgrades('user-1', NOW);
+
+        expect(mockUpgrade).toHaveBeenCalledWith({ tier: RewardsTier.PRIME, transactionHash: TX });
+      });
+
+      /**
+       * Two tiers it could be — priced alike, or recorded without their
+       * transfer by an unreleased build — and no way to tell: never guessed.
+       */
+      it('stays pending when the evidence names more than one tier', async () => {
+        const cases: { payment?: typeof ULTRA_PAYMENT; paid: bigint }[] = [
+          // Priced alike: both attempts make the one transfer it made.
+          { payment: ULTRA_PAYMENT, paid: 799_000_000n },
+          // Recorded without their transfer: none on record to match.
+          { payment: undefined, paid: 5_000_000n },
+        ];
+        for (const { payment, paid } of cases) {
+          usePendingTierUpgradeStore.setState({ upgrades: {} });
+          sentAt(NOW - 60_000, {
+            userOpHash: undefined,
+            tier: RewardsTier.ULTRA,
+            payment,
+            replaced: [{ tier: RewardsTier.PRIME, payment }],
+          });
+          mockGetTransactionReceipt.mockResolvedValue(bundle(transfer(paid)));
+
+          await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+            status: 'pending',
+          });
+          expect(mockUpgrade).not.toHaveBeenCalled();
+          expect(stored()).toHaveLength(1);
+        }
+      });
+
       /** One tier among them: nothing to tell apart, and the transaction is not read. */
       it('takes the one tier there is without reading the transaction', async () => {
         sentAt(NOW - 60_000, {

@@ -169,8 +169,11 @@ const findOperationWithNonce = async (sender: Address, nonce: bigint, fromBlock:
   return { userOpHash, success, transactionHash: event.transactionHash };
 };
 
+/** A record carrying what settling it by its nonce needs. */
+type SettlesByNonce = PendingTierUpgrade & { sender: string; nonce: string; block: string };
+
 /** Whether a record carries what settling it by its nonce needs. */
-const settlesByNonce = (upgrade: PendingTierUpgrade): boolean =>
+const settlesByNonce = (upgrade: PendingTierUpgrade): upgrade is SettlesByNonce =>
   !!upgrade.sender && upgrade.nonce !== undefined && upgrade.block !== undefined;
 
 /** One operation a record stands for: the latest, or one it replaced. */
@@ -186,12 +189,17 @@ const USER_OPERATION_EVENT_TOPIC = toEventSelector(
 const BEFORE_EXECUTION_TOPIC = toEventSelector('BeforeExecution()');
 
 /**
- * Which of `candidates` — operations with no hash, sent for different tiers —
- * the one that used the nonce was, told by what it paid: the transfer each was
- * sent to make, among the logs of that operation alone. `null` when it made
- * none of them, so none of them landed. `undefined` when that cannot be said:
- * one of them has no payment on record (an unreleased build wrote it), or two
- * made the same transfer. Throws when the transaction cannot be read.
+ * Which tier the operation that used the nonce paid for, of `candidates` —
+ * operations with no hash, sent for different tiers — told by what it paid:
+ * the transfer each was sent to make, among the logs of that operation alone.
+ *
+ * A tier only when the evidence names one: the candidates whose transfer it
+ * made are all for it — two attempts at the same tier make the same transfer
+ * — or, when it made none of the transfers on record, those recorded without
+ * one (an unreleased build wrote them) are. `null` when it made none of them
+ * and every one has its transfer on record, so none of them landed.
+ * `undefined` when the evidence names more than one tier. Throws when the
+ * transaction cannot be read.
  *
  * An operation's logs run from the bundle's `BeforeExecution`, or the
  * operation before's `UserOperationEvent`, to its own — the bounds the backend
@@ -201,7 +209,7 @@ const operationPaying = async (
   candidates: SentOperation[],
   sender: Address,
   used: { userOpHash: `0x${string}`; transactionHash: `0x${string}` },
-): Promise<SentOperation | null | undefined> => {
+): Promise<RewardsTier | null | undefined> => {
   const { logs } = await publicClient(fuse.id).getTransactionReceipt({
     hash: used.transactionHash,
   });
@@ -231,9 +239,11 @@ const operationPaying = async (
         args.value === BigInt(payment.units),
     );
   const paying = candidates.filter(({ payment }) => payment && made(payment));
-  if (paying.length === 1) return paying[0];
-  if (paying.length > 1) return undefined;
-  return candidates.every(({ payment }) => payment) ? null : undefined;
+  const unrecorded = candidates.filter(({ payment }) => !payment);
+  const evidence = paying.length > 0 ? paying : unrecorded;
+  if (evidence.length === 0) return null;
+  const tiers = new Set(evidence.map(({ tier }) => tier));
+  return tiers.size === 1 ? evidence[0].tier : undefined;
 };
 
 /**
@@ -258,7 +268,8 @@ const operationPaying = async (
  *   Several with no hash, for different tiers, are told apart by the transfer
  *   the operation made, never guessed: confirming one tier with another's
  *   payment would grant the wrong one or refuse a good payment. It made none
- *   of theirs, and none of them landed. Not
+ *   of theirs, and none of them landed; it could still be more than one
+ *   tier, and it waits — pending, never guessed. Not
  *   found — the chain read from a node behind the one that read the nonce —
  *   it waits, and is looked for again on the next press.
  * - Not moved: it can still land. It waits until the bundler says it no
@@ -305,26 +316,27 @@ const settleUnreceipted = async (
     const hash = used.userOpHash.toLowerCase();
     const matched = operations.find(({ userOpHash }) => userOpHash?.toLowerCase() === hash);
     const hashless = operations.filter(({ userOpHash }) => !userOpHash);
-    let taken = matched;
-    if (!taken && hashless.length > 0) {
+    let tier = matched?.tier;
+    if (!matched && hashless.length > 0) {
       // One tier among those with no hash, and that is the tier, whichever of
       // them it was — the backend says whether it holds a payment at all.
       // Several, and guessing could confirm one tier with another's payment:
       // it is told by the transfer the operation made instead.
-      const tiers = new Set(hashless.map(({ tier }) => tier));
-      const paying = tiers.size === 1 ? hashless[0] : await operationPaying(hashless, sender, used);
-      if (paying === null) return { outcome: 'forget' };
-      // Not told apart: an operation an unreleased build recorded without its
-      // payment, or two tiers priced alike. The latest is the likeliest to
-      // have been accepted, since a bundler holding an earlier one turns its
-      // replacement away.
-      taken = paying ?? hashless[0];
+      const tiers = new Set(hashless.map(({ tier: sent }) => sent));
+      const paid =
+        tiers.size === 1 ? hashless[0].tier : await operationPaying(hashless, sender, used);
+      if (paid === null) return { outcome: 'forget' };
+      // Still more than one tier it could be — attempts recorded without
+      // their transfer, or tiers priced alike. Never guessed: it stays
+      // pending, and the user is not asked to pay again.
+      if (paid === undefined) return { outcome: 'wait' };
+      tier = paid;
     }
-    if (!taken) return { outcome: 'forget' };
+    if (!tier) return { outcome: 'forget' };
     return {
       outcome: 'landed',
       userOpHash: used.userOpHash,
-      tier: taken.tier,
+      tier,
       transactionHash: used.transactionHash,
       unmatched: !matched,
     };
