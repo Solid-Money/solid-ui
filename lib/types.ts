@@ -2364,9 +2364,16 @@ export interface RewardsUserData {
    * monthly caps. The "Lifetime cashback" figure — read it through
    * `resolveLifetimeCashback`, which falls back when this is absent (an older
    * backend, or a paid total the backend couldn't read). Euro cashback has its
-   * own, in `cashbackEur`.
+   * own, in `cashbackLifetimeEur`.
    */
   cashbackLifetime?: number;
+  /**
+   * All the euro cashback this cardholder has earned, in EUR: paid on any card,
+   * plus euro escrow for a euro cardholder. Reported whatever the currency now,
+   * so euros earned before a switch to dollars still count. Never added to
+   * `cashbackLifetime`. Absent on older backends.
+   */
+  cashbackLifetimeEur?: number;
   /**
    * The monthly cap of the tier the user holds now — what the tier advertises.
    * For "how much can this month pay", read `monthlyCashbackCap` instead.
@@ -2479,12 +2486,6 @@ export interface RewardsCashbackEur {
   maxCashbackMonthly: number;
   cashbackCapThisMonth: number;
   cashbackHeadroomThisMonth: number;
-  /**
-   * All the euro cashback earned, in EUR: paid on any card plus still in
-   * escrow — the euro counterpart of `RewardsUserData.cashbackLifetime`.
-   * Absent on older backends.
-   */
-  cashbackLifetime?: number;
 }
 
 /** The tiers a trial can grant. Core is the floor, not a gift. */

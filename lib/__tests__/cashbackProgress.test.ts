@@ -276,7 +276,8 @@ describe('resolveLifetimeCashback', () => {
       resolveLifetimeCashback(
         rewardsFor({
           cashbackCurrency: 'EUR',
-          cashbackEur: { ...eurMonth, cashbackLifetime: 33.5 },
+          cashbackEur: eurMonth,
+          cashbackLifetimeEur: 33.5,
           cashbackLifetime: 151.2,
         }),
         cardCashback({ totalUsdValue: 150 }),
@@ -326,7 +327,8 @@ describe('resolveLifetimeCashback', () => {
         resolveLifetimeCashback(
           rewardsFor({
             cashbackCurrency: 'EUR',
-            cashbackEur: { ...eurMonth, cashbackLifetime: 33.5 },
+            cashbackEur: eurMonth,
+            cashbackLifetimeEur: 33.5,
           }),
           cardCashback({ totalUsdValue: 150 }),
         ),

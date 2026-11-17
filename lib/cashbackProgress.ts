@@ -204,7 +204,7 @@ export const resolveLifetimeCashback = (
   const currency = resolveCashbackMonth(rewards)?.currency ?? 'USD';
   const fromBackend: Record<CashbackCurrency, number | undefined> = {
     USD: rewards?.cashbackLifetime,
-    EUR: rewards?.cashbackEur?.cashbackLifetime,
+    EUR: rewards?.cashbackLifetimeEur,
   };
   const [own, other] = cashbackFiguresByCurrency(
     {
