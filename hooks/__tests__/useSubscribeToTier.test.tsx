@@ -73,7 +73,10 @@ jest.mock('@/lib/mmvkStorage', () => {
     }),
   };
 });
-jest.mock('@/lib/wagmi', () => ({}));
+const mockGetBlockNumber = jest.fn();
+jest.mock('@/lib/wagmi', () => ({
+  publicClient: () => ({ getBlockNumber: () => mockGetBlockNumber() }),
+}));
 jest.mock('@/lib/utils', () => ({}));
 jest.mock('@/store/useUserStore', () => ({}));
 jest.mock('@/store/useRewardsUpgradeStore', () => ({}));
@@ -128,6 +131,8 @@ const ultraUpgrade: TierOffer = {
 const FUNDING = { transactionHash: '0xbridge', fromChainId: 8453 };
 /** The EntryPoint nonce the operation is sent with. */
 const NONCE = 7n;
+/** The latest Fuse block before it was sent. */
+const BLOCK = 45_000_000n;
 
 /** The bundler accepted the operation, then it landed. */
 const lands = () =>
@@ -190,6 +195,7 @@ beforeEach(() => {
   mockConfirm.mockReset().mockResolvedValue(STATE);
   mockUpgrade.mockReset().mockResolvedValue(STATE);
   mockSettle.mockReset().mockResolvedValue({ status: 'none' });
+  mockGetBlockNumber.mockReset().mockResolvedValue(BLOCK);
   mockTrack.mockReset();
   lands();
 });
@@ -257,6 +263,8 @@ describe('an upgrade paid by transfer', () => {
     expect(
       decodeFunctionData({ abi: SolidSubscriptionModule_ABI, data: calls[1].data }).args?.[0],
     ).toBe(999_000_000n);
+    // A first payment takes the Safe's next nonce: no override.
+    expect(mockExecuteTransactions.mock.calls[0][6]).toBeUndefined();
   });
 
   /** The module allows one charge a period, and Prime's has been taken. */
@@ -420,6 +428,144 @@ describe('an upgrade paid by transfer', () => {
   });
 
   /**
+   * An earlier payment never landed, and the nonce it was sent with is still
+   * unused, so it could in principle still be included. A new payment may go
+   * ahead only as its replacement: with that same nonce, so that whichever of
+   * the two is included, the other never can be.
+   */
+  describe('replacing an earlier payment that never landed', () => {
+    const EARLIER = '0x5555555555555555555555555555555555555555555555555555555555555555';
+    const earlier = {
+      userOpHash: EARLIER,
+      userId: 'user-1',
+      submittedAt: 1_800_000_000_000,
+      tier: RewardsTier.ULTRA,
+      sender: SAFE,
+      nonce: '7',
+      block: '44000000',
+      replaceable: true,
+    } as const;
+
+    /** The bundler accepted the replacement, then the wait for its receipt gave up. */
+    const acceptedThenTimesOut = () =>
+      mockExecuteTransactions.mockImplementation(
+        async (
+          _client: unknown,
+          _calls: unknown,
+          _message: string,
+          _chain: unknown,
+          onUserOpHash?: (hash: string, nonce: bigint) => void,
+          _onBeforeBroadcast?: unknown,
+          nonce?: bigint,
+        ) => {
+          onUserOpHash?.(HASH, nonce!);
+          throw receiptTimeout();
+        },
+      );
+
+    beforeEach(() => {
+      usePendingTierUpgradeStore.getState().remember({ ...earlier });
+      mockSettle.mockResolvedValue({ status: 'replaceable', upgrade: earlier, nonce: NONCE });
+    });
+
+    it('sends with the earlier payment’s nonce, and moves the record to the new one', async () => {
+      acceptedThenTimesOut();
+
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).rejects.toThrow(/still confirming/);
+
+      // The nonce override, and no fresh block: the search for either
+      // operation starts where the earlier one was sent.
+      expect(mockExecuteTransactions.mock.calls[0][6]).toBe(NONCE);
+      expect(mockGetBlockNumber).not.toHaveBeenCalled();
+      // One record, now the replacement, still answering for the earlier
+      // payment until nonce 7 says which of the two used it.
+      expect(stored()).toEqual([
+        {
+          userOpHash: HASH,
+          userId: 'user-1',
+          submittedAt: expect.any(Number),
+          tier: RewardsTier.ULTRA,
+          sender: SAFE,
+          nonce: '7',
+          block: '44000000',
+          replaced: [{ userOpHash: EARLIER, tier: RewardsTier.ULTRA }],
+        },
+      ]);
+    });
+
+    it('confirms the replacement once it lands', async () => {
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).resolves.toEqual(expect.objectContaining({ transactionHash: TX, mode: 'transfer' }));
+
+      expect(mockExecuteTransactions.mock.calls[0][6]).toBe(NONCE);
+      expect(mockUpgrade).toHaveBeenCalledWith({ tier: RewardsTier.ULTRA, transactionHash: TX });
+      expect(stored()).toEqual([]);
+    });
+
+    /**
+     * The bundler still holds the earlier payment — or it has just landed and
+     * used the nonce. Nothing new was sent; the user is told so, and the
+     * earlier record is kept for the next press to settle.
+     */
+    it('says so when the bundler turns the replacement away, and keeps the earlier record', async () => {
+      for (const refusal of [
+        Object.assign(new Error('UserOperation reverted during simulation'), {
+          details: 'AA25 invalid account nonce',
+        }),
+        new Error(
+          'Replacement UserOperation must have higher maxPriorityFeePerGas (old=1, new=1) and higher maxFeePerGas (old=1, new=1)',
+        ),
+      ]) {
+        mockExecuteTransactions.mockRejectedValueOnce(refusal);
+        mockTrack.mockReset();
+
+        const failure = await subscribe({
+          offer: ultraUpgrade,
+          contracts,
+          moduleEnabled: true,
+        }).catch((error: Error) => error);
+
+        expect(failure).toBeInstanceOf(UserCopyError);
+        expect((failure as Error).message).toMatch(/still with the network/);
+        expect((failure as Error).message).toMatch(/won’t be charged twice/);
+        expect(stored()).toEqual([earlier]);
+        mockOnError!(failure as Error);
+        expect(tracked()).not.toContain('tier_subscribe_failed');
+      }
+    });
+
+    it('shows any other failure before sending as it is', async () => {
+      const other = new Error('Execution reverted');
+      mockExecuteTransactions.mockRejectedValue(other);
+
+      await expect(subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true })).rejects.toBe(
+        other,
+      );
+      expect(stored()).toEqual([earlier]);
+    });
+
+    /**
+     * Nothing to confirm — it never landed — and a press meant to confirm
+     * never pays. Settling has marked it replaceable, so the screen stops
+     * waiting on it and the user's next press pays.
+     */
+    it('signs nothing for a confirm-only press, and says the payment did not go through', async () => {
+      await expect(
+        subscribe({
+          offer: ultraUpgrade,
+          contracts,
+          moduleEnabled: true,
+          confirmPendingOnly: true,
+        }),
+      ).rejects.toThrow(/didn’t go through, and no money moved/);
+      expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
    * The pending record only exists once the bundler has accepted the payment.
    * Until then — settlement, passkey prompt, send — a second attempt for the
    * same account, from this step or another step's own copy of the hook, must
@@ -542,16 +688,19 @@ describe('an upgrade paid by transfer', () => {
       expect(failure).toBeInstanceOf(UserCopyError);
       expect((failure as Error).message).toMatch(/still confirming/);
       expect((failure as Error).message).toMatch(/won’t be charged twice/);
-      // With the Safe and the nonce it was sent with: what later says whether
-      // an operation with no receipt can still land.
+      // With the Safe and the nonce it was sent with — what later says whether
+      // an operation with no receipt can still land — and the block read
+      // before sending, where a search of the chain for it starts.
       expect(stored()).toEqual([
         expect.objectContaining({
           userOpHash: HASH,
           tier: RewardsTier.ULTRA,
           sender: SAFE,
           nonce: '7',
+          block: '45000000',
         }),
       ]);
+      expect(stored()[0].replaced).toBeUndefined();
       expect(stored()[0].transactionHash).toBeUndefined();
       expect(mockUpgrade).not.toHaveBeenCalled();
       expect(tracked()).toEqual(['tier_subscribe_pending']);

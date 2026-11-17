@@ -173,14 +173,23 @@ export const executeTransactions = async (
    */
   onUserOpHash?: (userOpHash: `0x${string}`, nonce: bigint) => void,
   onBeforeBroadcast?: () => Promise<void>,
+  /**
+   * The EntryPoint nonce to send with, instead of the account's next one: to
+   * replace an operation that was sent with it and never included. Sent with
+   * the same nonce, only one of the two can ever be included. A bundler still
+   * holding the earlier one may turn this one away, and then nothing is sent.
+   */
+  replacingNonce?: bigint,
 ): Promise<TransactionResult> => {
   let userOpHash: `0x${string}` | undefined;
 
   try {
-    const nonce = await getAccountNonce(publicClient(chain.id), {
-      address: smartAccountClient.account?.address as `0x`,
-      entryPointAddress: entryPoint07Address,
-    });
+    const nonce =
+      replacingNonce ??
+      (await getAccountNonce(publicClient(chain.id), {
+        address: smartAccountClient.account?.address as `0x`,
+        entryPointAddress: entryPoint07Address,
+      }));
 
     // Add breadcrumb for transaction attempt
     Sentry.addBreadcrumb({

@@ -16,7 +16,8 @@ jest.mock('permissionless', () => ({
     return mockUnsponsored;
   },
 }));
-jest.mock('permissionless/actions', () => ({ getAccountNonce: async () => 7n }));
+const mockGetNonce = jest.fn(async () => 7n);
+jest.mock('permissionless/actions', () => ({ getAccountNonce: () => mockGetNonce() }));
 jest.mock('@/lib/config', () => ({ USER: { pimlicoUrl: () => 'https://bundler.test' } }));
 jest.mock('@/lib/pimlico', () => ({
   pimlicoClient: () => ({ getUserOperationGasPrice: jest.fn() }),
@@ -95,8 +96,40 @@ it('sends sponsored when the paymaster covers it, and asks nothing', async () =>
   const result: any = await run();
 
   expect(result.userOpHash).toBe('0xsponsored');
+  expect(sponsored.sendUserOperation).toHaveBeenCalledWith({ calls, nonce: 7n });
   expect(mockAsk).not.toHaveBeenCalled();
   expect(mockUnsponsored.prepareUserOperation).not.toHaveBeenCalled();
+});
+
+/**
+ * Replacing an operation that was sent and never included: the replacement
+ * takes the same nonce, so only one of the two can ever be included.
+ */
+describe('a replacement, sent with the nonce of the operation it replaces', () => {
+  const replace = (onUserOpHash?: (hash: `0x${string}`, nonce: bigint) => void) =>
+    executeTransactions(sponsored, calls, 'Swap failed', chain, onUserOpHash, undefined, 3n);
+
+  it('takes that nonce, not the account’s next one, and reports it', async () => {
+    sponsored.sendUserOperation.mockResolvedValue('0xreplacement');
+    const onUserOpHash = jest.fn();
+
+    const result: any = await replace(onUserOpHash);
+
+    expect(mockGetNonce).not.toHaveBeenCalled();
+    expect(sponsored.sendUserOperation).toHaveBeenCalledWith({ calls, nonce: 3n });
+    expect(onUserOpHash).toHaveBeenCalledWith('0xreplacement', 3n);
+    expect(result.userOpHash).toBe('0xreplacement');
+  });
+
+  it('keeps it when the account pays its own gas', async () => {
+    sponsored.sendUserOperation.mockRejectedValue(policyRefusal);
+    mockGetBalance.mockResolvedValue(prefund + calls[0].value);
+    mockAsk.mockResolvedValue(true);
+
+    await replace();
+
+    expect(mockUnsponsored.prepareUserOperation).toHaveBeenCalledWith({ calls, nonce: 3n });
+  });
 });
 
 describe('a transaction over the sponsorship cap', () => {

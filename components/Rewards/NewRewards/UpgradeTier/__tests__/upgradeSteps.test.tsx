@@ -301,6 +301,45 @@ describe('the offer step', () => {
       expect(texts()).toContain('Tier upgrades are not available right now.');
     });
   });
+
+  /**
+   * Memberships switched off altogether after a transfer upgrade was paid and
+   * before it was confirmed. Nothing new is sold, but the payment made has to
+   * stay confirmable — the review is the only way to it.
+   */
+  describe('with memberships switched off while a payment awaits confirmation', () => {
+    beforeEach(() => {
+      mockMembership = { ...membershipWith(), enabled: false } as TierMembershipState;
+    });
+
+    it('still goes on to the review to confirm it', () => {
+      mockPayment = { ...mockPayment, awaitingConfirm: true };
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(texts()).not.toContain('Tier upgrades are not available right now.');
+      expect(texts()).toContain('Review upgrade');
+    });
+
+    it('offers nothing once nothing awaits confirmation', () => {
+      mockPayment = { ...mockPayment, affordable: true };
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(texts()).toContain('Tier upgrades are not available right now.');
+      expect(texts()).not.toContain('Review upgrade');
+    });
+
+    /** The tier and offer checks stay: confirming needs an offer to confirm against. */
+    it('offers nothing without the offer', () => {
+      mockMembership = { ...mockMembership!, offers: [] } as TierMembershipState;
+      mockPayment = { ...mockPayment, awaitingConfirm: true };
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(texts()).toContain('Tier upgrades are not available right now.');
+    });
+  });
 });
 
 describe('the review step', () => {
@@ -391,6 +430,53 @@ describe('the review step', () => {
     expect(mockSubscribe).not.toHaveBeenCalled();
     expect(texts()).toContain('Upgrading with an annual fee is not available right now.');
   });
+
+  /**
+   * The chain read failed — the accountant's rate, say, after a restart — so
+   * there are no balances. Confirming a payment already made reads none of
+   * them; paying or locking still needs them.
+   */
+  describe('with the chain read failed', () => {
+    beforeEach(() => {
+      mockChain = undefined;
+    });
+
+    it('still confirms a payment awaiting confirmation', async () => {
+      mockPayment = { ...mockPayment, awaitingConfirm: true };
+
+      render(<UpgradeReviewContent />);
+      expect(mainButton().props.disabled).toBe(false);
+      expect(texts()).not.toContain('no longer covers');
+
+      await act(async () => mainButton().props.onPress());
+
+      expect(mockSubscribe).toHaveBeenCalledWith(
+        expect.objectContaining({ confirmPendingOnly: true }),
+      );
+    });
+
+    it('starts no new payment', () => {
+      mockPayment = { ...mockPayment, affordable: true };
+
+      render(<UpgradeReviewContent />);
+
+      expect(mainButton().props.disabled).toBe(true);
+    });
+
+    /** A lock confirms nothing earlier, whatever a cash payment awaits. */
+    it('starts no lock', () => {
+      mockMembership = {
+        ...membershipWith(),
+        offers: [{ ...ultra, lockAvailable: true }],
+      } as TierMembershipState;
+      mockStore.route = 'lock';
+      mockPayment = { ...mockPayment, awaitingConfirm: true };
+
+      render(<UpgradeReviewContent />);
+
+      expect(mainButton().props.disabled).toBe(true);
+    });
+  });
 });
 
 describe('the funding status step', () => {
@@ -426,6 +512,25 @@ describe('the funding status step', () => {
       expect.objectContaining({ confirmPendingOnly: true }),
     );
     expect(mockStore.close).toHaveBeenCalled();
+  });
+
+  /** Finish reads no balance to confirm, so a failed chain read cannot stand in its way. */
+  it('keeps Finish for an earlier payment awaiting confirmation with the chain read failed', async () => {
+    mockChain = undefined;
+    mockPayment = {
+      ...mockPayment,
+      funding: { state: 'arrived', swap: arrivedSwap },
+      awaitingConfirm: true,
+    };
+
+    render(<UpgradeFundingStatus />);
+    expect(mainButton().props.disabled).toBe(false);
+
+    await act(async () => mainButton().props.onPress());
+
+    expect(mockSubscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmPendingOnly: true }),
+    );
   });
 
   it('only confirms an awaiting payment even when the USDC on Fuse covers the fee', async () => {

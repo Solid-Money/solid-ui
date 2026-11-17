@@ -34,6 +34,28 @@ export interface PendingTierUpgrade {
    */
   sender?: string;
   nonce?: string;
+  /**
+   * The latest Fuse block read before it was sent — a decimal string, like the
+   * nonce. It cannot have been included before this block, so a search of the
+   * chain for it starts here rather than at the start of the chain. Absent on
+   * records written before it was kept.
+   */
+  block?: string;
+  /**
+   * Earlier operations this one replaced: sent from the same Safe with the
+   * same nonce, newest first. Only one operation with a nonce can ever be
+   * included, but until the nonce is used it is not known which — any of
+   * these may still be the one that lands, and is confirmed as the tier it
+   * paid for if it does.
+   */
+  replaced?: { userOpHash: `0x${string}`; tier: RewardsTier }[];
+  /**
+   * Set when settling found it has not landed and may be replaced: its nonce
+   * unused, and the bundler no longer holding it or the hold over. There is
+   * nothing to confirm, so no screen waits on it; the record stays until its
+   * nonce is used — by it after all, or by the payment that replaces it.
+   */
+  replaceable?: boolean;
   /** Set once the transaction is known to have landed. */
   transactionHash?: string;
   /**
@@ -48,9 +70,16 @@ interface PendingTierUpgradeState {
   /** By user operation hash. */
   upgrades: Record<string, PendingTierUpgrade>;
   remember: (upgrade: PendingTierUpgrade) => void;
+  /** It landed after all, so it is a payment to confirm again, not one to replace. */
   landed: (userOpHash: string, transactionHash: string) => void;
   /** Stamp the first refusal; later ones keep the original time. */
   rejected: (userOpHash: string, at: number) => void;
+  markReplaceable: (userOpHash: string) => void;
+  /**
+   * Swap one record for another in a single write: an operation for the one
+   * that replaced it, or a record for the one of its operations that landed.
+   */
+  replace: (userOpHash: string, upgrade: PendingTierUpgrade) => void;
   forget: (userOpHash: string) => void;
 }
 
@@ -67,13 +96,31 @@ export const usePendingTierUpgradeStore = create<PendingTierUpgradeState>()(
         set(state => {
           const upgrade = state.upgrades[userOpHash];
           if (!upgrade) return state;
-          return { upgrades: { ...state.upgrades, [userOpHash]: { ...upgrade, transactionHash } } };
+          return {
+            upgrades: {
+              ...state.upgrades,
+              [userOpHash]: { ...upgrade, transactionHash, replaceable: undefined },
+            },
+          };
         }),
       rejected: (userOpHash, at) =>
         set(state => {
           const upgrade = state.upgrades[userOpHash];
           if (!upgrade || upgrade.rejectedAt) return state;
           return { upgrades: { ...state.upgrades, [userOpHash]: { ...upgrade, rejectedAt: at } } };
+        }),
+      markReplaceable: userOpHash =>
+        set(state => {
+          const upgrade = state.upgrades[userOpHash];
+          if (!upgrade || upgrade.replaceable) return state;
+          return {
+            upgrades: { ...state.upgrades, [userOpHash]: { ...upgrade, replaceable: true } },
+          };
+        }),
+      replace: (userOpHash, upgrade) =>
+        set(state => {
+          const { [userOpHash]: _replaced, ...upgrades } = state.upgrades;
+          return { upgrades: { ...upgrades, [upgrade.userOpHash]: upgrade } };
         }),
       forget: userOpHash =>
         set(state => {
@@ -92,10 +139,17 @@ export const usePendingTierUpgradeStore = create<PendingTierUpgradeState>()(
 /**
  * Whether an account has an upgrade payment still to confirm, for a screen
  * that has to re-render when one is remembered or settled.
+ *
+ * Not one found `replaceable`: it never landed, so there is nothing to
+ * confirm, and the screen goes back to paying — which replaces it.
  */
 export const useHasPendingTierUpgrade = (userId: string | undefined): boolean =>
   usePendingTierUpgradeStore(
-    state => !!userId && Object.values(state.upgrades).some(upgrade => upgrade.userId === userId),
+    state =>
+      !!userId &&
+      Object.values(state.upgrades).some(
+        upgrade => upgrade.userId === userId && !upgrade.replaceable,
+      ),
   );
 
 /** One account's unconfirmed upgrades, oldest first. */

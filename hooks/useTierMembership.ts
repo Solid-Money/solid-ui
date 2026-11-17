@@ -41,7 +41,7 @@ import { upgradeRejectionMessage } from '@/lib/upgradeRejection';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePendingTierLockStore';
-import { usePendingTierUpgradeStore } from '@/store/usePendingTierUpgradeStore';
+import { PendingTierUpgrade, usePendingTierUpgradeStore } from '@/store/usePendingTierUpgradeStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -500,6 +500,25 @@ export const useLockFuseForTier = () => {
 class TierUpgradeConfirmingError extends UserCopyError {}
 
 /**
+ * The bundler turning an operation away over its nonce: another is already
+ * waiting with it and this one does not outbid it, or the nonce has just been
+ * used. What a replacement meets while the operation it replaces is still
+ * held, or has landed after all.
+ */
+const NONCE_REFUSAL = /\bAA25\b|invalid account nonce|nonce too low|replacement|already known/i;
+
+const isNonceRefusal = (error: unknown): boolean => {
+  for (
+    let e = error as { message?: string; details?: string; cause?: unknown } | undefined;
+    e;
+    e = e.cause as typeof e
+  ) {
+    if (NONCE_REFUSAL.test(`${e.message ?? ''} ${e.details ?? ''}`)) return true;
+  }
+  return false;
+};
+
+/**
  * Accounts with an upgrade by transfer under way in this app — settling an
  * earlier payment, signing a new one, or confirming it.
  *
@@ -597,6 +616,10 @@ export const useSubscribeToTier = () => {
         transferUpgradesInFlight.add(userId);
       }
 
+      // An earlier payment that never landed, and that a new one may only
+      // replace: sent with its nonce, so that only one of the two can land.
+      let replacing: { upgrade: PendingTierUpgrade; nonce: bigint } | undefined;
+
       try {
         if (settlesEarlier) {
           const earlier = await settlePendingTierUpgrades(userId);
@@ -611,17 +634,22 @@ export const useSubscribeToTier = () => {
               'Your last upgrade payment is still confirming. Your membership updates as soon as it does — there is no need to pay again.',
             );
           }
+          if (earlier.status === 'replaceable') replacing = earlier;
         }
 
         // There was nothing earlier left to finish, and the caller only asked
         // to confirm: a new payment is the user's next, deliberate press.
+        // Settling marked one that never landed as replaceable, so the screen
+        // stops waiting to confirm it and offers to pay again.
         //
         // Checked before the contracts and the price below, which only a new
         // payment needs: an earlier one is confirmed by its hash alone, and
         // has to stay confirmable when cash is switched off after it was paid.
         if (confirmPendingOnly) {
           throw new UserCopyError(
-            'There is no earlier payment left to confirm. Check your balance and tap again to upgrade.',
+            replacing
+              ? 'Your last upgrade payment didn’t go through, and no money moved. Check your balance and tap again to upgrade — you can only be charged once.'
+              : 'There is no earlier payment left to confirm. Check your balance and tap again to upgrade.',
           );
         }
 
@@ -646,6 +674,17 @@ export const useSubscribeToTier = () => {
 
         const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
+        // Where a later search of the chain for this payment starts: read
+        // before it is sent, so it is no later than the block it lands in. A
+        // replacement keeps the block of the payment it replaces, which may
+        // still be the one that lands.
+        const block =
+          mode !== 'transfer'
+            ? undefined
+            : replacing
+              ? replacing.upgrade.block
+              : (await publicClient(fuse.id).getBlockNumber()).toString();
+
         let userOpHash: `0x${string}` | undefined;
         let result: Awaited<ReturnType<typeof executeTransactions>>;
         try {
@@ -664,16 +703,35 @@ export const useSubscribeToTier = () => {
             mode === 'transfer'
               ? (hash, nonce) => {
                   userOpHash = hash;
-                  usePendingTierUpgradeStore.getState().remember({
+                  const sent: PendingTierUpgrade = {
                     userOpHash: hash,
                     userId,
                     submittedAt: Date.now(),
                     tier,
                     sender: safeAddress,
                     nonce: nonce.toString(),
+                    block,
+                  };
+                  const pending = usePendingTierUpgradeStore.getState();
+                  if (!replacing) {
+                    pending.remember(sent);
+                    return;
+                  }
+                  // The record moves to this operation, and keeps the one it
+                  // replaced: until the nonce is used, either may land.
+                  const earlier = replacing.upgrade;
+                  pending.replace(earlier.userOpHash, {
+                    ...sent,
+                    replaced: [
+                      { userOpHash: earlier.userOpHash, tier: earlier.tier },
+                      ...(earlier.replaced ?? []),
+                    ],
                   });
                 }
               : undefined,
+            undefined,
+            // Sent with the earlier payment's own nonce, as its replacement.
+            replacing?.nonce,
           );
         } catch (sendError) {
           // Paid by transfer, sent, and only the wait gave up — usually because
@@ -691,6 +749,15 @@ export const useSubscribeToTier = () => {
             });
             throw new TierUpgradeConfirmingError(
               'Your upgrade payment is still confirming. Try again in a moment to finish — you won’t be charged twice.',
+            );
+          }
+          // A replacement the bundler turned away over its nonce: it still
+          // holds the earlier payment, or that payment has just landed after
+          // all. Nothing new was sent, and the earlier record stays for the
+          // next press to settle.
+          if (replacing && !userOpHash && isNonceRefusal(sendError)) {
+            throw new TierUpgradeConfirmingError(
+              'Your last upgrade payment is still with the network, so a new one can’t be sent yet. Try again in a little while — you won’t be charged twice.',
             );
           }
           throw sendError;

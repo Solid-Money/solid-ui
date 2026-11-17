@@ -155,15 +155,17 @@ const UpgradeReviewContent = () => {
   // already paid by transfer and not yet confirmed has taken the USDC this
   // would check, so it can always be pressed on — to confirm, never to pay,
   // even with the balance to: a new payment is a separate press once the
-  // earlier one is settled.
+  // earlier one is settled. So it is let through ahead of the chain read too,
+  // which it does not use: one that failed — the accountant's rate, say,
+  // after a restart — must not stand between a user and a payment they made.
   const cashConfirmOnly = route === 'cash' && payment.awaitingConfirm;
   const canPay =
-    chain !== undefined &&
-    balances !== undefined &&
-    (route === 'lock'
-      ? canPayLockWith(paymentAsset, remainingFuse, balances)
-      : cashConfirmOnly ||
-        (payment.billingTokenAddress
+    cashConfirmOnly ||
+    (chain !== undefined &&
+      balances !== undefined &&
+      (route === 'lock'
+        ? canPayLockWith(paymentAsset, remainingFuse, balances)
+        : payment.billingTokenAddress
           ? payment.affordable
           : canAffordUpgrade({
               route,

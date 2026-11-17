@@ -150,9 +150,19 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
   // held over from before is no route at all once it stops being on offer — a
   // "Cash" tab kept after the treasury went would sell what cannot be paid.
   // Cash with a payment awaiting confirmation is the exception: it sells
-  // nothing, it only confirms what was paid (see the effect above).
-  const routeOnOffer = !!route && (routes.includes(route) || (route === 'cash' && awaitingConfirm));
-  if (!membership?.enabled || !tier || !offer || !routeOnOffer) {
+  // nothing, it only confirms what was paid (see the effect above) — so
+  // neither cash nor memberships as a whole being switched off since takes it
+  // away. The money is at the treasury either way, and this is the way to the
+  // review that confirms it.
+  const cashConfirmOnly = route === 'cash' && awaitingConfirm;
+  const routeOnOffer = !!route && (routes.includes(route) || cashConfirmOnly);
+  if (
+    !membership ||
+    (!membership.enabled && !cashConfirmOnly) ||
+    !tier ||
+    !offer ||
+    !routeOnOffer
+  ) {
     return (
       <UpgradeUnavailable
         message={
