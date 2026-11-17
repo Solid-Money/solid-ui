@@ -1,11 +1,40 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text as RNText,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
 
-import { ReferIcon } from '@/components/Referral/v4/ReferV4Primitives';
+import {
+  type InviteCopy,
+  inviteCopy,
+  inviterInitial,
+  type InviteTitlePart,
+} from '@/components/Invite/inviteCopy';
+import {
+  CARD_ASPECT,
+  DESKTOP_LAYOUT,
+  FADE_COLORS,
+  FADE_LOCATIONS,
+  inviteCardWidth,
+  type InviteLayout,
+  inviteTitleScale,
+  LOGO_LOCKUP,
+  MOBILE_LAYOUT,
+} from '@/components/Invite/inviteLayout';
 import { Text } from '@/components/ui/text';
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/constants/appStores';
 import { path } from '@/constants/path';
@@ -13,95 +42,33 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { useReferralInvite } from '@/hooks/useReferralInvite';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import {
   buildPlayStoreInviteUrl,
   inviteClipboardText,
   normalizeReferralCode,
 } from '@/lib/referral/inviteCode';
-import { formatUsdWhole } from '@/lib/referral/referralV4';
 import { cn } from '@/lib/utils';
 import { type DevicePlatform, getDevicePlatform } from '@/lib/utils/passkeySupport';
 import { useReferralStore } from '@/store/useReferralStore';
 import { useUserStore } from '@/store/useUserStore';
 
-import type { ReferralInviteLookup } from '@/lib/types';
+/** "Learn about Solid" — the marketing site. */
+const SOLID_SITE_URL = 'https://solid.xyz';
 
-const QR_SIZE = 180;
-const QR_QUIET_ZONE = 12;
+/** The QR on desktop (Figma 31314:3916): 120pt, with a 7.5pt quiet zone around the code. */
+const QR_SIZE = 120;
+const QR_QUIET_ZONE = 8.571;
 
-interface InviteCopy {
-  /** "Dana invited you"; null when we don't know who. */
-  invitedBy: string | null;
-  title: string;
-  subtitle: string;
-  steps: string[];
-  footnote: string | null;
-}
-
-/** What the page says, from the lookup: v4's card credit, today's offer, or a plain welcome. */
-const inviteCopy = (lookup: ReferralInviteLookup | undefined): InviteCopy => {
-  if (lookup?.valid && lookup.offer) {
-    const { friendCreditUsd, spendTargetUsd, merchantTarget, windowDays } = lookup.offer;
-    return {
-      invitedBy: `${lookup.referrer.username} invited you`,
-      title: `Get ${formatUsdWhole(friendCreditUsd)} to spend\nwith your card`,
-      subtitle: `Spend ${formatUsdWhole(spendTargetUsd)} in your first ${windowDays} days and your next ${formatUsdWhole(
-        friendCreditUsd,
-      )} of purchases are on us.`,
-      steps: [
-        'Create your account',
-        'Get your free card',
-        `Spend ${formatUsdWhole(spendTargetUsd)} at ${merchantTarget} or more shops`,
-      ],
-      footnote: 'Card bonus can only be spent with your Solid card.',
-    };
-  }
-
-  if (lookup?.valid && lookup.legacyOffer) {
-    const { friendRewardUsd, spendTargetUsd, merchantTarget, windowDays, payoutToken } =
-      lookup.legacyOffer;
-    return {
-      invitedBy: `${lookup.referrer.username} invited you`,
-      title: `Get ${formatUsdWhole(friendRewardUsd)} when you\nspend with your card`,
-      subtitle: `Spend ${formatUsdWhole(spendTargetUsd)} in your first ${windowDays} days and get ${formatUsdWhole(
-        friendRewardUsd,
-      )} in ${payoutToken}.`,
-      steps: [
-        'Create your account',
-        'Get your free card',
-        `Spend ${formatUsdWhole(spendTargetUsd)} at ${merchantTarget} or more shops`,
-      ],
-      footnote: null,
-    };
-  }
-
-  return {
-    invitedBy: lookup?.valid ? `${lookup.referrer.username} invited you` : null,
-    title: 'Welcome to Solid',
-    subtitle: 'Save, spend and earn with one account and your Solid card.',
-    steps: ['Create your account', 'Get your free card', 'Spend and earn cashback'],
-    footnote: null,
-  };
-};
-
-const Steps = ({ steps }: { steps: string[] }) => (
-  <View className="w-full overflow-hidden rounded-[20px] bg-card px-4 py-1">
-    {steps.map((step, index) => (
-      <View
-        key={step}
-        className={cn(
-          'flex-row items-center gap-3 py-[14px]',
-          index > 0 && 'border-t border-white/[0.06]',
-        )}
-      >
-        <View className="h-7 w-7 items-center justify-center rounded-full bg-[#303030]">
-          <Text className="text-[13px] font-semibold text-white/85">{index + 1}</Text>
-        </View>
-        <Text className="flex-1 text-[15px] font-medium text-white">{step}</Text>
-      </View>
-    ))}
-  </View>
-);
+/** Web-only CSS for the pill's frosted glass, which React Native's ViewStyle doesn't declare. */
+const PILL_GLASS: ViewStyle | undefined =
+  Platform.OS === 'web'
+    ? ({
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow: 'inset 0px 1px 0px 0px rgba(255, 255, 255, 0.14)',
+      } as ViewStyle)
+    : undefined;
 
 const PrimaryButton = ({
   label,
@@ -116,9 +83,9 @@ const PrimaryButton = ({
     onPress={onPress}
     accessibilityRole="button"
     accessibilityHint={accessibilityHint}
-    className="h-[56px] w-full items-center justify-center rounded-[16px] bg-brand active:opacity-80 web:hover:opacity-90"
+    className="h-[56px] w-full items-center justify-center rounded-[16px] bg-brand px-8 active:opacity-80 web:hover:opacity-90"
   >
-    <Text className="text-[16px] font-semibold text-black">{label}</Text>
+    <Text className="text-[17px] font-semibold leading-[17px] text-black">{label}</Text>
   </Pressable>
 );
 
@@ -126,13 +93,163 @@ const SecondaryButton = ({ label, onPress }: { label: string; onPress: () => voi
   <Pressable
     onPress={onPress}
     accessibilityRole="button"
-    className="h-[56px] w-full items-center justify-center rounded-[16px] bg-card active:opacity-80 web:hover:bg-card-hover"
+    className="h-[56px] w-full items-center justify-center rounded-[16px] bg-card px-8 active:opacity-80 web:hover:bg-card-hover"
   >
-    <Text className="text-[16px] font-semibold text-white">{label}</Text>
+    <Text className="text-[17px] font-semibold text-white">{label}</Text>
   </Pressable>
 );
 
-/** The phone a mobile-web visitor is on, so the right store button leads. */
+/** The Solid lockup, from the onboarding landing's own SVGs, scaled to `width`. */
+const SolidLockup = ({ width }: { width: number }) => {
+  const scale = width / LOGO_LOCKUP.width;
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Solid"
+      style={{ width, height: LOGO_LOCKUP.height * scale }}
+    >
+      <Image
+        source={getAsset('images/onboarding-landing-mark.svg')}
+        alt=""
+        contentFit="fill"
+        style={{
+          position: 'absolute',
+          top: LOGO_LOCKUP.markTop * scale,
+          left: 0,
+          width: 21.098 * scale,
+          height: 24.072 * scale,
+        }}
+      />
+      <Image
+        source={getAsset('images/onboarding-landing-solid.svg')}
+        alt=""
+        contentFit="fill"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: LOGO_LOCKUP.wordLeft * scale,
+          width: 63.516 * scale,
+          height: 24.903 * scale,
+        }}
+      />
+    </View>
+  );
+};
+
+/** "eli invited you" (Figma 31314:3795): a glass pill with the inviter's initial. */
+const InvitedByPill = ({ name, layout }: { name: string; layout: InviteLayout['pill'] }) => (
+  <View
+    className="flex-row items-center gap-[10px] overflow-hidden rounded-full border border-white/40 pl-[6px] pr-4"
+    style={[{ height: layout.height }, PILL_GLASS]}
+  >
+    <LinearGradient
+      pointerEvents="none"
+      colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+      start={{ x: 0.47, y: 0 }}
+      end={{ x: 0.53, y: 1 }}
+      style={StyleSheet.absoluteFill}
+    />
+    <View
+      className="items-center justify-center rounded-full bg-brand"
+      style={{ width: layout.avatar, height: layout.avatar }}
+    >
+      <Text
+        className="text-center font-semibold text-black"
+        style={{ fontSize: layout.initialFontSize }}
+      >
+        {inviterInitial(name)}
+      </Text>
+    </View>
+    <Text className="font-medium text-white" style={{ fontSize: layout.fontSize }}>
+      {`${name} invited you`}
+    </Text>
+  </View>
+);
+
+const Title = ({
+  parts,
+  layout,
+  scale,
+}: {
+  parts: InviteTitlePart[];
+  layout: InviteLayout['title'];
+  /** From `inviteTitleScale`: keeps each designed line on one line on a narrow phone. */
+  scale: number;
+}) => (
+  <Text
+    accessibilityRole="header"
+    className="text-center font-normal text-white"
+    style={{
+      fontSize: layout.fontSize * scale,
+      lineHeight: layout.lineHeight * scale,
+      letterSpacing: layout.letterSpacing * scale,
+    }}
+  >
+    {/* Plain runs: the app's Text sets `verticalAlign: middle`, which on the web grows the
+        line box of every line holding a nested run past the design's line height. */}
+    {parts.map((part, index) => (
+      <RNText key={index} className={part.accent ? 'text-brand' : undefined}>
+        {part.text}
+      </RNText>
+    ))}
+  </Text>
+);
+
+/** "How it works" (Figma 31314:3678): the three steps in one card. */
+const Steps = ({ steps, layout }: { steps: string[]; layout: InviteLayout['steps'] }) => (
+  <View className="w-full overflow-hidden rounded-[20px] bg-card">
+    {steps.map((step, index) => (
+      <View
+        key={step}
+        className={cn(
+          'flex-row items-center gap-[14px]',
+          index < steps.length - 1 && 'border-b border-white/[0.06]',
+        )}
+        style={{ height: layout.rowHeight, paddingHorizontal: layout.rowPaddingX }}
+      >
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-white/10">
+          <Text className="text-[14px] font-semibold text-white/85">{index + 1}</Text>
+        </View>
+        <Text
+          className="flex-1 font-medium text-white"
+          numberOfLines={2}
+          style={{ fontSize: layout.fontSize }}
+        >
+          {step}
+        </Text>
+      </View>
+    ))}
+  </View>
+);
+
+/** Desktop's hand-off to the phone (Figma 31314:3915): the QR beside its instructions. */
+const ScanToGetTheApp = ({ url }: { url: string }) => (
+  <View className="w-full flex-row items-center gap-5 overflow-hidden rounded-[20px] bg-card py-4 pl-4 pr-6">
+    <View
+      className="overflow-hidden rounded-[8.571px]"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="QR code to open this invite on your phone"
+    >
+      <QRCode
+        value={url}
+        size={QR_SIZE}
+        color="white"
+        backgroundColor="#1C1C1C"
+        quietZone={QR_QUIET_ZONE}
+      />
+    </View>
+    <View className="flex-1 gap-1.5">
+      <Text className="text-[20px] font-semibold text-white">Scan to get the app</Text>
+      <Text className="text-[15px] leading-[21px] text-white/55">
+        Open your phone’s camera and point it at the code.
+      </Text>
+    </View>
+  </View>
+);
+
+/** The phone a mobile-web visitor is on, so the button goes to the right store. */
 const webDevicePlatform = (): DevicePlatform => {
   if (Platform.OS !== 'web' || typeof navigator === 'undefined') return 'other';
   return getDevicePlatform(navigator.userAgent, (navigator.maxTouchPoints ?? 0) > 0);
@@ -143,19 +260,31 @@ const openStore = (url: string) => {
   if (typeof window !== 'undefined') window.location.assign(url);
 };
 
+/** A new tab on the web, the browser in the app. */
+const openSite = (url: string) => {
+  if (Platform.OS === 'web') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  void Linking.openURL(url).catch(() => undefined);
+};
+
 /**
- * The public invite page an invite link opens (Figma 29602:13466): who invited
- * the friend, what they get, and the three steps to get it.
+ * The public invite page an invite link opens (Figma 31314:3674, "Refer page v4 —
+ * version C2"): who invited the friend, what they get, how to get it, and the hand-off
+ * to the app. It replaces the Webflow invite page.
  *
- * In the app it stores the code for signup and sends the friend there. On the
- * web it is also the hand-off to the app: a QR code on desktop, the store
- * buttons on a phone — Play carrying the code as the install referrer, the App
- * Store side copying it to the clipboard for the signup screen to offer back.
- * Anyone already signed in just goes home; the invite is for new accounts and
- * must not replace the referrer an existing one already has.
+ * In the app it stores the code for signup and sends the friend there. On the web it is
+ * also the hand-off to the app: a QR code on desktop, the store on a phone — Play
+ * carrying the code as the install referrer, the App Store side copying it to the
+ * clipboard for the signup screen to offer back. Anyone already signed in just goes
+ * home; the invite is for new accounts and must not replace the referrer an existing
+ * one already has.
  */
 export default function InviteScreen({ rawCode }: { rawCode: string | undefined }) {
   const { isDesktop } = useDimension();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const usersHydrated = useUserStore(state => state._hasHydrated);
   const isSignedIn = useUserStore(state => state.users.some(user => user.selected));
   const referralHydrated = useReferralStore(state => state._hasHydrated);
@@ -186,14 +315,15 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
     }
   }, [isReady, isSignedIn, lookup, code, isError]);
 
-  const copy = useMemo(() => inviteCopy(lookup), [lookup]);
+  const copy: InviteCopy = useMemo(() => inviteCopy(lookup), [lookup]);
   const storedCode = lookup?.valid ? lookup.code : code;
   const platform = useMemo(() => webDevicePlatform(), []);
   const isWeb = Platform.OS === 'web';
   const pageUrl = isWeb && typeof window !== 'undefined' ? window.location.href : '';
 
   const getStarted = useCallback(() => router.push(path.SIGNUP_EMAIL), []);
-  const close = useCallback(() => router.replace(path.ONBOARDING), []);
+  const logIn = useCallback(() => router.push(path.ONBOARDING), []);
+  const learnAboutSolid = useCallback(() => openSite(SOLID_SITE_URL), []);
 
   const openAppStore = useCallback(async () => {
     track(TRACKING_EVENTS.GET_APP_PRESSED, { context: 'invite', store: 'ios' });
@@ -215,124 +345,203 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
 
   if (!isReady) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-black">
         <ActivityIndicator color="white" />
-      </SafeAreaView>
+      </View>
     );
   }
 
-  const hero = (
-    <View className="items-center px-7 pt-4">
-      <ReferIcon asset="images/referral-v4/gift-72.svg" size={72} />
-      {copy.invitedBy ? (
-        <View className="mt-4 rounded-full bg-card px-3 py-1.5">
-          <Text className="text-[13px] font-medium text-white/70">{copy.invitedBy}</Text>
-        </View>
-      ) : null}
-      <Text className="mt-4 text-center text-[30px] font-semibold leading-[34px] text-white">
-        {copy.title}
-      </Text>
-      <Text className="mt-2.5 text-center text-[15px] leading-[21px] text-white/60">
-        {copy.subtitle}
-      </Text>
-    </View>
+  const layout = isDesktop ? DESKTOP_LAYOUT : MOBILE_LAYOUT;
+  const columnWidth = Math.min(layout.columnWidth, width - 2 * layout.steps.paddingX);
+  const cardWidth = inviteCardWidth(layout, width);
+  const titleScale = inviteTitleScale(
+    layout,
+    columnWidth,
+    copy.title.map(part => part.text).join(''),
   );
+  const { backdrop } = layout;
 
   const footnote = copy.footnote ? (
-    <Text className="text-center text-[12px] text-white/40">{copy.footnote}</Text>
+    <Text
+      className="w-full text-center text-white/45"
+      style={{ fontSize: layout.footnote.fontSize, lineHeight: layout.footnote.lineHeight }}
+    >
+      {copy.footnote}
+    </Text>
   ) : null;
 
-  // Desktop web: the app is on the phone in their pocket — hand over with a QR.
-  if (isWeb && isDesktop) {
-    return (
-      <SafeAreaView className="flex-1 bg-background">
-        <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: 48 }}>
-          <View className="w-full max-w-[440px] gap-7 px-4">
-            {hero}
-            <Steps steps={copy.steps} />
-            {pageUrl ? (
-              <View className="items-center gap-3 rounded-[20px] bg-card p-6">
-                <View
-                  className="overflow-hidden rounded-[16px]"
-                  accessible
-                  accessibilityRole="image"
-                  accessibilityLabel="QR code to open this invite on your phone"
-                >
-                  <QRCode
-                    value={pageUrl}
-                    size={QR_SIZE}
-                    color="white"
-                    backgroundColor="#1C1C1C"
-                    quietZone={QR_QUIET_ZONE}
-                  />
-                </View>
-                <Text className="text-[16px] font-semibold text-white">Scan to get the app</Text>
-                <Text className="text-center text-[13px] text-white/50">
-                  Open your phone’s camera and point it at the code.
-                </Text>
-              </View>
-            ) : null}
-            <View className="gap-3">
-              <PrimaryButton label="Continue on web" onPress={getStarted} />
-              {footnote}
-            </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  // Phone web: the stores first, the one for this phone leading.
-  const storeButtons = isWeb ? (
-    <View className="w-full gap-3">
-      {platform !== 'android' ? (
-        <PrimaryButton label="Get the app on the App Store" onPress={openAppStore} />
-      ) : null}
-      {platform !== 'ios' ? (
-        platform === 'android' ? (
-          <PrimaryButton label="Get the app on Google Play" onPress={openPlayStore} />
-        ) : (
-          <SecondaryButton label="Get the app on Google Play" onPress={openPlayStore} />
-        )
-      ) : null}
+  // Desktop web hands over to the phone with a QR. A phone browser goes to its store,
+  // with the web signup a link below. The app itself has nothing to install.
+  const actions = isDesktop ? (
+    <>
+      {pageUrl ? <ScanToGetTheApp url={pageUrl} /> : null}
+      <PrimaryButton label="Continue on web" onPress={getStarted} />
+      {footnote}
+    </>
+  ) : isWeb ? (
+    <>
+      <PrimaryButton
+        label="Get the Solid app"
+        onPress={platform === 'android' ? openPlayStore : openAppStore}
+      />
       <Pressable
         onPress={getStarted}
         accessibilityRole="button"
-        hitSlop={8}
-        className="items-center py-2 active:opacity-70 web:hover:opacity-80"
+        className="h-11 items-center justify-center active:opacity-70 web:hover:opacity-80"
       >
-        <Text className="text-[15px] font-medium text-white/70">Continue on web</Text>
+        <Text className="text-[16px] font-medium text-white">Continue on web</Text>
       </Pressable>
-    </View>
+      {footnote}
+    </>
   ) : (
-    <PrimaryButton label="Get started" onPress={getStarted} />
+    <>
+      <PrimaryButton label="Get started" onPress={getStarted} />
+      {footnote}
+    </>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="mx-auto w-full max-w-lg flex-1">
-        <View className="flex-row justify-end px-4 py-2">
+    <View className="flex-1 bg-black">
+      <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }}>
+        {/* The light behind the hero, fading to the page's black (Figma 31314:3792–3). */}
+        <View
+          pointerEvents="none"
+          className="absolute left-0 right-0 top-0 overflow-hidden"
+          style={{ height: backdrop.clipHeight + insets.top }}
+        >
+          <Image
+            source={getAsset('images/invite/hero-light.jpg')}
+            alt=""
+            contentFit="cover"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: backdrop.lightHeight + insets.top,
+              opacity: backdrop.lightOpacity,
+            }}
+          />
+          <LinearGradient
+            colors={FADE_COLORS}
+            locations={FADE_LOCATIONS}
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: backdrop.fadeTop + insets.top,
+              height: backdrop.fadeHeight,
+            }}
+          />
+        </View>
+
+        <View
+          className="flex-row items-center justify-between"
+          style={{
+            height: layout.header.height,
+            marginTop: insets.top,
+            paddingHorizontal: layout.header.paddingX,
+          }}
+        >
+          <SolidLockup width={layout.header.logoWidth} />
           <Pressable
-            onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
+            onPress={logIn}
+            accessibilityRole="link"
             hitSlop={8}
             className="active:opacity-70 web:hover:opacity-80"
           >
-            <ReferIcon asset="images/referral-v4/close.svg" size={36} />
+            <Text
+              className="font-medium text-white/70"
+              style={{ fontSize: layout.header.loginFontSize }}
+            >
+              Log in
+            </Text>
           </Pressable>
         </View>
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
-          {hero}
-          <View className="px-4 pt-7">
-            <Steps steps={copy.steps} />
+
+        <View
+          className="items-center"
+          style={{
+            paddingTop: layout.hero.paddingTop - layout.header.height,
+            paddingBottom: layout.hero.paddingBottom,
+            paddingHorizontal: layout.steps.paddingX,
+          }}
+        >
+          {copy.inviter ? <InvitedByPill name={copy.inviter} layout={layout.pill} /> : null}
+          <View
+            className="w-full items-center"
+            style={{
+              marginTop: layout.card.marginTop,
+              height: cardWidth * layout.card.boxRatio,
+            }}
+          >
+            <Image
+              source={getAsset(
+                isDesktop
+                  ? 'images/invite/card-glass-desktop.png'
+                  : 'images/invite/card-glass-mobile.png',
+              )}
+              alt="The Solid Visa Platinum card"
+              contentFit="contain"
+              style={{ width: cardWidth, height: cardWidth / CARD_ASPECT }}
+            />
           </View>
-        </ScrollView>
-        <View className="items-center gap-3 px-4 pb-3 pt-2">
-          {storeButtons}
-          {footnote}
+          <View style={{ paddingTop: layout.title.paddingTop, maxWidth: columnWidth }}>
+            <Title parts={copy.title} layout={layout.title} scale={titleScale} />
+          </View>
+          <Text
+            className="text-center text-white/[0.72]"
+            style={{
+              marginTop: layout.subtitle.paddingTop,
+              maxWidth: Math.min(layout.subtitle.maxWidth, columnWidth),
+              fontSize: layout.subtitle.fontSize,
+              lineHeight: layout.subtitle.lineHeight,
+            }}
+          >
+            {copy.subtitle}
+          </Text>
+          <View
+            className="items-center"
+            style={{
+              width: columnWidth,
+              paddingTop: layout.actions.paddingTop,
+              gap: layout.actions.gap,
+            }}
+          >
+            {actions}
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+
+        <View
+          className="items-center"
+          style={{
+            paddingTop: layout.steps.paddingTop,
+            paddingBottom: layout.steps.paddingBottom,
+            paddingHorizontal: layout.steps.paddingX,
+          }}
+        >
+          <View className="items-center gap-4" style={{ width: columnWidth }}>
+            <Text className="text-center text-[15px] font-medium text-white/55">How it works</Text>
+            <Steps steps={copy.steps} layout={layout.steps} />
+          </View>
+          <View style={{ width: columnWidth, paddingTop: layout.steps.learnMoreTop }}>
+            <SecondaryButton label="Learn about Solid" onPress={learnAboutSolid} />
+          </View>
+        </View>
+
+        <View
+          className="mt-auto items-center border-t border-white/[0.06]"
+          style={{
+            paddingTop: layout.footer.paddingTop,
+            paddingBottom: layout.footer.paddingBottom + insets.bottom,
+            paddingHorizontal: layout.footer.paddingX,
+          }}
+        >
+          <Text className="text-center text-[13px] leading-[18.2px] text-white/40">
+            The Solid Card is a Visa card issued by Wirex, pursuant to a license from Visa.
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
