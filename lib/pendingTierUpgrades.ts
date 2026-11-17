@@ -2,6 +2,7 @@ import { fuse } from 'viem/chains';
 
 import { upgradeTierSubscription } from '@/lib/api';
 import { pimlicoClient } from '@/lib/pimlico';
+import { upgradeRejectionMessage } from '@/lib/upgradeRejection';
 import { withRefreshToken } from '@/lib/utils';
 import {
   pendingTierUpgradesFor,
@@ -18,6 +19,18 @@ import type { UserOperationReceipt } from 'viem/account-abstraction';
  */
 export const PENDING_TIER_UPGRADE_TTL_MS = 15 * 60 * 1000;
 
+export { upgradeRejectionMessage };
+
+/**
+ * How long a payment the backend refused is still held against a new one.
+ *
+ * A refusal after the money landed (below the price, already a member) is
+ * final, and support is alerted to refund or fix it. Until they have had time
+ * to, a new press shows the refusal again rather than paying a second time;
+ * after this, the record is let go so a refunded user can buy again.
+ */
+export const REJECTED_TIER_UPGRADE_HOLD_MS = 24 * 60 * 60 * 1000;
+
 /** What an earlier upgrade turned out to be when it was settled. */
 export type PendingTierUpgradeSettlement =
   /** Nothing earlier is outstanding: a new upgrade may be signed. */
@@ -25,7 +38,9 @@ export type PendingTierUpgradeSettlement =
   /** An earlier upgrade had landed and is now confirmed. Nothing new is needed. */
   | { status: 'confirmed'; state: TierMembershipState }
   /** An earlier upgrade may still land, or landed and is not yet confirmed. Do not pay again. */
-  | { status: 'pending' };
+  | { status: 'pending' }
+  /** An earlier upgrade landed and the backend refused it for good. Show why; do not pay again. */
+  | { status: 'rejected'; message: string };
 
 /** viem's "the bundler has no receipt for this hash (yet)". */
 const isReceiptNotFound = (error: unknown): boolean => {
@@ -51,9 +66,14 @@ export const settlePendingTierUpgrades = async (
   userId: string,
   now: number = Date.now(),
 ): Promise<PendingTierUpgradeSettlement> => {
-  const { landed, forget } = usePendingTierUpgradeStore.getState();
+  const { landed, rejected, forget } = usePendingTierUpgradeStore.getState();
 
   for (const upgrade of pendingTierUpgradesFor(userId)) {
+    if (upgrade.rejectedAt && now - upgrade.rejectedAt > REJECTED_TIER_UPGRADE_HOLD_MS) {
+      forget(upgrade.userOpHash);
+      continue;
+    }
+
     let transactionHash = upgrade.transactionHash;
 
     if (!transactionHash) {
@@ -84,8 +104,11 @@ export const settlePendingTierUpgrades = async (
       );
       forget(upgrade.userOpHash);
       return { status: 'confirmed', state };
-    } catch {
-      return { status: 'pending' };
+    } catch (error) {
+      const message = await upgradeRejectionMessage(error);
+      if (!message) return { status: 'pending' };
+      rejected(upgrade.userOpHash, now);
+      return { status: 'rejected', message };
     }
   }
 

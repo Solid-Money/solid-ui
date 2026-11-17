@@ -37,6 +37,7 @@ import {
   TIER_MEMBERSHIP_PAYMENT_MODES,
 } from '@/lib/tierUpgrade';
 import { RewardsTier, TierMembershipContracts, TierMembershipState, TierOffer } from '@/lib/types';
+import { upgradeRejectionMessage } from '@/lib/upgradeRejection';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePendingTierLockStore';
@@ -551,6 +552,9 @@ export const useSubscribeToTier = () => {
         if (earlier.status === 'confirmed') {
           return { state: earlier.state, transactionHash: undefined, tier, priceUsd, mode };
         }
+        if (earlier.status === 'rejected') {
+          throw new UserCopyError(earlier.message);
+        }
         if (earlier.status === 'pending') {
           throw new UserCopyError(
             'Your last upgrade payment is still confirming. Your membership updates as soon as it does — there is no need to pay again.',
@@ -599,9 +603,15 @@ export const useSubscribeToTier = () => {
         let state: TierMembershipState;
         try {
           state = await upgradeTierSubscription({ tier, transactionHash: result.transactionHash });
-        } catch {
+        } catch (error) {
           // Paid, and only telling the backend failed. The record is kept, so
-          // the next press confirms this payment rather than making another.
+          // the next press confirms this payment rather than making another —
+          // or, when the backend refused it for good, shows why again.
+          const message = await upgradeRejectionMessage(error);
+          if (message) {
+            pending.rejected(result.userOpHash, Date.now());
+            throw new UserCopyError(message);
+          }
           throw new UserCopyError(
             'Your payment went through, but your upgrade isn’t confirmed yet. Tap Upgrade again to finish — you won’t be charged twice.',
           );

@@ -23,6 +23,12 @@ export interface PendingTierUpgrade {
   tier: RewardsTier;
   /** Set once the transaction is known to have landed. */
   transactionHash?: string;
+  /**
+   * When the backend first refused to start a membership from this payment,
+   * ms since epoch. The money is at the treasury and support has been alerted;
+   * the record is kept a while so a retry cannot pay again before they act.
+   */
+  rejectedAt?: number;
 }
 
 interface PendingTierUpgradeState {
@@ -30,6 +36,8 @@ interface PendingTierUpgradeState {
   upgrades: Record<string, PendingTierUpgrade>;
   remember: (upgrade: PendingTierUpgrade) => void;
   landed: (userOpHash: string, transactionHash: string) => void;
+  /** Stamp the first refusal; later ones keep the original time. */
+  rejected: (userOpHash: string, at: number) => void;
   forget: (userOpHash: string) => void;
 }
 
@@ -47,6 +55,12 @@ export const usePendingTierUpgradeStore = create<PendingTierUpgradeState>()(
           const upgrade = state.upgrades[userOpHash];
           if (!upgrade) return state;
           return { upgrades: { ...state.upgrades, [userOpHash]: { ...upgrade, transactionHash } } };
+        }),
+      rejected: (userOpHash, at) =>
+        set(state => {
+          const upgrade = state.upgrades[userOpHash];
+          if (!upgrade || upgrade.rejectedAt) return state;
+          return { upgrades: { ...state.upgrades, [userOpHash]: { ...upgrade, rejectedAt: at } } };
         }),
       forget: userOpHash =>
         set(state => {

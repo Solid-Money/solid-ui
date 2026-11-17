@@ -262,7 +262,37 @@ describe('an upgrade paid by transfer', () => {
     ]);
   });
 
+  /** A final 4xx: the user is told why, and the payment is held against a second one. */
+  it('shows the backend refusal for a landed payment, and holds it', async () => {
+    mockUpgrade.mockRejectedValue(
+      new Response(
+        JSON.stringify({ message: 'You already have this membership. Our team has been told.' }),
+        { status: 409 },
+      ),
+    );
+
+    await expect(
+      subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+    ).rejects.toThrow('You already have this membership. Our team has been told.');
+    expect(stored()).toEqual([
+      expect.objectContaining({
+        userOpHash: HASH,
+        transactionHash: TX,
+        rejectedAt: expect.any(Number),
+      }),
+    ]);
+  });
+
   describe('pressing Upgrade again', () => {
+    it('shows the earlier refusal instead of paying again', async () => {
+      mockSettle.mockResolvedValue({ status: 'rejected', message: 'Below the Ultra price.' });
+
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).rejects.toThrow('Below the Ultra price.');
+      expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+
     it('signs nothing when the earlier payment is confirmed', async () => {
       mockSettle.mockResolvedValue({ status: 'confirmed', state: STATE });
 

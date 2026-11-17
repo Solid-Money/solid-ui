@@ -1,4 +1,9 @@
-import { PENDING_TIER_UPGRADE_TTL_MS, settlePendingTierUpgrades } from '@/lib/pendingTierUpgrades';
+import {
+  PENDING_TIER_UPGRADE_TTL_MS,
+  REJECTED_TIER_UPGRADE_HOLD_MS,
+  settlePendingTierUpgrades,
+  upgradeRejectionMessage,
+} from '@/lib/pendingTierUpgrades';
 import { RewardsTier } from '@/lib/types';
 import { usePendingTierUpgradeStore } from '@/store/usePendingTierUpgradeStore';
 
@@ -31,7 +36,13 @@ const STATE = { enabled: true };
 const notFound = () =>
   Object.assign(new Error('not found'), { name: 'UserOperationReceiptNotFoundError' });
 
-const remember = (overrides: { submittedAt?: number; transactionHash?: string } = {}) =>
+/** A thrown `fetch` response, the way the API client throws a non-2xx. */
+const httpError = (status: number, message?: string) =>
+  new Response(JSON.stringify(message ? { statusCode: status, message } : {}), { status });
+
+const remember = (
+  overrides: { submittedAt?: number; transactionHash?: string; rejectedAt?: number } = {},
+) =>
   usePendingTierUpgradeStore.getState().remember({
     userOpHash: HASH,
     userId: 'user-1',
@@ -124,4 +135,56 @@ it('stays pending when the lookup itself fails, however old', async () => {
 
   await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'pending' });
   expect(stored()).toHaveLength(1);
+});
+
+/**
+ * A 4xx after the money landed is the backend's final answer — support has
+ * been alerted to refund or fix it. The user is told why, and the record is
+ * kept so a second press cannot pay again before support has acted.
+ */
+it('reports a payment the backend refused for good, and holds it', async () => {
+  remember({ transactionHash: TX });
+  mockUpgrade.mockRejectedValue(
+    httpError(400, 'Your payment of $799.00 is below the Ultra price of $999.00.'),
+  );
+
+  await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+    status: 'rejected',
+    message: 'Your payment of $799.00 is below the Ultra price of $999.00.',
+  });
+  expect(stored()).toEqual([expect.objectContaining({ rejectedAt: NOW })]);
+});
+
+it('keeps a payment the backend says has not landed yet as pending', async () => {
+  remember({ transactionHash: TX });
+  mockUpgrade.mockRejectedValue(httpError(503, 'Your payment has not landed yet.'));
+
+  await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'pending' });
+  expect(stored()).toEqual([expect.not.objectContaining({ rejectedAt: expect.anything() })]);
+});
+
+it('lets a refused payment go a day after it was refused', async () => {
+  remember({ transactionHash: TX, rejectedAt: NOW - REJECTED_TIER_UPGRADE_HOLD_MS - 1 });
+
+  await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({ status: 'none' });
+  expect(mockUpgrade).not.toHaveBeenCalled();
+  expect(stored()).toEqual([]);
+});
+
+describe('upgradeRejectionMessage', () => {
+  it('reads the backend message off a final 4xx', async () => {
+    await expect(
+      upgradeRejectionMessage(httpError(409, 'You already have this membership.')),
+    ).resolves.toBe('You already have this membership.');
+  });
+
+  it('falls back to plain wording when the body says nothing', async () => {
+    await expect(upgradeRejectionMessage(httpError(400))).resolves.toMatch(/no need to pay again/);
+  });
+
+  it('treats 5xx, 401, 429 and network errors as not final', async () => {
+    for (const error of [httpError(503), httpError(401), httpError(429), new Error('network')]) {
+      await expect(upgradeRejectionMessage(error)).resolves.toBeNull();
+    }
+  });
 });
