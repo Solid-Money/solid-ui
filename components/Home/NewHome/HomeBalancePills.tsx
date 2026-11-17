@@ -24,7 +24,7 @@ interface HomeBalancePillsProps {
 
 /**
  * The pills under the Home balance (Figma 29602:13516): "+$0.35 today" while
- * savings are earning, and "$10 card credit" while there is credit to spend.
+ * savings are earning, and "$10 card bonus" while there is credit to spend.
  *
  * Card credit sits here, beside the balance, and is never added into it: it
  * can only be spent with the card, so a balance that counted it would promise
@@ -66,10 +66,10 @@ const HomeBalancePills = ({
           <Pressable
             onPress={openCardCredit}
             accessibilityRole="button"
-            accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. What is the card bonus?`}
+            accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. View card bonus details.`}
             className="h-[35px] flex-row items-center gap-1.5 rounded-full bg-card pl-3 pr-[14px] active:opacity-70 web:hover:bg-card-hover"
           >
-            <ReferIcon asset="images/referral-v4/gift-16.svg" size={16} />
+            <ReferIcon asset="images/referral-v4/card-bonus-16.svg" size={19} />
             <Text className="text-[16px] leading-[18px] text-white">
               {cardCreditPillLabel(credit.availableUsd)}
             </Text>

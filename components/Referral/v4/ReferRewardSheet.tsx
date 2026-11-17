@@ -262,6 +262,7 @@ const friendRows = (kind: ReferRewardKind, summary: ReferralV4Summary): FriendRo
 interface ReferRewardSheetProps {
   kind: ReferRewardKind | null;
   onClose: () => void;
+  onOpenCardBonus: () => void;
   summary: ReferralV4Summary;
 }
 
@@ -270,11 +271,14 @@ interface ReferRewardSheetProps {
  * pays, when it is paid, and the friends who have earned it for the user
  * (30200:17013) or the empty state.
  */
-const ReferRewardSheet = ({ kind, onClose, summary }: ReferRewardSheetProps) => {
+const ReferRewardSheet = ({ kind, onClose, onOpenCardBonus, summary }: ReferRewardSheetProps) => {
   // The last kind stays rendered while the sheet animates closed.
   const shown: ReferRewardKind = kind ?? 'welcome';
   const { chip, description } = rewardCopy(shown, summary.terms);
   const rules = rewardRules(shown, summary);
+  if (shown !== 'spendShare') {
+    rules.unshift({ icon: 'card', text: 'Paid as card bonus', onPress: onOpenCardBonus });
+  }
   const boost = boostLine(shown, summary.terms);
   const rows = friendRows(shown, summary);
   const visible = rows.slice(0, MAX_FRIEND_ROWS);
