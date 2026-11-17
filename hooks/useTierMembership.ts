@@ -83,6 +83,16 @@ export interface TierUpgradeChainState {
   moduleEnabled: boolean;
   /** Whether the Safe has already written a mandate. */
   hasMandate: boolean;
+  /**
+   * When this read was asked for, ms since epoch: taken before any of it is
+   * sent, so every balance in it is at least this recent.
+   *
+   * Not React Query's `dataUpdatedAt`, which is when the slowest of the reads
+   * came back: the USDC one can answer before a bridged payment lands and the
+   * batch still finish after, and a balance judged by that would be taken as
+   * including USDC it never saw. See `resolveCashPayment`.
+   */
+  readStartedAt: number;
 }
 
 /**
@@ -158,6 +168,7 @@ export const useTierUpgradeChainState = (contracts?: {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     queryFn: async () => {
+      const readStartedAt = Date.now();
       const client = publicClient(fuse.id);
 
       // All of them in flight together: this drives a screen that has to price
@@ -236,6 +247,7 @@ export const useTierUpgradeChainState = (contracts?: {
         usdcAmount: Number(formatUnits(usdc, BILLING_DECIMALS)),
         moduleEnabled,
         hasMandate: subscription?.registered === true && subscription.cancelledAt === 0n,
+        readStartedAt,
       };
     },
   });
@@ -488,6 +500,19 @@ export const useLockFuseForTier = () => {
 class TierUpgradeConfirmingError extends UserCopyError {}
 
 /**
+ * Accounts with an upgrade by transfer under way in this app — settling an
+ * earlier payment, signing a new one, or confirming it.
+ *
+ * The pending record is what stops a second payment, and it is only written
+ * once the bundler has accepted the first: between the settlement check that
+ * found nothing and that moment there is a passkey prompt and a send, and a
+ * second press — a double tap, or another step's own copy of this hook — would
+ * pass the same check and pay again. Module scope, so every instance of the
+ * hook sees the same set; released when the attempt is over, whatever its end.
+ */
+const transferUpgradesInFlight = new Set<string>();
+
+/**
  * Buy a tier with the annual fee, the way the offer says it is paid.
  *
  * One user operation either way. For `module` — a first membership — that is
@@ -539,144 +564,182 @@ export const useSubscribeToTier = () => {
        * Only finish an earlier `transfer` payment that is still unconfirmed;
        * never sign a new one. For a screen whose balance no longer covers the
        * fee — because that payment has already taken it — and so has not
-       * checked that a new payment could go through.
+       * checked that a new payment could go through. Needs neither the module,
+       * the treasury nor a price on the offer: the earlier payment is
+       * confirmed by its own hash, even once cash is no longer sold.
        */
       confirmPendingOnly?: boolean;
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
-      if (!contracts.subscriptionModuleAddress) {
-        throw new UserCopyError('Memberships are not available right now.');
-      }
 
       const { tier } = offer;
       const mode = offerPaymentMode(offer);
       const priceUsd = offerFirstYearFeeUsd(offer);
-      const mandateUsd = offerMandateUsd(offer);
-      if (priceUsd === null || mandateUsd === null) {
-        throw new UserCopyError('This tier is not available with an annual fee.');
-      }
       const userId = user.userId;
-
+      const safeAddress = user.safeAddress;
       // A transfer pays the treasury from the Safe, so an earlier one that was
       // sent and never confirmed is settled before anything new is signed —
-      // finished if it landed, rather than paid for a second time.
-      if (mode === 'transfer') {
-        const earlier = await settlePendingTierUpgrades(userId);
-        if (earlier.status === 'confirmed') {
-          return { state: earlier.state, transactionHash: undefined, tier, priceUsd, mode };
-        }
-        if (earlier.status === 'rejected') {
-          throw new UserCopyError(earlier.message);
-        }
-        if (earlier.status === 'pending') {
-          throw new UserCopyError(
-            'Your last upgrade payment is still confirming. Your membership updates as soon as it does — there is no need to pay again.',
-          );
-        }
-      }
+      // finished if it landed, rather than paid for a second time. Settling is
+      // also all a confirm-only press does.
+      const settlesEarlier = mode === 'transfer' || confirmPendingOnly;
 
-      // There was nothing earlier left to finish, and the caller only asked to
-      // confirm: a new payment is the user's next, deliberate press.
-      if (confirmPendingOnly) {
-        throw new UserCopyError(
-          'There is no earlier payment left to confirm. Check your balance and tap again to upgrade.',
-        );
-      }
-
-      const transactions = buildSubscriptionTransactions({
-        mode,
-        safeAddress: user.safeAddress as Address,
-        moduleAddress: contracts.subscriptionModuleAddress as Address,
-        moduleEnabled,
-        mandateUsd,
-        chargeUsd: priceUsd,
-        billingTokenAddress: contracts.billingTokenAddress as Address | null,
-        revenueTreasuryAddress: (contracts.revenueTreasuryAddress ?? null) as Address | null,
-      });
-
-      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
-
-      let userOpHash: `0x${string}` | undefined;
-      let result: Awaited<ReturnType<typeof executeTransactions>>;
-      try {
-        result = await executeTransactions(
-          smartAccountClient,
-          transactions,
-          mode === 'transfer'
-            ? 'Failed to upgrade your membership'
-            : 'Failed to start your membership',
-          fuse,
-          // Remembered the moment the bundler accepts it: from here the payment
-          // can land whatever happens to the app, and a retry must find it.
-          mode === 'transfer'
-            ? hash => {
-                userOpHash = hash;
-                usePendingTierUpgradeStore
-                  .getState()
-                  .remember({ userOpHash: hash, userId, submittedAt: Date.now(), tier });
-              }
-            : undefined,
-        );
-      } catch (sendError) {
-        // Paid by transfer, sent, and only the wait gave up — usually because
-        // the app was in the background. The payment has most likely landed:
-        // the record stays, the next press confirms it, and saying "failed"
-        // here is what would make the user pay again. Anything else is shown
-        // as it always was; the record lets the next press settle it either way.
-        if (mode === 'transfer' && userOpHash && isReceiptTimeout(sendError)) {
-          track(TRACKING_EVENTS.TIER_SUBSCRIBE_PENDING, {
-            tier,
-            price_usd: priceUsd,
-            payment_mode: mode,
-            user_op_hash: userOpHash,
-          });
+      // Held from the settlement check until this attempt is over, so no other
+      // attempt for the account passes that check before this one's payment is
+      // on record — see `transferUpgradesInFlight`.
+      if (settlesEarlier) {
+        if (transferUpgradesInFlight.has(userId)) {
           throw new TierUpgradeConfirmingError(
-            'Your upgrade payment is still confirming. Try again in a moment to finish — you won’t be charged twice.',
+            'Your upgrade is already under way. Your membership updates as soon as it finishes — there is no need to pay again.',
           );
         }
-        throw sendError;
+        transferUpgradesInFlight.add(userId);
       }
 
-      if (result === USER_CANCELLED_TRANSACTION) {
-        track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
-        return null;
-      }
-
-      if (mode === 'transfer') {
-        const pending = usePendingTierUpgradeStore.getState();
-        pending.landed(result.userOpHash, result.transactionHash);
-        let state: TierMembershipState;
-        try {
-          state = await upgradeTierSubscription({ tier, transactionHash: result.transactionHash });
-        } catch (error) {
-          // Paid, and only telling the backend failed. The record is kept, so
-          // the next press confirms this payment rather than making another —
-          // or, when the backend refused it for good, shows why again.
-          const message = await upgradeRejectionMessage(error);
-          if (message) {
-            pending.rejected(result.userOpHash, Date.now());
-            throw new UserCopyError(message);
+      try {
+        if (settlesEarlier) {
+          const earlier = await settlePendingTierUpgrades(userId);
+          if (earlier.status === 'confirmed') {
+            return { state: earlier.state, transactionHash: undefined, tier, priceUsd, mode };
           }
+          if (earlier.status === 'rejected') {
+            throw new UserCopyError(earlier.message);
+          }
+          if (earlier.status === 'pending') {
+            throw new UserCopyError(
+              'Your last upgrade payment is still confirming. Your membership updates as soon as it does — there is no need to pay again.',
+            );
+          }
+        }
+
+        // There was nothing earlier left to finish, and the caller only asked
+        // to confirm: a new payment is the user's next, deliberate press.
+        //
+        // Checked before the contracts and the price below, which only a new
+        // payment needs: an earlier one is confirmed by its hash alone, and
+        // has to stay confirmable when cash is switched off after it was paid.
+        if (confirmPendingOnly) {
           throw new UserCopyError(
-            'Your payment went through, but your upgrade isn’t confirmed yet. Tap Upgrade again to finish — you won’t be charged twice.',
+            'There is no earlier payment left to confirm. Check your balance and tap again to upgrade.',
           );
         }
-        pending.forget(result.userOpHash);
+
+        if (!contracts.subscriptionModuleAddress) {
+          throw new UserCopyError('Memberships are not available right now.');
+        }
+        const mandateUsd = offerMandateUsd(offer);
+        if (priceUsd === null || mandateUsd === null) {
+          throw new UserCopyError('This tier is not available with an annual fee.');
+        }
+
+        const transactions = buildSubscriptionTransactions({
+          mode,
+          safeAddress: safeAddress as Address,
+          moduleAddress: contracts.subscriptionModuleAddress as Address,
+          moduleEnabled,
+          mandateUsd,
+          chargeUsd: priceUsd,
+          billingTokenAddress: contracts.billingTokenAddress as Address | null,
+          revenueTreasuryAddress: (contracts.revenueTreasuryAddress ?? null) as Address | null,
+        });
+
+        const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+
+        let userOpHash: `0x${string}` | undefined;
+        let result: Awaited<ReturnType<typeof executeTransactions>>;
+        try {
+          result = await executeTransactions(
+            smartAccountClient,
+            transactions,
+            mode === 'transfer'
+              ? 'Failed to upgrade your membership'
+              : 'Failed to start your membership',
+            fuse,
+            // Remembered the moment the bundler accepts it: from here the
+            // payment can land whatever happens to the app, and a retry must
+            // find it. With the Safe and the nonce it was sent with, which are
+            // what later tell an operation that can still land from one that
+            // never will.
+            mode === 'transfer'
+              ? (hash, nonce) => {
+                  userOpHash = hash;
+                  usePendingTierUpgradeStore.getState().remember({
+                    userOpHash: hash,
+                    userId,
+                    submittedAt: Date.now(),
+                    tier,
+                    sender: safeAddress,
+                    nonce: nonce.toString(),
+                  });
+                }
+              : undefined,
+          );
+        } catch (sendError) {
+          // Paid by transfer, sent, and only the wait gave up — usually because
+          // the app was in the background. The payment has most likely landed:
+          // the record stays, the next press confirms it, and saying "failed"
+          // here is what would make the user pay again. Anything else is shown
+          // as it always was; the record lets the next press settle it either
+          // way.
+          if (mode === 'transfer' && userOpHash && isReceiptTimeout(sendError)) {
+            track(TRACKING_EVENTS.TIER_SUBSCRIBE_PENDING, {
+              tier,
+              price_usd: priceUsd,
+              payment_mode: mode,
+              user_op_hash: userOpHash,
+            });
+            throw new TierUpgradeConfirmingError(
+              'Your upgrade payment is still confirming. Try again in a moment to finish — you won’t be charged twice.',
+            );
+          }
+          throw sendError;
+        }
+
+        if (result === USER_CANCELLED_TRANSACTION) {
+          track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
+          return null;
+        }
+
+        if (mode === 'transfer') {
+          const pending = usePendingTierUpgradeStore.getState();
+          pending.landed(result.userOpHash, result.transactionHash);
+          let state: TierMembershipState;
+          try {
+            state = await upgradeTierSubscription({
+              tier,
+              transactionHash: result.transactionHash,
+            });
+          } catch (error) {
+            // Paid, and only telling the backend failed. The record is kept, so
+            // the next press confirms this payment rather than making another —
+            // or, when the backend refused it for good, shows why again.
+            const message = await upgradeRejectionMessage(error);
+            if (message) {
+              pending.rejected(result.userOpHash, Date.now());
+              throw new UserCopyError(message);
+            }
+            throw new UserCopyError(
+              'Your payment went through, but your upgrade isn’t confirmed yet. Tap Upgrade again to finish — you won’t be charged twice.',
+            );
+          }
+          pending.forget(result.userOpHash);
+          return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
+        }
+
+        // The first payment is taken here, server-side, against the mandate
+        // that has just landed. It can fail — most often for a Safe short of
+        // USDC — and when it does the error carries the module's own reason.
+        const state = await confirmTierSubscription({
+          tier,
+          transactionHash: result.transactionHash,
+          ...(funding ? { funding } : {}),
+        });
+
         return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
+      } finally {
+        if (settlesEarlier) transferUpgradesInFlight.delete(userId);
       }
-
-      // The first payment is taken here, server-side, against the mandate that
-      // has just landed. It can fail — most often for a Safe short of USDC —
-      // and when it does the error carries the module's own reason.
-      const state = await confirmTierSubscription({
-        tier,
-        transactionHash: result.transactionHash,
-        ...(funding ? { funding } : {}),
-      });
-
-      return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
     },
     onSuccess: result => {
       if (!result) return;

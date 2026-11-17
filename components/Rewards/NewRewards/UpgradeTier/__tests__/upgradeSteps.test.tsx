@@ -63,7 +63,7 @@ jest.mock('@/lib/wagmi', () => ({ publicClient: jest.fn() }));
 const mockSubscribe = jest.fn();
 jest.mock('@/hooks/useTierMembership', () => ({
   useTierMembership: () => ({ data: mockMembership, isLoading: false }),
-  useTierUpgradeChainState: () => ({ data: mockChain, dataUpdatedAt: mockBalancesReadAt }),
+  useTierUpgradeChainState: () => ({ data: mockChain }),
   useSubscribeToTier: () => ({ subscribe: mockSubscribe, isSubscribing: false, error: null }),
   useLockFuseForTier: () => ({ lockFuse: jest.fn(), isLocking: false, error: null }),
 }));
@@ -143,7 +143,6 @@ const arrivedSwap = {
 
 let mockMembership: TierMembershipState | undefined;
 let mockChain: Record<string, unknown> | undefined;
-let mockBalancesReadAt: number;
 let mockPayment: Record<string, unknown>;
 let mockStore: Record<string, unknown>;
 let root: ReturnType<typeof create>;
@@ -174,7 +173,6 @@ beforeEach(() => {
   mockSubscribe.mockResolvedValue({ state: {} });
   mockMembership = membershipWith();
   mockChain = { usdcAmount: 0, fuse: 0, nativeFuse: 0, wrappedFuse: 0, moduleEnabled: true };
-  mockBalancesReadAt = 0;
   mockPayment = {
     tokens: [],
     token: undefined,
@@ -186,6 +184,7 @@ beforeEach(() => {
     affordable: false,
     fuseCoversFee: false,
     arrivedShortUsd: 0,
+    checkingArrivedBalance: false,
     awaitingConfirm: false,
     funding: { state: 'none' },
     fuseUsdc: 0,
@@ -239,6 +238,68 @@ describe('the offer step', () => {
 
     expect(texts()).toContain('Review upgrade');
     expect(texts()).not.toContain('Top up');
+  });
+
+  /**
+   * Cash was switched off after a transfer upgrade was paid and before it was
+   * confirmed. The money is at the treasury, and the cash route is the only
+   * way this screen confirms it — so it stays, sells nothing, and confirms.
+   */
+  describe('with cash switched off while a payment awaits confirmation', () => {
+    const cashOff = (offer: Partial<TierOffer> = {}) => {
+      mockMembership = {
+        ...membershipWith({ revenueTreasuryAddress: null }),
+        offers: [{ ...ultra, cashAvailable: false, annualFeeUsd: null, ...offer }],
+      } as TierMembershipState;
+      mockPayment = { ...mockPayment, awaitingConfirm: true };
+    };
+
+    it('keeps the cash route, and goes on to the review to confirm', () => {
+      cashOff();
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(texts()).not.toContain('Tier upgrades are not available right now.');
+      expect(texts()).toContain('Review upgrade');
+      expect(mockStore.setRoute).not.toHaveBeenCalled();
+    });
+
+    it('does not move the selection to the lock', () => {
+      cashOff({ lockAvailable: true });
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(mockStore.setRoute).not.toHaveBeenCalled();
+      expect(texts()).toContain('Review upgrade');
+    });
+
+    it('opens on cash when nothing is chosen yet', () => {
+      cashOff({ lockAvailable: true });
+      mockStore.route = null;
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(mockStore.setRoute).toHaveBeenCalledWith('cash');
+      expect(mockStore.setRoute).not.toHaveBeenCalledWith('lock');
+    });
+
+    it('leaves a user who picked the lock on it', () => {
+      cashOff({ lockAvailable: true });
+      mockStore.route = 'lock';
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(mockStore.setRoute).not.toHaveBeenCalled();
+    });
+
+    it('still offers nothing once nothing awaits confirmation', () => {
+      cashOff();
+      mockPayment = { ...mockPayment, awaitingConfirm: false };
+
+      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+
+      expect(texts()).toContain('Tier upgrades are not available right now.');
+    });
   });
 });
 
@@ -298,6 +359,37 @@ describe('the review step', () => {
     render(<UpgradeReviewContent />);
 
     expect(mainButton().props.disabled).toBe(true);
+  });
+
+  /**
+   * Cash switched off since the payment was made: no treasury, no module, no
+   * price. None of them is needed to confirm a payment already made.
+   */
+  it('confirms a payment awaiting confirmation with cash switched off since', async () => {
+    mockMembership = {
+      ...membershipWith({ revenueTreasuryAddress: null, subscriptionModuleAddress: null }),
+      offers: [{ ...ultra, cashAvailable: false, annualFeeUsd: null, firstYearFeeUsd: null }],
+    } as TierMembershipState;
+    mockPayment = { ...mockPayment, awaitingConfirm: true };
+
+    render(<UpgradeReviewContent />);
+    await act(async () => mainButton().props.onPress());
+
+    expect(texts()).not.toContain('not available right now');
+    expect(mockSubscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmPendingOnly: true }),
+    );
+  });
+
+  it('starts no new payment with cash switched off', async () => {
+    mockMembership = membershipWith({ revenueTreasuryAddress: null });
+    mockPayment = { ...mockPayment, affordable: true };
+
+    render(<UpgradeReviewContent />);
+    await act(async () => mainButton().props.onPress());
+
+    expect(mockSubscribe).not.toHaveBeenCalled();
+    expect(texts()).toContain('Upgrading with an annual fee is not available right now.');
   });
 });
 
@@ -385,7 +477,6 @@ describe('the funding status step', () => {
    */
   it('says how short a landed payment left the upgrade, and sends the user to add the rest', () => {
     arrivedShort();
-    mockBalancesReadAt = Number.MAX_SAFE_INTEGER;
 
     render(<UpgradeFundingStatus />);
 
@@ -397,14 +488,51 @@ describe('the funding status step', () => {
     expect(mockSubscribe).not.toHaveBeenCalled();
   });
 
-  /** Until a balance read taken after the landing, the USDC may not be in it yet. */
+  /**
+   * Until a balance read asked for after the landing, the USDC may not be in
+   * it yet. `useCashPayment` holds the shortfall at zero until there is one
+   * (see `resolveCashPayment`), and this screen takes its word: one notion of
+   * a fresh balance, shared with the offer and the review.
+   */
   it('checks the balance before calling a landed payment short', () => {
-    arrivedShort();
-    mockBalancesReadAt = 1;
+    arrivedShort({ fuseUsdc: 0, needUsd: 799, arrivedShortUsd: 0, checkingArrivedBalance: true });
 
     render(<UpgradeFundingStatus />);
 
     expect(texts()).toContain('Checking your balance…');
     expect(texts()).not.toContain('short of the');
+    expect(texts()).not.toContain('Add the rest');
+  });
+
+  /** Cash switched off since the payment was made: Finish still confirms it. */
+  it('confirms an earlier payment with cash switched off since', async () => {
+    mockMembership = membershipWith({ revenueTreasuryAddress: null });
+    mockPayment = {
+      ...mockPayment,
+      funding: { state: 'arrived', swap: arrivedSwap },
+      awaitingConfirm: true,
+    };
+
+    render(<UpgradeFundingStatus />);
+    await act(async () => mainButton().props.onPress());
+
+    expect(mockSubscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmPendingOnly: true }),
+    );
+  });
+
+  it('starts no new payment with cash switched off', async () => {
+    mockMembership = membershipWith({ revenueTreasuryAddress: null });
+    mockPayment = {
+      ...mockPayment,
+      funding: { state: 'arrived', swap: arrivedSwap },
+      fuseCoversFee: true,
+      affordable: true,
+    };
+
+    render(<UpgradeFundingStatus />);
+    await act(async () => mainButton().props.onPress());
+
+    expect(mockSubscribe).not.toHaveBeenCalled();
   });
 });

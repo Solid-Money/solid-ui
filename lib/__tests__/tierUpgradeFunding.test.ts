@@ -390,7 +390,7 @@ describe('resolveCashPayment', () => {
   const BASE_KEY = { chainId: base.id, address: BASE_USDC };
   const arrived = {
     state: 'arrived' as const,
-    swap: swap({ status: 'DONE', substatus: 'COMPLETED' }),
+    swap: swap({ status: 'DONE', substatus: 'COMPLETED', settledAt: 1_500 }),
   };
 
   /** Ultra by transfer: $799 now, and nothing covers what a bridge takes. */
@@ -405,6 +405,8 @@ describe('resolveCashPayment', () => {
       coverPct: 0,
       funding: { state: 'none' },
       balancesLoaded: true,
+      // After `arrived` settled: the balance in hand can include it.
+      usdcReadAt: 2_000,
       paymentMode: 'transfer',
       awaitingConfirm: false,
       ...overrides,
@@ -441,6 +443,71 @@ describe('resolveCashPayment', () => {
       expect(payment.token?.chainId).toBe(fuse.id);
       expect(payment.affordable).toBe(true);
       expect(payment.fuseCoversFee).toBe(true);
+    });
+
+    /**
+     * The bridge has landed, and the balance in hand is from a read asked for
+     * before the app knew — it can have come back after, and still not have the
+     * USDC in it. Read off that, the whole $799 looks missing, and a second
+     * $814.98 bridge would be offered for USDC that is already there.
+     */
+    describe('before a balance read asked for after it landed', () => {
+      it('keeps the arrived payment standing in, and offers nothing to send', () => {
+        const payment = resolve({
+          fuseUsdc: 0,
+          funding: arrived,
+          chosen: BASE_KEY,
+          usdcReadAt: 1_400,
+        });
+
+        expect(payment.checkingArrivedBalance).toBe(true);
+        expect(payment.arrivedShortUsd).toBe(0);
+        // The Base pick is not honoured, so there is no quote to open.
+        expect(payment.token?.chainId).toBe(fuse.id);
+        expect(payment.payingFromFuse).toBe(true);
+        expect(payment.affordable).toBe(false);
+      });
+
+      it('does not open on another chain either', () => {
+        expect(resolve({ fuseUsdc: 0, funding: arrived, usdcReadAt: 1_400 }).token?.chainId).toBe(
+          fuse.id,
+        );
+      });
+
+      it('waits while there is no balance at all', () => {
+        const payment = resolve({
+          fuseUsdc: 0,
+          funding: arrived,
+          balancesLoaded: false,
+          usdcReadAt: undefined,
+        });
+
+        expect(payment.checkingArrivedBalance).toBe(true);
+        expect(payment.arrivedShortUsd).toBe(0);
+      });
+
+      it('says how short it is once a read asked for after it comes back', () => {
+        const payment = resolve({ fuseUsdc: 780, funding: arrived, usdcReadAt: 1_501 });
+
+        expect(payment.checkingArrivedBalance).toBe(false);
+        expect(payment.arrivedShortUsd).toBeCloseTo(19, 6);
+      });
+
+      /** Settled before `settledAt` was kept, so before any read this session took. */
+      it('takes any read for a payment settled with no time on it', () => {
+        const payment = resolve({
+          fuseUsdc: 780,
+          funding: { state: 'arrived', swap: swap({ status: 'DONE', substatus: 'COMPLETED' }) },
+          usdcReadAt: 1,
+        });
+
+        expect(payment.checkingArrivedBalance).toBe(false);
+        expect(payment.arrivedShortUsd).toBeCloseTo(19, 6);
+      });
+
+      it('has nothing to wait for with no payment arrived', () => {
+        expect(resolve({ usdcReadAt: undefined }).checkingArrivedBalance).toBe(false);
+      });
     });
 
     /** A module subscription's arrived payment is still judged with its cover. */

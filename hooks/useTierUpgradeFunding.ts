@@ -94,6 +94,10 @@ export const useCashFundingTokens = ({
  * confirmed. Its USDC has left the Safe, so the balance can no longer vouch
  * for it; a step lets the user press on anyway, and asks `useSubscribeToTier`
  * only to confirm that payment (`confirmPendingOnly`), never to make another.
+ *
+ * A bridged payment that has landed is only measured against a balance read
+ * asked for after it did (`checkingArrivedBalance`), so no step reads the
+ * USDC it brought as still missing and offers to send it again.
  */
 export const useCashPayment = ({
   membership,
@@ -120,6 +124,7 @@ export const useCashPayment = ({
   // Only an upgrade paid by transfer leaves the Safe before it is confirmed.
   const awaitingConfirm = paymentMode === 'transfer' && hasPendingUpgrade;
   const balancesLoaded = chain !== undefined;
+  const usdcReadAt = chain?.readStartedAt;
 
   return useMemo(
     () => ({
@@ -133,6 +138,7 @@ export const useCashPayment = ({
         coverPct,
         funding,
         balancesLoaded,
+        usdcReadAt,
         paymentMode,
         awaitingConfirm,
       }),
@@ -153,6 +159,7 @@ export const useCashPayment = ({
       coverPct,
       funding,
       balancesLoaded,
+      usdcReadAt,
       paymentMode,
       awaitingConfirm,
     ],

@@ -21,6 +21,19 @@ export interface PendingTierUpgrade {
   /** When it was sent, ms since epoch. */
   submittedAt: number;
   tier: RewardsTier;
+  /**
+   * The Safe that sent it, and the EntryPoint nonce it was sent with — a
+   * decimal string, since the record is persisted as JSON and JSON has no
+   * bigint.
+   *
+   * A user operation carries no expiry of ours, so "the bundler has no receipt
+   * for it" never on its own means it cannot still land. Its nonce does: once
+   * the Safe's nonce has moved past this one, nothing sent with it can ever be
+   * included. See `settlePendingTierUpgrades`. Absent on records written before
+   * it was kept; those fall back to the TTL alone, as they always did.
+   */
+  sender?: string;
+  nonce?: string;
   /** Set once the transaction is known to have landed. */
   transactionHash?: string;
   /**

@@ -329,6 +329,7 @@ export const resolveCashPayment = ({
   coverPct,
   funding,
   balancesLoaded,
+  usdcReadAt,
   paymentMode,
   awaitingConfirm,
 }: {
@@ -345,6 +346,11 @@ export const resolveCashPayment = ({
   funding: UpgradeFunding;
   /** Whether the Fuse balance has been read yet. */
   balancesLoaded: boolean;
+  /**
+   * When the read `fuseUsdc` came from was asked for, ms since epoch — the
+   * chain state's `readStartedAt`. Undefined until there is one.
+   */
+  usdcReadAt: number | undefined;
   paymentMode: TierPaymentMode;
   /**
    * An upgrade paid by transfer was sent and is not confirmed yet: the fee has
@@ -354,14 +360,26 @@ export const resolveCashPayment = ({
 }) => {
   const coverUsd = arrivedFundingCoverUsd({ funding, feeUsd, fuseUsdc, coverPct });
   const needUsd = fundingNeedUsd(feeUsd, fuseUsdc);
+  // A bridged payment that has landed, measured against a balance that may not
+  // have it in yet: the read was asked for before the app learned it landed,
+  // however late it answered, or there is no read at all. Until a read asked
+  // for after it comes back, whatever looks missing on Fuse may be that very
+  // payment — "short by the whole fee" off a balance of zero — so the payment
+  // goes on standing in for itself, and nothing is offered to send the "rest".
+  // A swap settled before `settledAt` was kept settled before any read now in
+  // hand.
+  const checkingArrivedBalance =
+    funding.state === 'arrived' &&
+    !(balancesLoaded && usdcReadAt !== undefined && usdcReadAt > (funding.swap.settledAt ?? 0));
   // Nothing covers what a bridge takes off a `transfer` upgrade, so a bridged
   // payment that landed short of the fee — slippage past the headroom, or
   // USDC spent since — stays short. It stops standing in for the payment, and
   // the rest can be sent from another chain, sized to what is still missing.
   // Not while an upgrade is awaiting confirmation: then the gap on Fuse is that
-  // payment, not a shortfall.
+  // payment, not a shortfall. Nor before a balance read that can include it.
   const arrivedShortUsd =
     funding.state === 'arrived' &&
+    !checkingArrivedBalance &&
     paymentMode === 'transfer' &&
     !awaitingConfirm &&
     feeUsd > 0 &&
@@ -434,8 +452,14 @@ export const resolveCashPayment = ({
     fuseCoversFee: feeUsd > 0 && covers(Math.max(0, fuseUsdc) + coverUsd, feeUsd),
     /**
      * What a bridged payment that landed left a `transfer` upgrade short by,
-     * and so what is left to send. Zero in every other case.
+     * and so what is left to send. Zero in every other case — including
+     * while `checkingArrivedBalance`.
      */
     arrivedShortUsd,
+    /**
+     * A bridged payment has landed and no balance read asked for since has
+     * come back: nothing about what it left short can be said yet.
+     */
+    checkingArrivedBalance,
   };
 };

@@ -232,21 +232,26 @@ const UpgradeReviewContent = () => {
         return;
       }
 
-      if (!membership.contracts.subscriptionModuleAddress) {
-        throw new UpgradeBlockedError('Memberships are not available right now.');
-      }
-      // A tier with no price is not sold for cash. The route switch should
-      // never have offered this, so reaching it means the offer changed under
-      // the user between steps — say so rather than charging them nothing.
-      if (firstYearFeeUsd === null) {
-        throw new UpgradeBlockedError(
-          'This tier cannot be bought with an annual fee. Lock FUSE to hold it.',
-        );
-      }
-      // An upgrade paid by transfer needs the treasury and the USDC to build
-      // against; without them there is nothing to sign.
-      if (!canPayCashFor(offer, membership.contracts)) {
-        throw new UpgradeBlockedError('Upgrading with an annual fee is not available right now.');
+      // What a new payment needs. A press that only confirms an earlier one
+      // needs none of it — that payment is confirmed by its own hash — and
+      // has to go through even if cash was switched off after it was paid.
+      if (!cashConfirmOnly) {
+        if (!membership.contracts.subscriptionModuleAddress) {
+          throw new UpgradeBlockedError('Memberships are not available right now.');
+        }
+        // A tier with no price is not sold for cash. The route switch should
+        // never have offered this, so reaching it means the offer changed under
+        // the user between steps — say so rather than charging them nothing.
+        if (firstYearFeeUsd === null) {
+          throw new UpgradeBlockedError(
+            'This tier cannot be bought with an annual fee. Lock FUSE to hold it.',
+          );
+        }
+        // An upgrade paid by transfer needs the treasury and the USDC to build
+        // against; without them there is nothing to sign.
+        if (!canPayCashFor(offer, membership.contracts)) {
+          throw new UpgradeBlockedError('Upgrading with an annual fee is not available right now.');
+        }
       }
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, {
         tier,

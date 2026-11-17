@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { KeyRound } from 'lucide-react-native';
 
@@ -46,9 +46,7 @@ import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
  */
 const UpgradeFundingStatus = () => {
   const { data: membership } = useTierMembership();
-  const { data: chain, dataUpdatedAt: balancesReadAt } = useTierUpgradeChainState(
-    membership?.contracts,
-  );
+  const { data: chain } = useTierUpgradeChainState(membership?.contracts);
   const tier = useTierUpgradeStore(state => state.tier);
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
@@ -70,20 +68,6 @@ const UpgradeFundingStatus = () => {
   useEffect(() => {
     if (swap && activeClientTxId !== swap.clientTxId) setActive(swap.clientTxId);
   }, [swap, activeClientTxId, setActive]);
-
-  // When this screen first saw the payment land. A shortfall is only believed
-  // from a balance read after that: until the poll catches up, the USDC that
-  // just landed is missing from the balance, and "short by the whole fee"
-  // would be the wrong thing to say.
-  const arrivedClientTxId = funding.state === 'arrived' ? funding.swap.clientTxId : undefined;
-  const [arrival, setArrival] = useState<{ clientTxId: string; seenAt: number }>();
-  useEffect(() => {
-    if (arrivedClientTxId && arrival?.clientTxId !== arrivedClientTxId) {
-      setArrival({ clientTxId: arrivedClientTxId, seenAt: Date.now() });
-    }
-  }, [arrivedClientTxId, arrival?.clientTxId]);
-  const balanceReadSinceArrival =
-    !!arrival && arrival.clientTxId === arrivedClientTxId && balancesReadAt > arrival.seenAt;
 
   if (!swap || !tier || !offer || !membership) {
     return (
@@ -110,15 +94,22 @@ const UpgradeFundingStatus = () => {
   // from — whichever token the offer row names.
   const ready = confirmingEarlier || (funding.state === 'arrived' && payment.fuseCoversFee);
   // A transfer upgrade's payment that landed short stays short — nothing
-  // covers its bridge — so the rest has to be sent, not waited for.
-  const shortUsd =
-    funding.state === 'arrived' && balanceReadSinceArrival ? payment.arrivedShortUsd : 0;
+  // covers its bridge — so the rest has to be sent, not waited for. Only said
+  // from a balance read asked for after it landed: until then the USDC that
+  // just arrived may be missing from it, and "short by the whole fee" would be
+  // wrong. `useCashPayment` holds it at zero until there is one, which is
+  // "Checking your balance…" below.
+  const shortUsd = funding.state === 'arrived' ? payment.arrivedShortUsd : 0;
 
   const handleFinish = async () => {
+    // What a new payment needs. Confirming the earlier one needs none of it —
+    // it is confirmed by its own hash — and has to go through even once cash
+    // has been switched off since it was paid.
     if (
-      !membership.contracts.subscriptionModuleAddress ||
-      offerFirstYearFeeUsd(offer) === null ||
-      !canPayCashFor(offer, membership.contracts)
+      !confirmingEarlier &&
+      (!membership.contracts.subscriptionModuleAddress ||
+        offerFirstYearFeeUsd(offer) === null ||
+        !canPayCashFor(offer, membership.contracts))
     ) {
       return;
     }

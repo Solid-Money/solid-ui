@@ -166,7 +166,12 @@ export const executeTransactions = async (
   transactions: any[],
   errorMessage: string,
   chain: Chain,
-  onUserOpHash?: (userOpHash: `0x${string}`) => void,
+  /**
+   * Called the moment the bundler accepts the operation, before any waiting,
+   * with its hash and the EntryPoint nonce it was sent with — the nonce is
+   * what says, later, whether an operation with no receipt can still land.
+   */
+  onUserOpHash?: (userOpHash: `0x${string}`, nonce: bigint) => void,
   onBeforeBroadcast?: () => Promise<void>,
 ): Promise<TransactionResult> => {
   let userOpHash: `0x${string}` | undefined;
@@ -214,7 +219,7 @@ export const executeTransactions = async (
 
     // Call the callback immediately with userOpHash (before waiting for receipt)
     if (onUserOpHash && userOpHash) {
-      onUserOpHash(userOpHash);
+      onUserOpHash(userOpHash, nonce);
     }
 
     // Add breadcrumb with userOpHash

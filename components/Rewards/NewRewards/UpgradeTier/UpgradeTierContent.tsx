@@ -121,11 +121,23 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
   // Settles on a route once the offer is known, and re-settles if the one in
   // hand stops being available — a tier taken off cash sale while the modal is
   // open must not leave a "Cash" tab selected that cannot be completed.
+  //
+  // Except while an upgrade paid by transfer awaits confirmation. Its money is
+  // already at the treasury, and pressing on along the cash route is the only
+  // way this screen confirms it — which needs no treasury, module or price, so
+  // cash being switched off since must not take that route away. It is kept if
+  // selected, and chosen when nothing is yet (the modal opened afresh); a user
+  // who picks the lock instead is left on it.
+  const { awaitingConfirm } = payment;
   useEffect(() => {
+    if (awaitingConfirm && (!route || route === 'cash')) {
+      if (route !== 'cash') setRoute('cash');
+      return;
+    }
     if (routes.length === 0) return;
     if (route && routes.includes(route)) return;
     setRoute(routes[0]);
-  }, [route, routes, setRoute]);
+  }, [route, routes, setRoute, awaitingConfirm]);
 
   useEffect(() => {
     if (tier) track(TRACKING_EVENTS.TIER_UPGRADE_OPENED, { tier });
@@ -137,7 +149,10 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
   // everything. Either way this is the wrong thing to be looking at. A route
   // held over from before is no route at all once it stops being on offer — a
   // "Cash" tab kept after the treasury went would sell what cannot be paid.
-  if (!membership?.enabled || !tier || !offer || !route || !routes.includes(route)) {
+  // Cash with a payment awaiting confirmation is the exception: it sells
+  // nothing, it only confirms what was paid (see the effect above).
+  const routeOnOffer = !!route && (routes.includes(route) || (route === 'cash' && awaitingConfirm));
+  if (!membership?.enabled || !tier || !offer || !routeOnOffer) {
     return (
       <UpgradeUnavailable
         message={

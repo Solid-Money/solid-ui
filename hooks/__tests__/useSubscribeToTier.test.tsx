@@ -126,6 +126,8 @@ const ultraUpgrade: TierOffer = {
 };
 
 const FUNDING = { transactionHash: '0xbridge', fromChainId: 8453 };
+/** The EntryPoint nonce the operation is sent with. */
+const NONCE = 7n;
 
 /** The bundler accepted the operation, then it landed. */
 const lands = () =>
@@ -135,9 +137,9 @@ const lands = () =>
       _calls: unknown,
       _message: string,
       _chain: unknown,
-      onUserOpHash?: (hash: string) => void,
+      onUserOpHash?: (hash: string, nonce: bigint) => void,
     ) => {
-      onUserOpHash?.(HASH);
+      onUserOpHash?.(HASH, NONCE);
       return { transaction: {}, userOpHash: HASH, transactionHash: TX };
     },
   );
@@ -155,9 +157,9 @@ const timesOut = () =>
       _calls: unknown,
       _message: string,
       _chain: unknown,
-      onUserOpHash?: (hash: string) => void,
+      onUserOpHash?: (hash: string, nonce: bigint) => void,
     ) => {
-      onUserOpHash?.(HASH);
+      onUserOpHash?.(HASH, NONCE);
       throw receiptTimeout();
     },
   );
@@ -386,6 +388,139 @@ describe('an upgrade paid by transfer', () => {
       ).rejects.toThrow(UserCopyError);
       expect(mockExecuteTransactions).not.toHaveBeenCalled();
     });
+
+    /**
+     * Cash switched off after the payment was made: no module, no treasury,
+     * no price. The payment is at the treasury all the same, and is confirmed
+     * by its own hash.
+     */
+    it('finishes the earlier payment with cash switched off since', async () => {
+      mockSettle.mockResolvedValue({ status: 'confirmed', state: STATE });
+
+      await expect(
+        subscribe({
+          offer: {
+            ...ultraUpgrade,
+            cashAvailable: false,
+            annualFeeUsd: null,
+            firstYearFeeUsd: null,
+          },
+          contracts: {
+            ...contracts,
+            subscriptionModuleAddress: null,
+            revenueTreasuryAddress: null,
+          },
+          moduleEnabled: true,
+          confirmPendingOnly: true,
+        }),
+      ).resolves.toEqual(expect.objectContaining({ state: STATE, mode: 'transfer' }));
+      expect(mockSettle).toHaveBeenCalledWith('user-1');
+      expect(mockExecuteTransactions).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The pending record only exists once the bundler has accepted the payment.
+   * Until then — settlement, passkey prompt, send — a second attempt for the
+   * same account, from this step or another step's own copy of the hook, must
+   * not pass the same "nothing earlier" check and pay again.
+   */
+  describe('a second attempt while one is under way', () => {
+    /**
+     * Holds the next attempt at the passkey prompt until `release` is called.
+     * `signing` resolves once it is there.
+     */
+    const heldAtSigning = () => {
+      let release!: () => void;
+      let reached!: () => void;
+      const released = new Promise<void>(resolve => (release = resolve));
+      const signing = new Promise<void>(resolve => (reached = resolve));
+      mockExecuteTransactions.mockImplementationOnce(
+        async (
+          _client: unknown,
+          _calls: unknown,
+          _message: string,
+          _chain: unknown,
+          onUserOpHash?: (hash: string, nonce: bigint) => void,
+        ) => {
+          reached();
+          await released;
+          onUserOpHash?.(HASH, NONCE);
+          return { transaction: {}, userOpHash: HASH, transactionHash: TX };
+        },
+      );
+      return { release: () => release(), signing };
+    };
+
+    it('is refused, and signs nothing, until the first is over', async () => {
+      const { release, signing } = heldAtSigning();
+
+      const first = subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true });
+      await signing;
+      // Each call renders its own copy of the hook.
+      const second = subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true });
+      const failure = await second.catch((error: Error) => error);
+      expect(failure).toBeInstanceOf(UserCopyError);
+      expect((failure as Error).message).toMatch(/already under way/);
+      expect((failure as Error).message).toMatch(/no need to pay again/);
+      // Not a failed upgrade, and not reported as one.
+      mockOnError!(failure as Error);
+      expect(tracked()).not.toContain('tier_subscribe_failed');
+
+      release();
+      await expect(first).resolves.toEqual(expect.objectContaining({ mode: 'transfer' }));
+      expect(mockExecuteTransactions).toHaveBeenCalledTimes(1);
+      expect(mockSettle).toHaveBeenCalledTimes(1);
+
+      // Released once the first is over: the next attempt goes ahead.
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).resolves.toEqual(expect.objectContaining({ mode: 'transfer' }));
+      expect(mockExecuteTransactions).toHaveBeenCalledTimes(2);
+    });
+
+    it('covers a confirm-only press too', async () => {
+      const { release, signing } = heldAtSigning();
+
+      const first = subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true });
+      await signing;
+      await expect(
+        subscribe({
+          offer: ultraUpgrade,
+          contracts,
+          moduleEnabled: true,
+          confirmPendingOnly: true,
+        }),
+      ).rejects.toThrow(/already under way/);
+
+      release();
+      await first;
+      expect(mockSettle).toHaveBeenCalledTimes(1);
+    });
+
+    it('is released when the first attempt fails', async () => {
+      mockSettle.mockResolvedValueOnce({ status: 'pending' });
+
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).rejects.toThrow('no need to pay again');
+      await expect(
+        subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true }),
+      ).resolves.toEqual(expect.objectContaining({ mode: 'transfer' }));
+    });
+
+    it('leaves a module subscription alone', async () => {
+      const { release, signing } = heldAtSigning();
+
+      const first = subscribe({ offer: ultraUpgrade, contracts, moduleEnabled: true });
+      await signing;
+      await expect(
+        subscribe({ offer: primeSale, contracts, moduleEnabled: true }),
+      ).resolves.toEqual(expect.objectContaining({ mode: 'module' }));
+
+      release();
+      await first;
+    });
   });
 
   /**
@@ -407,8 +542,15 @@ describe('an upgrade paid by transfer', () => {
       expect(failure).toBeInstanceOf(UserCopyError);
       expect((failure as Error).message).toMatch(/still confirming/);
       expect((failure as Error).message).toMatch(/won’t be charged twice/);
+      // With the Safe and the nonce it was sent with: what later says whether
+      // an operation with no receipt can still land.
       expect(stored()).toEqual([
-        expect.objectContaining({ userOpHash: HASH, tier: RewardsTier.ULTRA }),
+        expect.objectContaining({
+          userOpHash: HASH,
+          tier: RewardsTier.ULTRA,
+          sender: SAFE,
+          nonce: '7',
+        }),
       ]);
       expect(stored()[0].transactionHash).toBeUndefined();
       expect(mockUpgrade).not.toHaveBeenCalled();
