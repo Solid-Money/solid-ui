@@ -1,5 +1,13 @@
 import { isHigherTier } from '@/lib/rewardsUpgrade';
-import { RewardsTier, TierMembershipState, TierOffer, TierSubscriptionStatus } from '@/lib/types';
+import { getTierDisplayName } from '@/lib/tierNames';
+import {
+  RewardsTier,
+  TierMembershipContracts,
+  TierMembershipState,
+  TierOffer,
+  TierPaymentMode,
+  TierSubscriptionStatus,
+} from '@/lib/types';
 
 /** soFUSE shares and the accountant rate are both 18-decimal. */
 const SHARE_DECIMALS = 18n;
@@ -7,6 +15,79 @@ const ONE_SHARE = 10n ** SHARE_DECIMALS;
 
 /** The two routes to a tier. */
 export type TierUpgradeRoute = 'cash' | 'lock';
+
+/**
+ * The payment modes this build can complete, beyond the module charge every
+ * build supports — sent as `?paymentModes=` when the membership is fetched.
+ *
+ * An opt-in rather than something the backend assumes: builds already in
+ * users' hands cannot pay a `transfer` upgrade, so the backend only offers one
+ * — and with it Ultra for cash — to a client that says it can. Part of the
+ * membership's query key too, so a response fetched without it is never read
+ * as one fetched with it.
+ */
+export const TIER_MEMBERSHIP_PAYMENT_MODES = 'transfer';
+
+/**
+ * How an offer's first year is paid. An older backend sends no mode, and only
+ * ever charged through the module.
+ */
+export const offerPaymentMode = (offer: TierOffer): TierPaymentMode =>
+  offer.paymentMode === 'transfer' ? 'transfer' : 'module';
+
+/**
+ * What the first year costs right now: the sale price while a sale runs, the
+ * annual fee otherwise. Null when the tier is not sold for cash.
+ *
+ * This is the amount that is charged — and so the amount every balance check
+ * is made against — whichever way it is paid.
+ */
+export const offerFirstYearFeeUsd = (offer: TierOffer | undefined): number | null => {
+  if (!offer || offer.annualFeeUsd === null) return null;
+  const firstYear = offer.firstYearFeeUsd;
+  return typeof firstYear === 'number' && Number.isFinite(firstYear) && firstYear > 0
+    ? firstYear
+    : offer.annualFeeUsd;
+};
+
+/**
+ * The per-period cap the mandate is signed at: the annual fee the membership
+ * renews at, never a first-year sale price. A mandate signed at $799 would
+ * refuse the $999 renewal a year later.
+ */
+export const offerMandateUsd = (offer: TierOffer): number | null => {
+  const mandate = offer.mandateUsd;
+  return typeof mandate === 'number' && Number.isFinite(mandate) && mandate > 0
+    ? mandate
+    : offer.annualFeeUsd;
+};
+
+/** Whether the first year is on sale: it costs less than the renewals will. */
+export const isOfferOnSale = (offer: TierOffer | undefined): boolean => {
+  const firstYear = offerFirstYearFeeUsd(offer);
+  const annual = offer?.annualFeeUsd ?? null;
+  // Compared in cents, so a price that differs only in float noise is no sale.
+  return (
+    firstYear !== null && annual !== null && Math.round(firstYear * 100) < Math.round(annual * 100)
+  );
+};
+
+/**
+ * Whether the cash route can actually be completed by this build.
+ *
+ * A `transfer` upgrade pays the treasury directly, so without both the USDC
+ * and the treasury address there is nothing to build it against — and
+ * offering a "Cash" tab that cannot be signed is worse than not offering it.
+ */
+export const canPayCashFor = (
+  offer: TierOffer,
+  contracts:
+    | Pick<TierMembershipContracts, 'billingTokenAddress' | 'revenueTreasuryAddress'>
+    | undefined,
+): boolean =>
+  offer.cashAvailable &&
+  (offerPaymentMode(offer) !== 'transfer' ||
+    (!!contracts?.billingTokenAddress && !!contracts?.revenueTreasuryAddress));
 
 /**
  * An amount of FUSE as wei, without going through a float multiplication.
@@ -94,12 +175,21 @@ export const fuseForShares = (shares: bigint, rate: bigint): number => {
 export const remainingFuseForTier = (offer: TierOffer, lockedFuse: number): number =>
   Math.max(0, offer.lockFuse - Math.max(0, lockedFuse));
 
-/** The routes a tier can actually be bought by right now, cheapest intent first. */
-export const availableRoutes = (offer: TierOffer | undefined): TierUpgradeRoute[] => {
+/**
+ * The routes a tier can actually be bought by right now, cheapest intent first.
+ *
+ * Pass the membership's contracts wherever the route will be acted on: a
+ * `transfer` upgrade needs addresses the offer alone does not carry, and
+ * without them the cash route is dropped rather than offered and refused.
+ */
+export const availableRoutes = (
+  offer: TierOffer | undefined,
+  contracts?: Pick<TierMembershipContracts, 'billingTokenAddress' | 'revenueTreasuryAddress'>,
+): TierUpgradeRoute[] => {
   if (!offer) return [];
 
   const routes: TierUpgradeRoute[] = [];
-  if (offer.cashAvailable) routes.push('cash');
+  if (canPayCashFor(offer, contracts)) routes.push('cash');
   if (offer.lockAvailable) routes.push('lock');
 
   return routes;
@@ -144,12 +234,12 @@ export const canAffordUpgrade = ({
   availableFuse: number;
   /** USDC the Safe holds. */
   availableUsdc: number;
-}): boolean =>
-  route === 'cash'
-    ? offer.annualFeeUsd !== null &&
-      offer.annualFeeUsd > 0 &&
-      covers(availableUsdc, offer.annualFeeUsd)
-    : covers(availableFuse, remainingFuseForTier(offer, lockedFuse));
+}): boolean => {
+  if (route !== 'cash') return covers(availableFuse, remainingFuseForTier(offer, lockedFuse));
+  // The first year is what is charged now — the sale price during a sale.
+  const feeUsd = offerFirstYearFeeUsd(offer);
+  return feeUsd !== null && feeUsd > 0 && covers(availableUsdc, feeUsd);
+};
 
 /** The offer for one tier, or undefined when it is not sold. */
 export const findOffer = (
@@ -214,7 +304,12 @@ export const membershipDateLabel = (
     return { label: 'Ends on', date: subscription.currentPeriodEnd };
   }
 
-  if (subscription.status === TierSubscriptionStatus.EXPIRED) return null;
+  if (
+    subscription.status === TierSubscriptionStatus.EXPIRED ||
+    subscription.status === TierSubscriptionStatus.REPLACED
+  ) {
+    return null;
+  }
 
   return { label: 'Renews on', date: subscription.nextChargeAt ?? subscription.currentPeriodEnd };
 };
@@ -286,6 +381,78 @@ export const formatUsd = (amount: number | null | undefined): string =>
 
 /** A USDC balance, rounded down to the cent — see `formatFuseHeld`. */
 export const formatUsdHeld = (amount: number): string => formatUsd(Math.floor(amount * 100) / 100);
+
+/** A price in the compact form running copy uses: "$999", "$149.5". */
+export const formatPriceUsd = (amount: number): string =>
+  `$${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+
+/**
+ * An offer's price as one string, for places that cannot draw a strikethrough:
+ * "$799/year (was $999)" during a sale, "$999/year" otherwise, and nothing for
+ * a tier that is not sold for cash. Where a component can be drawn, `TierPrice`
+ * strikes the annual fee through instead.
+ */
+export const formatAnnualPrice = (offer: TierOffer | undefined): string => {
+  const firstYear = offerFirstYearFeeUsd(offer);
+  return offer && firstYear !== null ? formatYearlyPrice(firstYear, offer.annualFeeUsd) : '';
+};
+
+/**
+ * `formatAnnualPrice` from the two figures, for a caller that holds them
+ * rather than the offer: "$799/year (was $999)" when the annual fee is higher
+ * than the first year, "$999/year" otherwise.
+ */
+export const formatYearlyPrice = (firstYearUsd: number, annualUsd?: number | null): string => {
+  const price = `${formatPriceUsd(firstYearUsd)}/year`;
+  return annualUsd !== null &&
+    annualUsd !== undefined &&
+    Math.round(firstYearUsd * 100) < Math.round(annualUsd * 100)
+    ? `${price} (was ${formatPriceUsd(annualUsd)})`
+    : price;
+};
+
+/**
+ * What the membership costs after today: "First year $799, then $999/year"
+ * while a sale runs, "Renews at $999/year" otherwise.
+ *
+ * Said wherever a sale price is, because the discount is the first year's
+ * only — the mandate is signed at the annual fee, and that is what renews.
+ */
+export const formatRenewalTerms = (offer: TierOffer | undefined): string => {
+  const firstYear = offerFirstYearFeeUsd(offer);
+  if (!offer || firstYear === null || offer.annualFeeUsd === null) return '';
+
+  return isOfferOnSale(offer)
+    ? `First year ${formatPriceUsd(firstYear)}, then ${formatPriceUsd(offer.annualFeeUsd)}/year`
+    : formatRenewsAt(offer);
+};
+
+/** "Renews at $999/year" — the annual fee, whatever the first year costs. */
+export const formatRenewsAt = (offer: TierOffer | undefined): string =>
+  offer && offer.annualFeeUsd !== null
+    ? `Renews at ${formatPriceUsd(offer.annualFeeUsd)}/year`
+    : '';
+
+/** "Offer ends Nov 30, 2026" while a sale with an end date runs; otherwise nothing. */
+export const formatSaleEnds = (offer: TierOffer | undefined): string => {
+  if (!offer || !isOfferOnSale(offer)) return '';
+  const day = formatMembershipDay(offer.saleEndsAt);
+  return day ? `Offer ends ${day}` : '';
+};
+
+/**
+ * What buying this tier does to the membership the user already pays for, or
+ * nothing when it replaces none: the old one ends now, the new one runs a full
+ * year from today, and the months left on the old one are not refunded.
+ */
+export const formatReplacementNotice = (offer: TierOffer | undefined): string => {
+  const replaced = offer?.replacesSubscription;
+  if (!offer || !replaced) return '';
+
+  const from = getTierDisplayName(replaced.tier);
+  const to = getTierDisplayName(offer.tier);
+  return `Your ${from} membership ends today and ${to} starts now for 12 months. The time left on ${from} isn’t refunded.`;
+};
 
 /** A lock term in the words the design uses: "12 months". */
 export const formatLockDuration = (days: number): string => {

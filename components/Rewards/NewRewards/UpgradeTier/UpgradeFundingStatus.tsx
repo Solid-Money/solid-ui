@@ -14,7 +14,13 @@ import {
 import { markUpgradeFundingSpent, useCashPayment } from '@/hooks/useTierUpgradeFunding';
 import { track } from '@/lib/analytics';
 import { getTierDisplayName } from '@/lib/tierNames';
-import { findOffer, isTierOnTrial } from '@/lib/tierUpgrade';
+import {
+  canPayCashFor,
+  findOffer,
+  isTierOnTrial,
+  offerFirstYearFeeUsd,
+  offerPaymentMode,
+} from '@/lib/tierUpgrade';
 import { useLifiSwapStore } from '@/store/lifiSwapStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
@@ -31,6 +37,11 @@ import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
  * Closing is always safe. The swap keeps being tracked, and the offer step
  * picks the arrived USDC back up — with the bridge's cost still covered — the
  * next time the upgrade is opened.
+ *
+ * The second signature is whatever the offer is paid by: a mandate the backend
+ * then charges, or — for an upgrade from a running membership — the transfer
+ * batch and the upgrade endpoint. `useSubscribeToTier` reads that off the
+ * offer, so this screen cannot start an upgrade the module would refuse.
  */
 const UpgradeFundingStatus = () => {
   const { data: membership } = useTierMembership();
@@ -39,8 +50,10 @@ const UpgradeFundingStatus = () => {
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
   const offer = tier ? findOffer(membership, tier) : undefined;
-  const feeUsd = offer?.annualFeeUsd ?? 0;
-  const payment = useCashPayment({ membership, chain, feeUsd });
+  // The first year is what is charged now, and what has to have landed.
+  const feeUsd = offerFirstYearFeeUsd(offer) ?? 0;
+  const paymentMode = offer ? offerPaymentMode(offer) : undefined;
+  const payment = useCashPayment({ membership, chain, feeUsd, paymentMode });
   const { funding } = payment;
   const { subscribe, isSubscribing, error } = useSubscribeToTier();
   const activeClientTxId = useLifiSwapStore(state => state.activeClientTxId);
@@ -73,16 +86,24 @@ const UpgradeFundingStatus = () => {
   const ready = funding.state === 'arrived' && payment.affordable;
 
   const handleFinish = async () => {
-    if (!membership.contracts.subscriptionModuleAddress || offer.annualFeeUsd === null) return;
+    if (
+      !membership.contracts.subscriptionModuleAddress ||
+      offerFirstYearFeeUsd(offer) === null ||
+      !canPayCashFor(offer, membership.contracts)
+    ) {
+      return;
+    }
     track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, {
       tier,
-      price_usd: offer.annualFeeUsd,
+      price_usd: feeUsd,
+      payment_mode: paymentMode,
       funded_from_chain_id: swap.fromChainId,
     });
+    // The bridged transfer is passed either way; the hook claims the bridge
+    // cover with it only for a module subscription.
     const result = await subscribe({
-      tier,
-      priceUsd: offer.annualFeeUsd,
-      moduleAddress: membership.contracts.subscriptionModuleAddress,
+      offer,
+      contracts: membership.contracts,
       moduleEnabled: chain?.moduleEnabled ?? false,
       funding: { transactionHash: swap.txHash, fromChainId: swap.fromChainId },
     }).catch(() => null);

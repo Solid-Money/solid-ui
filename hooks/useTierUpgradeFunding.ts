@@ -18,11 +18,12 @@ import {
   defaultCashToken,
   fundingNeedUsd,
   fundingSendAmount,
+  fundingSendUsd,
   isBillingToken,
   latestUpgradeFunding,
   type UpgradeFunding,
 } from '@/lib/tierUpgradeFunding';
-import { TierMembershipState, TokenBalance, TokenType } from '@/lib/types';
+import { TierMembershipState, TierPaymentMode, TokenBalance, TokenType } from '@/lib/types';
 import { LifiSwapQuote } from '@/lib/types/lifi-swap';
 import { withRefreshToken } from '@/lib/utils';
 import { useLifiSwapStore } from '@/store/lifiSwapStore';
@@ -88,15 +89,22 @@ export const useCashFundingTokens = ({
  * one (see `defaultCashToken`). `payingFromFuse` is the one-signature path:
  * USDC already on Fuse, including USDC an earlier bridged payment brought in.
  * Anything else is swapped to Fuse first.
+ *
+ * `feeUsd` is what the first year costs now — `offerFirstYearFeeUsd` — since
+ * that is the amount the balance has to cover. A `transfer` upgrade has no
+ * bridge-fee cover: the Safe pays the whole fee itself, so nothing a bridge
+ * took can be absorbed, and the payment is judged with the cover at zero.
  */
 export const useCashPayment = ({
   membership,
   chain,
   feeUsd,
+  paymentMode = 'module',
 }: {
   membership: TierMembershipState | undefined;
   chain: TierUpgradeChainState | undefined;
   feeUsd: number;
+  paymentMode?: TierPaymentMode;
 }) => {
   const funding = useUpgradeFunding();
   const chosen = useTierUpgradeStore(state => state.cashToken);
@@ -106,7 +114,7 @@ export const useCashPayment = ({
     usdcRaw: chain?.usdc,
   });
   const fuseUsdc = chain?.usdcAmount ?? 0;
-  const coverPct = membership?.bridgeFeeCoverPct ?? 0;
+  const coverPct = paymentMode === 'transfer' ? 0 : (membership?.bridgeFeeCoverPct ?? 0);
 
   return useMemo(() => {
     const coverUsd = arrivedFundingCoverUsd({ funding, feeUsd, fuseUsdc, coverPct });
@@ -151,8 +159,10 @@ export const useCashPayment = ({
       tokens,
       token,
       payingFromFuse,
-      /** What is still missing on Fuse — what a bridged payment sends. */
+      /** What is still missing on Fuse. */
       needUsd,
+      /** What a bridged payment sends for it — see `fundingSendUsd`. */
+      sendUsd: fundingSendUsd(needUsd, coverPct),
       /** What an arrived bridged payment earns off the first charge. */
       coverUsd,
       coverPct,

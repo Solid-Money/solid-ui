@@ -25,17 +25,25 @@ import {
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
   canAffordUpgrade,
+  canPayCashFor,
   findOffer,
   formatFuse,
   formatLockDuration,
+  formatRenewalTerms,
+  formatSaleEnds,
   formatUsd,
+  isOfferOnSale,
   isTierOnTrial,
+  offerFirstYearFeeUsd,
+  offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import BridgedCashReview from './BridgedCashReview';
 import TierDetailRow from './TierDetailRow';
+import TierPrice from './TierPrice';
+import TierReplacementNotice from './TierReplacementNotice';
 
 /** A check on this screen refused the upgrade; its message is already user copy. */
 class UpgradeBlockedError extends Error {}
@@ -65,7 +73,16 @@ const UpgradeReviewContent = () => {
   const offer = tier ? findOffer(membership, tier) : undefined;
   // A tier a trial is lending is being kept, not gained — see `isTierOnTrial`.
   const keeping = tier ? isTierOnTrial(membership, tier) : false;
-  const payment = useCashPayment({ membership, chain, feeUsd: offer?.annualFeeUsd ?? 0 });
+  // What the first year costs now — the sale price during a sale — is what is
+  // charged, and so what every balance check below is against.
+  const firstYearFeeUsd = offerFirstYearFeeUsd(offer);
+  const paymentMode = offer ? offerPaymentMode(offer) : undefined;
+  const payment = useCashPayment({
+    membership,
+    chain,
+    feeUsd: firstYearFeeUsd ?? 0,
+    paymentMode,
+  });
 
   if (isLoading) return <Loading />;
 
@@ -87,8 +104,8 @@ const UpgradeReviewContent = () => {
 
   // Paying from another chain is its own review: a quote, a bridge and a
   // second signature once the USDC lands.
-  if (route === 'cash' && !payment.payingFromFuse && offer.annualFeeUsd !== null) {
-    return <BridgedCashReview tier={tier} feeUsd={offer.annualFeeUsd} payment={payment} />;
+  if (route === 'cash' && !payment.payingFromFuse && firstYearFeeUsd !== null) {
+    return <BridgedCashReview offer={offer} feeUsd={firstYearFeeUsd} payment={payment} />;
   }
 
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
@@ -208,28 +225,40 @@ const UpgradeReviewContent = () => {
       // A tier with no price is not sold for cash. The route switch should
       // never have offered this, so reaching it means the offer changed under
       // the user between steps — say so rather than charging them nothing.
-      if (offer.annualFeeUsd === null) {
+      if (firstYearFeeUsd === null) {
         throw new UpgradeBlockedError(
           'This tier cannot be bought with an annual fee. Lock FUSE to hold it.',
         );
       }
-      track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, { tier, price_usd: offer.annualFeeUsd });
+      // An upgrade paid by transfer needs the treasury and the USDC to build
+      // against; without them there is nothing to sign.
+      if (!canPayCashFor(offer, membership.contracts)) {
+        throw new UpgradeBlockedError('Upgrading with an annual fee is not available right now.');
+      }
+      track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, {
+        tier,
+        price_usd: firstYearFeeUsd,
+        payment_mode: paymentMode,
+      });
 
       const arrived = payment.funding.state === 'arrived' ? payment.funding.swap : undefined;
+      // The hook reads the payment mode off the offer, so a `transfer` upgrade
+      // is paid and reported as one whichever screen starts it.
       const result = await subscribe({
-        tier,
-        priceUsd: offer.annualFeeUsd,
-        moduleAddress: membership.contracts.subscriptionModuleAddress,
+        offer,
+        contracts: membership.contracts,
         moduleEnabled: chain?.moduleEnabled ?? false,
         // The bridged payment that brought this USDC in, so the backend can
         // cover what the bridge took. Harmless when the balance covers the fee
-        // without it: the backend only looks when the Safe is short.
+        // without it: the backend only looks when the Safe is short. An
+        // upgrade by transfer has no cover, and the hook does not send it.
         ...(arrived
           ? { funding: { transactionHash: arrived.txHash, fromChainId: arrived.fromChainId } }
           : {}),
       });
 
       if (!result) return;
+      // Spent either way: the USDC it brought in has paid for this membership.
       if (arrived) markUpgradeFundingSpent(arrived.clientTxId);
       close();
     } catch (error) {
@@ -274,7 +303,13 @@ const UpgradeReviewContent = () => {
           </>
         ) : (
           <>
-            <TierDetailRow label="Amount" value={formatUsd(offer.annualFeeUsd)} withDivider />
+            <TierDetailRow label="Amount" withDivider>
+              <TierPrice
+                priceUsd={firstYearFeeUsd}
+                listPriceUsd={offer.annualFeeUsd}
+                secondaryValue={formatSaleEnds(offer) || undefined}
+              />
+            </TierDetailRow>
             {/* A bridged payment that landed short: what the bridge took comes
                 off the first charge, and the user should see that it did. */}
             {payment.coverUsd > 0 ? (
@@ -292,6 +327,8 @@ const UpgradeReviewContent = () => {
         )}
       </View>
 
+      {route === 'cash' ? <TierReplacementNotice offer={offer} /> : null}
+
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'lock'
           ? `${
@@ -301,7 +338,13 @@ const UpgradeReviewContent = () => {
             } It unlocks automatically ${formatLockDuration(
               membership.lock.durationDays,
             )} from now, and keeps earning until then.`
-          : 'Your membership renews once a year. Cancel any time — you keep the tier to the end of the period you have paid for.'}
+          : // The discount is the first year's only: the mandate is signed at
+            // the annual fee, and that is what renews. Said before the button.
+            `${
+              isOfferOnSale(offer)
+                ? `${formatRenewalTerms(offer)}.`
+                : 'Your membership renews once a year.'
+            } Cancel any time — you keep the tier to the end of the period you have paid for.`}
       </Text>
 
       {message ? (

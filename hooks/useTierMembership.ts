@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Address, encodeFunctionData, erc20Abi, formatUnits } from 'viem';
+import { Address, erc20Abi, formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
-import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidSubscriptionModule_ABI } from '@/lib/abis/SolidSubscriptionModule';
 import { track } from '@/lib/analytics';
 import {
@@ -14,6 +13,7 @@ import {
   confirmTierSubscription,
   fetchTierMembership,
   resumeTierSubscription,
+  upgradeTierSubscription,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { getUserErrorMessage, sanitizeTechnicalMessage, UserCopyError } from '@/lib/errors';
@@ -24,11 +24,23 @@ import {
   reconcilePendingTierLocks,
   releasePendingTierLock,
 } from '@/lib/pendingTierLocks';
+import { settlePendingTierUpgrades } from '@/lib/pendingTierUpgrades';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
-import { RewardsTier, TierMembershipState } from '@/lib/types';
+import {
+  BILLING_DECIMALS,
+  buildSubscriptionTransactions,
+} from '@/lib/tierSubscriptionTransactions';
+import {
+  offerFirstYearFeeUsd,
+  offerMandateUsd,
+  offerPaymentMode,
+  TIER_MEMBERSHIP_PAYMENT_MODES,
+} from '@/lib/tierUpgrade';
+import { RewardsTier, TierMembershipContracts, TierMembershipState, TierOffer } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePendingTierLockStore';
+import { usePendingTierUpgradeStore } from '@/store/usePendingTierUpgradeStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -49,10 +61,6 @@ const TIER_UPGRADE_BALANCES_QUERY_KEY = 'tierUpgradeBalances';
 
 /** soFUSE shares, the accountant rate and the share token all use 18 decimals. */
 const SHARE_DECIMALS = 18;
-/** USDC, and therefore every amount the subscription module moves. */
-const BILLING_DECIMALS = 6;
-/** The billing period a mandate is signed for. */
-const YEAR_SECONDS = 365n * 24n * 60n * 60n;
 
 /** What the upgrade screens need from the chain, read fresh at the moment of use. */
 export interface TierUpgradeChainState {
@@ -88,7 +96,10 @@ export const useTierMembership = () => {
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
 
   return useQuery<TierMembershipState>({
-    queryKey: [TIER_MEMBERSHIP_QUERY_KEY, selectedUserId],
+    // The payment modes asked for are part of the answer — the backend offers
+    // Ultra for cash only to a client that asked for `transfer` — so they are
+    // part of the key, and a payload fetched without them is never read as one.
+    queryKey: [TIER_MEMBERSHIP_QUERY_KEY, selectedUserId, TIER_MEMBERSHIP_PAYMENT_MODES],
     // Wrapped like the other session calls: an expired token is refreshed rather
     // than leaving the portfolio waiting on React Query's retries.
     queryFn: () => withRefreshToken(fetchTierMembership),
@@ -469,16 +480,26 @@ export const useLockFuseForTier = () => {
 };
 
 /**
- * Buy a tier with the annual fee.
+ * Buy a tier with the annual fee, the way the offer says it is paid.
  *
- * One user operation again: enable the module on the Safe, then write the
- * mandate. Batching is what makes the permission and its bounds a single
- * decision — a Safe cannot end up with the module enabled and no mandate, which
- * would be a standing permission with nothing shaping it.
+ * One user operation either way. For `module` — a first membership — that is
+ * enable the module on the Safe, then write the mandate, and the backend takes
+ * the first year through the module once it lands. Batching is what makes the
+ * permission and its bounds a single decision — a Safe cannot end up with the
+ * module enabled and no mandate, which would be a standing permission with
+ * nothing shaping it.
  *
- * The mandate is set to exactly the price. A cap with headroom in it would
- * survive a price rise without asking, and asking is the point: a subscription
- * whose price goes up is a new agreement, and the user should sign it.
+ * For `transfer` — an upgrade from a running membership, whose period has
+ * already had its one module charge — the Safe pays the first year to the
+ * treasury in the same batch, and the upgrade endpoint is told instead of the
+ * confirm one. The two are never mixed: a `transfer` offer confirmed as a
+ * subscription would ask the module for a charge it will refuse.
+ *
+ * The mandate is set to exactly the annual fee — the renewal price, not a
+ * first-year sale price. A cap with headroom in it would survive a price rise
+ * without asking, and asking is the point: a subscription whose price goes up
+ * is a new agreement, and the user should sign it. See
+ * `buildSubscriptionTransactions` for the calls.
  */
 export const useSubscribeToTier = () => {
   const { user, safeAA } = useUser();
@@ -487,69 +508,106 @@ export const useSubscribeToTier = () => {
 
   const mutation = useMutation({
     mutationFn: async ({
-      tier,
-      priceUsd,
-      moduleAddress,
+      offer,
+      contracts,
       moduleEnabled,
       funding,
     }: {
-      tier: RewardsTier;
-      priceUsd: number;
-      moduleAddress: string;
+      /** The offer being bought, exactly as the screen priced it. */
+      offer: TierOffer;
+      contracts: TierMembershipContracts;
       /** Whether the Safe has already enabled the module. */
       moduleEnabled: boolean;
       /**
        * The LI.FI swap that brought the USDC in, when the payment was bridged
        * from another chain. The backend reads it back and lets the first
        * charge absorb the bridge's cost. The caller marks it spent once this
-       * resolves — see `markUpgradeFundingSpent`.
+       * resolves — see `markUpgradeFundingSpent`. Not sent for a `transfer`
+       * upgrade, which has no bridge-fee cover.
        */
       funding?: { transactionHash: string; fromChainId: number };
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
+      if (!contracts.subscriptionModuleAddress) {
+        throw new UserCopyError('Memberships are not available right now.');
+      }
 
-      // Rounded to whole cents before scaling, so a price stored as a decimal
-      // cannot become a mandate a fraction under what will be charged.
-      const mandate = BigInt(Math.round(priceUsd * 100)) * 10n ** BigInt(BILLING_DECIMALS - 2);
-      if (mandate <= 0n) throw new UserCopyError('This tier is not available with an annual fee.');
+      const { tier } = offer;
+      const mode = offerPaymentMode(offer);
+      const priceUsd = offerFirstYearFeeUsd(offer);
+      const mandateUsd = offerMandateUsd(offer);
+      if (priceUsd === null || mandateUsd === null) {
+        throw new UserCopyError('This tier is not available with an annual fee.');
+      }
+      const userId = user.userId;
+
+      // A transfer pays the treasury from the Safe, so an earlier one that was
+      // sent and never confirmed is settled before anything new is signed —
+      // finished if it landed, rather than paid for a second time.
+      if (mode === 'transfer') {
+        const earlier = await settlePendingTierUpgrades(userId);
+        if (earlier.status === 'confirmed') {
+          return { state: earlier.state, transactionHash: undefined, tier, priceUsd, mode };
+        }
+        if (earlier.status === 'pending') {
+          throw new UserCopyError(
+            'Your last upgrade payment is still confirming. Your membership updates as soon as it does — there is no need to pay again.',
+          );
+        }
+      }
+
+      const transactions = buildSubscriptionTransactions({
+        mode,
+        safeAddress: user.safeAddress as Address,
+        moduleAddress: contracts.subscriptionModuleAddress as Address,
+        moduleEnabled,
+        mandateUsd,
+        chargeUsd: priceUsd,
+        billingTokenAddress: contracts.billingTokenAddress as Address | null,
+        revenueTreasuryAddress: (contracts.revenueTreasuryAddress ?? null) as Address | null,
+      });
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
       const result = await executeTransactions(
         smartAccountClient,
-        [
-          ...(moduleEnabled
-            ? []
-            : [
-                {
-                  to: user.safeAddress as Address,
-                  data: encodeFunctionData({
-                    abi: Safe_ABI,
-                    functionName: 'enableModule',
-                    args: [moduleAddress as Address],
-                  }),
-                  value: 0n,
-                },
-              ]),
-          {
-            to: moduleAddress as Address,
-            data: encodeFunctionData({
-              abi: SolidSubscriptionModule_ABI,
-              functionName: 'subscribe',
-              args: [mandate, YEAR_SECONDS],
-            }),
-            value: 0n,
-          },
-        ],
-        'Failed to start your membership',
+        transactions,
+        mode === 'transfer'
+          ? 'Failed to upgrade your membership'
+          : 'Failed to start your membership',
         fuse,
+        // Remembered the moment the bundler accepts it: from here the payment
+        // can land whatever happens to the app, and a retry must find it.
+        mode === 'transfer'
+          ? userOpHash =>
+              usePendingTierUpgradeStore
+                .getState()
+                .remember({ userOpHash, userId, submittedAt: Date.now(), tier })
+          : undefined,
       );
 
       if (result === USER_CANCELLED_TRANSACTION) {
         track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
         return null;
+      }
+
+      if (mode === 'transfer') {
+        const pending = usePendingTierUpgradeStore.getState();
+        pending.landed(result.userOpHash, result.transactionHash);
+        let state: TierMembershipState;
+        try {
+          state = await upgradeTierSubscription({ tier, transactionHash: result.transactionHash });
+        } catch {
+          // Paid, and only telling the backend failed. The record is kept, so
+          // the next press confirms this payment rather than making another.
+          throw new UserCopyError(
+            'Your payment went through, but your upgrade isn’t confirmed yet. Tap Upgrade again to finish — you won’t be charged twice.',
+          );
+        }
+        pending.forget(result.userOpHash);
+        return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
       }
 
       // The first payment is taken here, server-side, against the mandate that
@@ -561,7 +619,7 @@ export const useSubscribeToTier = () => {
         ...(funding ? { funding } : {}),
       });
 
-      return { state, transactionHash: result.transactionHash, tier, priceUsd };
+      return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
     },
     onSuccess: result => {
       if (!result) return;
@@ -569,6 +627,7 @@ export const useSubscribeToTier = () => {
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_COMPLETED, {
         tier: result.tier,
         price_usd: result.priceUsd,
+        payment_mode: result.mode,
         transaction_hash: result.transactionHash,
       });
     },

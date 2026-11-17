@@ -33,11 +33,15 @@ import {
   formatFuseShortfall,
   formatLockDuration,
   formatMembershipDate,
+  formatPriceUsd,
   formatUsd,
   formatUsdHeld,
+  isOfferOnSale,
   isTierOnTrial,
   membershipDateLabel,
   nextPurchasableTier,
+  offerFirstYearFeeUsd,
+  offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
 import { tokenAmount, tokenUsd } from '@/lib/tierUpgradeFunding';
@@ -46,6 +50,8 @@ import { formatNumber } from '@/lib/utils';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import TierDetailRow from './TierDetailRow';
+import TierPrice from './TierPrice';
+import TierReplacementNotice from './TierReplacementNotice';
 import { findTierBenefits, resolveTierUpgradeBenefits } from './tierUpgradeBenefits';
 import UpgradeRouteSwitch from './UpgradeRouteSwitch';
 import UpgradeTierHeroCard from './UpgradeTierHeroCard';
@@ -99,11 +105,18 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
 
   const offer = tier ? findOffer(membership, tier) : undefined;
   // Memoised because the effect below depends on it: a fresh array every render
-  // would re-run the effect every render for no reason.
-  const routes = useMemo(() => availableRoutes(offer), [offer]);
+  // would re-run the effect every render for no reason. The contracts decide
+  // whether an upgrade paid by transfer can be built at all.
+  const contracts = membership?.contracts;
+  const routes = useMemo(() => availableRoutes(offer, contracts), [offer, contracts]);
   // Called up here with the rest of the hooks: the early returns below would
   // otherwise change how many run from one render to the next.
-  const payment = useCashPayment({ membership, chain, feeUsd: offer?.annualFeeUsd ?? 0 });
+  const payment = useCashPayment({
+    membership,
+    chain,
+    feeUsd: offerFirstYearFeeUsd(offer) ?? 0,
+    paymentMode: offer ? offerPaymentMode(offer) : undefined,
+  });
 
   // Settles on a route once the offer is known, and re-settles if the one in
   // hand stops being available — a tier taken off cash sale while the modal is
@@ -241,7 +254,9 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
         }
       />
 
-      {tier !== RewardsTier.ULTRA && (
+      {/* Any tier sold more than one way gets the choice; one sold one way
+          has nothing to choose between, and the card below names the route. */}
+      {routes.length > 1 && (
         <>
           <Text className="mb-3 mt-7 text-center text-[16px] leading-5 text-white/70">
             Upgrade tier with
@@ -267,7 +282,20 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
                 />
               </TierDetailRow>
             ) : null}
-            <TierDetailRow label="Annual Fee" value={formatUsd(offer.annualFeeUsd)} withDivider />
+            {/* During a sale the first year is cheaper and the renewals are
+                not, so the regular fee is struck through and the line under
+                it says what the membership renews at. */}
+            <TierDetailRow label="Annual Fee" withDivider>
+              <TierPrice
+                priceUsd={offerFirstYearFeeUsd(offer)}
+                listPriceUsd={offer.annualFeeUsd}
+                secondaryValue={
+                  isOfferOnSale(offer) && offer.annualFeeUsd !== null
+                    ? `First year, then ${formatPriceUsd(offer.annualFeeUsd)}/year`
+                    : undefined
+                }
+              />
+            </TierDetailRow>
             {payment.payingFromFuse || !cashToken ? (
               <TierDetailRow
                 label="Your balance"
@@ -345,11 +373,17 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
         )}
       </View>
 
+      {/* Only the annual fee ends the membership it replaces; a lock sits
+          alongside it. */}
+      {route === 'cash' ? <TierReplacementNotice offer={offer} /> : null}
+
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
           ? `${keeping ? 'Keep' : 'Upgrade to'} the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee${keeping ? ' after your trial' : ''}. ${
               !payment.payingFromFuse && cashToken
-                ? `Your ${cashToken.contractTickerSymbol} on ${cashChainName} is moved to Fuse for you, and the bridge fees are on us. `
+                ? `Your ${cashToken.contractTickerSymbol} on ${cashChainName} is moved to Fuse for you${
+                    payment.coverPct > 0 ? ', and the bridge fees are on us' : ''
+                  }. `
                 : ''
             }`
           : paymentAsset === 'soFUSE'

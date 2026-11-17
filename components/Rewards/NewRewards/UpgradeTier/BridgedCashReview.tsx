@@ -13,9 +13,15 @@ import { type CashPayment, useCashFundingQuote } from '@/hooks/useTierUpgradeFun
 import { track } from '@/lib/analytics';
 import { getUserErrorMessage } from '@/lib/errors';
 import { getTierDisplayName } from '@/lib/tierNames';
-import { covers, formatUsd, formatUsdHeld } from '@/lib/tierUpgrade';
+import {
+  covers,
+  formatRenewalTerms,
+  formatUsd,
+  formatUsdHeld,
+  isOfferOnSale,
+} from '@/lib/tierUpgrade';
 import { estimateFundingCoverUsd } from '@/lib/tierUpgradeFunding';
-import { RewardsTier, TokenType } from '@/lib/types';
+import { type TierOffer, TokenType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { formatEta, lifiPriceImpact } from '@/lib/utils/swap/lifi';
 import { warningSeverity } from '@/lib/utils/swap/prices';
@@ -23,12 +29,15 @@ import { useUserState } from '@/store/userStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import TierDetailRow from './TierDetailRow';
+import TierPrice from './TierPrice';
+import TierReplacementNotice from './TierReplacementNotice';
 
 /** USDC on Fuse, which is what every route here delivers. */
 const BILLING_DECIMALS = 6;
 
 interface BridgedCashReviewProps {
-  tier: RewardsTier;
+  offer: TierOffer;
+  /** What the first year costs now — the amount that has to reach Fuse. */
   feeUsd: number;
   payment: CashPayment;
 }
@@ -47,12 +56,18 @@ interface BridgedCashReviewProps {
  * backend enforces; the button stays off for a route that would lose more
  * than that, rather than letting the user pay for a membership that then
  * cannot start.
+ *
+ * An upgrade paid by transfer has no cover (`coverPct` is 0): the fee has to
+ * arrive in full, so the payment is sent with headroom — see `fundingSendUsd`
+ * — and anything over the fee stays in the Safe.
  */
-const BridgedCashReview = ({ tier, feeUsd, payment }: BridgedCashReviewProps) => {
-  const { token, needUsd, fuseUsdc, coverPct, billingTokenAddress } = payment;
+const BridgedCashReview = ({ offer, feeUsd, payment }: BridgedCashReviewProps) => {
+  const { tier } = offer;
+  const { token, sendUsd, fuseUsdc, coverPct, billingTokenAddress } = payment;
+  const covered = coverPct > 0;
   const { quote, fromAmount, isQuoting, error, refresh } = useCashFundingQuote({
     token,
-    needUsd,
+    needUsd: sendUsd,
     billingTokenAddress,
     enabled: true,
   });
@@ -117,7 +132,9 @@ const BridgedCashReview = ({ tier, feeUsd, payment }: BridgedCashReviewProps) =>
       ? 'The price impact on this route is too high. Pick another token.'
       : undefined) ??
     (quote && !coversFee
-      ? `This route loses more on the way than we can cover. Pick another token or top up your USDC on Fuse.`
+      ? covered
+        ? `This route loses more on the way than we can cover. Pick another token or top up your USDC on Fuse.`
+        : `This route would arrive short of the fee. Pick another token or top up your USDC on Fuse.`
       : undefined);
 
   const handlePay = async () => {
@@ -193,7 +210,9 @@ const BridgedCashReview = ({ tier, feeUsd, payment }: BridgedCashReviewProps) =>
       <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
         <TierDetailRow label="Tier" value={getTierDisplayName(tier)} withDivider />
         <TierDetailRow label="Paying with" value={`${symbol} on ${chainName}`} withDivider />
-        <TierDetailRow label="Amount" value={formatUsd(feeUsd)} withDivider />
+        <TierDetailRow label="Amount" withDivider>
+          <TierPrice priceUsd={feeUsd} listPriceUsd={offer.annualFeeUsd} />
+        </TierDetailRow>
         {fuseUsdc >= 0.01 ? (
           <TierDetailRow
             label="From your USDC on Fuse"
@@ -211,10 +230,16 @@ const BridgedCashReview = ({ tier, feeUsd, payment }: BridgedCashReviewProps) =>
         </TierDetailRow>
         <TierDetailRow
           label="Bridge fees"
-          value={quote ? (coversFee ? 'Covered' : formatUsd(lossUsd)) : '—'}
-          valueClassName={coversFee ? 'text-[#94F27F]' : undefined}
-          secondaryValue={quote && coversFee && lossUsd >= 0.01 ? formatUsd(lossUsd) : undefined}
-          tooltip={`What the bridge and any swap on the way take comes off your first payment, up to ${coverPct}% of the fee. You pay ${formatUsd(feeUsd)}, not more.`}
+          value={quote ? (covered && coversFee ? 'Covered' : formatUsd(lossUsd)) : '—'}
+          valueClassName={covered && coversFee ? 'text-[#94F27F]' : undefined}
+          secondaryValue={
+            quote && covered && coversFee && lossUsd >= 0.01 ? formatUsd(lossUsd) : undefined
+          }
+          tooltip={
+            covered
+              ? `What the bridge and any swap on the way take comes off your first payment, up to ${coverPct}% of the fee. You pay ${formatUsd(feeUsd)}, not more.`
+              : `Bridge and swap costs aren’t covered on this payment, so a little extra is sent for the full ${formatUsd(feeUsd)} to arrive. Anything left over stays in your USDC on Fuse.`
+          }
           tooltipAnalyticsContext="tier_upgrade_bridge_fees"
           withDivider
         />
@@ -226,8 +251,14 @@ const BridgedCashReview = ({ tier, feeUsd, payment }: BridgedCashReviewProps) =>
         <TierDetailRow label="Billed" value="Once a year" />
       </View>
 
+      <TierReplacementNotice offer={offer} />
+
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
-        {`We move your ${symbol} to USDC on Fuse, then you confirm the membership once it lands. It renews once a year at ${formatUsd(feeUsd)} from your USDC on Fuse — cancel any time.`}
+        {`We move your ${symbol} to USDC on Fuse, then you confirm the membership once it lands. ${
+          isOfferOnSale(offer)
+            ? `${formatRenewalTerms(offer)}, paid`
+            : `It renews once a year at ${formatUsd(offer.annualFeeUsd ?? feeUsd)}`
+        } from your USDC on Fuse — cancel any time.`}
       </Text>
 
       {failure || blocker ? (

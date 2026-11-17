@@ -11,7 +11,9 @@ import {
   FUNDING_PRICE_BUFFER,
   fundingNeedUsd,
   fundingSendAmount,
+  fundingSendUsd,
   latestUpgradeFunding,
+  UNCOVERED_FUNDING_HEADROOM,
 } from '@/lib/tierUpgradeFunding';
 import { TokenBalance, TokenType } from '@/lib/types';
 
@@ -335,5 +337,25 @@ describe('fundingNeedUsd', () => {
   it('is what Fuse is still missing, never negative', () => {
     expect(fundingNeedUsd(199, 50)).toBe(149);
     expect(fundingNeedUsd(199, 250)).toBe(0);
+  });
+});
+
+describe('fundingSendUsd', () => {
+  /** The cover absorbs what the bridge takes, so the shortfall is what is sent. */
+  it('sends the shortfall when the bridge is covered', () => {
+    expect(fundingSendUsd(149, 5)).toBe(149);
+  });
+
+  /**
+   * A transfer upgrade has no cover: the fee has to arrive in full, and a
+   * payment sized to the shortfall lands a bridge fee short of it every time.
+   */
+  it('sends headroom when nothing covers the bridge', () => {
+    expect(fundingSendUsd(799, 0)).toBeCloseTo(799 * (1 + UNCOVERED_FUNDING_HEADROOM), 6);
+    expect(fundingSendUsd(799, 0)).toBeGreaterThan(799);
+  });
+
+  it('sends nothing for nothing missing', () => {
+    expect(fundingSendUsd(0, 0)).toBe(0);
   });
 });

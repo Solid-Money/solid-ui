@@ -29,12 +29,14 @@ jest.mock('@/lib/errors', () => ({
 }));
 jest.mock('@/lib/execute', () => ({ USER_CANCELLED_TRANSACTION: 'cancelled' }));
 jest.mock('@/lib/pendingTierLocks', () => ({}));
+jest.mock('@/lib/pendingTierUpgrades', () => ({}));
 jest.mock('@/lib/tierLockTransactions', () => ({}));
 jest.mock('@/lib/wagmi', () => ({}));
 jest.mock('@/lib/utils', () => ({}));
 jest.mock('@/store/useUserStore', () => ({}));
 jest.mock('@/store/useRewardsUpgradeStore', () => ({}));
 jest.mock('@/store/usePendingTierLockStore', () => ({}));
+jest.mock('@/store/usePendingTierUpgradeStore', () => ({}));
 
 let errors: (string | null | undefined)[];
 const Probe = () => {

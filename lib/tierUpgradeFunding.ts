@@ -107,6 +107,19 @@ export const fundingNeedUsd = (feeUsd: number, fuseUsdc: number) =>
   Math.max(0, feeUsd - Math.max(0, fuseUsdc));
 
 /**
+ * How much more than the shortfall a bridged payment sends when nothing will
+ * cover what the bridge takes — a `transfer` upgrade, or a backend with no
+ * cover allowance. The fee then has to arrive on Fuse in full, and a payment
+ * sized to the shortfall would land a bridge fee and a slippage band short of
+ * it every time. What arrives beyond the fee stays in the Safe as USDC.
+ */
+export const UNCOVERED_FUNDING_HEADROOM = 0.02;
+
+/** What a bridged payment sends, in dollars, for a shortfall of `needUsd`. */
+export const fundingSendUsd = (needUsd: number, coverPct: number) =>
+  coverPct > 0 ? needUsd : needUsd * (1 + UNCOVERED_FUNDING_HEADROOM);
+
+/**
  * How much of `token` to send so that `usd` reaches Fuse in value, in its raw
  * units: the shortfall plus the buffer, rounded up at six places (fewer when
  * the token has fewer), and never more than the user holds.
