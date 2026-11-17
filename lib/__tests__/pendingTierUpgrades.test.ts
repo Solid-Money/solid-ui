@@ -618,6 +618,26 @@ describe('an upgrade with no receipt, sent with a known nonce', () => {
         }
       });
 
+      /**
+       * Prime's transfer matches, but an Ultra attempt recorded without its
+       * transfer may have made the same one: it cannot be ruled out.
+       */
+      it('stays pending when an attempt with no transfer on record could be it', async () => {
+        sentAt(NOW - 60_000, {
+          userOpHash: undefined,
+          tier: RewardsTier.PRIME,
+          payment: PRIME_PAYMENT,
+          replaced: [{ tier: RewardsTier.ULTRA }],
+        });
+        mockGetTransactionReceipt.mockResolvedValue(bundle(transfer(199_000_000n)));
+
+        await expect(settlePendingTierUpgrades('user-1', NOW)).resolves.toEqual({
+          status: 'pending',
+        });
+        expect(mockUpgrade).not.toHaveBeenCalled();
+        expect(stored()).toHaveLength(1);
+      });
+
       /** One tier among them: nothing to tell apart, and the transaction is not read. */
       it('takes the one tier there is without reading the transaction', async () => {
         sentAt(NOW - 60_000, {

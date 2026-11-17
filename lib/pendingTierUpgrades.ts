@@ -193,11 +193,11 @@ const BEFORE_EXECUTION_TOPIC = toEventSelector('BeforeExecution()');
  * operations with no hash, sent for different tiers — told by what it paid:
  * the transfer each was sent to make, among the logs of that operation alone.
  *
- * A tier only when the evidence names one: the candidates whose transfer it
- * made are all for it — two attempts at the same tier make the same transfer
- * — or, when it made none of the transfers on record, those recorded without
- * one (an unreleased build wrote them) are. `null` when it made none of them
- * and every one has its transfer on record, so none of them landed.
+ * A tier only when the evidence names one: every candidate it could be is
+ * for it — those whose transfer it made (two attempts at the same tier make
+ * the same transfer), and those recorded without one (an unreleased build
+ * wrote them), which nothing rules out. `null` when it made none of them and
+ * every one has its transfer on record, so none of them landed.
  * `undefined` when the evidence names more than one tier. Throws when the
  * transaction cannot be read.
  *
@@ -239,8 +239,10 @@ const operationPaying = async (
         args.value === BigInt(payment.units),
     );
   const paying = candidates.filter(({ payment }) => payment && made(payment));
+  // Recorded without a transfer, an attempt cannot be ruled out by one: it
+  // may have made the very transfer another attempt matched.
   const unrecorded = candidates.filter(({ payment }) => !payment);
-  const evidence = paying.length > 0 ? paying : unrecorded;
+  const evidence = [...paying, ...unrecorded];
   if (evidence.length === 0) return null;
   const tiers = new Set(evidence.map(({ tier }) => tier));
   return tiers.size === 1 ? evidence[0].tier : undefined;
