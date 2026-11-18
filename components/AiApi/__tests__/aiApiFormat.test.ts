@@ -235,6 +235,15 @@ describe('model prices', () => {
     expect(aiApiModelIsFree({ ...free, cachedInputUsdPerMTok: 0.01 })).toBe(false);
   });
 
+  it("takes the backend's word on free over the prices it can see", () => {
+    const free = { ...opus, inputUsdPerMTok: 0, outputUsdPerMTok: 0, cachedInputUsdPerMTok: 0 };
+    // Priced for cache writes only, which the app isn't sent: not free.
+    expect(aiApiModelIsFree({ ...free, free: false })).toBe(false);
+    expect(aiApiModelTag({ ...free, free: false, officialInputUsdPerMTok: null })).toBeNull();
+    expect(aiApiModelIsFree({ ...free, free: true })).toBe(true);
+    expect(aiApiModelIsFree({ ...opus, free: false })).toBe(false);
+  });
+
   it('tags a priced model with its saving, and nothing without a list price', () => {
     expect(aiApiModelTag(opus)).toBe('\u221297%');
     expect(aiApiModelTag({ ...opus, officialOutputUsdPerMTok: null })).toBeNull();

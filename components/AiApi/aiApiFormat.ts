@@ -90,6 +90,8 @@ type AiApiPricedModel = {
   cachedInputUsdPerMTok?: number | null;
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
+  /** The backend's word on whether it is free; missing on an older backend. */
+  free?: boolean;
 };
 
 /** Three input tokens to one output token: what a typical agent request reads and writes. */
@@ -122,9 +124,16 @@ export const aiApiModelPriceExample = (model: AiApiPricedModel, cashbackRate: nu
   };
 };
 
-/** A model we charge nothing for: input, output or cached. */
+/**
+ * A model we charge nothing for. The backend says so in `free`, by the same
+ * test that routes the model upstream (cache writes included, which the app
+ * isn't sent a price for); an older backend doesn't, and input, output and
+ * cached prices of 0 decide.
+ */
 export const aiApiModelIsFree = (model: AiApiPricedModel): boolean =>
-  model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
+  typeof model.free === 'boolean'
+    ? model.free
+    : model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
 
 /**
  * How far below the model maker's list price ours is, as a whole percent, on
