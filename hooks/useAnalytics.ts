@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
+import { focusManager, keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -614,10 +614,22 @@ export const useAPYs = (vault?: VaultType) => {
  * otherwise the best of its 7, 15 and 30-day windows (see displayApy).
  */
 export const useMaxAPY = (vault?: VaultType) => {
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
+  const { data: apys, dataUpdatedAt, isLoading: isAPYsLoading } = useAPYs(vault);
   // Whether the vault counts as new turns on the clock, not the data: re-render when
   // it changes, which an unchanged poll would not do.
   const [now, setNow] = useState(() => Date.now());
+  // Polls can return structurally identical data; their update timestamp still
+  // refreshes the device clock. Focus also handles clock corrections while away.
+  useEffect(() => {
+    setNow(Date.now());
+  }, [apys, dataUpdatedAt]);
+  useEffect(
+    () =>
+      focusManager.subscribe(focused => {
+        if (focused) setNow(Date.now());
+      }),
+    [],
+  );
   const changesAt = newVaultChangesAt(apys, now);
   useEffect(() => {
     if (changesAt === undefined) return;
@@ -631,7 +643,7 @@ export const useMaxAPY = (vault?: VaultType) => {
     };
     let timer = setTimeout(refresh, Math.min(Math.max(changesAt - Date.now(), 0), MAX_TIMEOUT_MS));
     return () => clearTimeout(timer);
-  }, [changesAt]);
+  }, [changesAt, now]);
   const { apy, days } = displayApy(apys, now);
 
   return {

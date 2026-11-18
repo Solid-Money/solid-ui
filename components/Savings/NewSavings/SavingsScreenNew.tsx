@@ -52,7 +52,7 @@ export default function SavingsScreenNew() {
     isEurLoading,
   } = useTotalSavingsUSD();
   const { vaults: walletVaults, isLoading: isWalletVaultsLoading } = useSavingsVaults();
-  const { maxAPY, isAPYsLoading } = useMaxAPY(vaultType);
+  const { maxAPY, maxAPYDays, isAPYsLoading } = useMaxAPY(vaultType);
   const { data: apys } = useAPYs(vaultType);
   const interest = useVaultInterestEarned(vaultType);
   const walletVault = walletVaults.find(item => item.key === VAULT_KEY_BY_TYPE[vaultType]);
@@ -117,7 +117,7 @@ export default function SavingsScreenNew() {
       ? undefined
       : interestOverPastDays(
           balanceUsd,
-          apys?.thirtyDay || maxAPY,
+          apys?.thirtyDay || (maxAPYDays === 1 ? 0 : maxAPY),
           30,
           unreadUsd > 0 ? undefined : interest.interest,
         );
