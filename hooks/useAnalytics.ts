@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useState } from 'react';
 import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
@@ -617,17 +617,22 @@ export const useMaxAPY = (vault?: VaultType) => {
   const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
   // Whether the vault counts as new turns on the clock, not the data: re-render when
   // it changes, which an unchanged poll would not do.
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
-  const changesAt = newVaultChangesAt(apys);
+  const [now, setNow] = useState(() => Date.now());
+  const changesAt = newVaultChangesAt(apys, now);
   useEffect(() => {
     if (changesAt === undefined) return;
-    const timer = setTimeout(
-      rerender,
-      Math.min(Math.max(changesAt - Date.now(), 0), MAX_TIMEOUT_MS),
-    );
+    const refresh = () => {
+      const currentTime = Date.now();
+      if (currentTime < changesAt) {
+        timer = setTimeout(refresh, Math.min(changesAt - currentTime, MAX_TIMEOUT_MS));
+      } else {
+        setNow(currentTime);
+      }
+    };
+    let timer = setTimeout(refresh, Math.min(Math.max(changesAt - Date.now(), 0), MAX_TIMEOUT_MS));
     return () => clearTimeout(timer);
   }, [changesAt]);
-  const { apy, days } = displayApy(apys);
+  const { apy, days } = displayApy(apys, now);
 
   return {
     maxAPY: apy,
