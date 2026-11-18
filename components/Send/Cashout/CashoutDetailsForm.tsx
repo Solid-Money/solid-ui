@@ -14,6 +14,7 @@ import {
   validatePayoutDetails,
   validatePayoutField,
 } from '@/lib/payoutFields';
+import { asTransfiError } from '@/lib/transfiErrors';
 import { cn } from '@/lib/utils';
 import { useCashoutStore } from '@/store/useCashoutStore';
 import { useSendStore } from '@/store/useSendStore';
@@ -46,7 +47,13 @@ export const CashoutDetailsForm = () => {
   const setPaymentDetails = useCashoutStore(state => state.setPaymentDetails);
   const serverFieldErrors = useCashoutStore(state => state.fieldErrors);
   const setFieldErrors = useCashoutStore(state => state.setFieldErrors);
-  const { data: methods, isLoading } = useTransfiCashoutPaymentMethods(currency);
+  const {
+    data: methods,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useTransfiCashoutPaymentMethods(currency);
   const method = methods?.find(m => m.paymentCode === paymentCode);
 
   // Only shown once a field has been left, or after a Continue attempt — an
@@ -100,10 +107,51 @@ export const CashoutDetailsForm = () => {
     setModal(SEND_MODAL.OPEN_CASHOUT_AMOUNT);
   };
 
-  if (isLoading || !method) {
+  if (isLoading) {
     return (
       <View className="items-center justify-center py-10">
         <ActivityIndicator size="large" color="#94F27F" />
+      </View>
+    );
+  }
+
+  // A country with one method comes straight here from the list, so this is
+  // where its methods load — and where a failed load has to be said.
+  if (!method) {
+    return (
+      <View className="items-center gap-4 rounded-2xl bg-card px-6 py-10">
+        <View className="items-center gap-2">
+          <Text className="text-center text-base font-semibold">
+            {error ? 'Couldn’t load your payout details' : 'This way to get paid isn’t available'}
+          </Text>
+          <Text className="text-center text-sm text-muted-foreground">
+            {error ? asTransfiError(error).message : 'Pick another way to get paid.'}
+          </Text>
+        </View>
+        {error ? (
+          <Button
+            variant="secondary"
+            className="h-11 rounded-xl px-6"
+            disabled={isFetching}
+            onPress={() => refetch()}
+          >
+            <Text className="text-base font-semibold">
+              {isFetching ? 'Trying again…' : 'Try again'}
+            </Text>
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            className="h-11 rounded-xl px-6"
+            onPress={() =>
+              setModal(
+                methods?.length ? SEND_MODAL.OPEN_CASHOUT_METHOD : SEND_MODAL.OPEN_CASHOUT_CURRENCY,
+              )
+            }
+          >
+            <Text className="text-base font-semibold">Choose another</Text>
+          </Button>
+        )}
       </View>
     );
   }
