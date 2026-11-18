@@ -1,29 +1,56 @@
-import { useId, useRef } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useId } from 'react';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { KeyRound } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useWebHorizontalScroll } from '@/hooks/useWebHorizontalScroll';
 
-import AiApiAgentLogo, { AI_API_AGENT_LOGOS } from './AiApiAgentLogo';
 import {
   aiApiSharedTierRate,
-  formatAiApiCashback,
   formatAiApiLimit,
   formatAiApiRate,
   formatAiApiTierCaps,
-  formatAiApiUsd,
 } from './aiApiFormat';
 import AiApiHeroOrbit from './AiApiHeroOrbit';
-import { AiApiAntseedCard, AiApiModelList } from './AiApiModels';
-import { AI_API_ICON_STROKE, AiApiInfoRow } from './AiApiPrimitives';
+import { AiApiIntroFaq, AiApiIntroSteps } from './AiApiIntroDetails';
+import AiApiIntroModels from './AiApiIntroModels';
+import { AI_API_ICON_STROKE } from './AiApiPrimitives';
 
 import type { AiApiCashbackTier, AiApiModel } from '@/lib/types/ai-api';
 
-/** The example the intro prices: a round number, so the halving reads at a glance. */
-const EXAMPLE_SPEND_USD = 100;
+const FOOTER_BACKGROUND = '#0F0F10';
+
+export const AiApiIntroFooter = ({ label, onPress }: { label: string; onPress: () => void }) => {
+  const { bottom } = useSafeAreaInsets();
+  // PageLayout already applies the bottom safe area. Match the tier footer's
+  // minimum spacing on devices without a bottom inset.
+  const paddingBottom = Math.max(19 - bottom, 0) + 5;
+
+  return (
+    <View className="relative shrink-0 bg-background" style={{ paddingBottom }}>
+      <LinearGradient
+        colors={[`${FOOTER_BACKGROUND}00`, FOOTER_BACKGROUND]}
+        pointerEvents="none"
+        style={{ position: 'absolute', top: -32, left: 0, right: 0, height: 32 }}
+      />
+      <View className="mx-auto w-full max-w-lg px-4 pt-3">
+        <Button
+          variant="brand"
+          size="sm"
+          onPress={onPress}
+          className="h-[52px] flex-row gap-2 rounded-full"
+          accessibilityLabel={label}
+        >
+          <KeyRound size={18} color="black" strokeWidth={AI_API_ICON_STROKE} />
+          <Text className="text-[16px] font-bold text-black">{label}</Text>
+        </Button>
+      </View>
+    </View>
+  );
+};
 
 /**
  * Figma's footnote: `Every tier gets 50% back, on top of your card cashback: up
@@ -93,10 +120,8 @@ const AiApiIntro = ({
   cashbackMonthlyCapUsd,
   settlementDays,
   models,
-  onOpenModels,
-  ctaLabel = 'Get API key',
-  onCta,
-  isCtaLoading,
+  billingTokens,
+  onOpenSetup,
 }: {
   cashbackRate: number;
   /** The user's tier, whose rate and cap these are: Core, Prime or Ultra. */
@@ -108,21 +133,13 @@ const AiApiIntro = ({
   settlementDays: number;
   /** The models a key can call, most used first. */
   models: AiApiModel[];
-  /** Opens every model with its prices. */
-  onOpenModels: () => void;
-  ctaLabel?: string;
-  onCta?: () => void;
-  isCtaLoading?: boolean;
+  billingTokens: string[];
+  onOpenSetup: () => void;
 }) => {
   const rate = formatAiApiRate(cashbackRate);
-  const cashbackUsd = EXAMPLE_SPEND_USD * cashbackRate;
-  const agentsRef = useRef<ScrollView>(null);
-  // The desktop web cuts the strip off at its column, where a mouse could not
-  // otherwise move it.
-  useWebHorizontalScroll(agentsRef);
 
   return (
-    <View className="w-full gap-5 px-4">
+    <View className="w-full gap-5 px-4 web:[font-synthesis:none]">
       <View className="overflow-hidden rounded-3xl bg-card pb-7">
         <HeroGlow />
         <AiApiHeroOrbit />
@@ -138,78 +155,19 @@ const AiApiIntro = ({
         </View>
       </View>
 
-      <View className="gap-2.5">
-        <Text className="text-[14px] text-white/55">Works with</Text>
-        {/* Runs to the screen's edges, so it reads as a strip that scrolls. */}
-        <ScrollView
-          ref={agentsRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="-mx-4"
-          contentContainerClassName="gap-2 px-4"
-        >
-          {AI_API_AGENT_LOGOS.map(agent => (
-            <View
-              key={agent.id}
-              className="flex-row items-center gap-2 rounded-full bg-card py-1 pl-1 pr-3.5"
-            >
-              <AiApiAgentLogo agent={agent} />
-              <Text className="text-[14px] font-medium text-white">{agent.label}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-
-      <AiApiModelList models={models} onSeePrices={onOpenModels} />
-
-      <View className="gap-[18px] rounded-twice bg-card px-4 py-[18px]">
-        <Text className="text-[16px] font-semibold text-white">How it works</Text>
-        {[
-          {
-            title: 'Get your API key',
-            body: 'One key for every model. Takes a few seconds.',
-          },
-          {
-            title: 'Plug it into your agent',
-            body: 'Paste it into Claude Code, Codex, OpenClaw or your own agent. We show you how.',
-          },
-          {
-            title: `Get ${rate} back`,
-            body: `What your agents use is paid from your Wallet. ${
-              cashbackRate === 0.5 ? 'Half' : rate
-            } of it comes back as cashback.`,
-          },
-        ].map((step, index) => (
-          <View key={step.title} className="flex-row items-start gap-3.5">
-            <View className="h-7 w-7 items-center justify-center rounded-full bg-[#2A2A2A]">
-              <Text className="text-[14px] font-semibold text-white">{index + 1}</Text>
-            </View>
-            <View className="flex-1 gap-[3px]">
-              <Text className="text-[15px] font-semibold text-white">{step.title}</Text>
-              <Text className="text-[14px] leading-[19px] text-white/60">{step.body}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View className="gap-3 rounded-twice bg-card px-4 py-[18px]">
-        <Text className="text-[15px] font-semibold text-white">
-          If your agents use {formatAiApiLimit(EXAMPLE_SPEND_USD)} this month
-        </Text>
-        <AiApiInfoRow label="Paid from your Wallet" value={formatAiApiUsd(EXAMPLE_SPEND_USD)} />
-        <AiApiInfoRow
-          label={`Cashback (${rate})`}
-          value={formatAiApiCashback(cashbackUsd)}
-          valueClassName="text-brand"
-        />
-        <View className="h-px bg-white/[0.08]" />
-        <AiApiInfoRow
-          label="What it really costs you"
-          value={formatAiApiUsd(EXAMPLE_SPEND_USD - cashbackUsd)}
-        />
-      </View>
-
-      <AiApiAntseedCard />
+      <AiApiIntroModels
+        models={models}
+        cashbackRate={cashbackRate}
+        isCapped={cashbackMonthlyCapUsd > 0}
+      />
+      <AiApiIntroSteps cashbackRate={cashbackRate} onOpenSetup={onOpenSetup} />
+      <AiApiIntroFaq
+        cashbackRate={cashbackRate}
+        cashbackMonthlyCapUsd={cashbackMonthlyCapUsd}
+        settlementDays={settlementDays}
+        billingTokens={billingTokens}
+        onOpenSetup={onOpenSetup}
+      />
 
       <Text className="text-[12px] leading-[17px] text-white/45">
         {cashbackFootnote({
@@ -220,19 +178,6 @@ const AiApiIntro = ({
           settlementDays,
         })}
       </Text>
-
-      {onCta ? (
-        <Button
-          variant="brand"
-          onPress={onCta}
-          disabled={isCtaLoading}
-          className="h-[52px] flex-row gap-2 rounded-full"
-          accessibilityLabel={ctaLabel}
-        >
-          <KeyRound size={18} color="black" strokeWidth={AI_API_ICON_STROKE} />
-          <Text className="text-[16px] font-bold text-black">{ctaLabel}</Text>
-        </Button>
-      ) : null}
     </View>
   );
 };

@@ -224,6 +224,10 @@ export const ASSETS = {
     module: require('@/assets/images/ai-api/model-openai.svg'),
     hash: '05098715',
   },
+  'images/ai-api/saving-help.svg': {
+    module: require('@/assets/images/ai-api/saving-help.svg'),
+    hash: 'd1f86286',
+  },
   'images/app-update-hero.png': {
     module: require('@/assets/images/app-update-hero.png'),
     hash: '4ac925b5',

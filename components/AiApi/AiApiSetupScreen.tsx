@@ -36,8 +36,9 @@ export default function AiApiSetupScreen() {
         <AiApiHeader title="Setup guide" />
         <View className="w-full gap-5 px-4">
           <Text className="text-[15px] leading-[21px] text-white/60">
-            Point your agent at Solid and paste in the key you saved. We only showed it once — if
-            it’s lost, make a new key and delete the old one.
+            {overview?.keys.length
+              ? 'Point your agent at Solid and paste in the key you saved. We only showed it once — if it’s lost, make a new key and delete the old one.'
+              : 'Point your agent at Solid. When you create a key, save it and use it in the setup steps below.'}
           </Text>
 
           <View className="gap-3.5 rounded-twice bg-card p-4">
