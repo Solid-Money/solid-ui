@@ -136,24 +136,22 @@ export interface CashbackFigure {
  * Per-currency amounts as figures to print side by side ("€12.40 + $150.00"),
  * the cardholder's own currency first. They are never added together.
  *
- * The cardholder's own currency is always listed, even at zero; the other only
- * when there is something in it.
+ * When both amounts are zero, show a single zero in the cardholder's currency.
  */
 export const cashbackFiguresByCurrency = (
   amounts: Partial<Record<CashbackCurrency, number>>,
   currency: CashbackCurrency,
 ): CashbackFigure[] => {
   const other: CashbackCurrency = currency === 'EUR' ? 'USD' : 'EUR';
-  const figures: CashbackFigure[] = [{ value: toPositive(amounts[currency]), currency }];
-  const otherValue = toPositive(amounts[other]);
-  if (otherValue > 0) figures.push({ value: otherValue, currency: other });
-  return figures;
+  const ownFigure = { value: toPositive(amounts[currency]), currency };
+  const otherFigure: CashbackFigure = { value: toPositive(amounts[other]), currency: other };
+  if (otherFigure.value === 0) return [ownFigure];
+  if (ownFigure.value === 0) return [otherFigure];
+  return [ownFigure, otherFigure];
 };
 
 /**
- * Lifetime cashback, per currency, for the cashback sheet: `allTimeCashback` in
- * the month's currency, and `allTimeCashbackOther` when the cardholder also has
- * cashback in the other one — shown beside it, never added to it.
+ * Lifetime cashback paid in each currency.
  *
  * Each is the card details' paid total, floored at this month's settled figure
  * in the same currency (the details can lag the rewards data). This month's
@@ -163,9 +161,9 @@ export const cashbackFiguresByCurrency = (
 export const resolveAllTimeCashback = (
   rewards: RewardsUserData | undefined,
   cardCashback: CashbackData | undefined,
-): { allTimeCashback: number; allTimeCashbackOther?: CashbackFigure } => {
+): CashbackFigure[] => {
   const currency = resolveCashbackMonth(rewards)?.currency ?? 'USD';
-  const [own, other] = cashbackFiguresByCurrency(
+  return cashbackFiguresByCurrency(
     {
       USD: Math.max(
         toPositive(cardCashback?.totalUsdValue),
@@ -178,7 +176,6 @@ export const resolveAllTimeCashback = (
     },
     currency,
   );
-  return { allTimeCashback: own.value, allTimeCashbackOther: other };
 };
 
 /** A non-finite or negative amount contributes nothing rather than NaN. */

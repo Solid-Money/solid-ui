@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { EUR_VAULT } from '@/constants/vaults';
-import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { CashbackCurrency } from '@/lib/types';
 import { cn, formatBalance, formatNumber, formatWholeDollars } from '@/lib/utils';
 import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
@@ -41,12 +40,10 @@ const formatWhole = (value: number, currency: CashbackCurrency): string =>
 const CashbackDetailsContent = ({
   cashbackRate,
   currency = 'USD',
-  cashbackThisMonth,
-  cashbackPendingThisMonth,
+  monthlyCashbackLabel,
   maxCashbackMonthly,
   tierMonthlyCap,
   allTimeCashback,
-  allTimeCashbackOther,
   onGetMoreCashback,
   animationSession,
   isSheet = true,
@@ -69,14 +66,6 @@ const CashbackDetailsContent = ({
         : 'Earn USDC back on eligible card spend, up to your monthly limit'}
     </Text>
 
-    {/* One cashback figure, settled and escrowed together — see
-        `monthlyCashbackTotal`. Cents are kept: a single purchase earns well
-        under a dollar, and rounding the month's first purchase to $0 is the
-        confusion this figure exists to fix.
-
-        The monthly cap keeps the row of its own it got when there were two
-        figures measured against it, rather than going back to a "/ $150"
-        suffix — it is a limit on the month, not a property of the amount. */}
     <View className="mt-9 w-full overflow-hidden rounded-twice bg-[#2B2B2B]">
       <StatRow label="Your cashback rate">
         <Text className="text-lg font-bold text-[#94F27F]">
@@ -85,13 +74,12 @@ const CashbackDetailsContent = ({
       </StatRow>
       <Divider />
       <View className="gap-0.5 px-[19px] py-3">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-base font-medium text-white/70">Cashback earned this month</Text>
-          <Text className="text-lg font-medium text-[#94F27F]">
-            {formatBalance(
-              monthlyCashbackTotal(cashbackThisMonth, cashbackPendingThisMonth),
-              CURRENCY_SYMBOLS[currency],
-            )}
+        <View className="flex-row items-center gap-x-2">
+          <Text className="flex-1 text-base font-medium text-white/70">
+            Cashback earned this month
+          </Text>
+          <Text className="max-w-[55%] text-right text-lg font-medium text-[#94F27F]">
+            {monthlyCashbackLabel}
           </Text>
         </View>
         <Text className="text-xs text-white/50">Total includes pending cashback.</Text>
@@ -125,11 +113,14 @@ const CashbackDetailsContent = ({
       {/* Each currency in its own figure, side by side ("€12 + $150"): euro
           and dollar cashback are never added together or converted. */}
       <StatRow label="All time cashback">
-        <Text className="text-lg font-medium text-white">
-          {formatWhole(allTimeCashback, currency)}
-          {allTimeCashbackOther
-            ? ` + ${formatWhole(allTimeCashbackOther.value, allTimeCashbackOther.currency)}`
-            : ''}
+        <Text className="max-w-[55%] text-right text-lg font-medium text-white">
+          {allTimeCashback
+            .map(({ value, currency }) =>
+              value > 0 && value < 1
+                ? formatBalance(value, CURRENCY_SYMBOLS[currency])
+                : formatWhole(value, currency),
+            )
+            .join(' + ')}
         </Text>
       </StatRow>
     </View>

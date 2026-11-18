@@ -2385,7 +2385,7 @@ export interface RewardsUserData {
    * {@link cashbackEur}. Absent on older backends, which is USD.
    */
   cashbackCurrency?: CashbackCurrency;
-  /** This month's euro cashback, all in EUR. Present when `cashbackCurrency` is EUR. */
+  /** Euro cashback and caps, including euro earnings before a switch to USD. */
   cashbackEur?: RewardsCashbackEur;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;

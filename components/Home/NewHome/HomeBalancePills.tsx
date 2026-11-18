@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { BalancePillRow } from '@/components/BalanceHeadline';
 import CardCreditSheet from '@/components/CardCredit/CardCreditSheet';
 import { ReferIcon } from '@/components/Referral/v4/ReferV4Primitives';
+import { TAB_SUMMARY_BADGE, TAB_SUMMARY_BADGE_LABEL } from '@/components/TabSummary';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardCredit } from '@/hooks/useCardCredit';
@@ -55,11 +55,11 @@ const HomeBalancePills = ({
   if (!todayLabel && !showCredit) return null;
 
   return (
-    <BalancePillRow>
-      <View className="flex-row flex-wrap items-center justify-center gap-2 px-4 pt-[6px]">
+    <>
+      <View className="flex-row flex-wrap items-center justify-center gap-2">
         {todayLabel ? (
-          <View className="h-[35px] justify-center rounded-full bg-card px-[14px]">
-            <Text className="text-[16px] leading-[18px] text-brand">{todayLabel}</Text>
+          <View className={`${TAB_SUMMARY_BADGE} bg-card`}>
+            <Text className={`${TAB_SUMMARY_BADGE_LABEL} text-brand`}>{todayLabel}</Text>
           </View>
         ) : null}
         {showCredit && credit ? (
@@ -67,10 +67,10 @@ const HomeBalancePills = ({
             onPress={openCardCredit}
             accessibilityRole="button"
             accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. View card bonus details.`}
-            className="h-[35px] flex-row items-center gap-1.5 rounded-full bg-card pl-3 pr-[14px] active:opacity-70 web:hover:bg-card-hover"
+            className={`${TAB_SUMMARY_BADGE} bg-card active:opacity-70 web:hover:bg-card-hover`}
           >
-            <ReferIcon asset="images/referral-v4/card-bonus-16.svg" size={19} />
-            <Text className="text-[16px] leading-[18px] text-white">
+            <ReferIcon asset="images/referral-v4/card-bonus-16.svg" size={16} />
+            <Text className={`${TAB_SUMMARY_BADGE_LABEL} text-white`}>
               {cardCreditPillLabel(credit.availableUsd)}
             </Text>
           </Pressable>
@@ -79,7 +79,7 @@ const HomeBalancePills = ({
       {credit ? (
         <CardCreditSheet isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} credit={credit} />
       ) : null}
-    </BalancePillRow>
+    </>
   );
 };
 

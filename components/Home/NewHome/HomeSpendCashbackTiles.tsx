@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 
 import { SPEND_MODE_COPY } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
@@ -13,14 +14,12 @@ import { useRewardsUserData } from '@/hooks/useRewards';
 import {
   CASHBACK_EARNED_COLOR,
   monthlyCashbackCap,
-  monthlyCashbackTotal,
   resolveAllTimeCashback,
   resolveCashbackMonth,
 } from '@/lib/cashbackProgress';
+import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
-import { formatBalance } from '@/lib/utils';
-import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
@@ -29,6 +28,8 @@ const spendGlow = require('@/assets/images/home-spend-tiles/spend-glow.svg');
 const cashbackGlow = require('@/assets/images/home-spend-tiles/cashback-glow.svg');
 const down = require('@/assets/images/home-spend-tiles/down.svg');
 const TILE_ARTWORK_WIDTH = 182;
+const AMOUNT_LINE_HEIGHT = 31;
+const AMOUNT_SKELETON_HEIGHT = 18;
 const tilePressClassName =
   'ios:active:bg-[#2A2A2A] native:transition-transform native:duration-200 native:ease-out native:active:scale-[0.98] native:active:opacity-90 bg-[#1C1C1C]';
 const tileRipple =
@@ -63,11 +64,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
   // In the cardholder's cashback currency: euros for a euro cardholder.
   const cashbackMonth = resolveCashbackMonth(rewardsData);
   const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
-  const cashbackThisMonth = cashbackMonth?.cashbackThisMonth ?? 0;
-  const earnedThisMonth = monthlyCashbackTotal(
-    cashbackThisMonth,
-    cashbackMonth?.cashbackPendingThisMonth,
-  );
+  const monthlyCashbackLabel = formatMonthlyCashback(rewardsData);
   // The Cash segment's empty-state text is "Add funds"; the home tile always
   // shows a balance. Credit and Smart use the same availability as the picker.
   const available =
@@ -114,14 +111,18 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
             )}
           </View>
           <View>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-              style={styles.amount}
-            >
-              {figures.isLoading ? '—' : available}
-            </Text>
+            {figures.isLoading ? (
+              <Skeleton style={styles.amountSkeleton} />
+            ) : (
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                style={styles.amount}
+              >
+                {available}
+              </Text>
+            )}
             <Text
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -138,11 +139,10 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
           triggerContainerClassName=""
           cashbackRate={rate}
           currency={cashbackCurrency}
-          cashbackThisMonth={cashbackThisMonth}
-          cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+          monthlyCashbackLabel={monthlyCashbackLabel}
           maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
           tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-          {...resolveAllTimeCashback(rewardsData, cardDetails?.cashback)}
+          allTimeCashback={resolveAllTimeCashback(rewardsData, cardDetails?.cashback)}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           trigger={
             <Pressable
@@ -178,12 +178,12 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
               </View>
               <View>
                 <Text
-                  numberOfLines={1}
+                  numberOfLines={2}
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}
                   style={[styles.amount, styles.cashbackAmount]}
                 >
-                  +{formatBalance(earnedThisMonth, CURRENCY_SYMBOLS[cashbackCurrency])}
+                  +{monthlyCashbackLabel}
                 </Text>
                 <Text
                   numberOfLines={1}
@@ -243,7 +243,19 @@ const styles = StyleSheet.create({
   chipText: { color: '#FFFFFF', fontFamily: 'MonaSans_500Medium', fontSize: 14, lineHeight: 20 },
   compactChipText: { fontSize: 12 },
   down: { width: 14, height: 14 },
-  amount: { color: '#FFFFFF', fontFamily: 'MonaSans_600SemiBold', fontSize: 22, lineHeight: 31 },
+  amount: {
+    color: '#FFFFFF',
+    fontFamily: 'MonaSans_600SemiBold',
+    fontSize: 22,
+    lineHeight: AMOUNT_LINE_HEIGHT,
+  },
+  amountSkeleton: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    height: AMOUNT_SKELETON_HEIGHT,
+    marginVertical: (AMOUNT_LINE_HEIGHT - AMOUNT_SKELETON_HEIGHT) / 2,
+    maxWidth: '100%',
+    width: 72,
+  },
   cashbackAmount: { color: CASHBACK_EARNED_COLOR },
   caption: {
     color: 'rgba(255,255,255,0.7)',

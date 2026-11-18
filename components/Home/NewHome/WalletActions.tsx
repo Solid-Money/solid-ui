@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -8,25 +8,15 @@ import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
 import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
-import { Text } from '@/components/ui/text';
+import {
+  TAB_SUMMARY_ACTION_HEIGHT,
+  TAB_SUMMARY_ACTION_ROW,
+  TabSummaryActionButton,
+  useCompactTabSummaryActions,
+} from '@/components/TabSummary';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { HOME_SWAP_PRESET } from '@/lib/swapDefaults';
-import { cn } from '@/lib/utils';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
-
-// IMPORTANT: these trigger components MUST forward props (…props) to their root
-// Pressable. The Deposit/Swap/Send modals inject their open handler via
-// SlotTrigger.cloneElement({ onPress }); if the injected onPress isn't forwarded
-// to the Pressable, tapping does nothing (the bug this file previously had).
-type TriggerProps = React.ComponentProps<typeof Pressable>;
-
-// Below this the three flex-1 pills get ~105dp each, which isn't enough for
-// "Add Funds" at 16pt bold — it wrapped onto two lines on 360–390dp phones.
-// Compact mode shrinks the label, icons and spacing instead of letting one pill
-// grow taller/narrower than its neighbours.
-// Keep native labels at 14/16px and let them fit their pill when iOS text scaling
-// would otherwise truncate them.
-const COMPACT_WIDTH = 400;
 
 // Keep the modal/trigger implementation out of flex sizing. Each visible action
 // gets an identical zero-basis slot, then its pill fills that slot. This is
@@ -39,64 +29,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 });
-
-const AddFundsTrigger = ({
-  fullWidth,
-  compact,
-  ...props
-}: TriggerProps & { fullWidth: boolean; compact?: boolean }) => (
-  <Pressable
-    {...props}
-    className={cn(
-      'h-14 flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80',
-      compact ? 'px-2' : 'px-4',
-      // On its own it stops at 24rem and centres, rather than stretching the full
-      // width of a desktop column.
-      fullWidth ? 'mx-auto w-full max-w-[24rem]' : 'w-full',
-    )}
-  >
-    <Text
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.85}
-      maxFontSizeMultiplier={1.2}
-      className={cn(
-        'native:min-w-0 native:shrink font-bold text-black',
-        compact ? 'native:text-[14px] text-sm' : 'native:text-[16px] text-base',
-      )}
-    >
-      Add Funds
-    </Text>
-  </Pressable>
-);
-
-// The equal-width parent slot controls sizing; the pill just fills it.
-const ActionPill = ({ children, compact, ...props }: TriggerProps & { compact?: boolean }) => (
-  <Pressable
-    {...props}
-    className={cn(
-      'h-14 w-full flex-row items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80',
-      compact ? 'gap-1.5 px-2' : 'gap-2 px-4',
-    )}
-  >
-    {children}
-  </Pressable>
-);
-
-const PillLabel = ({ compact, children }: { compact?: boolean; children: string }) => (
-  <Text
-    numberOfLines={1}
-    adjustsFontSizeToFit
-    minimumFontScale={0.85}
-    maxFontSizeMultiplier={1.2}
-    className={cn(
-      'native:min-w-0 native:shrink font-semibold text-white',
-      compact ? 'native:text-[14px] text-sm' : 'native:text-[16px] text-base',
-    )}
-  >
-    {children}
-  </Text>
-);
 
 interface WalletActionsProps {
   /** When false, only "Add Funds" is shown full-width; when true, Swap/Send appear. */
@@ -124,18 +56,18 @@ interface WalletActionsProps {
  * - No card → the wallet deposit flow.
  */
 const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
-  const { width } = useWindowDimensions();
+  const compact = useCompactTabSummaryActions();
   const { provider } = useCardProvider();
   const fundsGoToCard = Boolean(hasCard) && canDepositToCard(provider);
-  // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
-  const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
-  const showSwap = hasFunds;
-  const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} compact={compact} />;
+  const addFundsTrigger = <TabSummaryActionButton label="Add Funds" primary className="w-full" />;
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
 
   return (
-    <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
-      <View className={hasFunds ? 'h-14' : 'w-full'} style={hasFunds && styles.equalActionSlot}>
+    <View className={TAB_SUMMARY_ACTION_ROW}>
+      <View
+        className={hasFunds ? TAB_SUMMARY_ACTION_HEIGHT : 'w-full'}
+        style={hasFunds && styles.equalActionSlot}
+      >
         {fundsGoToCard ? (
           // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
           // own trigger prop - that goes through ResponsiveModal's rn-primitives
@@ -148,38 +80,44 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
           <DepositOptionModal trigger={addFundsTrigger} />
         )}
       </View>
-      {showSwap && (
-        <View className="h-14" style={styles.equalActionSlot}>
+      {hasFunds && (
+        <View className={TAB_SUMMARY_ACTION_HEIGHT} style={styles.equalActionSlot}>
           <SwapModal
             entryPoint="home"
             preset={HOME_SWAP_PRESET}
             trigger={
-              <ActionPill compact={compact}>
-                <HomeSwap
-                  width={compact ? 17 : 20}
-                  height={compact ? 17 : 20}
-                  stroke="#ffffff"
-                  viewBox="0 0 29 28"
-                />
-                <PillLabel compact={compact}>Swap</PillLabel>
-              </ActionPill>
+              <TabSummaryActionButton
+                label="Swap"
+                className="w-full"
+                icon={
+                  <HomeSwap
+                    width={compact ? 17 : 20}
+                    height={compact ? 17 : 20}
+                    stroke="#ffffff"
+                    viewBox="0 0 29 28"
+                  />
+                }
+              />
             }
           />
         </View>
       )}
       {hasFunds && (
-        <View className="h-14" style={styles.equalActionSlot}>
+        <View className={TAB_SUMMARY_ACTION_HEIGHT} style={styles.equalActionSlot}>
           <SendModal
             trigger={
-              <ActionPill compact={compact}>
-                <HomeSend
-                  width={compact ? 15 : 18}
-                  height={compact ? 15 : 18}
-                  stroke="#ffffff"
-                  viewBox="0 0 25 24"
-                />
-                <PillLabel compact={compact}>Send</PillLabel>
-              </ActionPill>
+              <TabSummaryActionButton
+                label="Send"
+                className="w-full"
+                icon={
+                  <HomeSend
+                    width={compact ? 15 : 18}
+                    height={compact ? 15 : 18}
+                    stroke="#ffffff"
+                    viewBox="0 0 25 24"
+                  />
+                }
+              />
             }
           />
         </View>

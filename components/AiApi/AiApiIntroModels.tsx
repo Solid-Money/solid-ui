@@ -16,6 +16,7 @@ import {
   formatAiApiRate,
   formatAiApiTokenPrice,
 } from './aiApiFormat';
+import AiApiIntroDisclosure from './AiApiIntroDisclosure';
 import { getAntseedModelUrl } from './aiApiLinks';
 import AiApiModelLogo from './AiApiModelLogo';
 import { AI_API_ICON_STROKE, AiApiCopyPill, AiApiIntroChevron } from './AiApiPrimitives';
@@ -237,13 +238,8 @@ const ModelRow = ({
     : `${priceText(model.inputUsdPerMTok)} in · ${priceText(model.outputUsdPerMTok)} out`;
 
   return (
-    <View className="gap-3.5 border-b border-white/[0.07] px-4 py-3.5">
-      <Pressable
-        accessibilityRole="button"
-        aria-expanded={expanded}
-        onPress={onToggle}
-        className="gap-2 active:opacity-70"
-      >
+    <View className="border-b border-white/[0.07] px-4 py-3.5">
+      <Pressable accessibilityRole="button" aria-expanded={expanded} onPress={onToggle}>
         <View className="flex-row items-center gap-3">
           <AiApiModelLogo model={model} />
           <View className="flex-1 gap-px">
@@ -259,15 +255,15 @@ const ModelRow = ({
           ) : null}
           <AiApiIntroChevron expanded={expanded} />
         </View>
-        {!expanded ? (
-          <Text className="pl-11 text-[13px] font-medium leading-[18px] text-white/85">
+        <AiApiIntroDisclosure expanded={!expanded}>
+          <Text className="pl-11 pt-2 text-[13px] font-medium leading-[18px] text-white/85">
             {summary}
           </Text>
-        ) : null}
+        </AiApiIntroDisclosure>
       </Pressable>
 
-      {expanded ? (
-        <View className="gap-2.5">
+      <AiApiIntroDisclosure expanded={expanded}>
+        <View className="gap-2.5 pt-3.5">
           <ModelPricing
             model={model}
             cashbackRate={cashbackRate}
@@ -296,7 +292,7 @@ const ModelRow = ({
             <AiApiCopyPill text={model.id} accessibilityLabel={`Copy ${model.name} model ID`} />
           </View>
         </View>
-      ) : null}
+      </AiApiIntroDisclosure>
     </View>
   );
 };
@@ -338,9 +334,8 @@ const AiApiIntroModels = ({
   cashbackRate: number;
   isCapped: boolean;
 }) => {
-  const [expandedModel, setExpandedModel] = useState<string | null | undefined>(undefined);
+  const [expandedModel, setExpandedModel] = useState<string | null>(null);
   const [showSavingMethod, setShowSavingMethod] = useState(false);
-  const expandedId = expandedModel === undefined ? models[0]?.id : expandedModel;
   const hasSavings = models.some(
     model => !aiApiModelIsFree(model) && aiApiModelDiscount(model) !== null,
   );
@@ -385,8 +380,8 @@ const AiApiIntroModels = ({
             model={model}
             cashbackRate={cashbackRate}
             isCapped={isCapped}
-            expanded={expandedId === model.id}
-            onToggle={() => setExpandedModel(expandedId === model.id ? null : model.id)}
+            expanded={expandedModel === model.id}
+            onToggle={() => setExpandedModel(current => (current === model.id ? null : model.id))}
           />
         ))}
       </View>
