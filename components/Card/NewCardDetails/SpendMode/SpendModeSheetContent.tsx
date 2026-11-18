@@ -23,8 +23,10 @@ import SheetIconButton, {
   MODAL_CONTROL_SIZE,
 } from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import {
+  balancePanelHasTitle,
   balancePanelHeight,
   BORROWED_PANEL_HEIGHT,
+  creditPanelHasCollateral,
   creditPanelHeight,
   SPEND_MODE_NOTICE_HEIGHT,
   SpendModeBalancePanel,
@@ -87,7 +89,11 @@ type SheetCard = SpendModePanel;
 /** What sizes the cards: the rows the balance and Credit panels list. */
 interface StackSizes {
   balanceRows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[];
+  /** The balance panel draws its title (rows, or "Edit order" with none). */
+  balanceHasTitle: boolean;
   collateralRows: number;
+  /** The Credit panel draws its collateral block (rows, or "Edit order" with none). */
+  hasCollateral: boolean;
 }
 
 /** The cards a mode stacks under its caption. */
@@ -96,10 +102,10 @@ const cardsFor = (mode: SpendMode): SheetCard[] => [...SPEND_MODE_COPY[mode].pan
 /** A card's height; the balance and Credit panels grow with the rows they list. */
 const cardHeight = (card: SheetCard, sizes: StackSizes) =>
   card === 'balance'
-    ? balancePanelHeight(sizes.balanceRows)
+    ? balancePanelHeight(sizes.balanceRows, sizes.balanceHasTitle)
     : card === 'borrowed'
       ? BORROWED_PANEL_HEIGHT
-      : creditPanelHeight(sizes.collateralRows);
+      : creditPanelHeight(sizes.collateralRows, sizes.hasCollateral);
 
 /** Space from the caption to the first card's top, without any notice. */
 const captionToCard = (first: SheetCard | undefined) =>
@@ -229,9 +235,20 @@ const SpendModeSheetContent = ({
     (event: LayoutChangeEvent) => setNoticeHeight(event.nativeEvent.layout.height),
     [],
   );
-  const sizes = useMemo(
-    () => ({ balanceRows: balance.rows, collateralRows: credit.collateral.length }),
-    [balance.rows, credit.collateral.length],
+  // Two or more kinds of collateral: the order they lock in is worth naming and editing.
+  const locksInOrder = credit.collateralKeys.length > 1;
+  const sizes = useMemo<StackSizes>(
+    () => ({
+      balanceRows: balance.rows,
+      balanceHasTitle: balancePanelHasTitle(balance.rows.length, !!onEditOrder),
+      collateralRows: credit.collateral.length,
+      hasCollateral: creditPanelHasCollateral(
+        credit.collateral.length,
+        locksInOrder,
+        !!onEditCollateralOrder,
+      ),
+    }),
+    [balance.rows, credit.collateral.length, locksInOrder, onEditOrder, onEditCollateralOrder],
   );
   const panelsStyle = useMemo(
     () => ({ minHeight: panelsMinHeight(modes, noticeHeight, sizes) }),
@@ -394,7 +411,7 @@ const SpendModeSheetContent = ({
                   borrowApy={credit.borrowApy}
                   borrowedProgress={credit.borrowedProgress}
                   collateral={credit.collateral}
-                  locksInOrder={credit.collateralKeys.length > 1}
+                  locksInOrder={locksInOrder}
                   onEditOrder={onEditCollateralOrder}
                   risk={credit.risk}
                   hasDebt={credit.hasDebt}

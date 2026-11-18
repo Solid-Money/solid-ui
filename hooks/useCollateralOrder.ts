@@ -73,6 +73,19 @@ export const useCollateralOrder = () => {
     order,
     customized: query.data?.collateralOrderCustomized ?? false,
     isLoading: query.isLoading,
+    /**
+     * The saved order has answered at least once. Until then `order` is the default one — also
+     * while the read is paused offline, disabled because the card provider is not known yet, or
+     * failed — so an editor must not take it as its starting point. `isLoading` alone does not say
+     * this: it is false in all three cases.
+     */
+    hasLoaded: query.data !== undefined,
+    /**
+     * The read failed, nothing was ever loaded and no retry is running: the editor offers a retry
+     * instead of the list.
+     */
+    loadFailed: query.isError && query.data === undefined && !query.isFetching,
+    retry: query.refetch,
     save: mutation.mutateAsync,
     isSaving: mutation.isPending,
   };

@@ -15,6 +15,7 @@ import {
   type ScrollViewProps,
   type StyleProp,
   StyleSheet,
+  Text,
   View,
   type ViewStyle,
 } from 'react-native';
@@ -74,6 +75,10 @@ import {
  * - The page does not scroll under a lifted row: its scroll view takes part in the gesture system
  *   ({@link ReorderableScrollView}), so a row that lifts cancels the scroll, and a UI-thread flag
  *   turns scrolling off until the drop — no React state, so the screen does not re-render.
+ *
+ * Without a drag: screen readers on native get Move up / Move down actions on each row. The web
+ * drops those actions, so there each row is a tab stop with a focus ring instead, and Alt+ArrowUp /
+ * Alt+ArrowDown moves the focused row — across the divider too — with the move read out.
  */
 
 /** A row's place in the order, for drawing it. */
@@ -123,7 +128,8 @@ const IS_WEB = Platform.OS === 'web';
  * drags would also stop a swipe from scrolling the page: the rows stay still and only the handle
  * drags.
  */
-const WEB_TOUCH = IS_WEB && typeof navigator !== 'undefined' && (navigator.maxTouchPoints ?? 0) > 0;
+export const WEB_TOUCH =
+  IS_WEB && typeof navigator !== 'undefined' && (navigator.maxTouchPoints ?? 0) > 0;
 /** Hold this long anywhere on a row before it lifts, so a swipe still scrolls the page. */
 const LONG_PRESS_MS = 200;
 /**
@@ -154,6 +160,35 @@ const AUTO_SCROLL_EDGE = 80;
 /** Points per 60 Hz frame at the very edge. */
 const AUTO_SCROLL_MAX_SPEED = 14;
 const FRAME_MS = 1000 / 60;
+/** The keys that move a focused row on the web, as `aria-keyshortcuts` names them. */
+const WEB_MOVE_KEYS = 'Alt+ArrowUp Alt+ArrowDown';
+
+/** The slice of a DOM keyboard event a row reads (react-native-web passes the React event). */
+interface WebKeyEvent {
+  key: string;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  currentTarget: unknown;
+  preventDefault: () => void;
+}
+
+/** The slice of a focused DOM element a row uses. */
+interface WebFocusTarget {
+  focus?: (options?: { preventScroll?: boolean }) => void;
+  matches?: (selector: string) => boolean;
+}
+
+/** Whether focus arrived by keyboard, so a click on a row draws no ring. */
+const isFocusVisible = (target: unknown): boolean => {
+  try {
+    return (target as WebFocusTarget | null)?.matches?.(':focus-visible') ?? true;
+  } catch {
+    // A browser without `:focus-visible` throws on the selector: show the ring.
+    return true;
+  }
+};
 
 /** Siblings sliding out of the way, and the dropped row settling: critically damped, no bounce. */
 const SLIDE = { dampingRatio: 1, duration: 180, overshootClamping: true } as const;
@@ -270,7 +305,8 @@ interface DragContext {
   step: (frameMs: number, translate: SharedValue<number>) => void;
   /** Commits the live order if it differs from the one on screen. */
   commit: () => void;
-  onLift: () => void;
+  /** The drag's start, with the order it reorders. */
+  onLift: (start: string[]) => void;
   onDrop: () => void;
 }
 
@@ -309,32 +345,43 @@ export const ReorderableList = ({
   const viewportHeight = useSharedValue(0);
 
   // The order the rows show their rank and side of the divider by: the one on screen, or while a
-  // row is dragged, the live order as of the last swap. Falls back to `data` as soon as a different
-  // order arrives, so a Reset never shows a stale rank; compared by content, so a parent that
+  // row is dragged, the live order as of the last swap. `base` is the order that drag started
+  // from, so its swaps only show while `data` still is that order: a different order (a Reset) or
+  // a different row set falls back to `data` at once. Compared by content, so a parent that
   // rebuilds the same order mid-drag (a balance refresh) does not snap the ranks back.
   const [live, setLive] = useState<{ base: readonly string[]; slots: readonly string[] }>({
     base: data,
     slots: data,
   });
   const slots = sameSlots(live.base, data) ? live.slots : data;
+  /** The order the drag in flight started from, set at the lift. */
+  const dragBase = useRef<readonly string[]>(data);
+  /** What the web's live region last read out: a keyboard move. */
+  const [announcement, setAnnouncement] = useState('');
 
-  const latest = useRef({ data, onReorder });
+  const latest = useRef({ data, onReorder, getItemAccessibilityLabel, dividerKey });
   useLayoutEffect(() => {
-    latest.current = { data, onReorder };
+    latest.current = { data, onReorder, getItemAccessibilityLabel, dividerKey };
   });
 
   // A Reset, a commit or the rows landing replace the order from outside the drag.
   useEffect(() => {
     committed.value = [...data];
     if (active.value === null && !sameSlots(order.value, data)) order.value = [...data];
+    // Live ranks from another order or row set are stale: drop them. The same order keeps them
+    // (no re-render), so a mid-drag refresh leaves the live ranks alone.
+    setLive(prev => (sameSlots(prev.base, data) ? prev : { base: data, slots: data }));
   }, [active, committed, data, order]);
 
-  const onLift = useCallback(() => {
+  const onLift = useCallback((start: string[]) => {
+    dragBase.current = start;
     haptic('lift');
   }, []);
 
   const onSwap = useCallback((next: string[]) => {
-    setLive({ base: latest.current.data, slots: next });
+    // Paired with the order the drag started from, never with a newer `data`: rows that came or
+    // went mid-drag are not in `next`, and must not lose their state to it.
+    setLive({ base: dragBase.current, slots: next });
     haptic('swap');
   }, []);
 
@@ -345,10 +392,12 @@ export const ReorderableList = ({
   const onCommit = useCallback(
     (next: string[]) => {
       const current = latest.current.data;
-      // Rows that came or went mid-drag: drop the drag rather than commit an order missing them.
+      // Rows that came or went mid-drag: drop the drag rather than commit an order missing them,
+      // and its live ranks with it.
       const sameKeys = next.length === current.length && current.every(key => next.includes(key));
       if (!sameKeys) {
         order.value = [...current];
+        setLive({ base: current, slots: current });
         return;
       }
       if (sameSlots(next, current)) return;
@@ -476,8 +525,14 @@ export const ReorderableList = ({
   ]);
 
   const handleMove = useCallback((key: string, delta: -1 | 1) => {
-    const { data: current, onReorder: reorder } = latest.current;
-    reorder(moveSlot(current, key, delta));
+    const { data: current, onReorder: reorder, getItemAccessibilityLabel: label } = latest.current;
+    const next = moveSlot(current, key, delta);
+    if (IS_WEB) {
+      // Only a keyboard moves a row here on the web: read out where it landed.
+      const state = slotStates(next, latest.current.dividerKey).get(key);
+      if (state) setAnnouncement(label(key, { rank: state.rank, excluded: state.excluded }));
+    }
+    reorder(next);
   }, []);
 
   const states = useMemo(() => slotStates(slots, dividerKey), [slots, dividerKey]);
@@ -531,6 +586,11 @@ export const ReorderableList = ({
           );
         })}
       </Animated.View>
+      {IS_WEB ? (
+        <View accessibilityLiveRegion="polite" style={styles.visuallyHidden}>
+          <Text>{announcement}</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -658,10 +718,13 @@ const ReorderableRow = memo(function ReorderableRow({
     [step, y],
   );
   const frame = useFrameCallback(tick, false);
-  const handleLift = useCallback(() => {
-    frame.setActive(true);
-    onLift();
-  }, [frame, onLift]);
+  const handleLift = useCallback(
+    (start: string[]) => {
+      frame.setActive(true);
+      onLift(start);
+    },
+    [frame, onLift],
+  );
   const handleDrop = useCallback(() => {
     frame.setActive(false);
     onDrop();
@@ -709,7 +772,7 @@ const ReorderableRow = memo(function ReorderableRow({
       }
 
       lift.value = withTiming(1, reduceMotion ? REDUCED_FADE : LIFT_IN);
-      scheduleOnRN(handleLift);
+      scheduleOnRN(handleLift, [...order.value]);
     };
 
     const move = (absoluteY: number, gesture: number) => {
@@ -833,6 +896,42 @@ const ReorderableRow = memo(function ReorderableRow({
     [downLabel, upLabel],
   );
 
+  // The web's keyboard path. A focused row moves with Alt+ArrowUp / Alt+ArrowDown; the move
+  // re-renders the list in its new order, so focus is put back on the row once it has its new
+  // rank. Focus and key events only — nothing here runs during a drag.
+  const [focusVisible, setFocusVisible] = useState(false);
+  const refocus = useRef<WebFocusTarget | null>(null);
+  useEffect(() => {
+    const target = refocus.current;
+    if (!target) return;
+    refocus.current = null;
+    target.focus?.({ preventScroll: true });
+  }, [rank, excluded]);
+  const webProps = useMemo(() => {
+    if (!IS_WEB) return undefined;
+    const onKeyDown = (event: WebKeyEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const delta = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+      if (delta === 0) return;
+      event.preventDefault();
+      // A row held by the pointer owns the order until it drops.
+      if (active.value !== null) return;
+      if (delta === -1 ? !upLabel : !downLabel) return;
+      refocus.current = event.currentTarget as WebFocusTarget;
+      onMove(itemKey, delta);
+    };
+    // react-native-web forwards these to the row's element; React Native's types do not list
+    // `onKeyDown`, hence the cast.
+    return {
+      tabIndex: 0,
+      'aria-keyshortcuts': WEB_MOVE_KEYS,
+      onKeyDown,
+      onFocus: (event: { currentTarget: unknown }) =>
+        setFocusVisible(isFocusVisible(event.currentTarget)),
+      onBlur: () => setFocusVisible(false),
+    } as object;
+  }, [active, downLabel, itemKey, onMove, upLabel]);
+
   return (
     <GestureDetector gesture={gestures.row}>
       <Animated.View
@@ -844,7 +943,14 @@ const ReorderableRow = memo(function ReorderableRow({
           if (name === 'moveUp') onMove(itemKey, -1);
           else if (name === 'moveDown') onMove(itemKey, 1);
         }}
-        style={[styles.slot, styles.row, { height: geometry.itemHeight }, slotStyle]}
+        {...webProps}
+        style={[
+          styles.slot,
+          styles.row,
+          { height: geometry.itemHeight },
+          IS_WEB ? (focusVisible ? styles.focusRing : styles.noFocusRing) : null,
+          slotStyle,
+        ]}
       >
         <Animated.View style={[styles.content, rowStyle, contentStyle]}>
           {renderItem(itemKey, state)}
@@ -885,6 +991,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   handle: { alignItems: 'center', height: 20, justifyContent: 'center', width: 20 },
+  // The web's keyboard focus: a ring inside the row's rounded edge. A click draws none.
+  focusRing: {
+    outlineColor: 'rgba(255, 255, 255, 0.7)',
+    outlineOffset: -2,
+    outlineStyle: 'solid',
+    outlineWidth: 2,
+  },
+  noFocusRing: { outlineWidth: 0 },
+  // Read by screen readers, never seen.
+  visuallyHidden: {
+    height: 1,
+    left: 0,
+    opacity: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    top: 0,
+    width: 1,
+  },
 });
 
 export default ReorderableList;

@@ -101,6 +101,15 @@ export const normalizeSpendOrder = (
   };
 };
 
+/**
+ * The preference a `GET /wirex/spend-order` answer stands for. Each field is read on its own: an
+ * answer with exclusions and no order keeps its exclusions over the default order, and no answer
+ * at all is the default order with nothing excluded.
+ */
+export const spendOrderPreferenceOf = (
+  data: { spendOrder?: readonly string[]; spendExcluded?: readonly string[] } | undefined,
+): SpendOrderPreference => normalizeSpendOrder(data?.spendOrder, data?.spendExcluded);
+
 /** Whether two preferences would spend the same way. */
 export const sameSpendOrder = (a: SpendOrderPreference, b: SpendOrderPreference): boolean =>
   a.order.length === b.order.length &&

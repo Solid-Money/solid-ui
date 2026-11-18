@@ -8,11 +8,7 @@ import useUser from '@/hooks/useUser';
 import { getCardSpendOrder, getCardSpendOrderPreview, setCardSpendOrder } from '@/lib/api';
 import { CardProvider, CardSpendOrder } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import {
-  DEFAULT_SPEND_ORDER_PREFERENCE,
-  normalizeSpendOrder,
-  type SpendOrderPreference,
-} from '@/lib/utils/spendOrder';
+import { type SpendOrderPreference, spendOrderPreferenceOf } from '@/lib/utils/spendOrder';
 
 export const CARD_SPEND_ORDER_QUERY_KEY = 'cardSpendOrder';
 export const CARD_SPEND_ORDER_PREVIEW_QUERY_KEY = 'cardSpendOrderPreview';
@@ -40,10 +36,7 @@ export const useSpendOrder = () => {
   });
 
   const preference = useMemo<SpendOrderPreference>(
-    () =>
-      query.data?.spendOrder
-        ? normalizeSpendOrder(query.data.spendOrder, query.data.spendExcluded)
-        : DEFAULT_SPEND_ORDER_PREFERENCE,
+    () => spendOrderPreferenceOf(query.data),
     [query.data],
   );
 
@@ -64,6 +57,19 @@ export const useSpendOrder = () => {
     ...preference,
     customized: query.data?.spendOrderCustomized ?? false,
     isLoading: query.isLoading,
+    /**
+     * The saved preference has answered at least once. Until then the fields above are the
+     * default order with nothing excluded — also while the read is paused offline, disabled
+     * because the card provider is not known yet, or failed — so an editor must not take that as
+     * its starting point. `isLoading` alone does not say this: it is false in all three cases.
+     */
+    hasLoaded: query.data !== undefined,
+    /**
+     * The read failed, nothing was ever loaded and no retry is running: the editor offers a retry
+     * instead of the list.
+     */
+    loadFailed: query.isError && query.data === undefined && !query.isFetching,
+    retry: query.refetch,
     save: mutation.mutateAsync,
     isSaving: mutation.isPending,
   };

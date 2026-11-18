@@ -4,6 +4,7 @@ import { type Href, useRouter } from 'expo-router';
 
 import { useAllSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import OrderEditorLayout from '@/components/Card/OrderList/OrderEditorLayout';
+import OrderListPlaceholder from '@/components/Card/OrderList/OrderListPlaceholder';
 import SpendOrderList from '@/components/Card/SpendOrder/SpendOrderList';
 import SpendOrderPreview from '@/components/Card/SpendOrder/SpendOrderPreview';
 import {
@@ -60,10 +61,15 @@ export default function SpendOrderScreen() {
     [current, visible],
   );
 
+  // Nothing can be edited until the saved preference has answered: until then it reads as the
+  // default order with nothing excluded, so a drag or a Reset would start from that, and Save
+  // would clear the exclusions the cardholder already has. That covers a read still waiting on the
+  // card provider, paused offline, or failed, not only one in flight.
+  const isReady = saved.hasLoaded;
   const isChanged = !sameSpendOrder(current, savedPreference);
   // A card with nothing left to spend would decline every purchase.
   const spendsNothing = spendsNothingIn(slots);
-  const canSave = isChanged && !spendsNothing && !saved.isSaving;
+  const canSave = isReady && isChanged && !spendsNothing && !saved.isSaving;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -82,9 +88,21 @@ export default function SpendOrderScreen() {
       title="Spend order"
       intro="Your card pays from the top. If a balance runs out, the rest of the purchase comes from the next one."
       note="Euro shops always use your euros first and dollar shops your dollars, so you don’t pay an FX fee. For any other currency, your card follows this order."
-      list={<SpendOrderList slots={slots} rows={rows} onChange={handleChange} />}
+      list={
+        isReady ? (
+          <SpendOrderList slots={slots} rows={rows} onChange={handleChange} />
+        ) : saved.loadFailed ? (
+          <OrderListPlaceholder
+            kind="failed"
+            message="We couldn’t load your spend order."
+            onRetry={() => void saved.retry()}
+          />
+        ) : (
+          <OrderListPlaceholder kind="loading" />
+        )
+      }
       listFooter={
-        spendsNothing ? (
+        isReady && spendsNothing ? (
           <Text className="mt-3 px-[6px] text-[14px] font-normal leading-[18px] text-[#D96167]">
             Keep at least one balance for your card to spend.
           </Text>
@@ -92,6 +110,7 @@ export default function SpendOrderScreen() {
       }
       preview={<SpendOrderPreview draft={current} shop={shop} onShopChange={setShop} />}
       onReset={() => setDraft({ ...DEFAULT_SPEND_ORDER_PREFERENCE })}
+      canReset={isReady}
       onSave={handleSave}
       canSave={canSave}
       isSaving={saved.isSaving}

@@ -1,14 +1,43 @@
-import { useCallback } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { type Href, useRouter } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 
 import { BackCircleIcon, InfoIcon } from './OrderIcons';
-import { ReorderableScrollView } from './ReorderableList';
+import { ReorderableScrollView, WEB_TOUCH } from './ReorderableList';
 
 import type { ReactNode } from 'react';
+
+const TOUCH_LIST_HINT = 'Hold and drag to reorder';
+/** A mouse and keyboard: the web has no screen-reader row actions, so a focused row moves by key. */
+const POINTER_LIST_HINT = WEB_TOUCH
+  ? 'Hold and drag, or Alt + ↑/↓ to reorder'
+  : 'Drag, or Alt + ↑/↓ to reorder';
+/** A device whose main input is a mouse or trackpad, so it most likely has a keyboard too. */
+const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)';
+
+/**
+ * The list hint for this device. Only a web page on a mouse-driven device names the keyboard moves:
+ * a phone or tablet browser has no Alt or arrow keys, so it keeps the touch hint. Read after mount
+ * (and on change, e.g. a mouse plugged into a tablet), so a statically rendered page hydrates with
+ * the same text it was rendered with.
+ */
+const useDefaultListHint = () => {
+  const [hasFinePointer, setHasFinePointer] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia(FINE_POINTER_QUERY);
+    const update = () => setHasFinePointer(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
+
+  return hasFinePointer ? POINTER_LIST_HINT : TOUCH_LIST_HINT;
+};
 
 export interface OrderEditorLayoutProps {
   /** "Spend order". */
@@ -19,7 +48,7 @@ export interface OrderEditorLayoutProps {
   note: string;
   /** "Order". */
   listLabel?: string;
-  /** "Hold and drag to reorder". */
+  /** "Hold and drag to reorder"; on a mouse-driven web page it names the keyboard moves too. */
   listHint?: string;
   /** The {@link ReorderableList}. Auto-scrolls this screen's scroll view when placed here. */
   list: ReactNode;
@@ -30,6 +59,8 @@ export interface OrderEditorLayoutProps {
   preview: ReactNode;
   /** Puts the default order on screen; nothing is saved until Save. */
   onReset: () => void;
+  /** False while the saved order is still loading, so a Reset cannot become the save basis. */
+  canReset?: boolean;
   resetAccessibilityLabel?: string;
   onSave: () => void;
   canSave: boolean;
@@ -52,12 +83,13 @@ const OrderEditorLayout = ({
   intro,
   note,
   listLabel = 'Order',
-  listHint = 'Hold and drag to reorder',
+  listHint,
   list,
   listFooter,
   previewLabel = 'Preview',
   preview,
   onReset,
+  canReset = true,
   resetAccessibilityLabel = 'Reset to the default order',
   onSave,
   canSave,
@@ -66,6 +98,7 @@ const OrderEditorLayout = ({
   fallbackHref,
 }: OrderEditorLayoutProps) => {
   const router = useRouter();
+  const defaultListHint = useDefaultListHint();
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -96,7 +129,9 @@ const OrderEditorLayout = ({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={resetAccessibilityLabel}
-            className="active:opacity-80"
+            accessibilityState={{ disabled: !canReset }}
+            className="active:opacity-80 disabled:opacity-50"
+            disabled={!canReset}
             hitSlop={12}
             onPress={onReset}
             style={styles.reset}
@@ -121,7 +156,9 @@ const OrderEditorLayout = ({
 
           <View style={[styles.label, styles.listLabel]}>
             <Text className="text-[18px] font-medium leading-[22px] text-white">{listLabel}</Text>
-            <Text className="text-[14px] font-normal leading-[18px] text-white/50">{listHint}</Text>
+            <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+              {listHint ?? defaultListHint}
+            </Text>
           </View>
           {list}
           {listFooter}

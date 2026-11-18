@@ -8,12 +8,15 @@ import {
 } from '@/components/Card/SpendOrder/spendOrderRows';
 import { CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { withoutExcludedAssets } from '@/lib/utils/cardSpendable';
+import { requirePreviewLines } from '@/lib/utils/orderPreview';
 import {
   DEFAULT_SPEND_ORDER,
+  DEFAULT_SPEND_ORDER_PREFERENCE,
   normalizeSpendOrder,
   sameSpendOrder,
   type SpendAssetKey,
   spendAssetKeyOf,
+  spendOrderPreferenceOf,
 } from '@/lib/utils/spendOrder';
 
 import type { SpendableAssetRow } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
@@ -43,6 +46,47 @@ describe('normalizeSpendOrder', () => {
       'WBTC',
       'ETH',
     ]);
+  });
+});
+
+describe('spendOrderPreferenceOf', () => {
+  it('keeps exclusions from an answer that sends no order, over the default order', () => {
+    expect(spendOrderPreferenceOf({ spendExcluded: ['USD_YIELD'] })).toEqual({
+      order: [...DEFAULT_SPEND_ORDER],
+      excluded: ['USD_YIELD'],
+    });
+  });
+
+  it('reads no answer, or an empty one, as the default preference', () => {
+    expect(spendOrderPreferenceOf(undefined)).toEqual(DEFAULT_SPEND_ORDER_PREFERENCE);
+    expect(spendOrderPreferenceOf({})).toEqual(DEFAULT_SPEND_ORDER_PREFERENCE);
+  });
+
+  it('reads a saved order and its exclusions together', () => {
+    const preference = spendOrderPreferenceOf({
+      spendOrder: ['ETH', ...DEFAULT_SPEND_ORDER.filter(key => key !== 'ETH')],
+      spendExcluded: ['USDT'],
+    });
+    expect(preference.order[0]).toBe('ETH');
+    expect(preference.excluded).toEqual(['USDT']);
+  });
+});
+
+describe('requirePreviewLines', () => {
+  it('passes a preview with lines through, an empty list included', () => {
+    const body = { covered: true, lines: [] };
+    expect(requirePreviewLines(body, 'spend order')).toBe(body);
+  });
+
+  it('throws on a preview without a lines array', () => {
+    expect(() => requirePreviewLines({ covered: true }, 'spend order')).toThrow(
+      'Invalid spend order preview',
+    );
+    expect(() => requirePreviewLines({ lines: null }, 'collateral order')).toThrow(
+      'Invalid collateral order preview',
+    );
+    expect(() => requirePreviewLines({ lines: 'x' }, 'spend order')).toThrow();
+    expect(() => requirePreviewLines(null, 'spend order')).toThrow();
   });
 });
 

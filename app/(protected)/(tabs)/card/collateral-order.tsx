@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { type Href, useRouter } from 'expo-router';
 
@@ -7,8 +6,7 @@ import CollateralOrderList from '@/components/Card/CollateralOrder/CollateralOrd
 import CollateralOrderPreview from '@/components/Card/CollateralOrder/CollateralOrderPreview';
 import { buildCollateralOrderRows } from '@/components/Card/CollateralOrder/collateralOrderRows';
 import OrderEditorLayout from '@/components/Card/OrderList/OrderEditorLayout';
-import Skeleton from '@/components/ui/skeleton';
-import { Text } from '@/components/ui/text';
+import OrderListPlaceholder from '@/components/Card/OrderList/OrderListPlaceholder';
 import { path } from '@/constants/path';
 import { useCardCreditPositions } from '@/hooks/useCardCreditPositions';
 import { type CollateralOrderPreviewShop, useCollateralOrder } from '@/hooks/useCollateralOrder';
@@ -53,8 +51,12 @@ export default function CollateralOrderScreen() {
     [current, visible],
   );
 
+  // Nothing can be edited until the saved order has answered: a drag or a Reset before then would
+  // start from the default order, and Save would write it over the saved one. That covers a read
+  // still waiting on the card provider, paused offline, or failed, not only one in flight.
+  const isReady = saved.hasLoaded;
   const isChanged = !sameCollateralOrder(current, saved.order);
-  const canSave = isChanged && !saved.isSaving;
+  const canSave = isReady && isChanged && !saved.isSaving;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -69,20 +71,18 @@ export default function CollateralOrderScreen() {
   };
 
   const list =
-    slots.length > 0 ? (
+    isReady && slots.length > 0 ? (
       <CollateralOrderList slots={slots} rows={rows} onChange={handleChange} />
-    ) : isLoadingPositions || saved.isLoading ? (
-      <View style={styles.placeholder}>
-        <Skeleton className="h-12 w-full rounded-xl" />
-        <Skeleton className="h-12 w-full rounded-xl" />
-        <Skeleton className="h-12 w-full rounded-xl" />
-      </View>
+    ) : saved.loadFailed ? (
+      <OrderListPlaceholder
+        kind="failed"
+        message="We couldn’t load your collateral order."
+        onRetry={() => void saved.retry()}
+      />
+    ) : isLoadingPositions || !isReady ? (
+      <OrderListPlaceholder kind="loading" />
     ) : (
-      <View style={styles.placeholder}>
-        <Text className="text-[14px] font-normal leading-[18px] text-white/50">
-          Your card has no collateral to order yet.
-        </Text>
-      </View>
+      <OrderListPlaceholder kind="empty" message="Your card has no collateral to order yet." />
     );
 
   return (
@@ -93,6 +93,7 @@ export default function CollateralOrderScreen() {
       list={list}
       preview={<CollateralOrderPreview draft={current} shop={shop} onShopChange={setShop} />}
       onReset={() => setDraft([...DEFAULT_COLLATERAL_ORDER])}
+      canReset={isReady}
       onSave={handleSave}
       canSave={canSave}
       isSaving={saved.isSaving}
@@ -101,8 +102,3 @@ export default function CollateralOrderScreen() {
     />
   );
 }
-
-const styles = StyleSheet.create({
-  // The list panel's look while there are no rows to drag.
-  placeholder: { backgroundColor: '#2B2B2B', borderRadius: 20, gap: 12, padding: 20 },
-});

@@ -211,6 +211,7 @@ import {
   YieldBoostSummary,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
+import { requirePreviewLines } from './utils/orderPreview';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
@@ -4759,7 +4760,7 @@ export const getCardSpendOrderPreview = async (params: {
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return requirePreviewLines<CardSpendOrderPreviewResponse>(await response.json(), 'spend order');
 };
 
 /**
@@ -4843,7 +4844,10 @@ export const getCardCollateralOrderPreview = async (params: {
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return requirePreviewLines<CardCollateralOrderPreviewResponse>(
+    await response.json(),
+    'collateral order',
+  );
 };
 
 /**

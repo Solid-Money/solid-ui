@@ -375,4 +375,29 @@ describe('the collateral preview', () => {
     expect(formatLockedAmount('0')).toBe('0');
     expect(formatLockedAmount('n/a')).toBe('n/a');
   });
+
+  it('rounds on the decimal string, half up, carrying into the whole part', () => {
+    expect(formatLockedAmount('0.99999')).toBe('1');
+    expect(formatLockedAmount('1.00005')).toBe('1.0001');
+    expect(formatLockedAmount('1.00004')).toBe('1');
+    expect(formatLockedAmount('999.99995')).toBe('1,000');
+    expect(formatLockedAmount('0.000000000000000001')).toBe('0.000000000000000001');
+    expect(formatLockedAmount('2.50')).toBe('2.5');
+    expect(formatLockedAmount('.5')).toBe('0.5');
+    expect(formatLockedAmount('0.000')).toBe('0');
+  });
+
+  it('keeps every digit of an amount past float precision', () => {
+    // 2^53 + 1: a float would read it as ...992.
+    expect(formatLockedAmount('9007199254740993')).toBe('9,007,199,254,740,993');
+    expect(formatLockedAmount('123456789012345678.123456789012345678')).toBe(
+      '123,456,789,012,345,678.1235',
+    );
+  });
+
+  it('leaves anything but a plain decimal as sent', () => {
+    expect(formatLockedAmount('')).toBe('');
+    expect(formatLockedAmount('1e-7')).toBe('1e-7');
+    expect(formatLockedAmount('1.2.3')).toBe('1.2.3');
+  });
 });
