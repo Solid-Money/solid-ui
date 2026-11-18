@@ -107,6 +107,8 @@ const WalletDepositAddress = () => {
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
   const [isNetworkOpen, setIsNetworkOpen] = useState(false);
+  // rhino.fi has paid the Safe: nothing more is coming, so the button closes.
+  const [isRhinoComplete, setIsRhinoComplete] = useState(false);
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
@@ -226,6 +228,12 @@ const WalletDepositAddress = () => {
     },
     [router, setDepositModal],
   );
+  // A payout into the Safe is the deposit done, with no progress screen of its own to
+  // open: the feed is where it now shows.
+  const closeToActivity = useCallback(() => {
+    setDepositModal(DEPOSIT_MODAL.CLOSE);
+    router.push(path.ACTIVITY);
+  }, [router, setDepositModal]);
   // rhino.fi pays ETH out as ETH to the user's wallet deposit address on Base,
   // where the pipeline wraps it into WETH for the Safe: watched like a minted
   // address, so the deposit's progress opens once that payout lands, as the
@@ -445,6 +453,7 @@ const WalletDepositAddress = () => {
           chainName={rhinoChainName ?? rhino.chain.name}
           addressType={rhinoAddress?.addressType ?? rhino.chain.addressType}
           destinationType={rhinoSelection.destinationType}
+          onCompleteChange={setIsRhinoComplete}
         />
       ) : null}
 
@@ -457,16 +466,24 @@ const WalletDepositAddress = () => {
         </View>
       ) : null}
 
-      <Button
-        variant="brand"
-        className="h-12 w-full rounded-full"
-        onPress={handleCopy}
-        disabled={!address}
-      >
-        <Text className="text-base font-bold text-black">
-          {copied ? 'Address copied' : 'Copy address'}
-        </Text>
-      </Button>
+      {/* Once the deposit is complete the address is still copyable from its own
+          icon above; the main action is leaving for the feed. */}
+      {isRhinoComplete ? (
+        <Button variant="brand" className="h-12 w-full rounded-full" onPress={closeToActivity}>
+          <Text className="text-base font-bold text-black">Close</Text>
+        </Button>
+      ) : (
+        <Button
+          variant="brand"
+          className="h-12 w-full rounded-full"
+          onPress={handleCopy}
+          disabled={!address}
+        >
+          <Text className="text-base font-bold text-black">
+            {copied ? 'Address copied' : 'Copy address'}
+          </Text>
+        </Button>
+      )}
 
       {/* Last child, so paint order puts the open list over everything above. */}
       {isNetworkOpen && !walletDeposit.toSafe ? (

@@ -28,6 +28,7 @@ import {
   isOwnPayoutChain,
   isOwnPipelineChain,
   isOwnPipelineToken,
+  isRhinoDepositComplete,
   isRhinoDepositOffered,
   isRhinoPayoutFinal,
   isSameDepositAddress,
@@ -509,6 +510,44 @@ describe('isRhinoPayoutFinal', () => {
     expect(isRhinoPayoutFinal({ destinationType: 'WALLET', receiveSymbol: 'ETH' })).toBe(false);
     expect(isRhinoPayoutFinal({ destinationType: 'RAIN_CARD', receiveSymbol: 'USDC' })).toBe(false);
     expect(isRhinoPayoutFinal({ destinationType: 'PROTOCOL', receiveSymbol: 'USDC' })).toBe(false);
+  });
+});
+
+describe('isRhinoDepositComplete', () => {
+  it('is a payout into the Safe that rhino.fi has made', () => {
+    expect(
+      isRhinoDepositComplete({
+        status: 'EXECUTED',
+        destinationType: 'WALLET',
+        receiveSymbol: 'USDC',
+      }),
+    ).toBe(true);
+  });
+
+  it('is not one still on its way, nor one that ended any other way', () => {
+    (['DETECTED', 'ACCEPTED', 'DELAYED', 'REJECTED', 'REFUNDED'] as const).forEach(status => {
+      expect(
+        isRhinoDepositComplete({ status, destinationType: 'WALLET', receiveSymbol: 'USDC' }),
+      ).toBe(false);
+    });
+  });
+
+  // Our pipeline still has these to deliver after rhino.fi's leg.
+  it('is not a payout that goes on through our pipeline', () => {
+    expect(
+      isRhinoDepositComplete({
+        status: 'EXECUTED',
+        destinationType: 'WALLET',
+        receiveSymbol: 'ETH',
+      }),
+    ).toBe(false);
+    expect(
+      isRhinoDepositComplete({
+        status: 'EXECUTED',
+        destinationType: 'RAIN_CARD',
+        receiveSymbol: 'USDC',
+      }),
+    ).toBe(false);
   });
 });
 
