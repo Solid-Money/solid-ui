@@ -130,6 +130,11 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
         'WBTC is bitcoin held by a custodian, BitGo. Each token represents 1 BTC of custodied bitcoin, but its market price can fall below 1 BTC. soBTC carries both the custodian risk and this market-price risk.',
     },
     {
+      question: 'Does BTC Yield count toward my yield boost?',
+      answer:
+        "Yes. On Prime and Ultra, your BTC Yield balance counts toward your tier's yield boost together with your other yields, at its value in dollars, up to your tier's limit. The boost is paid in soFUSE, and you claim it from Earn.",
+    },
+    {
       question: 'How do I withdraw?',
       answer:
         'Withdrawals are paid in WBTC on Ethereum, in two steps: your soBTC moves from Base to Ethereum first, for a small fee in ETH on Base, then the withdrawal goes through a queue and usually finishes within about 3 days.',
@@ -137,7 +142,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Why can I withdraw less than I hold right now?',
       answer:
-        'Withdrawals are paid from the WBTC the vault holds on Ethereum. While part of it is out earning or still on Base, you can withdraw up to what it holds right now. The rest is still yours: withdraw it later.',
+        'Withdrawals are paid from the WBTC BTC Yield holds on Ethereum. While part of it is out earning or still on Base, you can withdraw up to what it holds right now. The rest is still yours: withdraw it later.',
     },
   ],
 };
