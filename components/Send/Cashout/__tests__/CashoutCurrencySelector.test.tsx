@@ -142,6 +142,31 @@ describe('CashoutCurrencySelector', () => {
     expect(shown).not.toContain('Your currency');
   });
 
+  it('writes the picked filter in black on its white pill, through every switch', () => {
+    const root = render();
+    const labelColours = () =>
+      root.root
+        .findAll(
+          (node: any) =>
+            node.props.accessibilityRole === 'tab' && typeof node.props.onPress === 'function',
+        )
+        .map((tab: any) => {
+          const label = tab.find((child: any) => child.type === 'Text');
+          // In the style, not the classes: on the web a Text's colour classes
+          // pile up across renders, and the white one wins.
+          expect(label.props.className).not.toMatch(/text-(black|white)/);
+          return [label.props.children, tab.props.accessibilityState.selected, label.props.style];
+        });
+
+    pressChip(root, 'Bank transfer');
+    pressChip(root, 'All');
+    expect(labelColours()).toEqual([
+      ['All', true, { color: '#000000' }],
+      ['Bank transfer', false, { color: '#ffffff' }],
+      ['Mobile money', false, { color: '#ffffff' }],
+    ]);
+  });
+
   it('finds a country by a method’s name', () => {
     const root = render();
     const search = root.root.find(
