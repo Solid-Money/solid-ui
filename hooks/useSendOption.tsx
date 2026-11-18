@@ -29,8 +29,12 @@ import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useTransfiCashoutPaymentMethods } from '@/hooks/useTransfiCashout';
+import {
+  useTransfiCashoutConfig,
+  useTransfiCashoutPaymentMethods,
+} from '@/hooks/useTransfiCashout';
 import { getBuyCryptoTitle } from '@/lib/buyCryptoFlow';
+import { skipsCashoutMethodStep } from '@/lib/cashoutMethods';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { SendModal } from '@/lib/types';
 import { hasUnsavedCashoutData, useCashoutStore } from '@/store/useCashoutStore';
@@ -122,6 +126,8 @@ const useSendOption = ({
   const { data: cashoutMethods } = useTransfiCashoutPaymentMethods(
     isCashoutDetails ? cashoutCurrency : undefined,
   );
+  // Cached by the currency step; only read here, to know where Back goes.
+  const { data: cashoutConfig } = useTransfiCashoutConfig(isCashoutDetails);
   const cashoutMethodName = cashoutMethods?.find(
     method => method.paymentCode === cashoutPaymentCode,
   )?.paymentName;
@@ -365,7 +371,14 @@ const useSendOption = ({
       return;
     }
     if (isCashoutMethod) return setModal(SEND_MODAL.OPEN_CASHOUT_CURRENCY);
-    if (isCashoutDetails) return setModal(SEND_MODAL.OPEN_CASHOUT_METHOD);
+    if (isCashoutDetails) {
+      // A currency with one method never showed the method step.
+      return setModal(
+        skipsCashoutMethodStep(cashoutConfig, cashoutCurrency)
+          ? SEND_MODAL.OPEN_CASHOUT_CURRENCY
+          : SEND_MODAL.OPEN_CASHOUT_METHOD,
+      );
+    }
     if (isCashoutAmount) return setModal(SEND_MODAL.OPEN_CASHOUT_DETAILS);
     if (isCashoutReview) return setModal(SEND_MODAL.OPEN_CASHOUT_AMOUNT);
 

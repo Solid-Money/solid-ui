@@ -3822,11 +3822,31 @@ export interface TransfiPayoutField {
   locked?: boolean;
 }
 
+/** How a cash-out reaches the user: into a bank account, or a mobile wallet. */
+export type TransfiCashoutMethodType = 'bank' | 'mobile_money';
+
+/** A payout method as the currency list shows it. */
+export interface TransfiCashoutMethodSummary {
+  paymentCode: string;
+  name: string;
+  type: TransfiCashoutMethodType;
+}
+
+/** A payout currency with the country it belongs to and how it can be paid. */
+export interface TransfiCashoutCurrency extends TransfiCurrencyOption {
+  /** Country or zone (EUR → Eurozone); absent for a code the server can't name. */
+  country?: string;
+  /** Absent when TransFi wouldn't list them; the method step then loads them. */
+  methods?: TransfiCashoutMethodSummary[];
+}
+
 export interface TransfiCashoutPaymentMethod {
   paymentCode: string;
   paymentName?: string;
   /** 'bank_transfer', 'local_wallet'… */
   paymentType?: string;
+  /** `paymentType` read as bank or mobile money. Absent from an older server. */
+  type?: TransfiCashoutMethodType;
   logo?: string;
   /** Fiat limits as TransFi lists them on the method. */
   minAmount?: number;
@@ -3835,7 +3855,7 @@ export interface TransfiCashoutPaymentMethod {
 }
 
 export interface TransfiCashoutConfig {
-  currencies: TransfiCurrencyOption[];
+  currencies: TransfiCashoutCurrency[];
   defaultCurrency?: string;
   tokenSymbol: string;
   tokenNetwork: string;

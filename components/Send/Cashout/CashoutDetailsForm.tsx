@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardTypeOptions, Pressable, ScrollView, View } from 'react-native';
 import { Check, ChevronDown, Lock } from 'lucide-react-native';
 
@@ -9,7 +9,11 @@ import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTransfiCashoutPaymentMethods } from '@/hooks/useTransfiCashout';
 import { track } from '@/lib/analytics';
-import { validatePayoutDetails, validatePayoutField } from '@/lib/payoutFields';
+import {
+  initialPayoutValues,
+  validatePayoutDetails,
+  validatePayoutField,
+} from '@/lib/payoutFields';
 import { cn } from '@/lib/utils';
 import { useCashoutStore } from '@/store/useCashoutStore';
 import { useSendStore } from '@/store/useSendStore';
@@ -51,6 +55,19 @@ export const CashoutDetailsForm = () => {
   const [submitted, setSubmitted] = useState(false);
 
   const fields = useMemo(() => method?.fields ?? [], [method]);
+
+  // Start from what the verified profile already says — the holder's name,
+  // their address — so the user only types the account itself. Done here, not
+  // when the method is picked: a currency with one method skips that step.
+  // Anything already typed for this method is kept.
+  const seededFor = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!method || seededFor.current === method.paymentCode) return;
+    seededFor.current = method.paymentCode;
+    if (Object.keys(useCashoutStore.getState().paymentDetails).length) return;
+    const initial = initialPayoutValues(method.fields);
+    if (Object.keys(initial).length) setPaymentDetails(initial);
+  }, [method, setPaymentDetails]);
   const editable = fields.filter(field => !field.locked);
   const locked = fields.filter(field => field.locked);
 
