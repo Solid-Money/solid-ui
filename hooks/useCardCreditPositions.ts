@@ -395,7 +395,8 @@ export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
     [readsFuse, readsBase, fuseQuery.data, baseQuery.data],
   );
 
-  return { data, base: baseQuery };
+  // True only while an enabled read has yet to answer for the first time.
+  return { data, base: baseQuery, isLoading: fuseQuery.isLoading || baseQuery.isLoading };
 };
 
 export default useCardCreditPositions;

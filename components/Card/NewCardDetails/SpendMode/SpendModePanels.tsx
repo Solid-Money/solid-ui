@@ -26,7 +26,7 @@ import type { ReactNode } from 'react';
 
 /**
  * Figma 29120:9486, which grows a row per spendable asset held: 23 above the header, the 50pt
- * header, 16 below the last row; the divider (27) and the "Spendable assets" title (34) only when
+ * header, 16 below the last row; the divider (27) and the "Spends in this order" title (34) only when
  * there is a row to title. A row is 48pt, or 56 with a second line. Fixed per row, so the sheet can
  * reserve room for the panel before it renders.
  *
@@ -134,6 +134,15 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  */
 const ETH_YIELD_ICON = getAsset('images/portfolio/eth.svg');
 
+/**
+ * soBTC and WBTC, by the marks `getTokenIcon` already gives them: soBTC has no share mark of its
+ * own yet, so it draws the BTC coin with the yield badge dot; WBTC draws its own.
+ */
+const BTC_TOKEN_LOGO = {
+  sobtc: getAsset('images/btc.png'),
+  wbtc: getAsset('images/wbtc.png'),
+} as const;
+
 /** The card mark the "How you earn" sheet gives card credit, drawn at the rows' 32pt. */
 const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
 
@@ -142,7 +151,7 @@ const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
  * with its ring overhanging, as in Figma); a yield share is the yield icon with the dot badge
  * (Figma "so-token / soUSD / badge dot").
  */
-const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+export const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
   if (icon === 'cardCredit') {
     return <Image accessible={false} source={CARD_CREDIT_LOGO} style={styles.tokenLogo} />;
   }
@@ -153,6 +162,17 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
         source={COLLATERAL_TOKEN_LOGO[icon]}
         style={styles.collateralLogo}
       />
+    );
+  }
+  if (icon === 'wbtc') {
+    return <Image accessible={false} source={BTC_TOKEN_LOGO.wbtc} style={styles.collateralLogo} />;
+  }
+  if (icon === 'sobtc') {
+    return (
+      <View accessible={false} style={styles.tokenLogo}>
+        <Image source={BTC_TOKEN_LOGO.sobtc} style={styles.btcYieldIcon} />
+        <Image source={BADGE_DOT} style={styles.badgeDot} />
+      </View>
     );
   }
   if (icon === 'usdc' || icon === 'eurc') {
@@ -194,9 +214,13 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
 
 /**
  * A collateral row's mark: the yield glyphs and Bitcoin's in their tinted circle, or a token's own
- * logo for the crypto Figma has not drawn a glyph for.
+ * logo for the crypto Figma has not drawn a glyph for. soBTC and WBTC take the coins
+ * `getTokenIcon` gives them, round at 32 like the other token logos.
  */
-const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
+export const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
+  if (icon === 'sobtc' || icon === 'wbtc') {
+    return <Image accessible={false} source={BTC_TOKEN_LOGO[icon]} style={styles.collateralLogo} />;
+  }
   if (icon === 'eth') {
     return <Image accessible={false} source={ETH_YIELD_ICON} style={styles.collateralEthIcon} />;
   }
@@ -250,8 +274,10 @@ interface BalancePanelProps {
    * nothing behind it, and a button that ignores the tap reads as broken.
    */
   onAddFunds?: () => void;
-  /** The "?" beside "Spendable assets". */
+  /** The "?" beside "Spends in this order". */
   onHelpPress?: () => void;
+  /** "Edit order": opens the Spend order screen. Without one the pill is not drawn. */
+  onEditOrder?: () => void;
 }
 
 /**
@@ -265,6 +291,7 @@ export const SpendModeBalancePanel = ({
   rows,
   onAddFunds,
   onHelpPress,
+  onEditOrder,
 }: BalancePanelProps) => (
   <View style={[styles.panel, styles.balancePanel, { height: balancePanelHeight(rows) }]}>
     <View style={styles.balanceHeader}>
@@ -291,11 +318,11 @@ export const SpendModeBalancePanel = ({
         </View>
         <View style={styles.assetsTitle}>
           <Text className="text-[18px] font-medium leading-[18px] text-white">
-            Spendable assets
+            Spends in this order
           </Text>
           {onHelpPress ? (
             <Pressable
-              accessibilityLabel="How spendable assets work"
+              accessibilityLabel="How spend order works"
               accessibilityRole="button"
               className="active:opacity-80"
               hitSlop={12}
@@ -306,6 +333,18 @@ export const SpendModeBalancePanel = ({
           ) : (
             <HelpBadge />
           )}
+          {onEditOrder ? (
+            <Pressable
+              accessibilityLabel="Edit spend order"
+              accessibilityRole="button"
+              className="transition-all active:scale-95 active:opacity-80"
+              hitSlop={8}
+              onPress={onEditOrder}
+              style={styles.editOrder}
+            >
+              <Text className="text-[14px] font-semibold text-white">Edit order</Text>
+            </Pressable>
+          ) : null}
         </View>
         <PanelList
           height={assetListHeight(rows)}
@@ -414,7 +453,18 @@ export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
 );
 
 interface CreditPanelProps extends BorrowedSummaryFigures {
+  /** The listed rows, in the order the card locks them. */
   collateral: CreditModeFigures['collateral'];
+  /**
+   * The card can lock two or more kinds of collateral, so the order they lock in is worth naming:
+   * the title reads "Locks in this order" and "Edit order" can be offered.
+   */
+  locksInOrder?: boolean;
+  /**
+   * "Edit order": opens the Collateral order screen. Drawn only with {@link locksInOrder}, and
+   * not drawn without one.
+   */
+  onEditOrder?: () => void;
   /** The closest any loan is to liquidation, for the chip beside "Borrowed". */
   risk: CreditModeFigures['risk'];
   /** Whether anything is borrowed: with nothing, there is no health to report. */
@@ -448,6 +498,8 @@ const RISK_CHIP = {
  */
 export const SpendModeCreditPanel = ({
   collateral,
+  locksInOrder = false,
+  onEditOrder,
   risk,
   hasDebt,
   onHelpPress,
@@ -471,7 +523,7 @@ export const SpendModeCreditPanel = ({
         <View style={styles.collateralTitle}>
           <View style={styles.collateralTitleLeft}>
             <Text className="text-[18px] font-medium leading-[18px] text-white">
-              Collateral assets
+              {locksInOrder ? 'Locks in this order' : 'Collateral assets'}
             </Text>
             {onHelpPress ? (
               <Pressable
@@ -487,8 +539,22 @@ export const SpendModeCreditPanel = ({
               <HelpBadge />
             )}
           </View>
-          {/* True of the yield shares only: Bitcoin locked as collateral earns nothing. */}
-          {collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
+          {locksInOrder ? (
+            onEditOrder ? (
+              <Pressable
+                accessibilityLabel="Edit collateral order"
+                accessibilityRole="button"
+                className="transition-all active:scale-95 active:opacity-80"
+                hitSlop={8}
+                onPress={onEditOrder}
+                style={[styles.editOrder, styles.editCollateralOrder]}
+              >
+                <Text className="text-[14px] font-semibold text-white">Edit order</Text>
+              </Pressable>
+            ) : null
+          ) : collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
+            // With nothing to order (Fuse locks soUSD alone), the line it had before. True of
+            // the yield shares only: Bitcoin locked as collateral earns nothing.
             <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
               Keeps earning
             </Text>
@@ -578,6 +644,19 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingTop: 6,
   },
+  // Figma 30973:15374: the pill sits on the title row's right edge, 1 down from its top —
+  // taller than the row's padded content, so placed rather than laid out.
+  editOrder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    position: 'absolute',
+    right: 0,
+    top: 1,
+  },
+  // The same pill on the Credit panel's 20pt title row: centred on it, so 5 above its top.
+  editCollateralOrder: { top: -5 },
   assetRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   assetLeft: { flex: 1, gap: 2 },
   assetRight: { alignItems: 'flex-end', gap: 2 },
@@ -598,6 +677,8 @@ const styles = StyleSheet.create({
   badgeDot: { height: 14, left: 20, position: 'absolute', top: 20, width: 14 },
   // The ETH Yield icon carries its own circle, at the yield icon's size and offset.
   ethYieldIcon: { height: 31.373, marginTop: 0.31, width: 31.976 },
+  // soBTC: the BTC coin, round, at the same size and offset.
+  btcYieldIcon: { borderRadius: 15.7, height: 31.373, marginTop: 0.31, width: 31.976 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',

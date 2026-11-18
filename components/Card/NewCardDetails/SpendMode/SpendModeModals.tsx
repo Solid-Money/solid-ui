@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Platform } from 'react-native';
+import { router } from 'expo-router';
 
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
 import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCustomer } from '@/hooks/useCustomer';
@@ -93,6 +95,20 @@ const SpendModeModals = ({
     setIsCreditDetailsOpen(true);
   }, [closeSpendMode]);
 
+  const openSpendOrder = useCallback(() => {
+    // Closed first, like funding, so backing out of the screen lands on the card, not the sheet.
+    setIsCollateralHelpOpen(false);
+    closeSpendMode();
+    router.push(path.CARD_SPEND_ORDER);
+  }, [closeSpendMode]);
+
+  const openCollateralOrder = useCallback(() => {
+    // The same hand-over as the spend order: back from the screen lands on the card.
+    setIsCollateralHelpOpen(false);
+    closeSpendMode();
+    router.push(path.CARD_COLLATERAL_ORDER);
+  }, [closeSpendMode]);
+
   return (
     <>
       <SpendModeSheet
@@ -103,6 +119,8 @@ const SpendModeModals = ({
         onCollateralHelpPress={() => setIsCollateralHelpOpen(true)}
         onViewCreditDetails={openCreditDetails}
         onAddFunds={canAddFunds ? openFunds : undefined}
+        onEditOrder={openSpendOrder}
+        onEditCollateralOrder={openCollateralOrder}
       />
       <SpendModeHelpModal isOpen={isOpen && isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <CollateralHelpSheet

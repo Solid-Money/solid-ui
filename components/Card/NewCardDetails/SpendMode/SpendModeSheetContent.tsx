@@ -167,13 +167,20 @@ interface SpendModeSheetContentProps {
   /** Why the last attempt failed, or null. */
   error?: string | null;
   onDismiss: () => void;
-  /** The "?" beside the caption and beside "Spendable assets": the spend-mode intro. */
+  /** The "?" beside the caption and beside "Spends in this order": the spend-mode intro. */
   onHelpPress: () => void;
   /** The "?" beside "Collateral assets" on the Credit panel: "How collateral works". */
   onCollateralHelpPress: () => void;
   /** "View Credit details" at the foot of the Credit panel: the borrow position. */
   onViewCreditDetails: () => void;
   onAddFunds?: () => void;
+  /** "Edit order" on the Cash panel: the Spend order screen. */
+  onEditOrder?: () => void;
+  /**
+   * "Edit order" on the Credit panel: the Collateral order screen. Offered only when the card can
+   * lock two or more kinds of collateral.
+   */
+  onEditCollateralOrder?: () => void;
   /** Space above the heading; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
   /** The desktop modal adds a close button to the heading row and drops the side inset. */
@@ -205,6 +212,8 @@ const SpendModeSheetContent = ({
   onCollateralHelpPress,
   onViewCreditDetails,
   onAddFunds,
+  onEditOrder,
+  onEditCollateralOrder,
   topPadding = SPEND_MODE_SHEET_TOP,
   presentation = 'sheet',
 }: SpendModeSheetContentProps) => {
@@ -376,6 +385,7 @@ const SpendModeSheetContent = ({
                   rows={balance.rows}
                   onAddFunds={onAddFunds}
                   onHelpPress={onHelpPress}
+                  onEditOrder={onEditOrder}
                 />
               ) : panel === 'credit' ? (
                 <SpendModeCreditPanel
@@ -384,6 +394,8 @@ const SpendModeSheetContent = ({
                   borrowApy={credit.borrowApy}
                   borrowedProgress={credit.borrowedProgress}
                   collateral={credit.collateral}
+                  locksInOrder={credit.collateralKeys.length > 1}
+                  onEditOrder={onEditCollateralOrder}
                   risk={credit.risk}
                   hasDebt={credit.hasDebt}
                   onHelpPress={onCollateralHelpPress}

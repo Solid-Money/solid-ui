@@ -657,6 +657,95 @@ export interface CardSpendableResponse {
   main_currency?: MainCurrency;
 }
 
+/**
+ * A Wirex cardholder's spend order: every asset key ranked, and the ones the card never uses.
+ * Keys are `SpendAssetKey` (lib/utils/spendOrder) but typed as strings, since a newer backend may
+ * send one this build does not know.
+ */
+export interface CardSpendOrder {
+  spendOrder?: string[];
+  spendExcluded?: string[];
+  spendOrderCustomized?: boolean;
+}
+
+/** One asset's share of a previewed purchase. */
+export interface CardSpendOrderPreviewLine {
+  /** A spend asset key ("USDC", "USD_YIELD"). */
+  asset: string;
+  amount_usd: string;
+  /** Set on EURC and EUR_YIELD lines: the same share in euros. */
+  amount_eur?: string;
+}
+
+/**
+ * GET /accounts/v1/wirex/spend-order/preview — how a purchase would be paid, from the same
+ * selection the sweep runs.
+ */
+export interface CardSpendOrderPreviewResponse {
+  currency: string;
+  amount: string;
+  amount_usd: string;
+  chain_id: number;
+  covered: boolean;
+  /** Paid 1:1 from EURC: a euro shop that EURC alone covers. */
+  one_to_one: boolean;
+  shortfall_usd: string;
+  /**
+   * Card bonus that would pay first, in USD; `lines` are then the Safe's share of the rest. Absent
+   * when there is none.
+   */
+  card_credit_usd?: string;
+  lines: CardSpendOrderPreviewLine[];
+}
+
+/**
+ * GET/POST /accounts/v1/wirex/collateral-order — the order a Wirex card locks collateral in when
+ * it borrows. Keys are `CollateralAssetKey` (lib/utils/collateralOrder) but typed as strings, since
+ * a newer backend may send one this build does not know. Optional for the same reason: an older
+ * backend answers without them.
+ */
+export interface CardCollateralOrder {
+  /** Every collateral key, ranked; the default when the cardholder never saved one. */
+  collateralOrder?: string[];
+  collateralOrderCustomized?: boolean;
+  defaultCollateralOrder?: string[];
+}
+
+/** One collateral a previewed purchase would newly lock. */
+export interface CardCollateralOrderPreviewLine {
+  /** A collateral asset key ("USD_YIELD", "BTC"). */
+  asset: string;
+  /** The token locked ("soUSD", "cbBTC"). */
+  symbol: string;
+  locked_usd: string;
+  /** In token units, as a decimal string. */
+  locked_amount: string;
+}
+
+/**
+ * GET /accounts/v1/wirex/collateral-order/preview — what a purchase would lock, simulated by the
+ * backend from the contract's own greedy lock math.
+ */
+export interface CardCollateralOrderPreviewResponse {
+  currency: string;
+  amount: string;
+  amount_usd: string;
+  chain_id: number;
+  /** False when the credit line can't take the purchase. */
+  covered: boolean;
+  shortfall_usd: string;
+  /**
+   * Card bonus that would pay first, in USD; the lock is for the rest. Absent when there is none.
+   */
+  card_credit_usd?: string;
+  /**
+   * Only non-zero locks, in lock order. Already-escrowed collateral is not listed. When `covered`
+   * is false these are what the order would draw before running out: the purchase would decline
+   * and lock nothing.
+   */
+  lines: CardCollateralOrderPreviewLine[];
+}
+
 interface CryptoAccount {
   type: string;
   address: string;
