@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="308" height="188" viewBox="0 0 308 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Green cashback glow" opacity="0.22" filter="url(#filter0_f_0_137)">
+<ellipse cx="154" cy="94" rx="120" ry="60" fill="#2E5CEB" fill-opacity="0.5"/>
+</g>
+<defs>
+<filter id="filter0_f_0_137" x="0" y="0" width="308" height="188" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="17" result="effect1_foregroundBlur_0_137"/>
+</filter>
+</defs>
+</svg>

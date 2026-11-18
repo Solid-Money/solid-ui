@@ -1,3 +1,5 @@
+import { parseUnits } from 'viem';
+
 import { CARD_FROZEN_BY_SOLID_CODE } from '@/constants/errors';
 import {
   CardCollateralTokenBalanceDto,
@@ -13,6 +15,7 @@ import {
   CardTransactionCategory,
   CardTransactionFee,
   Cashback,
+  CashbackCurrency,
   CashbackInfo,
   CashbackStatus,
   CashbackType,
@@ -147,15 +150,12 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
  *
  * Keyed on which provider issues the user's VIRTUAL ACCOUNT, not on who issues
  * their card. The exclusion only ever had one reason — a Wirex virtual account
- * supports no wire, and what it receives settles into the Wirex balance rather
- * than the Safe — and that is a fact about the account, not the card.
+ * is a EUR IBAN, with no wire or ACH — and that is a fact about the account,
+ * not the card. Its euros are offered as the Cash list's EUR row instead.
  *
- * Reading it off the card was the same answer only while a Wirex cardholder
- * necessarily got a Wirex account. They no longer do: Wirex has not launched
- * its virtual account, so every user is routed to a RAIN one, which does
- * support wire and ACH and does settle into the Safe. Keyed on the card, this
- * hid the rail from Wirex cardholders who had a perfectly good Rain account
- * waiting — the wallet offered them no USD bank option at all.
+ * Reading it off the card would hide the rail from a Wirex cardholder who
+ * opened a Rain account before Wirex launched its own; that account does
+ * support wire and ACH and does settle into the Safe.
  *
  * `loading` counts as having the rail, so the row does not pop in for everyone
  * while the lookup settles; the entry point re-reads the provider when pressed.
@@ -515,23 +515,64 @@ export const cardSweepExplorerUrl = (details: CardSpendDetails | undefined): str
   return `https://explorer.fuse.io/tx/${hash}`;
 };
 
+/** Base — where card refunds are paid from the Card Refund Payout Wallet. */
+const BASE_CHAIN_ID = 8453;
+
 /**
- * Explorer link for the USDC.e transfer that paid a refund, on Fuse.
+ * Explorer link for the transfer that paid a refund: USDC or EURC on Base, or
+ * USDC.e on Fuse for refunds paid before the Base refund wallet.
  *
  * Its own helper rather than a second call to {@link cardSweepExplorerUrl} with
  * a different field: the two hashes point in opposite directions — one is money
  * we took, one is money we sent back — and a single helper reading whichever
  * field happened to be set is how a refund ends up rendered under a "Sweep"
- * label. Same chain guard, for the same reason.
+ * label. An unrecognised chain returns nothing, for the same reason.
  */
 export const cardRefundExplorerUrl = (
   refund: CardRefundDetails | undefined,
 ): string | undefined => {
   const hash = refund?.tx_hash;
   if (!hash) return undefined;
-  const chainId = refund?.chain_id ?? FUSE_CHAIN_ID;
-  if (chainId !== FUSE_CHAIN_ID) return undefined;
-  return `https://explorer.fuse.io/tx/${hash}`;
+  switch (refund?.chain_id ?? FUSE_CHAIN_ID) {
+    case FUSE_CHAIN_ID:
+      return `https://explorer.fuse.io/tx/${hash}`;
+    case BASE_CHAIN_ID:
+      return `https://basescan.org/tx/${hash}`;
+    default:
+      return undefined;
+  }
+};
+
+/** EURC is 6-decimal on Base. */
+const EURC_DECIMALS = 6;
+
+/**
+ * What reached the Safe for a refund, formatted in the currency it was paid in:
+ * euros for a EURC refund (a purchase paid in euros), dollars otherwise.
+ *
+ * The EURC figure is a token amount, so it is read with `parseUnits` and
+ * rounded to the cent in bigint, half up: no float ever holds it. A refund
+ * without one (anything paid before the Base refund wallet, or in USDC) keeps
+ * the dollar figure it always showed.
+ */
+export const formatCardRefundPaid = (
+  refund: CardRefundDetails,
+  provider?: CardProvider | null,
+): string => {
+  const tokenAmount = refund.payout_token_amount?.trim();
+  if (refund.payout_currency?.toUpperCase() === 'EUR' && tokenAmount) {
+    try {
+      const units = parseUnits(tokenAmount, EURC_DECIMALS);
+      const negative = units < 0n;
+      const magnitude = negative ? -units : units;
+      const cents = (magnitude + 5_000n) / 10_000n;
+      const value = `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
+      return `${negative ? '-' : ''}${CURRENCY_SYMBOLS.EUR}${value}`;
+    } catch {
+      // Not a decimal string: fall through to the dollar figure rather than show nothing.
+    }
+  }
+  return formatCardAmount(String(refund.paid_usd), provider, 'USD');
 };
 
 /**
@@ -702,9 +743,67 @@ const PENDING_CASHBACK_STATUSES: CashbackStatus[] = [
   CashbackStatus.Pending,
 ];
 
-/** "+$5.77", or null when there is no positive figure worth printing. */
-const formatCashbackAmount = (value: number | undefined): string | null =>
-  typeof value === 'number' && Number.isFinite(value) && value > 0 ? `+$${value.toFixed(2)}` : null;
+/** The currency a cashback row is earned and paid in. Rows without one are USD. */
+export const getCashbackCurrency = (cashback: Pick<Cashback, 'currency'>): CashbackCurrency =>
+  cashback.currency === 'EUR' ? 'EUR' : 'USD';
+
+/** A cashback row's figure, in the row's own currency. */
+export interface CashbackValue {
+  /**
+   * The payout (token amount × its rate at payout) once one is recorded, otherwise the
+   * backend's projection. Undefined, NaN or ≤ 0 when the row carries no usable figure —
+   * callers decide what that means for them.
+   */
+  value: number | undefined;
+  currency: CashbackCurrency;
+  /** No payout amount is recorded yet, so `value` is the projection. */
+  isProjected: boolean;
+}
+
+/**
+ * What one cashback row is worth, in its own currency — the single place that knows which
+ * fields carry it. A EUR row is valued in euros (soEUR × its EUR rate, or `projectedEurValue`)
+ * and never converted to dollars; a USD row as it always was (soUSD × its USD rate, the legacy
+ * FUSE price for pre-migration rows, or `projectedUsdValue`).
+ */
+export const getCashbackValue = (cashback: Cashback): CashbackValue => {
+  if (getCashbackCurrency(cashback) === 'EUR') {
+    if (!cashback.soEurAmount) {
+      return { value: cashback.projectedEurValue, currency: 'EUR', isProjected: true };
+    }
+    return {
+      value: parseFloat(cashback.soEurAmount) * parseFloat(cashback.soEurRate || '0'),
+      currency: 'EUR',
+      isProjected: false,
+    };
+  }
+
+  // New cashbacks carry soUsdAmount; pre-migration ones carry the legacy
+  // fuseAmount. Neither is written until the escrow matures.
+  const { soUsdAmount, fuseAmount } = cashback;
+  if (!soUsdAmount && !fuseAmount) {
+    return { value: cashback.projectedUsdValue, currency: 'USD', isProjected: true };
+  }
+
+  // USD value = token amount × its USD rate. soUSD uses soUsdRate (USD per
+  // share); legacy FUSE cashbacks use fuseUsdPrice.
+  const tokenAmount = soUsdAmount ?? fuseAmount ?? '0';
+  const usdRate = soUsdAmount ? cashback.soUsdRate : cashback.fuseUsdPrice;
+  return {
+    value: parseFloat(tokenAmount) * parseFloat(usdRate || '0'),
+    currency: 'USD',
+    isProjected: false,
+  };
+};
+
+/** "+$5.77" / "+€5.77", or null when there is no positive figure worth printing. */
+const formatCashbackAmount = (
+  value: number | undefined,
+  currency: CashbackCurrency,
+): string | null =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? `+${CURRENCY_SYMBOLS[currency]}${value.toFixed(2)}`
+    : null;
 
 /**
  * Get cashback info for a transaction
@@ -758,19 +857,17 @@ export const getCashbackAmount = (
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
   const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
-  // New cashbacks carry soUsdAmount; pre-migration ones carry the legacy
-  // fuseAmount. Neither is written until the escrow matures.
-  const soUsdAmount = cashback.soUsdAmount;
-  const legacyFuseAmount = cashback.fuseAmount;
+  // In the row's own currency: a euro row reads "+€", never a converted "+$".
+  const { value: amount, currency, isProjected } = getCashbackValue(cashback);
 
-  if (!soUsdAmount && !legacyFuseAmount) {
+  if (isProjected) {
     // Nothing has been paid yet, so the figure is the backend's projection of
     // what this purchase will earn — which is the whole point of showing it
     // here, on the day of the purchase rather than a fortnight later. A backend
     // that sends no projection leaves the amount null and the surface names the
     // status instead.
     return {
-      amount: formatCashbackAmount(cashback.projectedUsdValue),
+      amount: formatCashbackAmount(amount, currency),
       isPending: true,
       isEscrowed,
       isPaid: false,
@@ -780,18 +877,12 @@ export const getCashbackAmount = (
     };
   }
 
-  // USD value = token amount × its USD rate. soUSD uses soUsdRate (USD per
-  // share); legacy FUSE cashbacks use fuseUsdPrice.
-  const tokenAmount = soUsdAmount ?? legacyFuseAmount ?? '0';
-  const usdRate = soUsdAmount ? cashback.soUsdRate : cashback.fuseUsdPrice;
-  const amount = parseFloat(tokenAmount) * parseFloat(usdRate || '0');
-
-  if (isNaN(amount) || amount <= 0) {
+  if (amount === undefined || isNaN(amount) || amount <= 0) {
     return null;
   }
 
   return {
-    amount: formatCashbackAmount(amount),
+    amount: formatCashbackAmount(amount, currency),
     isPending,
     isEscrowed,
     isPaid: cashback.status === CashbackStatus.Paid,

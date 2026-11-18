@@ -26,6 +26,7 @@ import DepositCashOptions from '@/components/DepositOption/DepositCashOptions';
 import DepositCryptoOptions from '@/components/DepositOption/DepositCryptoOptions';
 import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
+import DepositDirectlyRhinoAddress from '@/components/DepositOption/DepositDirectlyRhinoAddress';
 import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
@@ -36,6 +37,8 @@ import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAcco
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
+import { getWalletDepositCoinName } from '@/components/DepositOption/WalletDepositAddress/constants';
+import WalletDepositCoinTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositCoinTokens';
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
@@ -93,6 +96,7 @@ const useDepositOption = ({
     principalToken,
     bankTransfer,
     directDepositSession,
+    rhinoDeposit,
     sessionStartTime,
     setSessionStartTime,
     clearSessionStartTime,
@@ -113,6 +117,7 @@ const useDepositOption = ({
       principalToken: state.principalToken,
       bankTransfer: state.bankTransfer,
       directDepositSession: state.directDepositSession,
+      rhinoDeposit: state.rhinoDeposit,
       sessionStartTime: state.sessionStartTime,
       setSessionStartTime: state.setSessionStartTime,
       clearSessionStartTime: state.clearSessionStartTime,
@@ -124,6 +129,13 @@ const useDepositOption = ({
       setDepositFromSolid: state.setDepositFromSolid,
       externalWallet: state.externalWallet,
     })),
+  );
+  // A flow that opened the address to fund the Safe itself (the AI API) starts
+  // on the address, so there is no step before it to go back to.
+  const isSafeFunding = useDepositStore(state => !!state.walletDeposit.toSafe);
+  // The coin whose tokens its own screen lists, which titles it ("Bitcoin").
+  const depositCoinName = useDepositStore(state =>
+    getWalletDepositCoinName(state.walletDeposit.coin),
   );
   // External-wallet connection is mirrored into the store by the desktop-only
   // ThirdwebConnectionBridge; on mobile it stays disconnected (thirdweb is
@@ -181,6 +193,8 @@ const useDepositOption = ({
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
   const isDepositDirectlyTokens =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
+  // "Deposit directly" on a chain rhino.fi serves: its address, not a session's.
+  const isDepositDirectlyRhinoAddress = isDepositDirectlyAddress && !!rhinoDeposit;
   const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isVirtualAccountDetails =
     currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
@@ -196,6 +210,7 @@ const useDepositOption = ({
   const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
   const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
   const isDepositToken = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN.name;
+  const isDepositCoin = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_COIN.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -394,7 +409,11 @@ const useDepositOption = ({
     }
 
     if (isDepositDirectlyAddress) {
-      return <DepositDirectlyAddress />;
+      return rhinoDeposit ? (
+        <DepositDirectlyRhinoAddress selection={rhinoDeposit} />
+      ) : (
+        <DepositDirectlyAddress />
+      );
     }
 
     if (isDepositDirectlyTokens) {
@@ -451,6 +470,10 @@ const useDepositOption = ({
       return <WalletDepositTokens />;
     }
 
+    if (isDepositCoin) {
+      return <WalletDepositCoinTokens />;
+    }
+
     return <DepositTypeSelection onClose={() => handleOpenChange(false)} />;
   };
 
@@ -498,12 +521,14 @@ const useDepositOption = ({
     if (isDepositCrypto) return 'deposit-crypto-options';
     if (isDepositCash) return 'deposit-cash-options';
     if (isDepositToken) return 'deposit-token';
+    if (isDepositCoin) return 'deposit-coin';
     return 'deposit-type-selection';
   };
 
   const getTitle = () => {
     // Virtual account details renders its own flag + title in the content, so the
     // header keeps only the back/close buttons (Figma 21445:3186).
+    if (isDepositDirectlyRhinoAddress) return `Deposit ${rhinoDeposit.tokenSymbol}`;
     if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress || isVirtualAccountDetails)
       return undefined;
     if (isSavingsFund) return 'Deposit to savings';
@@ -549,6 +574,7 @@ const useDepositOption = ({
     if (isDepositCrypto) return 'Receive crypto';
     if (isDepositCash) return 'Deposit with cash';
     if (isDepositToken) return 'Select token';
+    if (isDepositCoin) return depositCoinName ?? 'Select token';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
@@ -569,6 +595,7 @@ const useDepositOption = ({
       isDepositCrypto ||
       isDepositCash ||
       isDepositToken ||
+      isDepositCoin ||
       isDepositUsdMethod ||
       isPublicAddress
     ) {
@@ -652,6 +679,7 @@ const useDepositOption = ({
       !isDepositCrypto &&
       !isDepositCash &&
       !isDepositToken &&
+      !isDepositCoin &&
       !isDepositUsdMethod &&
       !isPublicAddress
     ) {
@@ -813,9 +841,9 @@ const useDepositOption = ({
         is_first_deposit: !user?.isDeposited,
       });
 
-      setModal(DEPOSIT_MODAL.CLOSE);
+      const { onDismiss } = useDepositStore.getState();
       resetDepositFlow();
-      clearSessionStartTime();
+      onDismiss?.();
     }
   };
 
@@ -896,15 +924,29 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.CLOSE);
       resetDepositFlow();
       clearSessionStartTime();
+    } else if (isPublicAddress && isSafeFunding) {
+      // Opened straight on the address with its chain and currency fixed. The
+      // token list behind it would let another pairing keep the Safe's address,
+      // so leaving is the only way back.
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
     } else if (isPublicAddress) {
-      // Reached through the token list from the crypto branch, and directly from
-      // the savings flow's own external-wallet list — each step back to where it
-      // came from.
+      // Reached through the token list from the crypto branch, or through a
+      // coin's screen from there, and directly from the savings flow's own
+      // external-wallet list — each step back to where it came from.
       setModal(
         previousModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name
           ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
-          : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
+          : previousModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_COIN.name
+            ? DEPOSIT_MODAL.OPEN_DEPOSIT_COIN
+            : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
       );
+    } else if (isDepositCoin) {
+      // Up to the list of coins, whichever way it was reached: from the address's
+      // pill, that is where another coin is chosen. `isChangingToken` stays, so
+      // back from there still returns to the address.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
     } else if (isDepositToken) {
       const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
       setWalletDeposit({ isChangingToken: false });
@@ -970,6 +1012,7 @@ const useDepositOption = ({
   const actionButton = useMemo(() => {
     if (
       isDepositDirectlyAddress &&
+      !rhinoDeposit &&
       (directDepositSession.status === 'pending' || !directDepositSession.status)
     ) {
       return (
@@ -985,7 +1028,13 @@ const useDepositOption = ({
       );
     }
     return undefined;
-  }, [isDepositDirectlyAddress, directDepositSession.status, handleDeleteDeposit, isDeleting]);
+  }, [
+    isDepositDirectlyAddress,
+    rhinoDeposit,
+    directDepositSession.status,
+    handleDeleteDeposit,
+    isDeleting,
+  ]);
 
   /**
    * The steps that only exist because an external wallet is connected: the chain
@@ -1030,10 +1079,11 @@ const useDepositOption = ({
     isBuyCryptoAmount ||
     isBuyCryptoCurrency ||
     isBuyCryptoPaymentMethod ||
-    isPublicAddress ||
+    (isPublicAddress && !isSafeFunding) ||
     isDepositCrypto ||
     isDepositCash ||
     isDepositToken ||
+    isDepositCoin ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
     isDepositDirectly ||
@@ -1048,7 +1098,7 @@ const useDepositOption = ({
   // The virtual account details screen owns its ScrollView so it can overlay the
   // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
   const disableScroll =
-    (Platform.OS !== 'web' && isDepositDirectlyAddress) ||
+    (Platform.OS !== 'web' && isDepositDirectlyAddress && !isDepositDirectlyRhinoAddress) ||
     isWalletConnector ||
     isVirtualAccountDetails ||
     isVirtualAccountApply;
@@ -1060,7 +1110,8 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
-    compactHeader: isDepositCrypto || isDepositCash || isDepositToken || isPublicAddress,
+    compactHeader:
+      isDepositCrypto || isDepositCash || isDepositToken || isDepositCoin || isPublicAddress,
     // Short enough to sit at the bottom of a phone screen rather than take it
     // over; desktop shows it as the usual centred modal either way.
     mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),

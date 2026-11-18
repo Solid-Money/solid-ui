@@ -67,9 +67,11 @@ export const SAVINGS_FUND_CRYPTO: SavingsFundToken[] = [
 ];
 
 /**
- * EURC mints soEURC (the EUR vault, on Base), sent from Base only: the backend's
- * savings deposit route deposits EURC that lands on Base into soEURC (for the
- * Safe) and refunds EURC that arrives on any other chain.
+ * EURC mints soEURC (the EUR vault, on Base), sent from Ethereum or Base. Both
+ * rows are rhino.fi's soEURC route, which pays the EURC out on Base and deposits
+ * it into soEURC for the Safe; Circle's Ethereum EURC is what rhino.fi takes
+ * there (`EURC_ETHEREUM_ADDRESS`). Not Arc, nor Optimism, though rhino.fi lists
+ * both.
  *
  * Offered on the EUR vault's own screen and nowhere else — not in the vault-less
  * list, and never at the card's soUSD gate — so it follows that vault onto
@@ -79,7 +81,7 @@ export const SAVINGS_FUND_EURC: SavingsFundToken = {
   symbol: 'EURC',
   vaultToken: 'soEURC',
   icon: getAsset('images/eurc.png'),
-  chainIds: [base.id],
+  chainIds: [mainnet.id, base.id],
 };
 
 export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [

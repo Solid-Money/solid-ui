@@ -8,9 +8,8 @@ import SpendModeSheetContent, {
 import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import { useSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
-import { formatUsd, ONE_USD } from '@/constants/cardSpendModule';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
-import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
 import type { SpendModeSheetProps } from './SpendModeSheet.types';
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
@@ -27,6 +26,8 @@ const SpendModeSheet = ({
   isOpen,
   onOpenChange,
   onHelpPress,
+  onCollateralHelpPress,
+  onViewCreditDetails,
   activeMode = 'cash',
   onAddFunds,
 }: SpendModeSheetProps) => {
@@ -34,37 +35,17 @@ const SpendModeSheet = ({
   // Fuse and Base together, with the collateral behind each — read only while the sheet is open.
   const credit = useCreditModeFigures({ enabled: isOpen });
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
-  // The assets the balance is made of, and euro spending, which adds EURC to them.
+  // The assets the balance is made of — EURC among them once it is on for the card.
   const assets = useSpendableAssetRows();
-  const euro = useEuroSpendEnablement();
+  const { formatUsdAmount } = useCardDisplayCurrency();
 
-  const balance = useMemo(() => {
-    const dollarMicro = BigInt(Math.max(0, Math.round(assets.dollarUsd * Number(ONE_USD))));
-    return {
-      total: assets.totalUsd.toLocaleString('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
-      // Cash pays a dollar purchase from the Fuse set alone — a euro balance only pays euro
-      // purchases — so the segment quotes that, and tells an empty card what to do instead.
-      cash: dollarMicro > 0n ? formatUsd(dollarMicro) : 'Add funds',
+  const balance = useMemo(
+    () => ({
+      // In the cardholder's main currency; the rows below keep each asset's own.
+      total: formatUsdAmount(assets.totalUsd),
       rows: assets.rows,
-    };
-  }, [assets]);
-
-  const { enable: enableEuro } = euro;
-  const euroSpend = useMemo(
-    () =>
-      euro.shouldOffer
-        ? {
-            isEnabling: euro.isEnabling,
-            error: euro.error,
-            onEnable: () => enableEuro('spend_mode_sheet'),
-          }
-        : undefined,
-    [euro.shouldOffer, euro.isEnabling, euro.error, enableEuro],
+    }),
+    [assets, formatUsdAmount],
   );
 
   const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
@@ -93,13 +74,14 @@ const SpendModeSheet = ({
           figures={figures}
           credit={credit}
           balance={balance}
-          euroSpend={euroSpend}
           session={session}
           onConfirm={confirm}
           isSwitching={isSwitchingMode}
           error={error}
           onDismiss={dismiss}
           onHelpPress={onHelpPress}
+          onCollateralHelpPress={onCollateralHelpPress}
+          onViewCreditDetails={onViewCreditDetails}
           onAddFunds={onAddFunds}
           topPadding={topPadding}
           presentation={presentation}

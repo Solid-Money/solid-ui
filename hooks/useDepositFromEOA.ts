@@ -28,6 +28,8 @@ import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, getLifiQuote } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
@@ -412,6 +414,15 @@ const useDepositFromEOA = (
       const spender = isSponsor
         ? (EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address)
         : (ADDRESSES.ethereum.vault as Address);
+      // A sponsored deposit is pulled by the backend, which pulls only from the
+      // user's Safe or a wallet linked to their account. Link this one, if it
+      // isn't yet, before the permit or approval prompt.
+      if (isSponsor) {
+        await ensureWalletLinked(account, user.safeAddress, {
+          onSignRequest: () =>
+            setDepositStatus({ status: Status.PENDING, message: 'Sign to link your wallet' }),
+        });
+      }
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -856,6 +867,9 @@ const useDepositFromEOA = (
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_CHAIN)) {
         errMsg = ERRORS.ERROR_SWITCHING_CHAIN;
+      } else if (error instanceof WalletLinkError) {
+        // Linking the wallet failed: the server says why, in words meant for the user.
+        errMsg = error.message;
       }
 
       setDepositStatus({ status: Status.ERROR });

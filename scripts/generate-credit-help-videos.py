@@ -51,6 +51,10 @@ for name, poster_second in POSTER_SECONDS.items():
     illustration_top = even(170 * scale)
     illustration_height = even(440 * scale)
     filter_graph = f"crop=iw:{illustration_height}:0:{illustration_top}"
+    if name == "two-ways":
+        # The Cash caption is baked into the opening frames of the export.
+        # Blend its rectangle into the background before the Credit caption appears.
+        filter_graph += ",delogo=x=272:y=624:w=714:h=88:enable='between(n,7,37)'"
     command = ["ffmpeg", "-loglevel", "error", "-y", "-i", str(source)]
     if name == "repay-anytime":
         # Figma's video exporter wraps the button label into "Repa" / "y".

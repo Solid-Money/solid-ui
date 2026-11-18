@@ -5,25 +5,32 @@ import { useRouter } from 'expo-router';
 import { BankAccountDetailsView } from '@/components/DepositOption/VirtualAccountDetails/BankAccountDetailsView';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useConfirmResidence } from '@/hooks/useConfirmResidence';
+import { useEurDepositPromotion } from '@/hooks/useProductFees';
 import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
 import { cn } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
+import { FeePromotionNotice } from './FeePromotionNotice';
 import {
   detailRows,
   RAIL_PRESENTATION,
   selectActiveRail,
+  unavailableRail,
   unavailableReason,
   visibleRails as pickVisibleRails,
 } from './railPresentation';
+import { WirexResidenceStep } from './WirexResidenceStep';
 
 /** EUR / USD segmented control, shown only when the user has both rails. */
 const RailSwitcher = ({
@@ -152,9 +159,15 @@ export const WirexBankAccountDetails = ({
   const { data: overview, isLoading, refetch } = useWirexBankOverview();
   const activate = useActivateWirexBankAccount();
   const walletLink = useWirexWalletLink();
+  // Free SEPA deposits, while a promotion runs and the user has some left.
+  const eurPromotion = useEurDepositPromotion();
   const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
+  const countrySource = useCountryStore(state => state.countryInfo?.source);
   const [selected, setSelected] = useState<WirexBankAccountType | null>(initialAccountType ?? null);
+  const [isAskingResidence, setIsAskingResidence] = useState(false);
+  const { confirmResidence: confirmResidenceCountry, isConfirming: isConfirmingResidence } =
+    useConfirmResidence();
 
   /** Rails worth showing at all — an unavailable one with no account is noise. */
   const visibleRails = useMemo(() => pickVisibleRails(overview), [overview]);
@@ -176,9 +189,38 @@ export const WirexBankAccountDetails = ({
       activeRail.account?.canReceive
         ? TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAILS_VIEWED
         : TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED,
-      { provider: 'wirex', rail: activeRail.accountType },
+      {
+        provider: 'wirex',
+        rail: activeRail.accountType,
+        capability_status: activeRail.capabilityStatus,
+        activation_path: activeRail.activationPath,
+        is_pending: activeRail.isPending,
+      },
     );
   }, [activeRail, isLoading]);
+
+  /**
+   * A Wirex user with nothing they can open. Shown with Wirex's own reason
+   * rather than a generic line, and tracked with it, so a stuck user can be
+   * explained from analytics as well as from the server's `[WirexVA]` log.
+   */
+  const closedRail = useMemo(
+    () =>
+      overview?.isWirexUser && overview.provider === 'wirex' && !overview.kycRequired
+        ? unavailableRail(overview)
+        : null,
+    [overview],
+  );
+  const closedStatus = closedRail?.capabilityStatus;
+  const closedType = closedRail?.accountType;
+  useEffect(() => {
+    if (isLoading || !closedType) return;
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_UNAVAILABLE, {
+      provider: 'wirex',
+      rail: closedType,
+      capability_status: closedStatus,
+    });
+  }, [closedStatus, closedType, isLoading]);
 
   /**
    * Start activation down whichever path the capability calls for.
@@ -189,18 +231,42 @@ export const WirexBankAccountDetails = ({
    */
   const handleActivate = useCallback(() => {
     if (!activeRail) return;
-    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED, {
+    const context = {
       provider: 'wirex',
       rail: activeRail.accountType,
       activation_path: activeRail.activationPath,
-    });
+    };
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED, context);
+
+    // Both outcomes are tracked with the rail Wirex left behind, so a user who
+    // pressed the button and is still without an IBAN shows why.
+    const tracked = (rail: WirexBankRailStatusDto | null | undefined, error?: unknown) =>
+      track(
+        rail
+          ? TRACKING_EVENTS.VIRTUAL_ACCOUNT_CREATED
+          : TRACKING_EVENTS.VIRTUAL_ACCOUNT_CREATION_FAILED,
+        {
+          ...context,
+          ...(rail && {
+            capability_status: rail.capabilityStatus,
+            is_pending: rail.isPending,
+            can_receive: !!rail.account?.canReceive,
+          }),
+          ...(error !== undefined && {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        },
+      );
 
     if (activeRail.activationPath === 'walletLink') {
-      void walletLink.link();
+      void walletLink.link().then(({ rail, error }) => tracked(rail, error ?? undefined));
       return;
     }
 
-    activate.mutate(activeRail.accountType);
+    activate.mutate(activeRail.accountType, {
+      onSuccess: rail => tracked(rail),
+      onError: error => tracked(null, error),
+    });
   }, [activeRail, activate, walletLink]);
 
   if (isLoading) {
@@ -223,9 +289,44 @@ export const WirexBankAccountDetails = ({
    * modal open over it strands the user behind it on return.
    */
   function startVerification() {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, { provider: 'wirex' });
     useKycStore.getState().setKycFlow('va');
     setModal(DEPOSIT_MODAL.CLOSE);
     router.push(path.SUMSUB_KYC as never);
+  }
+
+  /**
+   * The server picked Wirex from where the app thinks the user is, and Sumsub
+   * will not start on that guess. Asked only until the user has named their
+   * country by hand — that answer is what the session is sent.
+   */
+  const needsResidence = !!overview?.residenceRequired && countrySource !== 'manual';
+
+  function handleVerifyPress() {
+    if (needsResidence) {
+      setIsAskingResidence(true);
+      return;
+    }
+    startVerification();
+  }
+
+  /**
+   * Record where they live, then re-ask routing on it: an IBAN country goes on
+   * to Sumsub, anywhere else gets the Rain account pitch instead.
+   */
+  async function confirmResidence(country: Country) {
+    const routed = await confirmResidenceCountry(country);
+    if (!routed) return;
+    setIsAskingResidence(false);
+    if (routed === 'wirex') {
+      startVerification();
+      return;
+    }
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+  }
+
+  if (isAskingResidence) {
+    return <WirexResidenceStep onConfirm={confirmResidence} isConfirming={isConfirmingResidence} />;
   }
 
   // Wirex serves this user's country but they have never verified. The button
@@ -235,14 +336,33 @@ export const WirexBankAccountDetails = ({
     return (
       <View className="flex-1 items-center justify-center gap-4 py-12">
         <Text className="text-center text-base text-white">
-          Verify your identity to open a bank account.
+          Verify your identity to open your euro account.
         </Text>
         <Text className="px-8 text-center text-sm text-white/60">
-          You will need a photo ID. If you already verified for a Solid card, this is the same check
-          — it takes a moment to pick up.
+          You will need a photo ID and a proof of address. It is the same check as the Solid card,
+          so you only do it once.
         </Text>
-        <Button className="h-12 rounded-2xl px-6" onPress={startVerification}>
+        <Button className="h-12 rounded-2xl px-6" onPress={handleVerifyPress}>
           <Text className="text-base font-bold text-black">Verify identity</Text>
+        </Button>
+      </View>
+    );
+  }
+
+  // A Wirex user Wirex will not open an account for yet: say why, in Wirex's
+  // terms, instead of "No bank accounts are available". The status can change
+  // on Wirex's side (support finishing a verification level), so the check
+  // stays one tap away.
+  if (closedRail) {
+    return (
+      <View className="flex-1">
+        <RailPlaceholder rail={closedRail} onActivate={handleActivate} isActivating={false} />
+        <Button
+          variant="outline"
+          className="mx-auto mb-6 h-12 rounded-2xl px-6"
+          onPress={() => void refetch()}
+        >
+          <Text className="text-base font-semibold text-white">Check again</Text>
         </Button>
       </View>
     );
@@ -301,6 +421,11 @@ export const WirexBankAccountDetails = ({
       blurb={presentation.blurb}
       rows={detailRows(activeRail)}
       header={switcher}
+      notice={
+        activeRail.accountType === WirexBankAccountType.SEPA && eurPromotion ? (
+          <FeePromotionNotice promotion={eurPromotion} />
+        ) : null
+      }
       footer={renderFooter?.(activeRail)}
       // The field name says whether the user is being paid or setting up a
       // standing order; the value itself is never sent.

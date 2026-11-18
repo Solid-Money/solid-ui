@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
 import { CashoutAmount } from '@/components/Send/Cashout/CashoutAmount';
+import { CashoutBridgeStatus } from '@/components/Send/Cashout/CashoutBridgeStatus';
 import { CashoutCurrencySelector } from '@/components/Send/Cashout/CashoutCurrencySelector';
 import { CashoutDetailsForm } from '@/components/Send/Cashout/CashoutDetailsForm';
 import { CashoutKycStep } from '@/components/Send/Cashout/CashoutKycStep';
@@ -102,6 +103,7 @@ const useSendOption = ({
   const isCashoutDetails = currentModal.name === SEND_MODAL.OPEN_CASHOUT_DETAILS.name;
   const isCashoutAmount = currentModal.name === SEND_MODAL.OPEN_CASHOUT_AMOUNT.name;
   const isCashoutReview = currentModal.name === SEND_MODAL.OPEN_CASHOUT_REVIEW.name;
+  const isCashoutBridge = currentModal.name === SEND_MODAL.OPEN_CASHOUT_BRIDGE.name;
   const isCashoutStatus = currentModal.name === SEND_MODAL.OPEN_CASHOUT_STATUS.name;
   const isCashout =
     isCashoutKyc ||
@@ -110,6 +112,7 @@ const useSendOption = ({
     isCashoutDetails ||
     isCashoutAmount ||
     isCashoutReview ||
+    isCashoutBridge ||
     isCashoutStatus;
 
   const resetCashout = useCashoutStore(state => state.reset);
@@ -192,6 +195,7 @@ const useSendOption = ({
     if (isCashoutDetails) return <CashoutDetailsForm />;
     if (isCashoutAmount) return <CashoutAmount />;
     if (isCashoutReview) return <CashoutReview />;
+    if (isCashoutBridge) return <CashoutBridgeStatus />;
     if (isCashoutStatus) return <CashoutStatus />;
     if (isCrossChainNetwork) return <CrossChainNetworks />;
     if (isCrossChainForm) return <CrossChainForm />;
@@ -245,6 +249,7 @@ const useSendOption = ({
     if (isCashoutDetails) return 'cashout-details';
     if (isCashoutAmount) return 'cashout-amount';
     if (isCashoutReview) return 'cashout-review';
+    if (isCashoutBridge) return 'cashout-bridge';
     if (isCashoutStatus) return 'cashout-status';
     if (isCrossChainNetwork) return 'cross-chain-network';
     if (isCrossChainForm) return 'cross-chain-form';
@@ -268,7 +273,7 @@ const useSendOption = ({
     if (isCashoutDetails) return cashoutMethodName ?? 'Account details';
     if (isCashoutAmount) return 'Amount';
     if (isCashoutReview) return 'Review';
-    if (isCashoutStatus) return undefined;
+    if (isCashoutBridge || isCashoutStatus) return undefined;
     if (isCrossChainNetwork) return 'Receive on';
     if (isCrossChainForm) return 'Send';
     if (isCrossChainReview) return 'Review';
@@ -318,6 +323,7 @@ const useSendOption = ({
         if (
           currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name ||
           currentModalName === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name ||
+          currentModalName === SEND_MODAL.OPEN_CASHOUT_BRIDGE.name ||
           currentModalName === SEND_MODAL.OPEN_CASHOUT_STATUS.name
         ) {
           resetDrawer();
@@ -408,7 +414,7 @@ const useSendOption = ({
     isCrossChainNetwork ||
     isCrossChainForm ||
     isCrossChainReview ||
-    (isCashout && !isCashoutStatus);
+    (isCashout && !isCashoutBridge && !isCashoutStatus);
   // The cross-chain screens use the compact 40px header controls.
   const compactHeader = isBankTransfer || isCrossChainStep || isCrossChainTokenSelector;
 

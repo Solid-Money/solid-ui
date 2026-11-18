@@ -6,9 +6,12 @@ import {
   describeApprovedFunding,
   formatTokenAmount,
   pendingApprovalsFor,
+  RAIN_RTF_PUBLISHED_OPERATORS,
+  rainRtfOperatorFor,
   rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
+  unknownOperatorSpenders,
 } from '@/lib/utils/realTimeFunding';
 
 import type { RainRtfAsset, RainRtfChain, RainRtfStatus } from '@/lib/types';
@@ -234,6 +237,138 @@ describe('buildApprovalBatch', () => {
         chain: chain({ assets: [approvedAsset] }),
         maxAllowance: UINT256_MAX,
       }),
+    ).toEqual([]);
+  });
+});
+
+describe('the operator pin', () => {
+  const ROGUE = '0x9999999999999999999999999999999999999999';
+  const rogueAsset = () =>
+    asset({
+      spenders: [
+        { kind: 'collateral', address: COLLATERAL, currentAllowance: '0', isApproved: false },
+        { kind: 'operator', address: ROGUE, currentAllowance: '0', isApproved: false },
+      ],
+    });
+
+  const PRODUCTION_OPERATOR = '0xa3750f692bb9fc5e62834f9291e3d508d7ba4f74';
+  const operatorOnly = (address: string) =>
+    asset({
+      spenders: [{ kind: 'operator', address, currentAllowance: '0', isApproved: false }],
+    });
+
+  it('knows the operator Rain publishes for each environment', () => {
+    expect(RAIN_RTF_PUBLISHED_OPERATORS.sandbox).toBe(OPERATOR);
+    expect(RAIN_RTF_PUBLISHED_OPERATORS.production).toBe(PRODUCTION_OPERATOR);
+    expect(rainRtfOperatorFor(8453)).toBe(PRODUCTION_OPERATOR);
+    expect(rainRtfOperatorFor(84532)).toBe(OPERATOR);
+    expect(rainRtfOperatorFor(1)).toBeUndefined();
+  });
+
+  it('passes the production operator on a production chain', () => {
+    expect(
+      unknownOperatorSpenders(
+        chain({
+          chainId: 8453,
+          name: 'Base',
+          environment: 'production',
+          assets: [operatorOnly(PRODUCTION_OPERATOR)],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('refuses the other environment’s operator', () => {
+    // Both are Rain's, but a production chain must get the production
+    // operator — and the chain id decides that, not the status's own label.
+    expect(
+      unknownOperatorSpenders(
+        chain({ chainId: 8453, environment: 'sandbox', assets: [operatorOnly(OPERATOR)] }),
+      ),
+    ).toEqual([OPERATOR]);
+    expect(
+      unknownOperatorSpenders(
+        chain({ chainId: 84532, assets: [operatorOnly(PRODUCTION_OPERATOR)] }),
+      ),
+    ).toEqual([PRODUCTION_OPERATOR]);
+  });
+
+  it('approves no operator on a chain this build does not know', () => {
+    expect(
+      unknownOperatorSpenders(chain({ chainId: 999999, assets: [operatorOnly(OPERATOR)] })),
+    ).toEqual([OPERATOR]);
+  });
+
+  it('passes a chain whose operator Rain publishes, in any case', () => {
+    expect(unknownOperatorSpenders(chain())).toEqual([]);
+    expect(
+      unknownOperatorSpenders(
+        chain({
+          assets: [
+            asset({
+              spenders: [
+                {
+                  kind: 'operator',
+                  address: '0x5A6E6B0D5EA051CFFF9B3DCC2AA8DAC226458F29',
+                  currentAllowance: '0',
+                  isApproved: false,
+                },
+              ],
+            }),
+          ],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('names an operator Rain does not publish', () => {
+    expect(unknownOperatorSpenders(chain({ assets: [rogueAsset()] }))).toEqual([ROGUE]);
+  });
+
+  it('refuses to build an unlimited approval to it', () => {
+    // The operator comes from the backend's configuration. Whatever that
+    // says, the app must not ask a cardholder to grant an unlimited allowance
+    // to an address Rain does not publish.
+    expect(() =>
+      buildApprovalBatch({ chain: chain({ assets: [rogueAsset()] }), maxAllowance: UINT256_MAX }),
+    ).toThrow(/unrecognised Rain operator/);
+  });
+
+  it('does not judge the collateral spender, which is per cardholder', () => {
+    // Rain's per-user contract record names it; there is no list to pin it to.
+    expect(
+      unknownOperatorSpenders(
+        chain({
+          assets: [
+            asset({
+              spenders: [
+                { kind: 'collateral', address: ROGUE, currentAllowance: '0', isApproved: false },
+              ],
+            }),
+          ],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('ignores an operator that is already approved', () => {
+    expect(
+      unknownOperatorSpenders(
+        chain({
+          assets: [
+            asset({
+              spenders: [
+                {
+                  kind: 'operator',
+                  address: ROGUE,
+                  currentAllowance: UINT256_MAX,
+                  isApproved: true,
+                },
+              ],
+            }),
+          ],
+        }),
+      ),
     ).toEqual([]);
   });
 });

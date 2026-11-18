@@ -45,7 +45,11 @@ const useDepositBuyCryptoOptions = () => {
     () => [
       {
         text: 'Bank Deposit',
-        subtitle: 'Wire or ACH from your bank.',
+        // A Wirex account is a EUR IBAN; only Rain's takes wire and ACH.
+        subtitle:
+          provider === 'wirex'
+            ? 'SEPA from a bank account in your name.'
+            : 'Wire or ACH from your bank.',
         chipText: 'Cheapest',
         icon: (
           <Image
@@ -58,7 +62,7 @@ const useDepositBuyCryptoOptions = () => {
         method: 'bank_transfer' as DepositMethod,
       },
     ],
-    [handleBankDepositPress],
+    [handleBankDepositPress, provider],
   );
 
   const filteredOptions = buyCryptoOptions

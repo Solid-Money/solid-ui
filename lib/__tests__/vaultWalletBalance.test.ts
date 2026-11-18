@@ -38,6 +38,7 @@ describe('earning token identity', () => {
     [PRODUCTION_VAULT_ADDRESSES.fuse.fuseVault, fuse.id, VaultType.FUSE],
     [PRODUCTION_VAULT_ADDRESSES.ethereum.soEthVault, mainnet.id, VaultType.ETH],
     [PRODUCTION_VAULT_ADDRESSES.fuse.soEthVault, fuse.id, VaultType.ETH],
+    [PRODUCTION_VAULT_ADDRESSES.base.soEthVault, base.id, VaultType.ETH],
   ])('recognizes a production share on its supported network', (contractAddress, chainId, type) => {
     expect(getEarningTokenVault({ contractAddress, chainId })?.vault.type).toBe(type);
   });
@@ -208,12 +209,11 @@ describe('the EUR vault (soEURC)', () => {
       vaults: [{ address: ADDRESSES.base.soEurcVault, chainId: base.id }],
       depositConfig: { supportedChains: [base.id], supportedTokens: ['EURC'] },
     });
-    // Offered per user (useEurVaultAccess), never shown as "coming soon".
+    // Offered to everyone, never shown as "coming soon".
     expect(vaultFor(VaultType.EUR).isComingSoon).toBeFalsy();
   });
 
-  // Listed in production too, so a soEURC held there is recognised and can be withdrawn. Who is
-  // offered it is per user: see useEurVaultAccess.
+  // Listed in production too, like the other vaults.
   it('is listed last in production builds as well', () => {
     let vaults: Vault[] = [];
     jest.isolateModules(() => {

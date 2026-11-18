@@ -16,6 +16,7 @@ import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { SOLID_WEBSITE_URL } from '@/lib/config';
+import { cashbackDebtLine } from '@/lib/referral/referralDebt';
 import { ReferralFriendStage, ReferralPayoutToken } from '@/lib/types';
 
 import ReferralFriendRow, { formatUsdWhole, REFERRAL_SUCCESS_COLOR } from './ReferralFriendRow';
@@ -120,6 +121,8 @@ export default function ReferralProgramContentNew({
   const activityMinPurchaseUsd = summary?.qualification.activityMinPurchaseUsd ?? null;
   const referrals = summary?.referrals ?? [];
   const totalRewardedUsd = summary?.totalRewardedUsd ?? 0;
+  // Owed back for rewards reversed after payout, out of the next ones.
+  const debtNote = cashbackDebtLine(summary?.debt);
   // The reward is quoted in dollars but settled in a token, so the "how it
   // works" copy names it — someone promised $15 and sent a token amount should
   // not have to work that out from the transfer. Omitted on backends that don't
@@ -276,6 +279,10 @@ export default function ReferralProgramContentNew({
               />
             </View>
           </Animated.View>
+        ) : null}
+
+        {debtNote ? (
+          <Text className="-mt-3 px-1 text-[13px] leading-[18px] text-white/50">{debtNote}</Text>
         ) : null}
 
         {/* Checklist */}

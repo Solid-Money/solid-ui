@@ -201,6 +201,20 @@ describe('resolveHomePromptStep — the Wirex steps', () => {
     expect(step({ holdsUnusableEurc: true })).toBe('euro-spending');
   });
 
+  it('asks to use the Base balance the card cannot reach', () => {
+    expect(step({ ...spent, holdsUnreachableBase: true })).toBe('base-spending');
+    expect(step({ holdsUnreachableBase: true })).toBe('base-spending');
+  });
+
+  it('puts the decline and the EURC banner ahead of the Base one', () => {
+    expect(step({ ...spent, hasUncoveredDecline: true, holdsUnreachableBase: true })).toBe(
+      'card-declined',
+    );
+    expect(step({ ...spent, holdsUnusableEurc: true, holdsUnreachableBase: true })).toBe(
+      'euro-spending',
+    );
+  });
+
   it('leaves "Fund your wallet" first for a cardholder who never funded', () => {
     expect(step({ depositCompleted: false, hasUncoveredDecline: true })).toBe('fund');
   });

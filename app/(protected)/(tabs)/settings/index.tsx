@@ -13,7 +13,6 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName } from '@/constants/rewards';
-import { useHasFeature } from '@/hooks/useFeatureAccess';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useTotp } from '@/hooks/useTotp';
@@ -52,7 +51,6 @@ export default function Settings() {
   const { data: referralSummary } = useReferralSummary();
   const { isVerified: isTotpOn, isLoading: isTotpLoading, refetch: refetchTotp } = useTotp();
   const { status: notificationStatus } = useNotificationPermissionStatus();
-  const hasStatements = useHasFeature('statements');
 
   // Setting up 2FA happens a screen away, so "Add 2FA" is re-checked on the way back.
   useFocusEffect(
@@ -126,14 +124,12 @@ export default function Settings() {
             title="Account details"
             onPress={() => router.push('/settings/account' as Href)}
           />
-          {hasStatements ? (
-            <ProfileRow
-              variant="hub"
-              icon={<ProfileHubIcon name="file-down" />}
-              title="Statements"
-              onPress={() => router.push('/settings/statements' as Href)}
-            />
-          ) : null}
+          <ProfileRow
+            variant="hub"
+            icon={<ProfileHubIcon name="file-down" />}
+            title="Statements"
+            onPress={() => router.push('/settings/statements' as Href)}
+          />
           <ProfileRow
             variant="hub"
             icon={<ProfileHubIcon name="shield-check" />}

@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { type QueryFunctionContext, useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
-import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
+import { isWalletDepositContract } from '@/constants/walletDepositTokens';
 import {
   fetchCoinPricesById,
   fetchTokenList,
@@ -12,8 +13,10 @@ import {
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
+import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import {
+  isSoETHBase,
   isSoETHToken,
   isSoEURCToken,
   isSoFUSEToken,
@@ -21,7 +24,9 @@ import {
   isWalletCardExcludedToken,
 } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
+import { selectIsRealtimeLive, useRealtimeStore } from '@/store/useRealtimeStore';
 
+import { fetchBtcPriceUsd } from './useBtcPriceUsd';
 import { makeNativePriceFetcher } from './useNativePriceUsd';
 import useUser from './useUser';
 
@@ -75,6 +80,7 @@ interface BalanceData {
   baseTokens: TokenBalance[];
   arbitrumTokens: TokenBalance[];
   bscTokens: TokenBalance[];
+  optimismTokens: TokenBalance[];
   tokens: TokenBalance[];
   unifiedTokens: UnifiedTokenBalance[];
   isLoading: boolean;
@@ -91,6 +97,9 @@ const POLYGON_CHAIN_ID = 137;
 const BASE_CHAIN_ID = 8453;
 const ARBITRUM_CHAIN_ID = 42161;
 const BSC_CHAIN_ID = 56;
+// A deposit chain only: nothing bridges or saves from it, but what lands there
+// is the user's and has to show.
+const OPTIMISM_CHAIN_ID = 10;
 
 // ABI for AccountantWithRateProviders getRate function
 const ACCOUNTANT_ABI = [
@@ -129,6 +138,7 @@ const NATIVE_PRICE_FETCHERS: Record<number, () => Promise<string | undefined>> =
   [arbitrum.id]: makeNativePriceFetcher(arbitrum.id),
   [bsc.id]: makeNativePriceFetcher(bsc.id),
   [polygon.id]: makeNativePriceFetcher(polygon.id),
+  [optimism.id]: makeNativePriceFetcher(optimism.id),
 };
 
 const isZeroRate = (r: number | null | undefined) =>
@@ -141,6 +151,19 @@ const parsePrice = (v: unknown): number | undefined => {
     return !Number.isNaN(n) ? n : undefined;
   }
   return undefined;
+};
+
+/**
+ * soBTC on Base or Ethereum. Its swaptokens rows carry the `bitcoin` price id, so like soETH it
+ * must be priced rate × BTC, never as a bare BTC.
+ */
+const isSoBTCToken = (contractAddress: string | undefined): boolean => {
+  if (!isSoBtcConfigured || !contractAddress) return false;
+  const address = contractAddress.toLowerCase();
+  return (
+    address === SOBTC_ADDRESSES.base.vault.toLowerCase() ||
+    address === SOBTC_ADDRESSES.ethereum.vault.toLowerCase()
+  );
 };
 
 /**
@@ -157,7 +180,10 @@ const parsePrice = (v: unknown): number | undefined => {
  * one — a dollar price here would carry it into every USD sum built on quoteRate.
  */
 const isUnderlyingPricedShare = (contractAddress: string): boolean =>
-  isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress) || isSoEURCToken(contractAddress);
+  isSoFUSEToken(contractAddress) ||
+  isSoETHToken(contractAddress) ||
+  isSoEURCToken(contractAddress) ||
+  isSoBTCToken(contractAddress);
 
 /**
  * soEURC's `quoteRate`, which is a USD quote everywhere it is read: always 0.
@@ -172,14 +198,34 @@ const soEURCQuoteRate = 0;
 
 /**
  * Whether a Base token is kept although the curated token list does not name it.
- * soEURC is kept in every build, so whoever holds it can find and withdraw the
- * position before the backend adds the share to its list.
+ * soEURC, Base soETH and Base soBTC are kept in every build, so whoever holds them can find,
+ * spend and withdraw the position before the backend adds the share to its list.
  */
 const isKeptUnlisted = (chainId: number, address: string) =>
-  chainId === BASE_CHAIN_ID && isSoEURCToken(address);
+  chainId === BASE_CHAIN_ID &&
+  (isSoEURCToken(address) || isSoETHBase(address) || isSoBTCToken(address));
 
-// Fetch function for token balances
-const fetchTokenBalances = async (safeAddress: string) => {
+/**
+ * How long a chain's token list or a token's price may stand in for a read that failed.
+ * Long enough to ride out a run of failed polls; short enough that a balance spent elsewhere
+ * stops reading as available within minutes, and a cache restored at launch carries nothing.
+ */
+const CARRY_OVER_MAX_AGE_MS = 5 * 60 * 1000;
+
+/** When each chain's token list, and each token's price, was last actually read. */
+interface ReadTimes {
+  chainReadAt?: Record<number, number>;
+  priceReadAt?: Record<string, number>;
+}
+
+type PreviousBalances = Pick<BalanceData, 'tokens'> & ReadTimes;
+
+const priceKey = (token: TokenBalance) =>
+  `${token.chainId}:${token.type}:${token.contractAddress?.toLowerCase()}`;
+
+// Fetch function for token balances. `previous` is the result already in the cache, used
+// only to stand in for a read that failed this time — see `lastKnownTokens`.
+const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalances) => {
   const [
     baseResponse,
     ethereumResponse,
@@ -187,6 +233,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     polygonResponse,
     arbitrumResponse,
     bscResponse,
+    optimismResponse,
     soUSDRate,
     soUSDBaseRate,
     soFUSERate,
@@ -197,13 +244,17 @@ const fetchTokenBalances = async (safeAddress: string) => {
     arbitrumBalance,
     bscBalance,
     polygonBalance,
+    optimismBalance,
     ethPrice,
     fusePrice,
     basePrice,
     arbitrumPrice,
     bscPrice,
     polygonPrice,
+    optimismPrice,
     tokenList,
+    soBTCRate,
+    btcPrice,
   ] = await Promise.allSettled([
     // Token balances via the data-source dispatcher (Alchemy primary,
     // Blockscout fallback). Fuse (122) skips Alchemy entirely. BSC (56)
@@ -215,6 +266,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     fetchTokenBalancesWithFallback(POLYGON_CHAIN_ID, safeAddress),
     fetchTokenBalancesWithFallback(ARBITRUM_CHAIN_ID, safeAddress),
     fetchTokenBalancesWithFallback(BSC_CHAIN_ID, safeAddress),
+    fetchTokenBalancesWithFallback(OPTIMISM_CHAIN_ID, safeAddress),
     readContract(publicClient(mainnet.id), {
       address: ADDRESSES.ethereum.accountant,
       abi: ACCOUNTANT_ABI,
@@ -234,8 +286,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
       abi: ACCOUNTANT_ABI,
       functionName: 'getRate',
     }),
-    // One soETH rate for every chain the share sits on, read from the Ethereum
-    // accountant — the same source the savings screen uses.
+    // One soETH rate for every chain the share sits on (Ethereum, Fuse, Base),
+    // read from the Ethereum accountant — the same source the savings screen
+    // uses. The backend writes the same rate to every chain's accountant.
     readContract(publicClient(mainnet.id), {
       address: ADDRESSES.ethereum.soEthAccountant,
       abi: ACCOUNTANT_ABI,
@@ -259,15 +312,31 @@ const fetchTokenBalances = async (safeAddress: string) => {
     getBalance(publicClient(polygon.id), {
       address: safeAddress as `0x${string}`,
     }),
+    getBalance(publicClient(optimism.id), {
+      address: safeAddress as `0x${string}`,
+    }),
     NATIVE_PRICE_FETCHERS[mainnet.id](),
     NATIVE_PRICE_FETCHERS[fuse.id](),
     NATIVE_PRICE_FETCHERS[base.id](),
     NATIVE_PRICE_FETCHERS[arbitrum.id](),
     NATIVE_PRICE_FETCHERS[bsc.id](),
     NATIVE_PRICE_FETCHERS[polygon.id](),
+    NATIVE_PRICE_FETCHERS[optimism.id](),
     fetchTokenList({
       isActive: true,
     }),
+    // One soBTC rate for both chains, from the Base accountant: the backend writes the same rate
+    // to the Ethereum one.
+    isSoBtcConfigured
+      ? readContract(publicClient(base.id), {
+          address: SOBTC_ADDRESSES.base.accountant,
+          abi: ACCOUNTANT_ABI,
+          functionName: 'getRate',
+        })
+      : Promise.reject(new Error('soBTC is not configured in this build')),
+    isSoBtcConfigured
+      ? fetchBtcPriceUsd()
+      : Promise.reject(new Error('soBTC is not configured in this build')),
   ]);
 
   let ethereumTokens: TokenBalance[] = [];
@@ -276,10 +345,43 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let baseTokens: TokenBalance[] = [];
   let arbitrumTokens: TokenBalance[] = [];
   let bscTokens: TokenBalance[] = [];
+  let optimismTokens: TokenBalance[] = [];
   let soUSDRateNum = 0;
   let soUSDBaseRateNum = 0;
   let soFUSEQuoteRateUSD = 0;
   let soETHQuoteRateUSD = 0;
+  let soBTCQuoteRateUSD = 0;
+
+  const now = Date.now();
+  // Carried values keep the time of the read they came from, never this poll's, so a run of
+  // failures ages them out however many polls pass.
+  const chainReadAt: Record<number, number> = {};
+  const priceReadAt: Record<string, number> = {};
+  const isFresh = (readAt: number | undefined): readAt is number =>
+    readAt !== undefined && now - readAt <= CARRY_OVER_MAX_AGE_MS;
+
+  // A chain whose read failed keeps the ERC-20s it held on the last good read, rather than
+  // reading as empty until the next poll. Every poll replaces the whole result, so one failed
+  // Base read took EURC out of the card's spendable figure for that poll. `failedChainIds`
+  // still names the chain, so nothing reads the carried rows as a confirmed answer. Past
+  // CARRY_OVER_MAX_AGE_MS the chain reads as empty again.
+  const carriedPriceKeys = new Set<string>();
+  const lastKnownTokens = (chainId: number): TokenBalance[] => {
+    const readAt = previous?.chainReadAt?.[chainId];
+    if (!isFresh(readAt)) return [];
+    chainReadAt[chainId] = readAt;
+    return (previous?.tokens ?? [])
+      .filter(token => token.chainId === chainId && token.type === TokenType.ERC20)
+      .map(token => {
+        const key = priceKey(token);
+        if (isFresh(previous?.priceReadAt?.[key])) {
+          carriedPriceKeys.add(key);
+          return token;
+        }
+        // Its price is too old to show: price it again this poll, like a row just read.
+        return { ...token, quoteRate: 0 };
+      });
+  };
 
   // Process soUSD rate (soUSD → USD, 6 decimals)
   if (soUSDRate.status === PromiseStatus.FULFILLED) {
@@ -318,6 +420,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
     console.warn('No ETH price — soETH left unpriced rather than valued as bare ETH');
   }
 
+  // Same for soBTC: soBTC→BTC (8 decimals) × BTC price.
+  const btcPriceNum =
+    btcPrice.status === PromiseStatus.FULFILLED ? parsePrice(btcPrice.value) : undefined;
+  if (soBTCRate.status === PromiseStatus.FULFILLED && btcPriceNum) {
+    soBTCQuoteRateUSD = Number(formatUnits(soBTCRate.value, SOBTC_DECIMALS)) * btcPriceNum;
+  } else if (isSoBtcConfigured) {
+    console.warn('soBTC left unpriced rather than valued as bare BTC');
+  }
+
   const getAddress = (item: BlockscoutTokenBalance) => {
     return item.token.address || item.token.address_hash;
   };
@@ -329,15 +440,20 @@ const fetchTokenBalances = async (safeAddress: string) => {
   ): TokenBalance => {
     const address = getAddress(item);
     const isSoUSD = isSoUSDToken(address);
-    // soUSD on Base, where withdrawals pass through, is not in the curated list.
-    // It takes another chain's soUSD entry, so it links to the same coin.
+    const isSoETH = isSoETHToken(address);
+    // soUSD and soETH on Base are not in the curated list. Each takes another
+    // chain's entry for the same share, so it links to the same coin.
     const tokenFromList =
       tokenListData.find(
         token =>
           token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
-      ) ?? (isSoUSD ? tokenListData.find(token => isSoUSDToken(token.address ?? '')) : undefined);
+      ) ??
+      (isSoUSD
+        ? tokenListData.find(token => isSoUSDToken(token.address ?? ''))
+        : isSoETH
+          ? tokenListData.find(token => isSoETHToken(token.address ?? ''))
+          : undefined);
     const isSoFUSE = isSoFUSEToken(address);
-    const isSoETH = isSoETHToken(address);
     const isSoEURC = isSoEURCToken(address);
     // Vault shares are priced off their accountant rate, not off a market quote
     // for the share (Blockscout has none) or for the underlying asset. soEURC
@@ -350,11 +466,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
         ? soFUSEQuoteRateUSD
         : isSoETH
           ? soETHQuoteRateUSD
-          : isSoEURC
-            ? soEURCQuoteRate
-            : item.token.exchange_rate
-              ? parseFloat(item.token.exchange_rate)
-              : 0;
+          : isSoBTCToken(address)
+            ? soBTCQuoteRateUSD
+            : isSoEURC
+              ? soEURCQuoteRate
+              : item.token.exchange_rate
+                ? parseFloat(item.token.exchange_rate)
+                : 0;
     return {
       contractTickerSymbol: String(
         symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,
@@ -380,10 +498,12 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
 
   // soUSD shares are never in the swap list, but must still show: soUSD on Base
-  // is where a withdrawal sits between its bridge and its queue request.
+  // is where a withdrawal sits between its bridge and its queue request. So must
+  // anything the deposit screen told the user to send, listed for swapping or not.
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
     if (list.length === 0 || isSoUSDToken(address)) return true;
     if (isKeptUnlisted(chainId, address)) return true;
+    if (isWalletDepositContract(chainId, address)) return true;
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
@@ -400,6 +520,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
+    ethereumTokens = lastKnownTokens(ETHEREUM_CHAIN_ID);
   }
 
   // Process Base tokens
@@ -413,6 +534,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, BASE_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Base balances:', baseResponse.reason);
+    baseTokens = lastKnownTokens(BASE_CHAIN_ID);
   }
 
   // Process Fuse tokens (always Blockscout)
@@ -426,6 +548,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
+    fuseTokens = lastKnownTokens(FUSE_CHAIN_ID);
   }
 
   // Process Polygon tokens
@@ -439,6 +562,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, POLYGON_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Polygon balances:', polygonResponse.reason);
+    polygonTokens = lastKnownTokens(POLYGON_CHAIN_ID);
   }
 
   // Process Arbitrum tokens
@@ -452,6 +576,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, ARBITRUM_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Arbitrum balances:', arbitrumResponse.reason);
+    arbitrumTokens = lastKnownTokens(ARBITRUM_CHAIN_ID);
   }
 
   // Process BSC tokens
@@ -465,6 +590,20 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, BSC_CHAIN_ID));
   } else {
     console.warn('Failed to fetch BSC balances:', bscResponse.reason);
+    bscTokens = lastKnownTokens(BSC_CHAIN_ID);
+  }
+
+  // Process Optimism tokens
+  if (optimismResponse.status === PromiseStatus.FULFILLED) {
+    optimismTokens = optimismResponse.value
+      .filter(
+        item =>
+          item.token.type === TokenType.ERC20 &&
+          filterTokenList(tokenListData, OPTIMISM_CHAIN_ID, getAddress(item)),
+      )
+      .map(item => convertBlockscoutToTokenBalance(item, OPTIMISM_CHAIN_ID));
+  } else {
+    console.warn('Failed to fetch Optimism balances:', optimismResponse.reason);
   }
 
   // Process native token balances
@@ -594,6 +733,27 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
+  if (optimismBalance.status === PromiseStatus.FULFILLED && Number(optimismBalance.value)) {
+    const optimismPriceValue =
+      optimismPrice.status === PromiseStatus.FULFILLED ? Number(optimismPrice.value) : 0;
+    const optimismEthTokenFromList = tokenListData.find(
+      token => token.chainId === OPTIMISM_CHAIN_ID && token.symbol === 'ETH',
+    );
+    optimismTokens.push({
+      contractTickerSymbol: 'ETH',
+      contractName: 'Ether',
+      contractAddress: zeroAddress,
+      balance: optimismBalance.value.toString(),
+      quoteRate: optimismPriceValue,
+      contractDecimals: 18,
+      type: TokenType.NATIVE,
+      verified: true,
+      chainId: OPTIMISM_CHAIN_ID,
+      commonId: optimismEthTokenFromList?.commonId,
+      tokenId: optimismEthTokenFromList?.tokenId,
+    });
+  }
+
   let allTokens = [
     ...ethereumTokens,
     ...fuseTokens,
@@ -601,6 +761,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     ...baseTokens,
     ...arbitrumTokens,
     ...bscTokens,
+    ...optimismTokens,
   ];
 
   // Fallback 1: Alchemy Prices by contract address. Alchemy's token balances
@@ -682,6 +843,34 @@ const fetchTokenBalances = async (safeAddress: string) => {
       return t;
     });
   }
+
+  // Prices read this poll are stamped now. A carried chain's rows still hold the price of the
+  // read they came from, so they keep that read's stamp.
+  allTokens.forEach(t => {
+    if (isZeroRate(t.quoteRate)) return;
+    const key = priceKey(t);
+    const readAt = carriedPriceKeys.has(key) ? previous?.priceReadAt?.[key] : now;
+    if (readAt !== undefined) priceReadAt[key] = readAt;
+  });
+
+  // Last resort: a token every lookup above left unpriced keeps the price it had on the last
+  // good read, for up to CARRY_OVER_MAX_AGE_MS. Without it, one failed lookup valued EURC at $0
+  // for that poll and the card's spendable figure dropped to the dollar balance alone. Shares
+  // priced off their own rate are left alone, as above.
+  const previousRate = new Map(
+    (previous?.tokens ?? [])
+      .filter(t => !isZeroRate(t.quoteRate))
+      .map(t => [priceKey(t), t.quoteRate]),
+  );
+  allTokens = allTokens.map(t => {
+    if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
+    const key = priceKey(t);
+    const readAt = previous?.priceReadAt?.[key];
+    const rate = previousRate.get(key);
+    if (!rate || !isFresh(readAt)) return t;
+    priceReadAt[key] = readAt;
+    return { ...t, quoteRate: rate };
+  });
 
   // Helper function to calculate token value
   const calculateTokenValue = (token: TokenBalance): CalculatedTokenValue => {
@@ -778,9 +967,23 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const baseTokensFinal = allTokens.filter(t => t.chainId === BASE_CHAIN_ID);
   const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
   const bscTokensFinal = allTokens.filter(t => t.chainId === BSC_CHAIN_ID);
+  const optimismTokensFinal = allTokens.filter(t => t.chainId === OPTIMISM_CHAIN_ID);
+
+  for (const [chainId, response] of [
+    [BASE_CHAIN_ID, baseResponse],
+    [ETHEREUM_CHAIN_ID, ethereumResponse],
+    [FUSE_CHAIN_ID, fuseResponse],
+    [POLYGON_CHAIN_ID, polygonResponse],
+    [ARBITRUM_CHAIN_ID, arbitrumResponse],
+    [BSC_CHAIN_ID, bscResponse],
+  ] as const) {
+    if (response.status === PromiseStatus.FULFILLED) chainReadAt[chainId] = now;
+  }
 
   return {
     ...totals,
+    chainReadAt,
+    priceReadAt,
     failedChainIds: Array.from(
       new Set(
         [
@@ -790,12 +993,14 @@ const fetchTokenBalances = async (safeAddress: string) => {
           [POLYGON_CHAIN_ID, polygonResponse],
           [ARBITRUM_CHAIN_ID, arbitrumResponse],
           [BSC_CHAIN_ID, bscResponse],
+          [OPTIMISM_CHAIN_ID, optimismResponse],
           [ETHEREUM_CHAIN_ID, ethBalance],
           [FUSE_CHAIN_ID, fuseBalance],
           [BASE_CHAIN_ID, baseBalance],
           [ARBITRUM_CHAIN_ID, arbitrumBalance],
           [BSC_CHAIN_ID, bscBalance],
           [POLYGON_CHAIN_ID, polygonBalance],
+          [OPTIMISM_CHAIN_ID, optimismBalance],
         ]
           .filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
           .map(([chainId]) => chainId as number),
@@ -807,6 +1012,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     baseTokens: baseTokensFinal,
     arbitrumTokens: arbitrumTokensFinal,
     bscTokens: bscTokensFinal,
+    optimismTokens: optimismTokensFinal,
     tokens: allTokens,
     unifiedTokens,
   };
@@ -831,6 +1037,7 @@ const EMPTY_BALANCE_DATA = {
   baseTokens: [] as TokenBalance[],
   arbitrumTokens: [] as TokenBalance[],
   bscTokens: [] as TokenBalance[],
+  optimismTokens: [] as TokenBalance[],
   tokens: [] as TokenBalance[],
   unifiedTokens: [] as UnifiedTokenBalance[],
 };
@@ -838,32 +1045,53 @@ const EMPTY_BALANCE_DATA = {
 /** Shared by useBalances and the protected layout's prefetch. */
 export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
   queryKey: ['tokenBalances', safeAddress],
-  queryFn: () => fetchTokenBalances(safeAddress!),
+  queryFn: ({ client, queryKey }: QueryFunctionContext) =>
+    fetchTokenBalances(safeAddress!, client.getQueryData<PreviousBalances>(queryKey)),
   enabled: !!safeAddress,
   staleTime: 30 * 1000,
   gcTime: 5 * 60 * 1000,
 });
 
 /**
- * The realtime socket handles live updates (lib/realtime refreshes
- * ['tokenBalances'] on every balance event); polling is the fallback for missed
- * events or a dropped socket. The price lookups inside a refresh are cached for
- * a minute, so this interval doesn't drive Prices API usage.
+ * How often the balances are re-read on a timer.
+ *
+ * Every refresh is one `alchemy_getTokenBalances` plus contract reads on each
+ * of the six Alchemy chains, paid for in compute units on the app's key, so
+ * this timer is what the app's share of the Alchemy bill scales with: it runs
+ * for as long as the app is open. Polling is only the safety net. The realtime
+ * socket refreshes ['tokenBalances'] on every balance event (see lib/realtime),
+ * and a send, deposit or pull-to-refresh refreshes them directly. So while the
+ * socket is up the timer only has to catch what no event announces. When it is
+ * down, polling is the only way balances move by themselves, so it runs faster.
  */
-const BALANCES_POLL_INTERVAL_MS = 5_000;
+export const BALANCES_POLL_MS = 15_000;
+export const BALANCES_LIVE_POLL_MS = 60_000;
+
+/**
+ * Balances read within this long are served from the cache when another
+ * screen mounts or the app comes back to the foreground, so moving between
+ * screens doesn't re-read six chains each time. Events, sends and
+ * pull-to-refresh invalidate the query, so they still read the chain at once.
+ */
+const BALANCES_STALE_MS = 15_000;
+
+const balancesObserverOptions = {
+  retry: 3, // retry up to 3 times on failure
+  retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+};
 
 export const useBalances = (): BalanceData => {
   const { user } = useUser();
 
+  // No refetchInterval here: React Query runs one timer per observer, and a
+  // dozen components read balances, so polling from each of them re-read every
+  // chain once per mounted component. The one timer is useBalancesPolling.
   const { data, isLoading, isRefetching, error, refetch } = useQuery({
     ...tokenBalancesQueryOptions(user?.safeAddress),
-    staleTime: 5_000,
-    retry: 3, // retry up to 3 times on failure
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    ...balancesObserverOptions,
+    staleTime: BALANCES_STALE_MS,
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    refetchInterval: BALANCES_POLL_INTERVAL_MS,
-    refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
   return {
@@ -875,4 +1103,25 @@ export const useBalances = (): BalanceData => {
     refresh: refetch,
     retry: refetch,
   };
+};
+
+/**
+ * The one timer that re-reads the signed-in user's balances. Mounted once, in
+ * the protected layout, so there is a single poll per interval however many
+ * components show a balance. It reads the same query as useBalances and
+ * renders nothing itself.
+ */
+export const useBalancesPolling = (): void => {
+  const { user } = useUser();
+  const isRealtimeLive = useRealtimeStore(selectIsRealtimeLive);
+
+  useQuery({
+    ...tokenBalancesQueryOptions(user?.safeAddress),
+    ...balancesObserverOptions,
+    refetchInterval: isRealtimeLive ? BALANCES_LIVE_POLL_MS : BALANCES_POLL_MS,
+    refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
+    // Keeps the cache warm for the screens that read it; the layout itself
+    // never re-renders on a poll.
+    notifyOnChangeProps: [],
+  });
 };

@@ -17,6 +17,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { showAccountSuspendedToast } from '@/lib/errors/accountSuspendedToast';
 import { eclipseUsername } from '@/lib/utils/utils';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -75,6 +76,8 @@ function WelcomeScreen() {
           badgeText: '',
         },
       });
+    } else if (session === 'suspended') {
+      showAccountSuspendedToast();
     }
   }, [session]);
 

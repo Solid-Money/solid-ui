@@ -3,16 +3,21 @@ import { Animated, Easing, ScrollView } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
-import { TIER_UPGRADE_MODAL } from '@/constants/modals';
+import { DEPOSIT_MODAL, TIER_UPGRADE_MODAL } from '@/constants/modals';
+import { type UpgradeTopUpContext, useDepositStore } from '@/store/useDepositStore';
 import { isTierUpgradeOpen, useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
+import CashTokenSelector from './CashTokenSelector';
 import LockTokenSelector from './LockTokenSelector';
+import UpgradeFundingStatus from './UpgradeFundingStatus';
 import UpgradeReviewContent from './UpgradeReviewContent';
 import UpgradeTierContent from './UpgradeTierContent';
 
 import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
 
 const LOCK_ROUTE_SCROLL_DURATION_MS = 550;
+// Let the outgoing dialog finish its exit before mounting the next portal.
+const TOP_UP_HANDOFF_DELAY_MS = 250;
 
 /**
  * The tier upgrade flow, as one modal mounted once at the app root.
@@ -35,12 +40,17 @@ const TierUpgradeModalProvider = () => {
     })),
   );
   const isOpen = useTierUpgradeStore(isTierUpgradeOpen);
+  const route = useTierUpgradeStore(state => state.route);
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollToBottomAfterLayout = useRef(false);
+  const restoreScrollOffset = useRef<number | null>(null);
   const scrollMetrics = useRef({ offset: 0, viewportHeight: 0, contentHeight: 0 });
   const scrollPosition = useRef(new Animated.Value(0)).current;
+  const cancelTopUp = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => cancelTopUp.current?.(), []);
 
   useEffect(() => {
     const listener = scrollPosition.addListener(({ value }) => {
@@ -80,14 +90,55 @@ const TierUpgradeModalProvider = () => {
 
   const handleContentSizeChange = (_width: number, height: number) => {
     scrollMetrics.current.contentHeight = height;
+    if (restoreScrollOffset.current !== null) {
+      scrollViewRef.current?.scrollTo({ y: restoreScrollOffset.current, animated: false });
+      restoreScrollOffset.current = null;
+    }
     if (!scrollToBottomAfterLayout.current) return;
     // Wait for the lock rows to expand before measuring the scroll destination.
     scrollToBottomAfterLayout.current = false;
     slideToBottom();
   };
 
+  const handleTopUp = (context?: UpgradeTopUpContext) => {
+    if (!isTierUpgradeOpen(useTierUpgradeStore.getState())) return;
+    cancelTopUp.current?.();
+    const offset = scrollMetrics.current.offset;
+    close();
+
+    // Keep one dialog on screen at a time; overlapping portal transitions can
+    // leave Android with a black surface. A newer upgrade session takes precedence.
+    const suspendedUpgrade = useTierUpgradeStore.getState();
+    let cancelled = false;
+    const canResume = () => !cancelled && useTierUpgradeStore.getState() === suspendedUpgrade;
+    let timer = setTimeout(() => {
+      if (!canResume()) return;
+      const deposit = useDepositStore.getState();
+      deposit.resetDepositFlow();
+      if (context) deposit.setUpgradeTopUp(context);
+      deposit.setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE, () => {
+        if (!canResume()) return;
+        timer = setTimeout(() => {
+          const depositIsClosed =
+            useDepositStore.getState().currentModal.name === DEPOSIT_MODAL.CLOSE.name;
+          if (!canResume() || !depositIsClosed) {
+            return;
+          }
+          restoreScrollOffset.current = offset;
+          back(); // Restore the offer with its existing route and token choices.
+        }, TOP_UP_HANDOFF_DELAY_MS);
+      });
+    }, TOP_UP_HANDOFF_DELAY_MS);
+
+    cancelTopUp.current = () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  };
+
   const isReview = currentModal.name === TIER_UPGRADE_MODAL.OPEN_REVIEW.name;
   const isTokenSelector = currentModal.name === TIER_UPGRADE_MODAL.OPEN_TOKEN_SELECTOR.name;
+  const isFunding = currentModal.name === TIER_UPGRADE_MODAL.OPEN_FUNDING_STATUS.name;
 
   return (
     <ResponsiveModal
@@ -103,11 +154,11 @@ const TierUpgradeModalProvider = () => {
       // arrow returns to the offer rather than closing the flow, which is the
       // one thing a user who has just read a one-year commitment — or opened
       // the picker to compare balances — is most likely to want.
-      showBackButton={isReview || isTokenSelector}
+      showBackButton={isReview || isTokenSelector || isFunding}
       onBackPress={back}
       contentKey={currentModal.name}
       contentClassName="md:max-w-[480px]"
-      gradientHeader={!isReview && !isTokenSelector}
+      gradientHeader={!isReview && !isTokenSelector && !isFunding}
       scrollViewRef={scrollViewRef}
       scrollViewProps={{
         onContentSizeChange: handleContentSizeChange,
@@ -122,10 +173,16 @@ const TierUpgradeModalProvider = () => {
     >
       {isReview ? (
         <UpgradeReviewContent />
+      ) : isFunding ? (
+        <UpgradeFundingStatus />
       ) : isTokenSelector ? (
-        <LockTokenSelector />
+        route === 'cash' ? (
+          <CashTokenSelector />
+        ) : (
+          <LockTokenSelector />
+        )
       ) : (
-        <UpgradeTierContent onRouteSelected={handleRouteSelected} />
+        <UpgradeTierContent onRouteSelected={handleRouteSelected} onTopUp={handleTopUp} />
       )}
     </ResponsiveModal>
   );

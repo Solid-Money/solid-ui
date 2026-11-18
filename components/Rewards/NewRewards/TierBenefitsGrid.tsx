@@ -1,6 +1,7 @@
 import { type ReactElement } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
+import AiApiBenefitCard from '@/components/AiApi/AiApiBenefitCard';
 import { useIsSidebarShell } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
 import { RewardsTier, type SubscriptionCategoryRate } from '@/lib/types';
@@ -68,6 +69,11 @@ interface TierBenefitsGridProps extends CashbackDetailsData, YieldBoostData {
   onGetMoreCashback: () => void;
   onReferralsPress: () => void;
   onUpgradeSubscriptionTier: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
+  /**
+   * The AI API card, full width above the grid. Left out for anyone the AI
+   * API is not open to.
+   */
+  aiApi?: { cashbackRate: number; isNew: boolean; onPress: () => void };
 }
 
 /**
@@ -93,6 +99,7 @@ const TierBenefitsGrid = ({
   onGetMoreCashback,
   onReferralsPress,
   onUpgradeSubscriptionTier,
+  aiApi,
   ...cashbackData
 }: TierBenefitsGridProps) => {
   const subscriptionRate = `${formatNumber(subscriptionDiscountRate || 0, 2, 0)}%`;
@@ -166,6 +173,7 @@ const TierBenefitsGrid = ({
   return (
     <View className="gap-[15px] px-4">
       <Text className="text-base text-white/50">Your tier benefits</Text>
+      {aiApi ? <AiApiBenefitCard {...aiApi} /> : null}
       {rows.map((row, index) => (
         <View key={index} className="flex-row gap-[15px]">
           {row}

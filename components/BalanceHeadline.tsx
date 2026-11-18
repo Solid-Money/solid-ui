@@ -19,17 +19,24 @@ interface BalanceHeadlineProps {
   balance: number;
   label: string;
   mutedDecimals?: boolean;
+  /** The currency symbol; `balance` must already be in that currency. */
+  symbol?: string;
 }
 
 /** Shared headline geometry for the Home and Earn balance summaries. */
-export const BalanceHeadline = ({ balance, label, mutedDecimals = true }: BalanceHeadlineProps) => {
+export const BalanceHeadline = ({
+  balance,
+  label,
+  mutedDecimals = true,
+  symbol = '$',
+}: BalanceHeadlineProps) => {
   const decimalStyle = mutedDecimals ? MUTED_DECIMAL_STYLE : WHOLE_STYLE;
 
   return (
     <View className="items-center gap-1 pt-2">
       <Text className="text-base font-medium text-muted-foreground">{label}</Text>
       <CountUp
-        prefix="$"
+        prefix={symbol}
         count={balance ?? 0}
         decimalPlaces={2}
         animateOnMount={false}

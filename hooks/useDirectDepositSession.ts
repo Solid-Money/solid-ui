@@ -26,14 +26,22 @@ export const useDirectDepositSession = () => {
 
   // Create session mutation
   const createMutation = useMutation({
-    mutationFn: async ({ chainId, tokenSymbol }: { chainId: number; tokenSymbol: string }) => {
+    mutationFn: async ({
+      chainId,
+      tokenSymbol,
+    }: {
+      chainId: number;
+      tokenSymbol: string;
+      /** False once the caller has moved on: the session is then not stored. */
+      isCurrent?: () => boolean;
+    }) => {
       const data = await withRefreshToken(() =>
         createDirectDepositSessionApi(chainId, tokenSymbol),
       );
       if (!data) throw new Error('Failed to create direct deposit session');
       return { data, chainId, tokenSymbol };
     },
-    onSuccess: ({ data, chainId, tokenSymbol }) => {
+    onSuccess: ({ data, chainId, tokenSymbol }, { isCurrent }) => {
       // Track successful session creation
       track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_CREATED, {
         deposit_method: 'deposit_directly',
@@ -42,6 +50,10 @@ export const useDirectDepositSession = () => {
         selected_token: tokenSymbol,
         wallet_address: data.walletAddress,
       });
+
+      // A late answer to a pick the user has since left (another network, a
+      // closed modal) must not replace what is on screen now.
+      if (isCurrent && !isCurrent()) return;
 
       // Store in zustand (explicitly clear fromActivity flag)
       setDirectDepositSession({
@@ -86,8 +98,16 @@ export const useDirectDepositSession = () => {
     },
   });
 
-  const createDirectDepositSession = async (chainId: number, tokenSymbol: string) => {
-    const result = await createMutation.mutateAsync({ chainId, tokenSymbol });
+  const createDirectDepositSession = async (
+    chainId: number,
+    tokenSymbol: string,
+    options: { isCurrent?: () => boolean } = {},
+  ) => {
+    const result = await createMutation.mutateAsync({
+      chainId,
+      tokenSymbol,
+      isCurrent: options.isCurrent,
+    });
     return result.data;
   };
 

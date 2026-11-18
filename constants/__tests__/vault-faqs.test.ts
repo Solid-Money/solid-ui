@@ -68,6 +68,18 @@ describe('vault FAQs', () => {
     expect(copy).not.toMatch(/\d+(\.\d+)?%/);
   });
 
+  // Euro savings earn the tier's yield boost like the other yields, valued in dollars
+  // against the same cap and paid in soFUSE.
+  it('tells EUR savers their balance counts toward the yield boost, paid in soFUSE', () => {
+    const copy = getVaultFaqs(VaultType.EUR)
+      .map(faq => `${faq.question} ${faq.answer}`)
+      .join(' ');
+
+    expect(copy).toMatch(/yield boost/i);
+    expect(copy).toContain('Prime and Ultra');
+    expect(copy).toContain('soFUSE');
+  });
+
   it('falls back to the USDC vault for a type that is not a vault', () => {
     expect(getVaultFaqs('doge' as VaultType)).toBe(VAULT_FAQS[VaultType.USDC]);
   });

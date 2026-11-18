@@ -29,6 +29,8 @@ export const TRANSFI_ERROR_CODE = {
   ENHANCED_KYC_REQUIRED: 'ENHANCED_KYC_REQUIRED',
   /** Cash-out payout details failed the method's rules; see `fieldErrors`. */
   CASHOUT_INVALID_DETAILS: 'TRANSFI_CASHOUT_INVALID_DETAILS',
+  /** A cash-out amount outside the USDC limits; carries them in `details`. */
+  CASHOUT_AMOUNT_OUT_OF_LIMITS: 'TRANSFI_CASHOUT_AMOUNT_OUT_OF_LIMITS',
   UNKNOWN: 'TRANSFI_UNKNOWN_ERROR',
 } as const;
 

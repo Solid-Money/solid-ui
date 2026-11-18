@@ -1,9 +1,11 @@
-import { useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, formatUnits, zeroAddress } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { useMaxAPY } from '@/hooks/useAnalytics';
+import { usePendingBaseWithdrawals } from '@/hooks/useBaseWithdrawRequests';
+import { useBtcPriceQuery } from '@/hooks/useBtcPriceUsd';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
@@ -14,6 +16,7 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import {
   bridgedShareValues,
@@ -37,8 +40,8 @@ import { LIVE_VAULTS } from '@/lib/vaults';
  * The vaults this model values: every live vault valued in USD. soEURC is held in
  * EUR and is never converted into the USD totals built here (Earn, total assets,
  * net balance), so it is left out rather than entered as an unknown — an unknown
- * part would mark every portfolio that holds soEURC as incomplete.
- * TODO(soEURC): give Assets its own € row for the EUR vault.
+ * part would mark every portfolio that holds soEURC as incomplete. It has its own
+ * `eurYield` entry instead, in euros.
  */
 const PORTFOLIO_VAULTS = LIVE_VAULTS.filter(
   (vault): vault is Vault & { type: UsdVaultType } => !isEurVault(vault.type),
@@ -58,6 +61,7 @@ export function usePortfolio() {
   const queryClient = useQueryClient();
   const wallet = useWalletTokens();
   const savings = useTotalSavingsUSD();
+  const pendingWithdrawals = usePendingBaseWithdrawals();
   const membership = useTierMembership();
   const registration = useCardSpendRegistration();
   const cardStatus = useCardStatus();
@@ -71,6 +75,8 @@ export function usePortfolio() {
   const usdApy = useMaxAPY(VaultType.USDC);
   const fuseApy = useMaxAPY(VaultType.FUSE);
   const ethApy = useMaxAPY(VaultType.ETH);
+  const eurApy = useMaxAPY(VaultType.EUR);
+  const btcApy = useMaxAPY(VaultType.BTC);
   const custody = usePortfolioCustody({
     userId: user?.userId,
     safeAddress: user?.safeAddress as Address | undefined,
@@ -95,6 +101,15 @@ export function usePortfolio() {
     'ethPriceUsd',
     (exactSavings?.[VaultType.ETH] ?? 0) > 0,
   );
+  const btcPrice = useBtcPriceQuery((exactSavings?.[VaultType.BTC] ?? 0) > 0);
+  const holdsEurYield = (savings.eurValue ?? 0) > 0;
+  // Only for the "≈ $" line beside soEURC's euro value; it never enters a dollar total.
+  const eurcPrice = useQuery({
+    queryKey: ['eurcPriceUsd'],
+    queryFn: () => fetchTokenPriceUsd('EURC'),
+    enabled: holdsEurYield,
+    staleTime: 60_000,
+  });
 
   const model = useMemo(() => {
     const collateral = (credit?.collateral ?? []).map(token => {
@@ -115,6 +130,7 @@ export function usePortfolio() {
       [VaultType.USDC]: usdApy,
       [VaultType.FUSE]: fuseApy,
       [VaultType.ETH]: ethApy,
+      [VaultType.BTC]: btcApy,
     };
 
     // Each vault: savings on its own networks + shares bridged elsewhere + shares escrowed as
@@ -144,7 +160,9 @@ export function usePortfolio() {
           ? Number(ethPrice.data)
           : vault.type === VaultType.FUSE
             ? Number(fusePrice.data)
-            : 1;
+            : vault.type === VaultType.BTC
+              ? Number(btcPrice.data)
+              : 1;
       const valueUsd = parts.total;
       return {
         vault,
@@ -188,8 +206,12 @@ export function usePortfolio() {
       locked: lockedTotal,
       cash: cashTotal,
       card: hasIncompleteCard ? undefined : cardBalance,
+      withdrawing: pendingWithdrawals.totalUsd,
       debt,
-      complete: earnComplete && cashComplete,
+      complete:
+        earnComplete &&
+        cashComplete &&
+        pendingWithdrawals.withdrawals.every(item => item.amountUsd !== undefined),
     });
 
     // An estimate from APY, not a measured change since midnight, over the parts we know.
@@ -207,6 +229,18 @@ export function usePortfolio() {
     // Shown instead of the daily figure when that rounds below a cent.
     const monthlyYield = periodYield(12);
 
+    // EUR Yield, held in euros. Its dollar figure is an estimate for display and ordering only.
+    const usdPerEurc = Number(eurcPrice.data);
+    const eurYield =
+      savings.eurValue === undefined
+        ? undefined
+        : {
+            valueEur: savings.eurValue,
+            valueUsdEstimate: usdPerEurc > 0 ? savings.eurValue * usdPerEurc : undefined,
+            shareAmount: savings.eurShares ?? 0,
+            apy: !eurApy.isAPYsLoading && eurApy.maxAPY > 0 ? eurApy.maxAPY : undefined,
+          };
+
     return {
       cashAssets,
       cashTotal,
@@ -223,6 +257,9 @@ export function usePortfolio() {
       debt,
       dailyYield,
       monthlyYield,
+      eurYield,
+      pendingWithdrawals: pendingWithdrawals.withdrawals,
+      withdrawingTotal: pendingWithdrawals.totalUsd,
       ...totals,
     };
   }, [
@@ -234,14 +271,21 @@ export function usePortfolio() {
     usdApy,
     fuseApy,
     ethApy,
+    eurApy,
+    btcApy,
+    savings.eurValue,
+    savings.eurShares,
+    eurcPrice.data,
     lockedFuse,
     fusePrice.data,
     ethPrice.data,
+    btcPrice.data,
     hasCardBalance,
     cardHasOwnBalance,
     cardDetails.data,
     cardDetails.isError,
     cardStatus.isError,
+    pendingWithdrawals,
   ]);
 
   const isLoading =
@@ -268,6 +312,22 @@ export function usePortfolio() {
         : Promise.resolve(),
     [queryClient, user?.userId, user?.safeAddress],
   );
+
+  // A withdrawal that left the queue has paid its USDC into the wallet. Re-read the wallet
+  // now rather than at its next poll, so the amount neither drops out of the total nor
+  // counts twice in between. Compared by id: one can pay out as another is queued.
+  const pendingIds = pendingWithdrawals.withdrawals.map(item => item.clientTxId).join(',');
+  const lastPendingIds = useRef(pendingIds);
+  useEffect(() => {
+    const current = new Set(pendingIds.split(','));
+    const leftQueue =
+      !!lastPendingIds.current && lastPendingIds.current.split(',').some(id => !current.has(id));
+    if (leftQueue && user?.safeAddress) {
+      // Every mounted screen runs this; concurrent refetches share one request.
+      void refreshAccountQueries(queryClient, user.userId, user.safeAddress);
+    }
+    lastPendingIds.current = pendingIds;
+  }, [pendingIds, queryClient, user?.userId, user?.safeAddress]);
   return {
     ...model,
     isLoading,

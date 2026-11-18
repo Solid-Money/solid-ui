@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { getDetectedDirectDeposit } from '@/lib/api';
-import { DetectedDirectDepositResponse } from '@/lib/types';
+import { DetectedDirectDepositResponse, DirectDepositDestinationType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 const POLL_INTERVAL_MS = 4000;
@@ -10,7 +10,7 @@ const POLL_INTERVAL_MS = 4000;
 type UseDetectedDirectDepositParams = {
   /** Poll only while the deposit-address screen is showing an address. */
   enabled: boolean;
-  destinationType?: 'PROTOCOL' | 'RAIN_CARD';
+  destinationType?: DirectDepositDestinationType;
   /** Fired once, with the activity's clientTxId, the first time a deposit shows up. */
   onDetected?: (deposit: DetectedDirectDepositResponse) => void;
 };

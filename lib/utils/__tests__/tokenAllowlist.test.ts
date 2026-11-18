@@ -64,6 +64,18 @@ describe('isUnlistedTokenReceive', () => {
     expect(isUnlistedTokenReceive(receive({ chainId: undefined }), listed)).toBe(false);
   });
 
+  // The deposit screen tells people to send cbZEC on Base; the swap list need
+  // not name it for the receive to show.
+  it('keeps a token the deposit screen offers, listed for swapping or not', () => {
+    const cbzecBase = '0xB2000000000000000000008501b13360000cb2EC';
+    expect(
+      isUnlistedTokenReceive(
+        receive({ chainId: 8453, symbol: 'cbZEC', metadata: { tokenAddress: cbzecBase } }),
+        listed,
+      ),
+    ).toBe(false);
+  });
+
   it('filters nothing when there is no list', () => {
     expect(isUnlistedTokenReceive(receive(), null)).toBe(false);
     expect(toListedTokens([])).toBeNull();

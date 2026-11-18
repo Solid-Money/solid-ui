@@ -21,8 +21,10 @@ import ActivityStatusPill, {
 } from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
+import CardCreditDetailsCard from '@/components/Activity/CardCreditDetailsCard';
 import CashbackDetailsCard from '@/components/Activity/CashbackDetailsCard';
 import NotEnoughToPayCard from '@/components/Activity/NotEnoughToPayCard';
+import AiApiChargeDetail from '@/components/AiApi/AiApiChargeDetail';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
@@ -44,9 +46,11 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
+import { useContactNames } from '@/hooks/useContactNames';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { cashbackBaseUsd, usedCardCredit } from '@/lib/cardCredit';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { formatDecimalAmount } from '@/lib/support/formatAmount';
 import {
@@ -65,6 +69,7 @@ import {
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
+  formatCardRefundPaid,
   formatCardTransactionAmount,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
@@ -75,13 +80,16 @@ import {
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+import { getCashbackPurchaseId } from '@/lib/utils/cashbackActivity';
 import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
   isSavingsDestination,
 } from '@/lib/utils/deposit-steps';
+import { bankDepositFeeLine, readBankDepositFee } from '@/lib/utils/feePromotion';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 import {
   getMonthKey,
   getSpendingCategory,
@@ -89,6 +97,11 @@ import {
   getTransactionUsdAmount,
   SPENDING_CATEGORIES,
 } from '@/lib/utils/spendingInsights';
+import {
+  getTransferCategory,
+  getTransferSummary,
+  getTransferTitle,
+} from '@/lib/utils/transferPresentation';
 import { openSupportDrawer, SupportDrawerRequest } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
@@ -335,6 +348,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // not repeated on the purchase. Support still gets them from either screen.
   const refundLeg = refundRowId ? undefined : refund;
   const refundUrl = cardRefundExplorerUrl(refundLeg);
+  // Card credit this purchase used, when it used any (Wirex only).
+  const cardCredit = usedCardCredit(transaction.card_credit) ? transaction.card_credit : undefined;
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -379,9 +394,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       refund?.cashback_deducted_usd &&
         `Cashback withheld from refund: ${refund.cashback_deducted_usd} USD`,
       refund?.tx_hash && `Refund tx: ${refund.tx_hash}`,
+      // Card credit changes what left the balance, so support needs the split.
+      cardCredit &&
+        `Card bonus: ${cardCredit.used_usd} USD used, ${cardCredit.from_balance_usd} USD from balance (${cardCredit.state})`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
-  }, [spend, sweepHash, refund, transaction.usd_amount]);
+  }, [spend, sweepHash, refund, transaction.usd_amount, cardCredit]);
 
   const transactionContext = useMemo<SupportDrawerRequest>(
     () => ({
@@ -435,7 +453,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     () => cashbacks?.find(row => row.transactionId === transaction.id),
     [cashbacks, transaction.id],
   );
-  const purchaseUsd = useMemo(() => getTransactionUsdAmount(transaction), [transaction]);
+  // Cashback is earned on the part paid from the balance only: card credit
+  // earns none, so the cashback card measures against what the balance paid.
+  const purchaseUsd = useMemo(
+    () => cashbackBaseUsd(getTransactionUsdAmount(transaction), transaction.card_credit),
+    [transaction],
+  );
   const localDetails = transaction.local_transaction_details;
 
   // The bucket Insights files this purchase under, so the Category row can use
@@ -687,9 +710,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
               <Label>{refundLeg.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
             ),
             value: (
-              <Value className="text-brand">
-                {formatCardAmount(String(refundLeg.paid_usd), cardProvider, 'USD')}
-              </Value>
+              <Value className="text-brand">{formatCardRefundPaid(refundLeg, cardProvider)}</Value>
             ),
           }
         : null,
@@ -834,6 +855,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             {/* No "≈": the figure now carries a sign, and "≈ -$31.46" reads as
                 two operators. The activity row shows the conversion bare too. */}
             {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
+            {/* Figma 29602:14103: said under the amount, because it changes
+                what the amount cost the balance. The split is in its own card. */}
+            {cardCredit && <Text className="text-base text-white/70">Paid with card bonus</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
             {/* Status reads as a chip, the same one the activity row uses
                 (Figma 24781:7724 / 24781:7993), rather than as one more fact in
@@ -859,6 +883,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             funds, the gap and the fix are what the cardholder came here for. */}
         {isNotEnoughToPay && <NotEnoughToPayCard transaction={transaction} />}
         <DetailCard rows={merchantRows} />
+        {cardCredit && <CardCreditDetailsCard credit={cardCredit} />}
         {/* No cashback card for an excluded purchase: it earns nothing, and the
             receipt reads like any purchase with no cashback rather than
             calling attention to it. The activity row hides its label too. */}
@@ -1050,6 +1075,30 @@ export default function ActivityDetail() {
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
   const activityBadge = getActivityBadge(finalActivity?.type);
 
+  // A send or receive says who was on the other side and what it was for, not just "Send USDC.e"
+  // — see `lib/utils/transferPresentation`. Contacts only matter for those two types.
+  const isTransfer =
+    finalActivity?.type === TransactionType.SEND || finalActivity?.type === TransactionType.RECEIVE;
+  const contacts = useContactNames({ enabled: isTransfer });
+  const displayTitle = finalActivity ? getTransferTitle(finalActivity, contacts) : '';
+  const transferSummary = finalActivity ? getTransferSummary(finalActivity, contacts) : undefined;
+
+  // A cashback payout has no screen of its own: it is shown in the cashback section of the
+  // purchase that earned it (see `lib/utils/cashbackActivity`). The lists never show one, so a
+  // link straight to it — an old notification, a support message — opens that purchase instead.
+  const router = useRouter();
+  const { data: cashbacks } = useCashbacks({
+    enabled: finalActivity?.type === TransactionType.RECEIVE,
+  });
+  const cashbackPurchaseId =
+    finalActivity?.type === TransactionType.RECEIVE
+      ? getCashbackPurchaseId(finalActivity, cashbacks)
+      : undefined;
+
+  useEffect(() => {
+    if (cashbackPurchaseId) router.replace(`/activity/card-${cashbackPurchaseId}`);
+  }, [cashbackPurchaseId, router]);
+
   // Report unknown transaction types
   useEffect(() => {
     if (!finalActivity || transactionDetails) return;
@@ -1126,7 +1175,11 @@ export default function ActivityDetail() {
       return 'Complete';
     }
     if (!finalActivity) return 'Unknown';
-    return getTransactionCategory(finalActivity.type, finalActivity.title) ?? 'Unknown';
+    return (
+      getTransferCategory(finalActivity) ??
+      getTransactionCategory(finalActivity.type, finalActivity.title) ??
+      'Unknown'
+    );
   }, [finalActivity, isDeposit]);
 
   const tokenIcon = useMemo(
@@ -1157,6 +1210,10 @@ export default function ActivityDetail() {
     if (!finalActivity) return [];
 
     const { fromAddress, toAddress, status, metadata, url, hash } = finalActivity;
+    const wirexDepositFee =
+      finalActivity.type === TransactionType.WIREX_BANK_DEPOSIT
+        ? readBankDepositFee(metadata)
+        : null;
 
     return [
       fromAddress && {
@@ -1182,7 +1239,15 @@ export default function ActivityDetail() {
       status && {
         key: 'status',
         label: <Label>Status</Label>,
-        value: <Value>{toTitleCase(status)}</Value>,
+        // Held on our side until our payout wallet is topped up, then sent by
+        // itself: pending, as the list row says, not "Processing".
+        value: (
+          <Value>
+            {status === TransactionStatus.PROCESSING && isPayoutAwaitingFunds(metadata)
+              ? 'Pending'
+              : toTitleCase(status)}
+          </Value>
+        ),
       },
       isCrossChainSend &&
         crossChainNetwork && {
@@ -1252,6 +1317,30 @@ export default function ActivityDetail() {
           label: <Label>Reference</Label>,
           value: <Value>{metadata.reference as string}</Value>,
         },
+      // What the deposit was charged, once the payout priced it — €0.00 on a
+      // free one, with why, so the user sees the benefit.
+      wirexDepositFee && {
+        key: 'fee',
+        label: <Label>Fee</Label>,
+        value: (() => {
+          const line = bankDepositFeeLine(wirexDepositFee);
+          return (
+            <View className="items-end">
+              <Value>{line.value}</Value>
+              {line.note ? <Text className="text-xs text-brand">{line.note}</Text> : null}
+            </View>
+          );
+        })(),
+      },
+      wirexDepositFee?.creditedAmount && {
+        key: 'credited',
+        label: <Label>You received</Label>,
+        value: (
+          <Value>
+            {wirexDepositFee.creditedAmount} {wirexDepositFee.creditedToken}
+          </Value>
+        ),
+      },
       metadata?.inputAmount &&
         metadata?.inputToken && {
           key: 'paid',
@@ -1464,11 +1553,12 @@ export default function ActivityDetail() {
     if (!finalActivity) return undefined;
     // From the decimal string, not a float, so the card shows the exact digits.
     const amount = `${statusSign}${formatDecimalAmount(finalActivity.amount)} ${formatSymbol(finalActivity.symbol)}`;
+    // The title the user is looking at, so the question names the row they tapped.
     return {
-      chatMessage: `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
-      context: { kind: 'activity', id: clientTxId, label: `${finalActivity.title} · ${amount}` },
+      chatMessage: `Question about transaction:\n\nTitle: ${displayTitle}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
+      context: { kind: 'activity', id: clientTxId, label: `${displayTitle} · ${amount}` },
     };
-  }, [finalActivity, statusSign, clientTxId]);
+  }, [finalActivity, statusSign, clientTxId, displayTitle]);
 
   const missingTransactionContext = useMemo<SupportDrawerRequest | undefined>(
     () =>
@@ -1501,6 +1591,15 @@ export default function ActivityDetail() {
   if (isCardTransaction && cardTransactionDetail) {
     return (
       <CardTransactionDetail transaction={cardTransactionDetail} cardProvider={cardProvider} />
+    );
+  }
+
+  // A cashback payout on its way to the purchase it was earned on — see `cashbackPurchaseId`.
+  if (cashbackPurchaseId) {
+    return (
+      <PageLayout desktopOnly isLoading>
+        <View />
+      </PageLayout>
     );
   }
 
@@ -1541,6 +1640,19 @@ export default function ActivityDetail() {
           </View>
 
           <SupportSection transactionContext={missingTransactionContext} />
+        </View>
+      </PageLayout>
+    );
+  }
+
+  // One day of AI API usage: which keys spent it and the cashback it earns.
+  if (finalActivity.type === TransactionType.AI_API_CHARGE) {
+    return (
+      <PageLayout desktopOnly>
+        <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
+          <Back title="" />
+          <AiApiChargeDetail activity={finalActivity} />
+          <SupportSection transactionContext={transactionContext} />
         </View>
       </PageLayout>
     );
@@ -1608,7 +1720,7 @@ export default function ActivityDetail() {
   return (
     <PageLayout desktopOnly isLoading={isAnyLoading}>
       <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
-        <Back title={finalActivity.title} className="text-xl md:text-3xl" />
+        <Back title={displayTitle} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
           {tokenIcon &&
@@ -1641,6 +1753,12 @@ export default function ActivityDetail() {
               {format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}
             </Text>
           </View>
+
+          {/* What this transfer was, in a sentence: "UBER refunded a card payment. It was paid
+              back into your wallet in USDC.e." */}
+          {transferSummary && (
+            <Text className="text-center text-base text-white/70">{transferSummary}</Text>
+          )}
         </View>
 
         <View className="rounded-twice bg-card">

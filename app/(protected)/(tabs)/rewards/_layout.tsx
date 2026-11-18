@@ -36,6 +36,14 @@ export default function RewardsLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen name="ai-api" options={{ headerShown: false }} />
+        <Stack.Screen name="ai-api-key" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="ai-api-setup" options={{ headerShown: false }} />
+        {/* Referral v4. Each screen sends the user back to today's referral
+            popup while the program is off. */}
+        <Stack.Screen name="refer/index" options={{ headerShown: false }} />
+        <Stack.Screen name="refer/invites" options={{ headerShown: false }} />
+        <Stack.Screen name="refer/[friendId]" options={{ headerShown: false }} />
       </Stack>
     </TierStarPreloadProvider>
   );

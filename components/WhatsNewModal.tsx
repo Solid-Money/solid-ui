@@ -20,10 +20,17 @@ interface WhatsNewModalProps {
   whatsNew: WhatsNew;
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * The page to open on: 0 normally, the page a push or link named otherwise
+   * (`?whatsNewStep=`). Read once, on mount; the lazy wrapper mounts this only
+   * while the popup is open, so every opening starts where it was asked to.
+   */
+  initialStep?: number;
 }
 
-const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
-  const [activeIndex, setActiveIndex] = useState(0);
+const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewModalProps) => {
+  const startIndex = Math.max(0, Math.min(initialStep, whatsNew.steps.length - 1));
+  const [activeIndex, setActiveIndex] = useState(startIndex);
   const carouselRef = React.useRef<any>(null);
   const { width: screenWidth } = useWindowDimensions();
   const modalWidth = Math.min(screenWidth * 0.9, 560);
@@ -95,6 +102,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
         <View className="relative">
           <Carousel
             ref={carouselRef}
+            defaultIndex={startIndex}
             loop={false}
             width={modalWidth}
             height={480}

@@ -292,3 +292,50 @@ it('re-checks the quote before every signature', async () => {
   expect(mockRefreshQuote).toHaveBeenCalledTimes(1);
   expect(mockExecute).toHaveBeenCalledTimes(1);
 });
+
+it('tracks a failed swap without the bundler URL or its key', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { track } = require('@/lib/analytics');
+  mockExecute.mockRejectedValueOnce(
+    new Error(
+      'HTTP request failed. URL: https://api.pimlico.io/v2/122/rpc?apikey=pim_abcdefghijklmnop Request body: {"method":"eth_sendUserOperation"}',
+    ),
+  );
+  mount();
+  await act(async () => {
+    await press();
+  });
+  const failed = track.mock.calls.find(([event]: [string]) => event === 'swap_failed');
+  expect(failed).toBeDefined();
+  expect(failed[1].error).not.toContain('pim_abcdefghijklmnop');
+  expect(failed[1].error).not.toContain('apikey=');
+  expect(failed[1].error).not.toContain('Request body');
+});
+
+describe('a disabled button', () => {
+  const rendered = () => JSON.stringify(root.toJSON());
+
+  it('says the balance is short instead of Swap', () => {
+    mockInputError = 'Not enough USDC on Fuse. Add funds to continue.';
+    mount();
+    expect(root.root.findByType('Button').props.disabled).toBe(true);
+    expect(rendered()).toContain('Not enough USDC');
+    expect(rendered()).not.toContain('"Swap"');
+    expect(root.root.findAllByType('Image' as any)).toHaveLength(0);
+  });
+
+  it('asks for another amount when there is no route', () => {
+    mockRouteState = 'NO_ROUTE_FOUND';
+    mockHasTrade = false;
+    mockCallbackAvailable = false;
+    mount();
+    expect(rendered()).toContain('Try another amount');
+    expect(rendered()).not.toContain('"Swap"');
+  });
+
+  it('keeps the screen’s own label, without the passkey icon, when the screen holds it back', () => {
+    mount({ label: 'Buy FUSE', disabled: true });
+    expect(rendered()).toContain('Buy FUSE');
+    expect(root.root.findAllByType('Image' as any)).toHaveLength(0);
+  });
+});

@@ -9,11 +9,24 @@ import FuseVault from '@/lib/abis/FuseVault';
 import { ADDRESSES } from '@/lib/config';
 import { Vault } from '@/lib/types';
 import { config } from '@/lib/wagmi';
+import { selectIsRealtimeLive, useRealtimeStore } from '@/store/useRealtimeStore';
 
 // Cache configuration for vault queries
-const VAULT_STALE_TIME = secondsToMilliseconds(3); // Consider data fresh for 3 seconds
+const VAULT_STALE_TIME = secondsToMilliseconds(15); // Consider data fresh for 15 seconds
 const VAULT_GC_TIME = secondsToMilliseconds(300); // Keep in cache for 5 minutes
-const VAULT_REFETCH_INTERVAL = secondsToMilliseconds(3); // Poll every 3 seconds for near-realtime updates
+/**
+ * How often the polled vault totals re-read the chain. The Ethereum and Base
+ * legs are `eth_call`s on the app's Alchemy key, billed per call, so this is
+ * only the safety net: a balance event on the realtime socket refetches every
+ * ['vault'] query at once (see lib/realtime and refreshAccountQueries), and
+ * deposits and withdrawals refresh them directly. Faster while the socket is
+ * down, when polling is all there is.
+ */
+const VAULT_POLL_MS = secondsToMilliseconds(15);
+const VAULT_LIVE_POLL_MS = secondsToMilliseconds(60);
+
+const useVaultRefetchInterval = () =>
+  useRealtimeStore(selectIsRealtimeLive) ? VAULT_LIVE_POLL_MS : VAULT_POLL_MS;
 
 export const VAULT = 'vault';
 
@@ -117,6 +130,7 @@ export const useEthereumVaultBalance = (safeAddress: Address) => {
 
 export const useVaultBalance = (safeAddress: Address, vault?: Vault) => {
   const queryClient = useQueryClient();
+  const refetchInterval = useVaultRefetchInterval();
   const selectedVault = vault || VAULTS[0];
 
   return useQuery({
@@ -133,7 +147,10 @@ export const useVaultBalance = (safeAddress: Address, vault?: Vault) => {
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
-    refetchInterval: VAULT_REFETCH_INTERVAL,
+    refetchInterval,
+    // A change while the app was in the background has no event to announce
+    // it, and the poll is slow now: re-read on return, as balances do.
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -151,6 +168,7 @@ export const useUsdcVaultBalance = (safeAddress: Address) => {
 /** Total balance across all vaults (USDC + FUSE + ETH). Use for empty-state checks. */
 export const useTotalVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
+  const refetchInterval = useVaultRefetchInterval();
   return useQuery({
     queryKey: [VAULT, 'balanceTotal', safeAddress],
     queryFn: async () => {
@@ -168,6 +186,9 @@ export const useTotalVaultBalance = (safeAddress: Address) => {
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
-    refetchInterval: VAULT_REFETCH_INTERVAL,
+    refetchInterval,
+    // A change while the app was in the background has no event to announce
+    // it, and the poll is slow now: re-read on return, as balances do.
+    refetchOnWindowFocus: true,
   });
 };

@@ -12,6 +12,7 @@ import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
 import {
   CARD_FUND_DESTINATION_TYPE,
   CARD_FUND_MOVE_COPY,
+  getCardFundRhinoDestination,
   getCardFundTokenIcon,
   WIREX_CARD_FUND_SECTIONS,
   WIREX_CARD_FUND_TOKENS,
@@ -21,12 +22,14 @@ import {
   WirexMoveAmount,
   WirexMoveHoldings,
 } from '@/components/Card/CardFund/WirexMoveFromWallet';
+import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { USDC_STARGATE } from '@/constants/addresses';
 import { SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import {
@@ -34,6 +37,7 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
+import { isOfferedRhinoRow, resolveRhinoRow, RhinoDepositSelection } from '@/lib/rhinoDeposit';
 import { CardProvider, DepositModal } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
@@ -84,20 +88,24 @@ export interface WirexCardFundModalProps {
  * "Fund your card" for a Wirex cardholder.
  *
  * The same three steps as the Rain flow — pick a stablecoin, pick the chain it
- * is sent from, then deposit to the address shown — over the same deposit
- * address: `CARD_FUND_DESTINATION_TYPE` is the card address for either issuer,
- * and the backend resolves which one the cardholder has to decide where the
- * funds go (the Rain card on Base, or this cardholder's Safe on Fuse, where the
- * card spends from).
+ * is sent from, then deposit to the address shown — but every deposit lands in
+ * this cardholder's Safe, where the card spends from:
+ *
+ * - On Fuse, the card deposit address (`CARD_FUND_DESTINATION_TYPE`, the card
+ *   address for either issuer), which the backend delivers to the Safe on Fuse.
+ * - USDC anywhere else: rhino.fi's wallet route, paying the Safe on Base (see
+ *   `getCardFundRhinoDestination`), or a "More networks" chain's.
+ * - USDT anywhere else: the card deposit address again, which our pipeline
+ *   delivers to the Safe on Base (rhino.fi cannot deliver USDT there yet).
  *
  * EURC is offered beside the dollar stablecoins, to Wirex cardholders only - a
- * Rain card cannot spend from the Safe. The same address takes it, but
- * the backend delivers it as EURC to the cardholder's Safe on Base, which is
- * where the Base spend-module instance sells it for euro purchases.
+ * Rain card cannot spend from the Safe. It goes through rhino.fi's wallet route
+ * as EURC to the cardholder's Safe on Base, which is where the Base
+ * spend-module instance sells it for euro purchases.
  *
- * The local-currency rows are offered too, and for the same reason: TransFi has
- * no USDC-on-Fuse entry, so the backend delivers the bought USDC to that same
- * card deposit address and the direct-deposit pipeline carries it to the Safe.
+ * The local-currency rows are offered too: TransFi has no USDC-on-Fuse entry, so
+ * the backend delivers the bought USDC to the card deposit address and the
+ * direct-deposit pipeline carries it to the Safe.
  *
  * What differs is only how much of the options screen is offered:
  * `WIREX_CARD_FUND_SECTIONS` leaves everything else off until the matching
@@ -129,8 +137,19 @@ export default function WirexCardFundModal({
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
+  // Set when a row rhino.fi serves was picked: the address step shows its address.
+  const [rhinoSelection, setRhinoSelection] = useState<RhinoDepositSelection | undefined>(
+    undefined,
+  );
+  const rhinoAssets = useOfferedRhinoDepositAssets();
   const [selectedHolding, setSelectedHolding] = useState<MovableHolding | undefined>(undefined);
-  const { holdings, swappable, isLoading: areHoldingsLoading } = useMovableHoldings();
+  const {
+    holdings,
+    swappable,
+    isLoading: areHoldingsLoading,
+    isRhinoUnavailable,
+    retryRhino,
+  } = useMovableHoldings();
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
@@ -161,6 +180,7 @@ export default function WirexCardFundModal({
         setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
+        setRhinoSelection(undefined);
         setSelectedHolding(undefined);
       }
     },
@@ -190,25 +210,52 @@ export default function WirexCardFundModal({
       setSelectedToken(symbol);
       setSelectedChainId(undefined);
       setDepositAddress(undefined);
+      setRhinoSelection(undefined);
       goToStep('networks');
     },
     [goToStep],
   );
 
+  // rhino.fi on every row but Base's and Fuse's: a row it has a wallet route
+  // from (see `getCardFundRhinoDestination`) shows the rhino.fi address, and
+  // only an own row (Base, where rhino.fi pays out, and Fuse) mints the card's
+  // direct-deposit session. The list offers nothing else, and nothing else is
+  // acted on here either.
   const handleNetworkSelect = useCallback(
     (chainId: number) => {
+      const row = resolveRhinoRow(rhinoAssets, {
+        chainId,
+        destinationType: getCardFundRhinoDestination(selectedToken, CardProvider.WIREX),
+        symbol: selectedToken,
+      });
+      if (!isOfferedRhinoRow(row)) return;
+
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
         chain_id: chainId,
         token_symbol: selectedToken,
         deposit_type: 'wirex_card_direct_deposit',
+        via_rhino: row.kind === 'rhino',
       });
 
+      setRhinoSelection(row.kind === 'rhino' ? row.selection : undefined);
       setSelectedChainId(chainId);
       setDepositAddress(undefined);
-      prepareSession({ chainId, token: selectedToken });
+      if (row.kind === 'own') prepareSession({ chainId, token: selectedToken });
       goToStep('address');
     },
-    [goToStep, prepareSession, selectedToken],
+    [goToStep, prepareSession, rhinoAssets, selectedToken],
+  );
+
+  // A "More networks" chain from under the list. Its address step fetches the
+  // user's rhino.fi address itself, so no direct-deposit session is minted.
+  const handleRhinoNetworkSelect = useCallback(
+    (selection: RhinoDepositSelection) => {
+      setSelectedChainId(undefined);
+      setDepositAddress(undefined);
+      setRhinoSelection(selection);
+      goToStep('address');
+    },
+    [goToStep],
   );
 
   // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
@@ -350,7 +397,14 @@ export default function WirexCardFundModal({
     }
 
     if (step === 'networks') {
-      return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
+      return (
+        <CardFundNetworks
+          symbol={selectedToken}
+          cardProvider={CardProvider.WIREX}
+          onSelect={handleNetworkSelect}
+          onSelectRhino={handleRhinoNetworkSelect}
+        />
+      );
     }
 
     if (step === 'moveHoldings') {
@@ -361,6 +415,7 @@ export default function WirexCardFundModal({
           isLoading={areHoldingsLoading}
           onSelect={handleHoldingSelect}
           onSwap={handleSwapPress}
+          onRetryUnavailable={isRhinoUnavailable ? retryRhino : undefined}
         />
       );
     }
@@ -390,6 +445,7 @@ export default function WirexCardFundModal({
             isLoading={areHoldingsLoading}
             onSelect={handleHoldingSelect}
             onSwap={handleSwapPress}
+            onRetryUnavailable={isRhinoUnavailable ? retryRhino : undefined}
           />
         );
       }
@@ -402,6 +458,16 @@ export default function WirexCardFundModal({
           holding={holding}
           suggestedAmount={suggestedAmountUsd}
           onDone={handleMoveSubmitted}
+        />
+      );
+    }
+
+    if (step === 'address' && rhinoSelection) {
+      return (
+        <RhinoDepositAddress
+          selection={rhinoSelection}
+          onChangeNetwork={handleBack}
+          onDepositDetected={handleDepositDetected}
         />
       );
     }

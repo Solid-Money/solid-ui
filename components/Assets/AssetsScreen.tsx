@@ -6,10 +6,13 @@ import { Href, router } from 'expo-router';
 
 import AssetRow, { assetAmountLabel } from '@/components/Assets/AssetRow';
 import PortfolioIcon, { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
+import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import { BalanceHeadline } from '@/components/BalanceHeadline';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
-import { lockedFuseDescription } from '@/components/Home/NewHome/HomeAssetsCard';
+import YieldIcon from '@/components/Earn/YieldIcon';
+import { openYieldProduct, yieldVault } from '@/components/Earn/yieldProducts';
+import { EurYieldAmount, lockedFuseDescription } from '@/components/Home/NewHome/HomeAssetsCard';
 import { bankBalancesToShow } from '@/components/Home/NewHome/OtherBalancesDropdown/balanceTotals';
 import PageLayout from '@/components/PageLayout';
 import Skeleton from '@/components/ui/skeleton';
@@ -94,9 +97,13 @@ export function AssetsOverview({
     asset => asset.valueUsd === undefined || asset.valueUsd > 0,
   );
   const showLocked = (portfolio.lockedFuse ?? 0) > 0;
-  const showEarn = earnAssets.length > 0 || showLocked;
+  // soEURC is held in euros, so it is its own row rather than one of the USD earnAssets.
+  const eurYield =
+    portfolio.eurYield && portfolio.eurYield.valueEur > 0 ? portfolio.eurYield : undefined;
+  const showEarn = earnAssets.length > 0 || !!eurYield || showLocked;
   const showStable = stable.all.length > 0 || portfolio.hasCardBalance;
-  const isEmpty = !showStable && !showEarn && crypto.all.length === 0;
+  const showWithdrawing = portfolio.pendingWithdrawals.length > 0;
+  const isEmpty = !showStable && !showEarn && crypto.all.length === 0 && !showWithdrawing;
   const hasDebt = (portfolio.debt ?? 0) > 0;
   const estimate = yieldEstimate(portfolio.dailyYield, portfolio.monthlyYield);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace(path.HOME));
@@ -294,9 +301,25 @@ export function AssetsOverview({
                     />
                   </Fragment>
                 ))}
-                {showLocked && (
+                {eurYield && (
                   <>
                     {earnAssets.length > 0 && <Divider />}
+                    <AssetRow
+                      title={yieldVault(VaultType.EUR).vaultToken}
+                      value={undefined}
+                      isEarning
+                      // EUR Yield earns nothing yet, and Earn shows that as 0.0%, not "—".
+                      apy={eurYield.apy ?? 0}
+                      icon={<YieldIcon vaultType={VaultType.EUR} badge="live" />}
+                      subtitle={`${formatTokenAmount(eurYield.shareAmount)} ${yieldVault(VaultType.EUR).vaultToken}`}
+                      trailing={<EurYieldAmount eurYield={eurYield} />}
+                      onPress={() => router.push(openYieldProduct(VaultType.EUR) as Href)}
+                    />
+                  </>
+                )}
+                {showLocked && (
+                  <>
+                    {(earnAssets.length > 0 || !!eurYield) && <Divider />}
                     <AssetRow
                       title="Locked FUSE"
                       isEarning
@@ -311,6 +334,12 @@ export function AssetsOverview({
                     />
                   </>
                 )}
+              </Group>
+            )}
+
+            {showWithdrawing && (
+              <Group title="On the way">
+                <WithdrawingRow withdrawals={portfolio.pendingWithdrawals} />
               </Group>
             )}
 
@@ -374,7 +403,9 @@ export function AssetsOverview({
           </>
         )}
         <Text className="text-[13px] font-normal text-white/40">
-          Tap an asset for details. Values in USD; APY is variable. Yield is an estimate.
+          Tap an asset for details. Values in USD
+          {eurYield ? ', except soEURC: in euros, with an estimated USD value' : ''}; APY is
+          variable. Yield is an estimate.
         </Text>
       </View>
     </PageLayout>

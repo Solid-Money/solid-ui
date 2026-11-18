@@ -481,3 +481,85 @@ describe('getDepositProgressRows', () => {
     expect(rows[2].label).toBe('Depositing soUSD to your savings');
   });
 });
+
+// ---------------------------------------------------------------------------
+// A deposit rhino.fi is still carrying (backend `RhinoDepositActivityService`)
+// ---------------------------------------------------------------------------
+describe('getDepositProgressRows for a rhino.fi deposit', () => {
+  const rhinoDeposit = (
+    status: TransactionStatus,
+    metadata: Record<string, unknown> = {},
+  ): ActivityEvent =>
+    makeActivity({
+      type: TransactionType.DEPOSIT,
+      status,
+      amount: '25.5',
+      symbol: 'USDT',
+      metadata: {
+        provider: 'rhino',
+        description: 'rhino.fi deposit',
+        destinationType: 'WALLET',
+        sourceChainName: 'Tron',
+        ...metadata,
+      },
+    });
+
+  it('says where it was received, and that rhino.fi is bridging it', () => {
+    const rows = getDepositProgressRows(
+      rhinoDeposit(TransactionStatus.DETECTED, { depositStep: 'received' }),
+    );
+
+    expect(rows.map(({ label, state }) => [label, state])).toEqual([
+      ['We received your 25.5 USDT on Tron', 'complete'],
+      ['Bridging with rhino.fi', 'active'],
+      ['Depositing USDT to your balance', 'pending'],
+    ]);
+  });
+
+  it('says when rhino.fi is taking longer than usual', () => {
+    const rows = getDepositProgressRows(
+      rhinoDeposit(TransactionStatus.DETECTED, { depositStep: 'received', delayed: true }),
+    );
+
+    expect(rows[1].label).toBe('rhino.fi is taking longer than usual');
+  });
+
+  it('marks the bridge failed when rhino.fi rejects the deposit', () => {
+    const rows = getDepositProgressRows(
+      rhinoDeposit(TransactionStatus.FAILED, { depositStep: 'received' }),
+    );
+
+    expect(rows[1]).toMatchObject({ label: 'rhino.fi couldn’t process it', state: 'failed' });
+  });
+
+  it('ends in the card or savings it is headed for', () => {
+    const card = getDepositProgressRows(
+      rhinoDeposit(TransactionStatus.DETECTED, {
+        depositStep: 'received',
+        destinationType: 'RAIN_CARD',
+      }),
+    );
+    const savings = getDepositProgressRows(
+      rhinoDeposit(TransactionStatus.DETECTED, {
+        depositStep: 'received',
+        destinationType: 'PROTOCOL',
+        vaultShareSymbol: 'soUSD',
+      }),
+    );
+
+    expect(card[2].label).toBe('Depositing USDT to your card');
+    expect(savings[2].label).toBe('Depositing USDT to your savings');
+  });
+
+  it('leaves other deposits as they were', () => {
+    const rows = getDepositProgressRows(
+      makeActivity({
+        type: TransactionType.DEPOSIT,
+        status: TransactionStatus.DETECTED,
+        metadata: { description: 'Direct deposit', depositStep: 'received' },
+      }),
+    );
+
+    expect(rows[1].label).toBe('Waiting for network confirmations');
+  });
+});

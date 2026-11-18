@@ -28,7 +28,15 @@ import {
 } from '@/lib/utils/cross-chain-send';
 import { useSendStore } from '@/store/useSendStore';
 
-import { Chip, DetailCard, DetailRowSpec, Divider, LetterAvatar, NetworkIcon } from './shared';
+import {
+  Chip,
+  DetailCard,
+  DetailRowSpec,
+  Divider,
+  LetterAvatar,
+  MaxPill,
+  NetworkIcon,
+} from './shared';
 
 const FEE_TOOLTIP =
   'Stargate bridge fee plus the LayerZero message fee, both taken from the amount you send.';
@@ -373,15 +381,7 @@ const CrossChainForm: React.FC = () => {
                 ? '…'
                 : `${formatNumber(balanceAmount)} ${displayToken} available on Fuse`}
             </Text>
-            {balanceWei > 0n ? (
-              <Pressable
-                onPress={handleMaxPress}
-                hitSlop={6}
-                className="rounded-[18px] bg-[rgba(148,242,127,0.16)] px-2 pb-[3px] pt-[2px]"
-              >
-                <Text className="text-sm leading-4 text-brand">Max</Text>
-              </Pressable>
-            ) : null}
+            {balanceWei > 0n ? <MaxPill onPress={handleMaxPress} /> : null}
           </View>
           {inlineError ? (
             <Text className="text-center text-sm text-red-400">{inlineError}</Text>

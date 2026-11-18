@@ -6,6 +6,13 @@ import { SwapFieldType } from '@/lib/types/swap-field';
 export const QUOTE_DEBOUNCE_MS = 300;
 
 /**
+ * How often a price on screen is fetched again while the user looks at it.
+ * The review screen promises this ("we re-check the price every 30 seconds"),
+ * and a swap re-quotes once more just before it's signed.
+ */
+export const SWAP_PRICE_RECHECK_MS = 30_000;
+
+/**
  * The swap form's field and amount as far as quoting goes: what's typed, once
  * typing pauses.
  *

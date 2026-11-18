@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { isAlchemyChain } from '@/constants/alchemy';
 import { explorerUrls } from '@/constants/explorers';
@@ -18,6 +18,7 @@ const BLOCKSCOUT_URLS: Record<number, string> = {
   [base.id]: 'https://base.blockscout.com',
   [polygon.id]: 'https://polygon.blockscout.com',
   [arbitrum.id]: 'https://arbitrum.blockscout.com',
+  [optimism.id]: 'https://optimism.blockscout.com',
   [fuse.id]: explorerUrls[fuse.id]?.blockscout ?? 'https://explorer.fuse.io',
 };
 

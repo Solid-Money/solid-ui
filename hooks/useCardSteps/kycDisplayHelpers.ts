@@ -83,6 +83,21 @@ const DIDIT_WARNING_DESCRIPTIONS: Record<string, string> = {
   INVALID_DATE: 'A date on the document is invalid',
 };
 
+/**
+ * The backend's tag for a verification Didit approved but our card issuer cannot
+ * accept, because the Social Security Number in it is not 9 digits. Retrying
+ * the hand-off re-sends the same answer, so the only way forward is a new
+ * verification — which the KYC step's button starts.
+ */
+export const SSN_INVALID_RISK = 'SSN_INVALID';
+
+const SSN_INVALID_DESCRIPTION =
+  'Your ID check passed, but the Social Security Number you entered is not a valid 9-digit number, so we couldn’t submit your card application.\n\nVerify again and enter your full 9-digit SSN, digits only, when asked.';
+
+function hasSsnInvalidWarning(warnings: KycWarning[] | null | undefined): boolean {
+  return Boolean(warnings?.some(warning => warning.risk === SSN_INVALID_RISK));
+}
+
 /** Convert a SCREAMING_SNAKE_CASE tag into a Title-Cased phrase. */
 function formatRiskTag(tag: string): string {
   return tag
@@ -249,6 +264,9 @@ export function getStepDescription(
 
   // Didit resubmission or incomplete (including didit_forward_failed) — show reasons if available
   if (options?.kycStatus === KycStatus.INCOMPLETE && !isRecognizedRainStatus) {
+    // Says what happened AND what to do: "Additional verification required"
+    // over a sentence about the SSN left people asking support where to type it.
+    if (hasSsnInvalidWarning(warnings)) return SSN_INVALID_DESCRIPTION;
     const formatted = formatKycWarnings(warnings);
     if (formatted) {
       return `Additional verification required:\n- ${formatted}`;
@@ -343,6 +361,7 @@ export function getStepButtonText(
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
     kycStatus?: KycStatus | null;
+    kycWarnings?: KycWarning[] | null;
   },
 ): string | undefined {
   const isRecognizedRainStatus =
@@ -351,6 +370,15 @@ export function getStepButtonText(
 
   if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
     return getKYCButtonText(options.rainApplicationStatus);
+  }
+
+  // Starts a new verification, which is where the SSN is entered again.
+  if (
+    options?.kycStatus === KycStatus.INCOMPLETE &&
+    !isRecognizedRainStatus &&
+    hasSsnInvalidWarning(options?.kycWarnings)
+  ) {
+    return 'Re-enter SSN';
   }
 
   // Approved — the step is done, so there is no action left. Without this it fell

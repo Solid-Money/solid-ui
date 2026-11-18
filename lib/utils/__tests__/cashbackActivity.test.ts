@@ -8,8 +8,10 @@ import {
 } from '@/lib/types';
 import {
   collectCashbackPayoutHashes,
+  getCashbackPurchaseId,
   isCashbackPayoutActivity,
 } from '@/lib/utils/cashbackActivity';
+import { TransferContextKind } from '@/lib/utils/transferPresentation';
 
 const PAYOUT_HASH = '0xAbC123';
 
@@ -68,6 +70,25 @@ describe('isCashbackPayoutActivity', () => {
     expect(isCashbackPayoutActivity(activity({ hash: '0xABC123' }), hashes)).toBe(true);
   });
 
+  it('matches a payout paid on Base exactly as one paid on Fuse', () => {
+    // Cashback pays from Base first; the soUSD receive there is indexed like
+    // any listed token's, so it must be kept out of the feed the same way.
+    const baseHashes = collectCashbackPayoutHashes([
+      cashback({ payoutTxHash: '0xBA5E01', payoutChainId: 8453 }),
+    ]);
+
+    expect(
+      isCashbackPayoutActivity(
+        activity({
+          clientTxId: 'webhook_8453_0xba5e01_incoming',
+          chainId: 8453,
+          hash: '0xba5e01',
+        }),
+        baseHashes,
+      ),
+    ).toBe(true);
+  });
+
   it('matches a payout whose hash is only on the metadata', () => {
     expect(
       isCashbackPayoutActivity(
@@ -92,6 +113,61 @@ describe('isCashbackPayoutActivity', () => {
 
   it('matches nothing while the cashbacks are still loading', () => {
     expect(isCashbackPayoutActivity(activity(), new Set())).toBe(false);
+  });
+
+  it('matches a payout the backend named, with no cashback list at all', () => {
+    // While the list loads, or for a cardholder whose card has closed and so never fetches it.
+    const named = activity({
+      title: 'Cashback on UBER',
+      metadata: {
+        transferContext: {
+          kind: TransferContextKind.CARD_CASHBACK,
+          cardTransactionId: 'card-tx-1',
+        },
+      },
+    });
+
+    expect(isCashbackPayoutActivity(named, new Set())).toBe(true);
+  });
+
+  it('leaves a transfer the backend named as something else alone', () => {
+    const refund = activity({
+      hash: '0xdeadbeef',
+      metadata: { transferContext: { kind: TransferContextKind.CARD_REFUND } },
+    });
+
+    expect(isCashbackPayoutActivity(refund, hashes)).toBe(false);
+  });
+});
+
+describe('getCashbackPurchaseId', () => {
+  it('takes the purchase from the backend label', () => {
+    const named = activity({
+      hash: '0xdeadbeef',
+      metadata: {
+        transferContext: {
+          kind: TransferContextKind.CARD_CASHBACK,
+          cardTransactionId: 'card-tx-9',
+        },
+      },
+    });
+
+    expect(getCashbackPurchaseId(named, undefined)).toBe('card-tx-9');
+  });
+
+  it('finds the purchase through the cashback row the payout hash belongs to', () => {
+    expect(getCashbackPurchaseId(activity({ hash: '0xABC123' }), [cashback()])).toBe('card-tx-1');
+  });
+
+  it('has no purchase for a transfer that is not a payout', () => {
+    expect(getCashbackPurchaseId(activity({ hash: '0xdeadbeef' }), [cashback()])).toBeUndefined();
+    expect(getCashbackPurchaseId(activity({ hash: undefined }), [cashback()])).toBeUndefined();
+  });
+
+  it('never matches a row settled against debt', () => {
+    const debt = cashback({ payoutTxHash: 'DEDUCTED_FROM_DEBT' });
+
+    expect(getCashbackPurchaseId(activity({ hash: 'DEDUCTED_FROM_DEBT' }), [debt])).toBeUndefined();
   });
 });
 

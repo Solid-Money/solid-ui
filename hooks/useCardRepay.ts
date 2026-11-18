@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Address, erc20Abi } from 'viem';
-import { fuse } from 'viem/chains';
+import { Address, type Chain, erc20Abi } from 'viem';
+import { base, fuse } from 'viem/chains';
 
 import { isCardSpendV2Configured, REPAY_TENDER_FALLBACK } from '@/constants/cardSpendV2';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBaseCreditInstance } from '@/hooks/useCardCreditPositions';
 import { CARD_SPEND_REGISTRATION_QUERY_KEY } from '@/hooks/useCardSpendRegistration';
 import useUser from '@/hooks/useUser';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
@@ -26,7 +27,8 @@ import { useUserStore } from '@/store/useUserStore';
 
 export const CARD_REPAY_QUERY_KEY = 'cardCreditRepay';
 
-const MODULE_V2 = ADDRESSES.fuse.cashModuleV2;
+/** The chains a card position can live on, and so be repaid on. */
+export type CardRepayChainId = typeof fuse.id | typeof base.id;
 
 /** Everything the repay screen quotes from, read in two multicalls. */
 export interface CardRepayState {
@@ -74,9 +76,13 @@ const PRICE_UNAVAILABLE = 'Its price is unavailable right now.';
  * simply not offered: quoting a repayment against a balance or price we do not have would put
  * a figure on screen the module then contradicts.
  */
-const readCardRepayState = async (safe: Address): Promise<CardRepayState> => {
-  const client = publicClient(fuse.id);
-  const module = { address: MODULE_V2, abi: SolidCashModuleV2_ABI } as const;
+const readCardRepayState = async (
+  chainId: CardRepayChainId,
+  moduleAddress: Address,
+  safe: Address,
+): Promise<CardRepayState> => {
+  const client = publicClient(chainId);
+  const module = { address: moduleAddress, abi: SolidCashModuleV2_ABI } as const;
 
   const [tokens, debtUsd, moduleEnabled, borrowApyPerSecond] = await client.multicall({
     allowFailure: false,
@@ -101,7 +107,11 @@ const readCardRepayState = async (safe: Address): Promise<CardRepayState> => {
     ]) as never[],
   });
 
-  const fallbackTender = new Set(REPAY_TENDER_FALLBACK.map(address => address.toLowerCase()));
+  // Fuse addresses: the fallback is for the Fuse build that predates `repayTender`. Base has
+  // always had it, so a failed read there offers nothing rather than guessing.
+  const fallbackTender = new Set(
+    chainId === fuse.id ? REPAY_TENDER_FALLBACK.map(address => address.toLowerCase()) : [],
+  );
   const wallet: RepaySource[] = [];
   const escrowed: RepaySource[] = [];
   const collateral: EscrowedCollateral[] = [];
@@ -192,15 +202,22 @@ const readCardRepayState = async (safe: Address): Promise<CardRepayState> => {
   };
 };
 
-const cardRepayQueryOptions = (selectedUserId: string | undefined, safe: Address | undefined) => ({
-  queryKey: [CARD_REPAY_QUERY_KEY, selectedUserId, safe],
-  queryFn: () => readCardRepayState(safe!),
+const cardRepayQueryOptions = (
+  chainId: CardRepayChainId,
+  moduleAddress: Address | undefined,
+  selectedUserId: string | undefined,
+  safe: Address | undefined,
+) => ({
+  queryKey: [CARD_REPAY_QUERY_KEY, chainId, moduleAddress, selectedUserId, safe],
+  queryFn: () => readCardRepayState(chainId, moduleAddress!, safe!),
   retry: false,
   staleTime: 15_000,
 });
 
 /**
- * Repaying the card's credit position on `SolidCashModuleV2`.
+ * Repaying the card's credit position on `SolidCashModuleV2`, on one instance: Fuse by default,
+ * or Base. Each instance is its own position with its own debt and collateral, so a repayment is
+ * always of one of them, signed on that chain.
  *
  * Every call is sent by the Safe itself in one user operation, so the cardholder signs once:
  * the repayment, and on a full one the withdrawals that return the remaining collateral. The
@@ -211,17 +228,26 @@ const cardRepayQueryOptions = (selectedUserId: string | undefined, safe: Address
  * the screen used. A balance, price or debt that moved while the sheet sat open therefore
  * costs a message instead of a failed user operation.
  */
-export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
+export function useCardRepay({
+  enabled = true,
+  chainId = fuse.id,
+}: { enabled?: boolean; chainId?: CardRepayChainId } = {}) {
   const { user, safeAA } = useUser();
   const queryClient = useQueryClient();
   const selectedUserId = useUserStore(state => state.users.find(u => u.selected)?.userId);
   const [error, setError] = useState<string | null>(null);
+  const baseInstance = useBaseCreditInstance();
+
+  const chain: Chain = chainId === base.id ? base : fuse;
+  const moduleAddress =
+    chainId === base.id ? baseInstance.moduleAddress : ADDRESSES.fuse.cashModuleV2;
+  const isLive = chainId === base.id ? baseInstance.isLive : isCardSpendV2Configured();
 
   const safeAddress = user?.safeAddress as Address | undefined;
-  const isEnabled = enabled && isCardSpendV2Configured() && Boolean(safeAddress);
+  const isEnabled = enabled && isLive && Boolean(moduleAddress) && Boolean(safeAddress);
 
   const query = useQuery<CardRepayState>({
-    ...cardRepayQueryOptions(selectedUserId, safeAddress),
+    ...cardRepayQueryOptions(chainId, moduleAddress, selectedUserId, safeAddress),
     enabled: isEnabled,
   });
 
@@ -231,12 +257,12 @@ export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
       amountUsd,
       isMax,
     }: CardRepayRequest): Promise<CardRepayResult | null> => {
-      if (!user?.suborgId || !user?.signWith || !safeAddress) {
+      if (!user?.suborgId || !user?.signWith || !safeAddress || !moduleAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
       const fresh = await queryClient.fetchQuery({
-        ...cardRepayQueryOptions(selectedUserId, safeAddress),
+        ...cardRepayQueryOptions(chainId, moduleAddress, selectedUserId, safeAddress),
         staleTime: 0,
       });
 
@@ -255,22 +281,25 @@ export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
 
       const calls = buildRepayCalls({
         safe: safeAddress,
-        module: MODULE_V2,
+        module: moduleAddress,
         moduleEnabled: fresh.moduleEnabled,
         source,
         quote,
       });
 
-      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+      const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
       const result = await executeTransactions(
         smartAccountClient,
         calls,
         'Failed to repay your loan',
-        fuse,
+        chain,
       );
 
       if (result === USER_CANCELLED_TRANSACTION) {
-        track(TRACKING_EVENTS.CARD_CREDIT_REPAY_CANCELLED, { source: source.kind });
+        track(TRACKING_EVENTS.CARD_CREDIT_REPAY_CANCELLED, {
+          source: source.kind,
+          chain_id: chainId,
+        });
         return null;
       }
 
@@ -294,6 +323,7 @@ export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
         token: result.source.displaySymbol,
         repay_usd: Number(result.repayUsd) / 1_000_000,
         is_full: result.isFull,
+        chain_id: chainId,
         collateral_returned: result.returnedCollateral.length > 0,
         transaction_hash: result.transactionHash,
       });
@@ -302,7 +332,7 @@ export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
       // Sanitized for analytics; the screen gets user copy, never the raw message.
       const message = sanitizeTechnicalMessage(mutationError) || 'Failed to repay your loan';
       setError(getUserErrorMessage(mutationError, { action: 'card_repay' }) || null);
-      track(TRACKING_EVENTS.CARD_CREDIT_REPAY_FAILED, { error: message });
+      track(TRACKING_EVENTS.CARD_CREDIT_REPAY_FAILED, { error: message, chain_id: chainId });
     },
   });
 
@@ -316,10 +346,13 @@ export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
   const repay = useCallback(
     async (request: CardRepayRequest): Promise<CardRepayResult | null> => {
       setError(null);
-      track(TRACKING_EVENTS.CARD_CREDIT_REPAY_PRESSED, { is_max: request.isMax });
+      track(TRACKING_EVENTS.CARD_CREDIT_REPAY_PRESSED, {
+        is_max: request.isMax,
+        chain_id: chainId,
+      });
       return mutation.mutateAsync(request);
     },
-    [mutation],
+    [chainId, mutation],
   );
 
   const clearError = useCallback(() => setError(null), []);

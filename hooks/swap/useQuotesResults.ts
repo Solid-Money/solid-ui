@@ -3,11 +3,12 @@ import { Currency, CurrencyAmount, encodeRouteToPath, Route } from '@cryptoalgeb
 import { useReadContracts } from 'wagmi';
 
 import { ALGEBRA_QUOTER_V2 } from '@/constants/addresses';
+import { SWAP_PRICE_RECHECK_MS } from '@/hooks/swap/useQuoteInput';
 import { algebraQuoterV2ABI } from '@/lib/abis';
 import { fuseConfig } from '@/lib/wagmi';
 
 /** How often a quote left on screen is re-fetched, so it can't go stale. */
-const QUOTE_REFRESH_MS = 15_000;
+const QUOTE_REFRESH_MS = SWAP_PRICE_RECHECK_MS;
 
 export function useQuotesResults({
   routes,

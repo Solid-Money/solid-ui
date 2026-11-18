@@ -1,4 +1,4 @@
-import { arbitrum, base, bsc, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, mainnet, optimism, polygon } from 'viem/chains';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from '@/lib/config';
 
@@ -14,6 +14,7 @@ export const ALCHEMY_SUPPORTED_CHAIN_IDS: ReadonlySet<number> = new Set([
   polygon.id,
   arbitrum.id,
   bsc.id,
+  optimism.id,
 ]);
 
 export const ALCHEMY_CHAIN_URLS: Record<number, string> = {
@@ -22,6 +23,7 @@ export const ALCHEMY_CHAIN_URLS: Record<number, string> = {
   [polygon.id]: `https://polygon-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [arbitrum.id]: `https://arb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [bsc.id]: `https://bnb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
+  [optimism.id]: `https://opt-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
 };
 
 export const isAlchemyChain = (chainId: number): boolean =>
@@ -37,6 +39,7 @@ export const ALCHEMY_NETWORKS: Record<number, string> = {
   [polygon.id]: 'polygon-mainnet',
   [arbitrum.id]: 'arb-mainnet',
   [bsc.id]: 'bnb-mainnet',
+  [optimism.id]: 'opt-mainnet',
 };
 
 /**

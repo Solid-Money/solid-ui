@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { TIER_UPGRADE_MODAL } from '@/constants/modals';
 import { DEFAULT_LOCK_ASSET, type LockPaymentAsset } from '@/lib/tierLockPayment';
+import { type CashTokenKey } from '@/lib/tierUpgradeFunding';
 import { RewardsTier } from '@/lib/types';
 
 import type { ModalState } from '@/components/ResponsiveModal';
@@ -38,13 +39,24 @@ interface TierUpgradeState {
    * have their Savings spent instead, and vice versa.
    */
   lockAsset: LockPaymentAsset;
+  /**
+   * The token the annual fee is paid with, or null for the screen's own pick.
+   *
+   * USDC on Fuse pays as it is. Anything else — USDC on Base, ETH on Ethereum —
+   * is swapped into it through LI.FI first. Null until the user chooses, so the
+   * offer can default to whatever they actually hold enough of.
+   */
+  cashToken: CashTokenKey | null;
   open: (tier?: PurchasableTier | null) => void;
   review: () => void;
   selectToken: () => void;
+  /** The step that follows a bridged payment to Fuse and starts the membership. */
+  showFunding: () => void;
   back: () => void;
   close: () => void;
   setRoute: (route: TierUpgradeRoute) => void;
   setLockAsset: (asset: LockPaymentAsset) => void;
+  setCashToken: (token: CashTokenKey) => void;
 }
 
 /**
@@ -60,6 +72,7 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
   tier: null,
   route: null,
   lockAsset: DEFAULT_LOCK_ASSET,
+  cashToken: null,
 
   open: (tier = null) =>
     set({
@@ -73,6 +86,7 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
       // Back to the default too. A token picked for one upgrade is not a
       // standing preference, and the balances behind it have moved since.
       lockAsset: DEFAULT_LOCK_ASSET,
+      cashToken: null,
     }),
 
   review: () =>
@@ -85,6 +99,12 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
     set({
       previousModal: get().currentModal,
       currentModal: TIER_UPGRADE_MODAL.OPEN_TOKEN_SELECTOR,
+    }),
+
+  showFunding: () =>
+    set({
+      previousModal: get().currentModal,
+      currentModal: TIER_UPGRADE_MODAL.OPEN_FUNDING_STATUS,
     }),
 
   back: () =>
@@ -107,6 +127,14 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
   setLockAsset: asset =>
     set({
       lockAsset: asset,
+      previousModal: get().currentModal,
+      currentModal: TIER_UPGRADE_MODAL.OPEN_UPGRADE,
+    }),
+
+  // Same as the lock's picker: one tap chooses and returns to the offer.
+  setCashToken: token =>
+    set({
+      cashToken: token,
       previousModal: get().currentModal,
       currentModal: TIER_UPGRADE_MODAL.OPEN_UPGRADE,
     }),

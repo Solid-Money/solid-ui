@@ -11,14 +11,15 @@ const STALE_MS = 5 * 60 * 1000;
 
 /**
  * Whether this user has a feature that is still held back from the public —
- * Onramper's "Credit card" deposit, or cash-out.
+ * Onramper's "Credit card" deposit, cash-out, or the redesigned swap.
  *
  * ## Why the server owns this
  *
  * One whitelist on the server (`FEATURE_WHITELIST_USERNAMES`) grants all of
  * them, and qa opens them to everyone (`FEATURE_WHITELIST_ENFORCED=false`). A
  * build flag could express neither, and the routes behind these features refuse
- * non-whitelisted users anyway, so the app only mirrors that answer.
+ * non-whitelisted users anyway, so the app only mirrors that answer. The swap
+ * is the exception: both forms use the same routes, so it only picks the form.
  *
  * Cash App is not read from here: it is also open to every US user, which only
  * `/orchestra/config` combines — see useIsCashAppAvailable.

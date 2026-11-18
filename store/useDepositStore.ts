@@ -17,6 +17,7 @@ import {
   TransactionStatusModal,
 } from '@/lib/types';
 
+import type { RhinoDepositSelection } from '@/lib/rhinoDeposit';
 // Type-only imports (erased at build → no thirdweb runtime cost on mobile).
 import type { Account, Wallet } from 'thirdweb/wallets';
 
@@ -66,6 +67,11 @@ interface DirectDepositSession {
   fromActivity?: boolean;
 }
 
+export interface UpgradeTopUpContext {
+  tier: RewardsTier;
+  depositToSavings: boolean;
+}
+
 /**
  * External (connected) wallet connection state, mirrored from thirdweb.
  *
@@ -95,11 +101,41 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
+   * A "More networks" rhino.fi chain (e.g. `TRON`) picked from the network list,
+   * in place of `chainId`: the screen then shows the user's rhino.fi address for
+   * it. Cleared whenever an app chain is chosen (see `setWalletDeposit`). A row
+   * of the list never sets it: how a row is served follows from the row itself
+   * (`getWalletDepositRow`).
+   */
+  rhinoChain?: string;
+  /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
-   * token", so the previous step alone cannot tell the two apart.
+   * token", so the previous step alone cannot tell the two apart. Kept through
+   * a coin's own screen (see `coin`), which it ticks the same way.
    */
   isChangingToken?: boolean;
+  /**
+   * The coin whose tokens its own screen lists (`bitcoin`: BTC, WBTC, cbBTC),
+   * set by the "Select token" row or the currency pill that opens it.
+   */
+  coin?: string;
+  /**
+   * Set when the address is opened to fund something paid from the Safe itself:
+   * the AI API, which charges the Safe on Base. The screen then shows the Safe
+   * whatever card the user holds. Without it, a Wirex cardholder's stablecoins
+   * get the address the pipeline mints for their card, which bridges them to the
+   * Safe on Fuse, where nothing that charges the Safe on Base can reach them.
+   *
+   * The chain and currency are the opener's and stay fixed while it is set:
+   * the Safe on any other chain, or in a currency the charge does not draw on,
+   * would not fund what the flow was opened for.
+   *
+   * Cleared on every close of the modal, not only by `resetDepositFlow`: some
+   * close paths skip the reset, and a flag left behind would hand a Wirex
+   * cardholder's next ordinary deposit the Safe instead of the card's address.
+   */
+  toSafe?: boolean;
 }
 
 interface DepositState {
@@ -129,8 +165,16 @@ interface DepositState {
    * one flow and is cleared by `resetDepositFlow`.
    */
   savingsFundIntent: SavingsFundIntent;
-  /** Only set while the deposit chooser was opened by an upgrade Top up action. */
-  upgradeTopUp?: { tier: RewardsTier; depositToSavings: boolean };
+  /**
+   * The rhino.fi address the savings direct-deposit address step shows, for a
+   * row rhino.fi serves (every row but Fuse's and the vault's own, whose step
+   * shows the session instead). Not persisted, and cleared with the rest of the flow.
+   */
+  rhinoDeposit?: RhinoDepositSelection;
+  /** Only set when a tier upgrade needs FUSE. */
+  upgradeTopUp?: UpgradeTopUpContext;
+  /** Returns to the opener on dismissal. Cleared on a reset or handoff to another flow. */
+  onDismiss?: () => void;
   /**
    * Chain and currency chosen for the wallet deposit address ("Show deposit
    * address" -> "Select chain" -> the address).
@@ -148,7 +192,8 @@ interface DepositState {
   setDepositSourceChosen: (v: boolean) => void;
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
-  setModal: (modal: DepositModal) => void;
+  setRhinoDeposit: (selection: RhinoDepositSelection | undefined) => void;
+  setModal: (modal: DepositModal, onDismiss?: () => void) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
   clearBankTransferData: () => void;
@@ -180,6 +225,7 @@ export const useDepositStore = create<DepositState>()(
       depositSourceChosen: false,
       savingsFundIntent: 'savings',
       upgradeTopUp: undefined,
+      rhinoDeposit: undefined,
       walletDeposit: {},
       externalWallet: {
         address: undefined,
@@ -193,15 +239,21 @@ export const useDepositStore = create<DepositState>()(
       setDepositSourceChosen: (v: boolean) => set({ depositSourceChosen: v }),
       setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
       setUpgradeTopUp: context => set({ upgradeTopUp: context }),
+      setRhinoDeposit: selection => set({ rhinoDeposit: selection }),
 
-      setModal: modal => {
+      setModal: (modal, onDismiss) => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
         set({
           previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
+          onDismiss: isClose ? undefined : (onDismiss ?? get().onDismiss),
           // Several screens close the modal without resetting the whole flow;
-          // the next open should still pick the chain afresh.
-          ...(isClose && { depositSourceChosen: false }),
+          // the next open should still pick the chain afresh, and should not
+          // inherit a flow's `toSafe`.
+          ...(isClose && {
+            depositSourceChosen: false,
+            walletDeposit: { ...get().walletDeposit, toSafe: false },
+          }),
         });
       },
       setTransaction: transaction => set({ transaction }),
@@ -209,7 +261,16 @@ export const useDepositStore = create<DepositState>()(
       clearBankTransferData: () => set({ bankTransfer: {} }),
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
-      setWalletDeposit: data => set({ walletDeposit: { ...get().walletDeposit, ...data } }),
+      // A caller may name a pairing of its own (Main currency, AI API); the
+      // address screen moves off one that has no row for this user.
+      setWalletDeposit: data =>
+        set({
+          walletDeposit: {
+            ...get().walletDeposit,
+            ...('chainId' in data && !('rhinoChain' in data) ? { rhinoChain: undefined } : {}),
+            ...data,
+          },
+        }),
       setSrcChainId: srcChainId => set({ srcChainId }),
       setPrincipalToken: principalToken => set({ principalToken }),
       setDirectDepositSession: data =>
@@ -232,6 +293,8 @@ export const useDepositStore = create<DepositState>()(
           depositSourceChosen: false,
           savingsFundIntent: 'savings',
           upgradeTopUp: undefined,
+          onDismiss: undefined,
+          rhinoDeposit: undefined,
           walletDeposit: {},
         }),
     }),

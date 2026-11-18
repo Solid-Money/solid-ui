@@ -28,7 +28,7 @@ interface EnableCardSpendingCardProps {
  * `moduleAddress`, and its `register` sends only `enableModule` for a Safe already registered;
  * this is presentation.
  *
- * Laid out as `EnableEuroSpendCard` is: a 23px card, 17px side inset, two lines of copy left
+ * Laid out as `EnableRealTimeFundingCard` is: a 23px card, 17px side inset, two lines of copy left
  * and the action right.
  */
 const EnableCardSpendingCard = ({
@@ -79,7 +79,7 @@ const EnableCardSpendingCard = ({
 };
 
 const styles = StyleSheet.create({
-  // The same box as `EnableEuroSpendCard`.
+  // The same box as `EnableRealTimeFundingCard`.
   row: {
     alignItems: 'center',
     flexDirection: 'row',

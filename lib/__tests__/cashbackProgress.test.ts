@@ -1,10 +1,15 @@
 import {
+  cashbackFiguresByCurrency,
   isMonthlyCashbackCapReached,
   monthlyCashbackCap,
   monthlyCashbackHeadroom,
   monthlyCashbackTotal,
+  resolveAllTimeCashback,
+  resolveCashbackMonth,
   resolveCashbackProgress,
 } from '@/lib/cashbackProgress';
+
+import type { CashbackData, RewardsUserData } from '@/lib/types';
 
 describe('monthlyCashbackTotal', () => {
   it('counts settled and escrowed cashback as one figure', () => {
@@ -107,5 +112,118 @@ describe('isMonthlyCashbackCapReached', () => {
   it('treats nonsensical headroom as none', () => {
     expect(isMonthlyCashbackCapReached(Number.NaN)).toBe(true);
     expect(isMonthlyCashbackCapReached(-3)).toBe(true);
+  });
+});
+
+/** A cardholder with $8 settled this month in dollars and a euro month of their own. */
+const usdMonth = {
+  cashbackThisMonth: 8,
+  cashbackPendingThisMonth: 2,
+  maxCashbackMonthly: 100,
+  cashbackCapThisMonth: 100,
+  cashbackHeadroomThisMonth: 90,
+};
+const eurMonth = {
+  cashbackThisMonth: 12.4,
+  cashbackPendingThisMonth: 1.6,
+  cashbackLastMonth: 20,
+  maxCashbackMonthly: 50,
+  cashbackCapThisMonth: 50,
+  cashbackHeadroomThisMonth: 36,
+};
+const rewardsFor = (overrides: Partial<RewardsUserData>): RewardsUserData =>
+  ({ ...usdMonth, ...overrides }) as RewardsUserData;
+const cardCashback = (overrides: Partial<CashbackData>): CashbackData =>
+  ({ totalUsdValue: 0, ...overrides }) as CashbackData;
+
+describe('resolveCashbackMonth', () => {
+  it("reads a euro cardholder's month from the euro block, in EUR", () => {
+    const month = resolveCashbackMonth(
+      rewardsFor({ cashbackCurrency: 'EUR', cashbackEur: eurMonth }),
+    );
+
+    expect(month).toMatchObject({ currency: 'EUR', ...eurMonth });
+    // The euro caps are what the cap and headroom helpers then measure.
+    expect(monthlyCashbackCap(month)).toBe(50);
+    expect(monthlyCashbackHeadroom(month, 14)).toBe(36);
+  });
+
+  it('reads a dollar cardholder exactly as before', () => {
+    for (const cashbackCurrency of ['USD', undefined] as const) {
+      expect(resolveCashbackMonth(rewardsFor({ cashbackCurrency }))).toEqual({
+        currency: 'USD',
+        ...usdMonth,
+      });
+    }
+  });
+
+  it('stays in dollars, and says so, when a euro block is missing', () => {
+    expect(resolveCashbackMonth(rewardsFor({ cashbackCurrency: 'EUR' }))?.currency).toBe('USD');
+  });
+
+  it('reads nothing before the rewards data lands', () => {
+    expect(resolveCashbackMonth(undefined)).toBeUndefined();
+  });
+});
+
+describe('cashbackFiguresByCurrency', () => {
+  it("lists the cardholder's own currency first and never adds the two", () => {
+    expect(cashbackFiguresByCurrency({ USD: 150, EUR: 12.4 }, 'EUR')).toEqual([
+      { value: 12.4, currency: 'EUR' },
+      { value: 150, currency: 'USD' },
+    ]);
+  });
+
+  it('always lists the own currency, and the other only when there is some', () => {
+    expect(cashbackFiguresByCurrency({ USD: 0, EUR: 0 }, 'EUR')).toEqual([
+      { value: 0, currency: 'EUR' },
+    ]);
+    expect(cashbackFiguresByCurrency({ USD: 25 }, 'USD')).toEqual([{ value: 25, currency: 'USD' }]);
+  });
+});
+
+describe('resolveAllTimeCashback', () => {
+  it('gives a dollar cardholder the figure they always had, and nothing beside it', () => {
+    expect(resolveAllTimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))).toEqual({
+      allTimeCashback: 25,
+      allTimeCashbackOther: undefined,
+    });
+    // Floored at this month's settled figure while the details lag behind.
+    expect(resolveAllTimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 3 }))).toEqual({
+      allTimeCashback: 8,
+      allTimeCashbackOther: undefined,
+    });
+  });
+
+  it('gives a euro cardholder their euro lifetime, with any dollar lifetime beside it', () => {
+    const result = resolveAllTimeCashback(
+      rewardsFor({ cashbackCurrency: 'EUR', cashbackEur: eurMonth }),
+      cardCashback({
+        currency: 'EUR',
+        totalUsdValue: 150,
+        eur: {
+          monthlySoEurAmount: 0,
+          monthlyEurValue: 0,
+          monthlyPendingEurValue: 0,
+          totalSoEurAmount: 9,
+          totalEurValue: 9.2,
+        },
+      }),
+    );
+
+    // €12.40 (this month's settled euros beat the lagging €9.20) and $150 — not €162.40.
+    expect(result).toEqual({
+      allTimeCashback: 12.4,
+      allTimeCashbackOther: { value: 150, currency: 'USD' },
+    });
+  });
+
+  it('leaves the dollar side out for a euro cardholder who never earned in dollars', () => {
+    expect(
+      resolveAllTimeCashback(
+        rewardsFor({ cashbackCurrency: 'EUR', cashbackEur: eurMonth, cashbackThisMonth: 0 }),
+        cardCashback({ currency: 'EUR' }),
+      ),
+    ).toEqual({ allTimeCashback: 12.4, allTimeCashbackOther: undefined });
   });
 });

@@ -10,9 +10,10 @@ import { recordLifiSwapFee } from '@/lib/api/lifi-swap';
 import { UserCopyError } from '@/lib/errors/UserCopyError';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
-import { LifiSwapQuote } from '@/lib/types/lifi-swap';
+import { LifiSwapPurpose, LifiSwapQuote } from '@/lib/types/lifi-swap';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
+import { buildSponsoredLifiCalls } from '@/lib/utils/swap/sponsoredLifiCalls';
 import { getChain, publicClient } from '@/lib/wagmi';
 import { useLifiSwapStore } from '@/store/lifiSwapStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
@@ -33,6 +34,11 @@ export type LifiSwapResult =
  * LI.FI's call. Solid's fee is inside that call (LI.FI takes it as our
  * integrator fee), so unlike a Fuse swap there is no fee transfer of our own.
  * A first swap on a chain also deploys the Safe there, in the same operation.
+ *
+ * Between Fuse and Ethereum, Base or BNB Chain the quote is sponsored: the
+ * sending network's BridgePaymaster makes LI.FI's call and pays Stargate's fee
+ * in its native coin, so the operation approves and calls the paymaster
+ * instead (`buildSponsoredLifiCalls`).
  */
 export function useLifiSwapCallback() {
   const { user, safeAA } = useUser();
@@ -41,7 +47,16 @@ export function useLifiSwapCallback() {
   const [isSending, setIsSending] = useState(false);
 
   const swap = useCallback(
-    async (quote: LifiSwapQuote): Promise<LifiSwapResult> => {
+    async (
+      quote: LifiSwapQuote,
+      options: {
+        /**
+         * Carried onto the tracked swap, so whatever it was for can find it
+         * again once it lands — a membership waiting on the USDC it brings.
+         */
+        purpose?: LifiSwapPurpose;
+      } = {},
+    ): Promise<LifiSwapResult> => {
       if (!user?.safeAddress || !user.suborgId || !user.signWith)
         throw new UserCopyError('Your wallet is not ready. Reopen the swap and try again.');
 
@@ -52,7 +67,8 @@ export function useLifiSwapCallback() {
       const fromAmount = BigInt(quote.fromAmount);
       const isNativeIn = BigInt(quote.fromToken.address) === 0n;
       const isCrossChain = quote.fromChainId !== quote.toChainId;
-      const fromSymbol = quote.fromToken.symbol;
+      // A sponsored swap from FUSE is quoted from WFUSE, which it wraps first; the user paid FUSE.
+      const fromSymbol = quote.sponsorship?.wrapNative ? 'FUSE' : quote.fromToken.symbol;
       const toSymbol = quote.toToken.symbol;
 
       const accountSession = useRewardsUpgradeStore.getState().session;
@@ -68,29 +84,45 @@ export function useLifiSwapCallback() {
 
       try {
         const calls: { to: Address; data: `0x${string}`; value: bigint }[] = [];
+        const { sponsorship } = quote;
 
-        if (!isNativeIn) {
-          const token = quote.fromToken.address as Address;
-          // A counterfactual Safe has no allowance; the read just returns 0.
-          const allowance = await publicClient(quote.fromChainId).readContract({
-            address: token,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [safe, quote.approvalAddress],
-          });
-          if (allowance < fromAmount) {
-            // USDT on Ethereum refuses to move a non-zero allowance to another
-            // non-zero value; resetting first is harmless for every other token.
-            if (allowance > 0n) calls.push(approve(token, quote.approvalAddress, 0n));
-            calls.push(approve(token, quote.approvalAddress, fromAmount));
+        if (sponsorship) {
+          const token = sponsorship.voucher.token as Address;
+          // The paymaster pulls the coin, so the allowance that counts is its own.
+          const allowance =
+            BigInt(token) === 0n
+              ? 0n
+              : await publicClient(quote.fromChainId).readContract({
+                  address: token,
+                  abi: erc20Abi,
+                  functionName: 'allowance',
+                  args: [safe, sponsorship.paymaster],
+                });
+          calls.push(...buildSponsoredLifiCalls({ ...quote, sponsorship }, allowance));
+        } else {
+          if (!isNativeIn) {
+            const token = quote.fromToken.address as Address;
+            // A counterfactual Safe has no allowance; the read just returns 0.
+            const allowance = await publicClient(quote.fromChainId).readContract({
+              address: token,
+              abi: erc20Abi,
+              functionName: 'allowance',
+              args: [safe, quote.approvalAddress],
+            });
+            if (allowance < fromAmount) {
+              // USDT on Ethereum refuses to move a non-zero allowance to another
+              // non-zero value; resetting first is harmless for every other token.
+              if (allowance > 0n) calls.push(approve(token, quote.approvalAddress, 0n));
+              calls.push(approve(token, quote.approvalAddress, fromAmount));
+            }
           }
-        }
 
-        calls.push({
-          to: quote.transactionRequest.to,
-          data: quote.transactionRequest.data,
-          value: BigInt(quote.transactionRequest.value || '0'),
-        });
+          calls.push({
+            to: quote.transactionRequest.to,
+            data: quote.transactionRequest.data,
+            value: BigInt(quote.transactionRequest.value || '0'),
+          });
+        }
 
         const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
         const clientTxId = generateId();
@@ -165,6 +197,8 @@ export function useLifiSwapCallback() {
           etaSeconds: quote.executionDurationSeconds,
           submittedAt: Date.now(),
           status: 'PENDING',
+          ...(options.purpose ? { purpose: options.purpose } : {}),
+          ...(quote.fromAmountUsd ? { fromAmountUsd: quote.fromAmountUsd } : {}),
         });
         return { kind: 'bridging', transactionHash, clientTxId };
       } catch (error: any) {
@@ -187,6 +221,7 @@ export function useLifiSwapCallback() {
             toToken: quote.toToken.address,
             toChainId: quote.toChainId,
             fromAmount: quote.fromAmount,
+            sponsored: !!quote.sponsorship,
             errorMessage: error?.message,
           },
         });

@@ -7,7 +7,6 @@ import { interestOverPastDays } from '@/components/Earn/earnPortfolio';
 import PageLayout from '@/components/PageLayout';
 import { VaultKey } from '@/constants/withdraw';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
-import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
@@ -28,6 +27,7 @@ const VAULT_KEY_BY_TYPE: Record<VaultType, VaultKey> = {
   [VaultType.FUSE]: 'FUSE',
   [VaultType.ETH]: 'ETH',
   [VaultType.EUR]: 'EUR',
+  [VaultType.BTC]: 'BTC',
 };
 
 /**
@@ -40,12 +40,7 @@ export default function SavingsScreenNew() {
   const insets = useSafeAreaInsets();
 
   const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
-  // A deep link to a vault this user is not offered opens USD Yield instead.
-  const vaultType =
-    isVaultType(vaultParam) && isVaultOffered(vaultParam, isEurVaultEnabled)
-      ? vaultParam
-      : VaultType.USDC;
+  const vaultType = isVaultType(vaultParam) ? vaultParam : VaultType.USDC;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isCreditOpen, setIsCreditOpen] = useState(false);
 
@@ -149,6 +144,7 @@ export default function SavingsScreenNew() {
         isFunded={isFunded}
         balanceUsd={balanceUsd}
         apy={isAPYsLoading || !maxAPY ? undefined : maxAPY}
+        isApyLoading={isAPYsLoading}
         interestUsd={interest.interest}
         isInterestLoading={interest.isLoading}
         past30Usd={past30Usd}
@@ -169,6 +165,14 @@ export default function SavingsScreenNew() {
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
+        // Only soUSD and soETH (on their Base queues) and soBTC (on its Ethereum queue) are read.
+        pendingWithdrawals={
+          vaultType === VaultType.USDC || vaultType === VaultType.ETH || vaultType === VaultType.BTC
+            ? portfolio.pendingWithdrawals.filter(
+                item => item.vault === VAULT_KEY_BY_TYPE[vaultType],
+              )
+            : undefined
+        }
       />
     </PageLayout>
   );

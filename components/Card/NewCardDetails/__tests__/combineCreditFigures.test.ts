@@ -1,4 +1,7 @@
-import { combineCreditFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import {
+  combineCreditFigures,
+  formatLtv,
+} from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 
 import type {
   CardCreditPositions,
@@ -8,10 +11,18 @@ import type {
 
 jest.mock('@/hooks/useCardCreditPositions', () => ({ useCardCreditPositions: jest.fn() }));
 jest.mock('@/hooks/useCardSpendRegistration', () => ({ useCardSpendRegistration: jest.fn() }));
+jest.mock('@/hooks/useMainCurrency', () => ({ useCardDisplayCurrency: jest.fn() }));
 
 const RATE = 1_243_680_656n;
 const SOUSD = '0x75333830E7014e909535389a6E5b0C02aA62ca27';
 const SOEUR = '0x4f4B212aF8B5020399dde325e1Bc5B33b53DB70B';
+const CBBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
+const SOL = '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82';
+const BASE_SOUSD = '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31';
+const BASE_SOETH = '0x9b0e0EFA48C00eBEeA845AeA197F0bB71529D235';
+const BASE_MODULE = '0x47A5e832E1178726dd13AdD762774A704878AD98';
+/** A position with no debt, as the module reports its health factor. */
+const NO_DEBT_HF = 2n ** 256n - 1n;
 
 const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset => ({
   chainId: 122,
@@ -20,12 +31,16 @@ const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset
   amount: 0n,
   valueUsd: 0n,
   priceUsable: true,
+  ltvWad: 900_000_000_000_000_000n,
   ...overrides,
 });
 
 const instance = (overrides: Partial<CreditInstancePosition>): CreditInstancePosition => ({
   chainId: 122,
+  moduleAddress: BASE_MODULE,
   debtUsd: 0n,
+  healthFactorWad: NO_DEBT_HF,
+  fullyPriced: true,
   creditLineUsd: 0n,
   creditHeadroomUsd: 0n,
   borrowApyPerSecond: RATE,
@@ -38,12 +53,45 @@ const fusePosition = {
   borrowingPowerUsd: 100_000_000n,
   prospectivePowerUsd: 76_500_000n,
   creditHeadroomUsd: 175_700_000n,
+  healthFactorWad: 200n * 10n ** 18n,
 };
 
+const noFuseDebt = { ...fusePosition, debtUsd: 0n, healthFactorWad: NO_DEBT_HF };
+
+/** A Base position borrowed against cbBTC. */
+const baseLoan = (overrides: Partial<CreditInstancePosition> = {}) =>
+  instance({
+    chainId: 8453,
+    debtUsd: 50_000_000n,
+    creditLineUsd: 400_000_000n,
+    creditHeadroomUsd: 350_000_000n,
+    healthFactorWad: 3n * 10n ** 18n,
+    collateral: [
+      asset({
+        chainId: 8453,
+        token: CBBTC,
+        symbol: 'cbBTC',
+        amount: 1_000_000n,
+        valueUsd: 798_000_000n,
+      }),
+    ],
+    ...overrides,
+  });
+
 describe('combineCreditFigures', () => {
+  it('formats the line, the debt and the headroom with the main currency’s formatter', () => {
+    const inEuros = (amount: bigint) => `€${(Number(amount) / 1_000_000 / 1.25).toFixed(2)}`;
+
+    const figures = combineCreditFigures(fusePosition, RATE, undefined, inEuros);
+
+    expect(figures.borrowed).toBe('€0.64');
+    expect(figures.creditLimit).toBe('€141.20');
+    expect(figures.availableToBorrow).toBe('€140.56');
+  });
+
   it('shows Fuse alone, with its soUSD row, for a Safe not live on Base', () => {
     const positions: CardCreditPositions = {
-      fuse: instance({ collateral: [asset({ valueUsd: 230_000_000n })] }),
+      fuse: instance({ collateral: [asset({ amount: 213_000_000n, valueUsd: 230_000_000n })] }),
       base: null,
     };
 
@@ -60,6 +108,21 @@ describe('combineCreditFigures', () => {
           icon: 'usd',
           value: '$230.00',
           usdEquivalent: undefined,
+          ltv: 'LTV 90%',
+        },
+      ],
+      hasDebt: true,
+      hasLine: true,
+      risk: 'none',
+      positions: [
+        {
+          chainId: 122,
+          borrowed: '$0.80',
+          creditLimit: '$176.50',
+          borrowApy: '4.00%',
+          borrowedProgress: 0.0045,
+          backedBy: 'USD Yield',
+          risk: 'none',
         },
       ],
     });
@@ -134,5 +197,180 @@ describe('combineCreditFigures', () => {
       value: '$81.60',
     });
     expect(figures.collateral[0].usdEquivalent).toBeUndefined();
+  });
+
+  describe('the loans the borrow-position sheet lists', () => {
+    it('lists both when the cardholder owes on Fuse and on Base', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, {
+        fuse: instance({ collateral: [asset({ amount: 213_000_000n, valueUsd: 230_000_000n })] }),
+        base: baseLoan(),
+      });
+
+      expect(figures.positions.map(position => [position.chainId, position.backedBy])).toEqual([
+        [122, 'USD Yield'],
+        [8453, 'Bitcoin'],
+      ]);
+      // One headline across both: the sheet's "Available to borrow".
+      expect(figures.availableToBorrow).toBe('$525.70');
+      expect(figures.positions[1]).toMatchObject({ borrowed: '$50', creditLimit: '$400' });
+    });
+
+    it('lists only Base when Fuse carries no debt', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, { fuse: null, base: baseLoan() });
+
+      expect(figures.positions.map(position => position.chainId)).toEqual([8453]);
+      // The combined line still counts both, for the headline.
+      expect(figures.availableToBorrow).toBe('$525.70');
+    });
+
+    it('lists only Fuse when Base carries no debt', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, {
+        fuse: null,
+        base: baseLoan({ debtUsd: 0n, healthFactorWad: NO_DEBT_HF }),
+      });
+
+      expect(figures.positions.map(position => position.chainId)).toEqual([122]);
+    });
+
+    it('lists none when nothing is borrowed, leaving the combined line', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({ debtUsd: 0n, healthFactorWad: NO_DEBT_HF }),
+      });
+
+      expect(figures.positions).toEqual([]);
+      expect(figures.hasDebt).toBe(false);
+      expect(figures.hasLine).toBe(true);
+    });
+
+    it('rates each loan by its own health factor', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, {
+        fuse: null,
+        base: baseLoan({ healthFactorWad: 1_010_000_000_000_000_000n }),
+      });
+
+      expect(figures.positions.map(position => position.risk)).toEqual(['none', 'at-risk']);
+      // The panel's chip reports the loan closest to liquidation.
+      expect(figures.risk).toBe('at-risk');
+    });
+
+    it('reads healthy when every loan is', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, { fuse: null, base: baseLoan() });
+
+      expect(figures.risk).toBe('none');
+      expect(figures.hasDebt).toBe(true);
+    });
+
+    it('names every collateral a loan holds', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: CBBTC, symbol: 'cbBTC', amount: 1n, valueUsd: 1n }),
+            asset({ chainId: 8453, token: SOL, symbol: 'SOL', amount: 1n, valueUsd: 1n }),
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR', amount: 1n, valueUsd: 1n }),
+          ],
+        }),
+      });
+
+      expect(figures.positions[0].backedBy).toBe('Bitcoin, Solana and EUR Yield');
+    });
+  });
+
+  describe('each collateral row’s LTV', () => {
+    it('shows the token’s own LTV under its name', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: instance({ collateral: [asset({})] }),
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR' }),
+            asset({
+              chainId: 8453,
+              token: CBBTC,
+              symbol: 'cbBTC',
+              amount: 1n,
+              ltvWad: 600_000_000_000_000_000n,
+            }),
+          ],
+        }),
+      });
+
+      expect(figures.collateral.map(row => [row.label, row.ltv])).toEqual([
+        ['USD Yield', 'LTV 90%'],
+        ['EUR Yield', 'LTV 90%'],
+        ['Bitcoin', 'LTV 60%'],
+      ]);
+    });
+
+    it('keeps a tenth of a percent, and leaves out an LTV the module never set', () => {
+      expect(formatLtv(725_000_000_000_000_000n)).toBe('LTV 72.5%');
+      expect(formatLtv(500_000_000_000_000_000n)).toBe('LTV 50%');
+      expect(formatLtv(0n)).toBeUndefined();
+    });
+  });
+
+  describe('Base crypto collateral rows', () => {
+    it('names it and draws its logo', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, { fuse: null, base: baseLoan() });
+
+      expect(figures.collateral).toEqual([
+        expect.objectContaining({ label: 'Bitcoin', icon: 'cbbtc', value: '$798.00' }),
+      ]);
+    });
+
+    it('lists crypto only when held, and the yield shares always', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: CBBTC, symbol: 'cbBTC', amount: 0n }),
+            asset({ chainId: 8453, token: SOL, symbol: 'SOL', amount: 5n, valueUsd: 500n }),
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR', amount: 0n }),
+          ],
+        }),
+      });
+
+      expect(figures.collateral.map(row => row.label)).toEqual(['Solana', 'EUR Yield']);
+    });
+
+    it('lists soUSD on Base and soETH only when held, soUSD named for Base, soETH as ETH Yield', () => {
+      const unheld = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: BASE_SOUSD, symbol: 'soUSD', amount: 0n }),
+            asset({ chainId: 8453, token: BASE_SOETH, symbol: 'soETH', amount: 0n }),
+          ],
+        }),
+      });
+      expect(unheld.collateral).toEqual([]);
+
+      const held = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({
+              chainId: 8453,
+              token: BASE_SOUSD,
+              symbol: 'soUSD',
+              amount: 1n,
+              valueUsd: 20_000_000n,
+            }),
+            asset({
+              chainId: 8453,
+              token: BASE_SOETH,
+              symbol: 'soETH',
+              amount: 1n,
+              valueUsd: 2_100_000_000n,
+              ltvWad: 600_000_000_000_000_000n,
+            }),
+          ],
+        }),
+      });
+      expect(held.collateral.map(row => [row.label, row.icon, row.value, row.ltv])).toEqual([
+        ['USD Yield on Base', 'usd', '$20.00', 'LTV 90%'],
+        ['ETH Yield', 'eth', '$2,100.00', 'LTV 60%'],
+      ]);
+    });
   });
 });

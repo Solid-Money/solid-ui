@@ -114,6 +114,8 @@ function MethodTile({
 
 export function SendMethodTiles() {
   const setModal = useSendStore(state => state.setModal);
+  // Cash-out is whitelist-only (the backend refuses everyone else's orders), so
+  // the tile is left out for other users rather than shown greyed out.
   const hasCashout = useHasFeature('cashout');
   const { isAvailable, isResolving } = useTransfiCountryAvailability();
   const { startCashout, isChecking } = useCashoutEntry();
@@ -130,25 +132,21 @@ export function SendMethodTiles() {
           icons={<IconStack icons={['usdc', 'usdt', 'eth']} />}
           onPress={() => setModal(SEND_MODAL.OPEN_SEND_SEARCH)}
         />
-        <MethodTile
-          title="Local payout"
-          description="Bank or mobile money in your currency"
-          icons={<IconStack icons={['ng', 'br']} />}
-          disabled={!hasCashout || !isAvailable}
-          hint={
-            !hasCashout
-              ? 'Local payouts are not enabled on your account yet.'
-              : !isAvailable
-                ? 'Local payouts are not available in your country.'
-                : undefined
-          }
-          loading={isChecking || isResolving}
-          onPress={() => {
-            track(TRACKING_EVENTS.CASH_OUT_STARTED);
-            resetCashout();
-            void startCashout();
-          }}
-        />
+        {hasCashout && (
+          <MethodTile
+            title="Local payout"
+            description="Bank or mobile money in your currency"
+            icons={<IconStack icons={['ng', 'br']} />}
+            disabled={!isAvailable}
+            hint={!isAvailable ? 'Local payouts are not available in your country.' : undefined}
+            loading={isChecking || isResolving}
+            onPress={() => {
+              track(TRACKING_EVENTS.CASH_OUT_STARTED);
+              resetCashout();
+              void startCashout();
+            }}
+          />
+        )}
       </View>
       {SHOW_ADDITIONAL_METHODS && (
         <View className="flex-row items-stretch gap-3">

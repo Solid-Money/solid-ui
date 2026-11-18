@@ -51,6 +51,7 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
   debt: 350,
   dailyYield: 0.35,
   monthlyYield: 10.6,
+  eurYield: undefined,
   totalAssets: 3218.4002,
   netBalance: 2868.4002,
   isLoading: false,
@@ -59,6 +60,8 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
   nextUnlockAt: '2027-03-12T00:00:00Z',
   hasCardBalance: false,
   creditDetailsAvailable: true,
+  pendingWithdrawals: [],
+  withdrawingTotal: 0,
   // The portfolio model values USD vaults only; soEURC is held in EUR (see usePortfolio).
   earnAssets: VAULTS.filter(
     (vault): vault is Vault & { type: UsdVaultType } => !isEurVault(vault.type),

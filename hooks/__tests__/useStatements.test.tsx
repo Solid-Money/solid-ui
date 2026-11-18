@@ -16,11 +16,6 @@ jest.mock('@/lib/api', () => ({
 }));
 jest.mock('@/lib/statementFile', () => ({ saveStatementFile: jest.fn() }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
-jest.mock('@/hooks/useFeatureAccess', () => ({
-  __esModule: true,
-  useHasFeature: () => mockHasFeature.current,
-  default: () => mockHasFeature.current,
-}));
 jest.mock('@/store/useUserStore', () => ({
   useUserStore: (selector: (state: unknown) => unknown) =>
     selector({ users: [{ userId: 'user-1', selected: true }] }),
@@ -29,7 +24,6 @@ jest.mock('@/lib/utils', () => ({
   withRefreshToken: (call: () => Promise<unknown>) => call(),
 }));
 
-const mockHasFeature = { current: true };
 const MONTHS = [
   { month: '2026-10', cardSpendUsd: '1284.50', partial: true },
   { month: '2026-09', cardSpendUsd: '1102.18', partial: false },
@@ -80,7 +74,6 @@ const mount = async () => {
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
-  mockHasFeature.current = true;
   mockGetAvailable.mockResolvedValue({ months: MONTHS });
 });
 
@@ -95,30 +88,27 @@ it('lists the months the server offers', async () => {
   await unmount();
 });
 
-it('asks for nothing when the user does not have statements', async () => {
-  mockHasFeature.current = false;
-  const { latest, unmount } = await mount();
-  expect(mockGetAvailable).not.toHaveBeenCalled();
-  expect(latest()?.months).toEqual([]);
-  await unmount();
-});
-
-it('downloads the month and hands the file over', async () => {
-  const file = { filename: 'solid-statement-2026-09.csv', content: 'csv' };
+it('downloads the month in the chosen form and hands the file over', async () => {
+  const file = {
+    filename: 'solid-statement-2026-09.pdf',
+    content: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+    mimeType: 'application/pdf',
+  };
   mockDownload.mockResolvedValue(file);
   mockSave.mockResolvedValue('saved');
   const { latest, unmount } = await mount();
 
   let result: unknown;
   await act(async () => {
-    result = await latest()?.download('2026-09');
+    result = await latest()?.download('2026-09', 'pdf');
   });
 
   expect(result).toBe('saved');
-  expect(mockDownload).toHaveBeenCalledWith('2026-09');
+  expect(mockDownload).toHaveBeenCalledWith('2026-09', 'pdf');
   expect(mockSave).toHaveBeenCalledWith(file);
   expect(track).toHaveBeenCalledWith(TRACKING_EVENTS.STATEMENT_DOWNLOAD_TAPPED, {
     month: '2026-09',
+    format: 'pdf',
   });
   expect(latest()?.pendingMonth).toBeNull();
   await unmount();
@@ -129,13 +119,13 @@ it('reports a failed download and clears the spinner', async () => {
   const { latest, unmount } = await mount();
 
   await act(async () => {
-    await expect(latest()?.download('2026-09')).rejects.toThrow();
+    await expect(latest()?.download('2026-09', 'csv')).rejects.toThrow();
   });
 
   expect(mockSave).not.toHaveBeenCalled();
   expect(track).toHaveBeenCalledWith(
     TRACKING_EVENTS.STATEMENT_DOWNLOAD_FAILED,
-    expect.objectContaining({ month: '2026-09' }),
+    expect.objectContaining({ month: '2026-09', format: 'csv' }),
   );
   expect(latest()?.pendingMonth).toBeNull();
   await unmount();

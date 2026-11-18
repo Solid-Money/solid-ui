@@ -7,6 +7,7 @@ import { TokenBalance } from '@/lib/types';
 
 export const PORTFOLIO_ICONS = {
   usd: require('@/assets/images/portfolio/usd.svg'),
+  euro: require('@/assets/images/portfolio/euro.svg'),
   eth: require('@/assets/images/portfolio/eth.svg'),
   fuse: require('@/assets/images/portfolio/fuse.svg'),
   usdc: require('@/assets/images/portfolio/usdc.svg'),

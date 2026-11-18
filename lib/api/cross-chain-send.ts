@@ -63,11 +63,14 @@ export const fetchCrossChainSendConfig = async (): Promise<CrossChainSendConfig>
 };
 
 export const fetchCrossChainSendQuote = async (params: {
+  /** Fuse when left out. */
+  srcChainId?: number;
   token: CrossChainSendToken;
   dstChainId: number;
   amountLD: string;
 }): Promise<CrossChainSendQuote> => {
   const query = new URLSearchParams({
+    ...(params.srcChainId !== undefined ? { srcChainId: String(params.srcChainId) } : {}),
     token: params.token,
     dstChainId: String(params.dstChainId),
     amountLD: params.amountLD,

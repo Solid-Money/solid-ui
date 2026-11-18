@@ -51,6 +51,7 @@ import { path } from '@/constants/path';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useDimension } from '@/hooks/useDimension';
+import { useInstallReferrerCapture } from '@/hooks/useInstallReferrerCapture';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
 import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
@@ -68,6 +69,7 @@ import {
   handleQuerySuccess,
 } from '@/lib/errors/queryErrors';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { pushNotificationData } from '@/lib/pushNotificationData';
 import {
   clearPersistedQueryCacheOnFatalError,
   persistQueryCache,
@@ -187,7 +189,8 @@ if (Platform.OS !== 'web') {
     handleNotification: async notification => {
       // A support reply the user is already reading in the chat gets no banner.
       const quiet =
-        notification.request.content.data?.type === SUPPORT_PUSH_TYPE && isSupportChatFocused();
+        pushNotificationData(notification.request)?.type === SUPPORT_PUSH_TYPE &&
+        isSupportChatFocused();
       return {
         shouldShowAlert: !quiet,
         shouldPlaySound: !quiet,
@@ -215,11 +218,20 @@ SplashScreen.setOptions({
 function WhatsNewWrapper() {
   const pathname = usePathname();
   const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
-  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew(pathname === path.HOME && isHomeReady);
+  const { whatsNew, isVisible, initialStep, closeWhatsNew } = useWhatsNew(
+    pathname === path.HOME && isHomeReady,
+  );
 
   if (!whatsNew) return null;
 
-  return <LazyWhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
+  return (
+    <LazyWhatsNewModal
+      whatsNew={whatsNew}
+      isOpen={isVisible}
+      onClose={closeWhatsNew}
+      initialStep={initialStep}
+    />
+  );
 }
 
 // On native, React Query's focus and online managers have no default wiring:
@@ -281,6 +293,8 @@ function RootLayout() {
 
   // Initialize attribution tracking automatically (handles web and mobile)
   useAttributionInitialization();
+  // Android: an invite link's code, carried through the Play Store install.
+  useInstallReferrerCapture();
 
   // Push notification lifecycle: token refresh + notification tap handling
   usePushNotifications();
@@ -515,6 +529,14 @@ function RootLayout() {
                         />
                         <Stack.Screen
                           name="recovery"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        {/* The public invite page an invite link opens. */}
+                        <Stack.Screen
+                          name="invite/[code]"
                           options={{
                             headerShown: false,
                             animation: 'none',

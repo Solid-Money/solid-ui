@@ -58,6 +58,9 @@ const PERSISTED_QUERIES: Record<string, (queryKey: QueryKey) => boolean> = {
   cardStatus: () => true,
   cardDetails: () => true,
   cardBalance: () => true,
+  // Which spend instances the card draws on. Without it the restored balance counted the Fuse
+  // set alone until this refetched, so a euro cardholder's spendable figure jumped on launch.
+  cardSpendDeployments: () => true,
   analytics: queryKey => queryKey[1] === 'apys',
   'user-transactions': () => true,
   'promotions-banner': () => true,

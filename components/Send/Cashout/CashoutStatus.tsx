@@ -17,7 +17,7 @@ import { useSendStore } from '@/store/useSendStore';
 // Keys are the stepper's own; only the labels are cash-out's.
 const STEPS = [
   { key: 'received', label: 'USDC sent' },
-  { key: 'confirmed', label: 'Received by TransFi' },
+  { key: 'confirmed', label: 'Received by off-ramp provider' },
   { key: 'depositing', label: 'Payout on its way' },
 ] as const;
 

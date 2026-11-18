@@ -7,7 +7,7 @@ import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { createAccount } from '@turnkey/viem';
 import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { toSafeSmartAccount } from 'permissionless/accounts';
-import { Chain, hashTypedData, http } from 'viem';
+import { Chain, hashTypedData, Hex, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
@@ -30,20 +30,28 @@ import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
   USER,
 } from '@/lib/config';
+import { showAccountSuspendedToast } from '@/lib/errors/accountSuspendedToast';
 import { useIntercom } from '@/lib/intercom';
+import {
+  createPasskeySignatureBatch,
+  PasskeyBatchParticipant,
+  PasskeySignatureBatch,
+  serializeTurnkeySignature,
+} from '@/lib/passkeySignatureBatch';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
   getNonce,
-  isHTTPError,
   isPasskeyPromptError,
   mergeCredentialIds,
   parseStampHeaderValueCredentialId,
   setGlobalLogoutHandler,
+  setGlobalSuspendedHandler,
   setIsLoggingOut,
   withRefreshToken,
 } from '@/lib/utils';
 import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
+import { linkSafeAddress } from '@/lib/utils/safeAddressSync';
 import { isNetworkError } from '@/lib/utils/userFacingError';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -55,6 +63,34 @@ import { useStoreReviewStore } from '@/store/useStoreReviewStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import { fetchIsDeposited } from './useAnalytics';
+
+export interface SafeAAOptions {
+  /**
+   * A place in a signature batch: the Safe owner's signature joins the batch's other hashes and
+   * is approved in the same passkey prompt. See `createSignatureBatch`.
+   */
+  signer?: PasskeyBatchParticipant;
+}
+
+/**
+ * A signing prompt that fails may be pinned to credentials this device does not hold — the state a
+ * passkey recovery leaves behind on a client that has not logged in since. Dropping the filter
+ * costs nothing (the authenticator still only offers passkeys for this relying party, and the next
+ * login re-pins from the credential that signs), and turns a dead end into a prompt that works on
+ * the retry.
+ */
+const unpinOnPasskeyFailure = <T extends (...args: any[]) => Promise<any>>(sign: T): T =>
+  (async (...args: any[]) => {
+    try {
+      return await sign(...args);
+    } catch (error) {
+      const pinnedUserId = useUserStore.getState().users.find(u => u.selected)?.userId;
+      if (pinnedUserId && isPasskeyPromptError(error)) {
+        useUserStore.getState().clearUserCredentialId(pinnedUserId);
+      }
+      throw error;
+    }
+  }) as unknown as T;
 
 interface UseUserReturn {
   user: User | undefined;
@@ -68,8 +104,9 @@ interface UseUserReturn {
     chain: Chain,
     subOrganization: string,
     signWith: string,
-    turnkeyClient?: any,
+    options?: SafeAAOptions,
   ) => Promise<SmartAccountClient>;
+  createSignatureBatch: () => PasskeySignatureBatch;
   checkBalance: (user: User) => Promise<boolean>;
 }
 
@@ -110,7 +147,7 @@ const useUser = (): UseUserReturn => {
   const clearBalance = useBalanceStore(state => state.clearBalance);
 
   const safeAA = useCallback(
-    async (chain: Chain, subOrganization: string, signWith: string) => {
+    async (chain: Chain, subOrganization: string, signWith: string, options?: SafeAAOptions) => {
       // Create a passkey-specific HTTP client that always requires passkey signing
       // This ensures every transaction requires explicit user confirmation via passkey
       const passkeyClient = createHttpClient({
@@ -122,6 +159,13 @@ const useUser = (): UseUserReturn => {
         organizationId: subOrganization,
         signWith: signWith,
       });
+
+      // A Safe owner signature is a raw hash signature. In a signature batch the hash joins the
+      // others and is signed with them in one passkey prompt; otherwise it is its own prompt.
+      if (turnkeyAccount.sign && options?.signer) {
+        const { signer } = options;
+        turnkeyAccount.sign = async ({ hash }) => signer.sign(hash);
+      }
 
       // WORKAROUND: Fix @turnkey/viem signTypedData bug
       // The SDK's signTypedData sends the hash to Turnkey with PAYLOAD_ENCODING_EIP712,
@@ -135,25 +179,6 @@ const useUser = (): UseUserReturn => {
           return originalSign({ hash });
         };
       }
-
-      // A signing prompt that fails may be pinned to credentials this device
-      // does not hold — the state a passkey recovery leaves behind on a client
-      // that has not logged in since. Dropping the filter costs nothing (the
-      // authenticator still only offers passkeys for this relying party, and
-      // the next login re-pins from the credential that signs), and turns a
-      // dead end into a prompt that works on the retry.
-      const unpinOnPasskeyFailure = <T extends (...args: any[]) => Promise<any>>(sign: T): T =>
-        (async (...args: any[]) => {
-          try {
-            return await sign(...args);
-          } catch (error) {
-            const pinnedUserId = useUserStore.getState().users.find(u => u.selected)?.userId;
-            if (pinnedUserId && isPasskeyPromptError(error)) {
-              useUserStore.getState().clearUserCredentialId(pinnedUserId);
-            }
-            throw error;
-          }
-        }) as unknown as T;
 
       // Every entry point the Safe owner can be asked to sign through. Applied
       // after the signTypedData workaround above so the guard wraps the
@@ -226,6 +251,35 @@ const useUser = (): UseUserReturn => {
     },
     [createHttpClient, user?.userId, user?.safeAddress],
   );
+
+  /**
+   * A batch the next few Safe signatures can share, so they cost one passkey prompt.
+   *
+   * Each signer takes a `participant()` and passes it to {@link safeAA}; their hashes are signed
+   * together by one Turnkey `signRawPayloads` request, stamped by the passkey like any other.
+   * Nothing is delegated and no session key is minted: the passkey approves exactly these hashes.
+   */
+  const createSignatureBatch = useCallback((): PasskeySignatureBatch => {
+    const subOrganization = user?.suborgId;
+    const signWith = user?.signWith;
+    if (!subOrganization || !signWith) {
+      throw new Error('Your wallet is still setting up. Please try again shortly.');
+    }
+
+    return createPasskeySignatureBatch({
+      signAll: unpinOnPasskeyFailure(async (hashes: Hex[]) => {
+        const passkeyClient = createHttpClient({ defaultStamperType: StamperType.Passkey });
+        const { signatures } = await passkeyClient.signRawPayloads({
+          organizationId: subOrganization,
+          signWith,
+          payloads: hashes,
+          encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
+          hashFunction: 'HASH_FUNCTION_NO_OP',
+        });
+        return (signatures ?? []).map(serializeTurnkeySignature);
+      }),
+    });
+  }, [createHttpClient, user?.suborgId, user?.signWith]);
 
   const checkBalance = useCallback(
     async (user: User): Promise<boolean> => {
@@ -330,32 +384,32 @@ const useUser = (): UseUserReturn => {
 
       // An account whose signup failed after the server created it (the Safe
       // address is worked out on the device, over our RPC) reaches login without
-      // one. Saved after `storeUser`: on native the request's JWT is read from
-      // the selected user in the store, and before it there was none — or
-      // another account's — so the save was refused with a 401 that failed the
-      // login, every time, and the account could never be opened.
+      // one. Linked after `storeUser`: on native the request's JWT is read from
+      // the selected user in the store. Before it, there was none, so the link
+      // was refused with a 401. Or there was another account's, whose "already
+      // set" then marked this account synced with nothing saved for it.
       //
-      // Best-effort: usePostSignupInit retries it once the app has loaded, for
-      // as long as the account is not marked synced. So a refresh that fails
-      // here must not end the session this login has just opened.
+      // No retries here so login isn't held up; usePostSignupInit retries an
+      // unsynced Safe on a later launch. So a refresh that fails here must not
+      // end the session this login has just opened.
       if (!user.safeAddress) {
         try {
-          await withRefreshToken(() => updateSafeAddress(selectedUser.safeAddress), {
-            onError: () => {},
+          await linkSafeAddress(selectedUser.safeAddress, {
+            retryDelaysMs: [],
+            link: address =>
+              withRefreshToken(() => updateSafeAddress(address), { onError: () => {} }),
           });
           markSafeAddressSynced(user._id);
         } catch (error) {
-          // 409: the server already holds one.
-          if (isHTTPError(error, 409)) {
-            markSafeAddressSynced(user._id);
-          } else {
-            console.warn('[useUser] failed to save the safe address on login', error);
-            Sentry.captureException(error, {
-              level: 'warning',
-              tags: { type: 'safe_address_update_error' },
-              user: { id: user._id, address: selectedUser.safeAddress },
-            });
-          }
+          Sentry.captureException(error, {
+            tags: {
+              type: 'safe_address_update_error',
+            },
+            user: {
+              id: user._id,
+              address: selectedUser.safeAddress,
+            },
+          });
         }
       }
 
@@ -707,52 +761,63 @@ const useUser = (): UseUserReturn => {
     router.replace(path.ONBOARDING);
   }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
-  const handleSessionExpired = useCallback(() => {
-    // Nobody signed in, so there is no session to have expired. Requests made
-    // without one still come back 401 and land here, and the redirect below
-    // used to pull a signed-out visitor off whatever page they were on, about
-    // a second after it loaded: the "open Solid in your browser" screen (so
-    // in-app browsers went on to sign up and failed at the passkey step),
-    // account recovery, or a signup link.
-    if (!useUserStore.getState().users.some(existingUser => existingUser.selected)) return;
+  /**
+   * End the session the server refused. `reason` decides only what the welcome
+   * screen says: an expired session can be signed back into, a suspended
+   * account cannot until support lifts it.
+   */
+  const handleSessionEnded = useCallback(
+    (reason: 'expired' | 'suspended') => {
+      // Nobody signed in, so there is no session to have expired. Requests made
+      // without one still come back 401 and land here, and the redirect below
+      // used to pull a signed-out visitor off whatever page they were on, about
+      // a second after it loaded: the "open Solid in your browser" screen (so
+      // in-app browsers went on to sign up and failed at the passkey step),
+      // account recovery, or a signup link.
+      if (!useUserStore.getState().users.some(existingUser => existingUser.selected)) return;
 
-    // Suppress re-entrant logout handling: clearing the cache below can make
-    // still-mounted screens refetch, and those requests would 401 on the now
-    // dead session and call this handler again. The flag is reset on next login.
-    setIsLoggingOut(true);
+      // Suppress re-entrant logout handling: clearing the cache below can make
+      // still-mounted screens refetch, and those requests would 401 on the now
+      // dead session and call this handler again. The flag is reset on next login.
+      setIsLoggingOut(true);
 
-    clearBalance();
-    // Clear tokens for the selected user before unselecting
-    if (user) {
-      updateUser({ ...user, tokens: undefined, selected: false });
-    }
-    unselectUser();
-    clearKycLinkId();
-    // Purge cached queries so a re-login (possibly as a different user) starts
-    // from a clean cache instead of the expired session's data.
-    queryClient.clear();
-    usePointsStore.getState().reset();
-    useStoreReviewStore.getState().reset();
-    intercom?.shutdown();
-    intercom?.boot();
-    const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
+      clearBalance();
+      // Clear tokens for the selected user before unselecting
+      if (user) {
+        updateUser({ ...user, tokens: undefined, selected: false });
+      }
+      unselectUser();
+      clearKycLinkId();
+      // Purge cached queries so a re-login (possibly as a different user) starts
+      // from a clean cache instead of the expired session's data.
+      queryClient.clear();
+      usePointsStore.getState().reset();
+      useStoreReviewStore.getState().reset();
+      intercom?.shutdown();
+      intercom?.boot();
+      const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
 
-    if (hasPasskeyUsers) {
-      router.replace({ pathname: '/welcome', params: { session: 'expired' } });
-    } else {
-      router.replace(path.ONBOARDING);
-    }
-  }, [
-    clearBalance,
-    unselectUser,
-    updateUser,
-    clearKycLinkId,
-    intercom,
-    user,
-    users,
-    router,
-    queryClient,
-  ]);
+      if (hasPasskeyUsers) {
+        router.replace({ pathname: '/welcome', params: { session: reason } });
+      } else {
+        router.replace(path.ONBOARDING);
+        // Onboarding has no session notice of its own, and a suspended account
+        // signed out without one would just look logged out: say why here.
+        if (reason === 'suspended') showAccountSuspendedToast();
+      }
+    },
+    [
+      clearBalance,
+      unselectUser,
+      updateUser,
+      clearKycLinkId,
+      intercom,
+      user,
+      users,
+      router,
+      queryClient,
+    ],
+  );
 
   const handleDeleteAccount = useCallback(async () => {
     try {
@@ -778,8 +843,9 @@ const useUser = (): UseUserReturn => {
   }, [users, removeUsers, clearKycLinkId, queryClient, router]);
 
   useEffect(() => {
-    setGlobalLogoutHandler(handleSessionExpired);
-  }, [handleSessionExpired]);
+    setGlobalLogoutHandler(() => handleSessionEnded('expired'));
+    setGlobalSuspendedHandler(() => handleSessionEnded('suspended'));
+  }, [handleSessionEnded]);
 
   return {
     user,
@@ -790,6 +856,7 @@ const useUser = (): UseUserReturn => {
     handleRemoveUsers,
     handleDeleteAccount,
     safeAA,
+    createSignatureBatch,
     checkBalance,
   };
 };

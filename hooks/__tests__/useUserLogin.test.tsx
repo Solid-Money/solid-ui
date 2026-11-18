@@ -133,11 +133,11 @@ const otherAccount: User = {
 
 let mockFetch: jest.Mock;
 
-const respondToSave = (status: number) => {
+const respondToSave = (status: number, body: object = { success: status < 300 }) => {
   mockFetch.mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
-    json: async () => ({ success: status < 300 }),
+    json: async () => body,
   });
 };
 
@@ -246,6 +246,15 @@ describe('login saves a missing Safe address', () => {
     await logIn();
 
     expect(useUserStore.getState().safeAddressSynced['user-1']).toBe(true);
+    expect(mockReplace).toHaveBeenCalledWith(path.HOME);
+  });
+
+  it('leaves a Safe another account holds unsynced', async () => {
+    respondToSave(409, { code: 'SAFE_LINKED_TO_OTHER_ACCOUNT' });
+
+    await logIn();
+
+    expect(useUserStore.getState().safeAddressSynced['user-1']).toBeUndefined();
     expect(mockReplace).toHaveBeenCalledWith(path.HOME);
   });
 

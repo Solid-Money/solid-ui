@@ -18,6 +18,7 @@ interface SwapTokenSelectorModalProps {
   currentAsset: SwapAsset | undefined;
   otherAsset: SwapAsset | undefined;
   showNativeToken?: boolean;
+  side?: 'pay' | 'get';
   disabled?: boolean;
   placeholder?: string;
   className?: string;
@@ -30,6 +31,7 @@ const SwapTokenSelectorModal = ({
   currentAsset,
   otherAsset,
   showNativeToken = true,
+  side = 'pay',
   disabled = false,
   placeholder = 'Select token',
   className = '',
@@ -92,6 +94,7 @@ const SwapTokenSelectorModal = ({
           onSelect={handleTokenClick}
           otherAsset={otherAsset}
           showNativeToken={showNativeToken}
+          side={side}
         />
       </View>
     </ResponsiveModal>

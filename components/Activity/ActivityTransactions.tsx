@@ -25,6 +25,7 @@ import { cn, isTransactionStuck } from '@/lib/utils';
 import { isCashbackPayoutActivity } from '@/lib/utils/cashbackActivity';
 import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
+import { isDepositDeliveryActivity } from '@/lib/utils/transferPresentation';
 import { useDepositStore } from '@/store/useDepositStore';
 
 // Static loading skeleton - extracted outside component to prevent recreation
@@ -110,6 +111,8 @@ export default function ActivityTransactions({
   const tabFilteredActivities = useMemo(() => {
     return updatedActivities.filter(transaction => {
       if (isCashbackPayoutActivity(transaction, cashbackPayoutHashes)) return false;
+      // The deposit it delivers is already a row of its own.
+      if (isDepositDeliveryActivity(transaction)) return false;
       if (tab === ActivityTab.WALLET) {
         if (transaction.type === TransactionType.CARD_WITHDRAWAL) return false;
         if (symbol) {

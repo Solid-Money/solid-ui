@@ -8,6 +8,7 @@ import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
 import { AnimatedTabIcon } from '@/components/tabBar/AnimatedTabIcon';
 import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
+import { RewardsTabIcon } from '@/components/tabBar/RewardsTabIcon';
 import { TabBarBlurProvider } from '@/components/tabBar/TabBarBlurContext';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
@@ -172,9 +173,8 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
           headerShown: false,
-          tabBarIcon: ({ focused, size }) => (
-            <AnimatedTabIcon name="rewards" focused={focused} size={size} />
-          ),
+          // Pops once when a reward is credited that the user hasn't seen yet.
+          tabBarIcon: ({ focused, size }) => <RewardsTabIcon focused={focused} size={size} />,
           // Only surface the Rewards tab (and its route) on qa/preview builds;
           // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
           href: path.REWARDS,

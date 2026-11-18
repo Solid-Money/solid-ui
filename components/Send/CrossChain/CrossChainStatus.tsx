@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { ArrowUpRight, Check } from 'lucide-react-native';
+import { ArrowUpRight } from 'lucide-react-native';
 import { fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -18,54 +18,15 @@ import {
   CrossChainSendRecord,
   CrossChainSendStatus as SendStatus,
 } from '@/lib/types/cross-chain-send';
-import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
+import { eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { formatLD } from '@/lib/utils/cross-chain-send';
 import { useSendStore } from '@/store/useSendStore';
 
-import { BRAND } from './shared';
+import { BRAND, StepTracker, TrackerStep } from './shared';
 
 const TERMINAL: ReadonlySet<SendStatus> = new Set(['delivered', 'failed', 'stuck', 'expired']);
-const DOT_SIZE = 28;
 
-type StepTone = 'done' | 'active' | 'pending' | 'failed' | 'confirming';
-
-type Step = {
-  key: string;
-  tone: StepTone;
-  title: string;
-  subtitle: string;
-  subtitleTone?: 'brand' | 'muted' | 'danger';
-  onSubtitlePress?: () => void;
-};
-
-const Dot = ({ tone }: { tone: StepTone }) => {
-  const base = { width: DOT_SIZE, height: DOT_SIZE };
-  if (tone === 'done') {
-    return (
-      <View className="items-center justify-center rounded-full bg-brand" style={base}>
-        <Check size={16} color="black" strokeWidth={3} />
-      </View>
-    );
-  }
-  if (tone === 'failed') {
-    return <View className="rounded-full bg-red-500" style={base} />;
-  }
-  if (tone === 'confirming') {
-    return (
-      <View className="items-center justify-center rounded-full border-2 border-brand" style={base}>
-        <ActivityIndicator size="small" color={BRAND} />
-      </View>
-    );
-  }
-  if (tone === 'active') {
-    return (
-      <View className="items-center justify-center rounded-full border-2 border-brand" style={base}>
-        <View className="h-2 w-2 rounded-full bg-brand" />
-      </View>
-    );
-  }
-  return <View className="rounded-full border-2 border-white/25" style={base} />;
-};
+type Step = TrackerStep;
 
 const timeOf = (iso?: string) => (iso ? format(new Date(iso), 'HH:mm') : '');
 
@@ -250,47 +211,7 @@ const CrossChainStatus: React.FC = () => {
           </Text>
         </View>
 
-        <View className="rounded-[15px] bg-card px-[18px] py-5">
-          {steps.map((step, index) => {
-            const isLast = index === steps.length - 1;
-            const titleMuted = step.tone === 'pending';
-            return (
-              <View key={step.key} className="flex-row gap-3">
-                <View className="items-center">
-                  <Dot tone={step.tone} />
-                  {!isLast ? (
-                    <View
-                      className={cn('w-[2px]', step.tone === 'done' ? 'bg-brand' : 'bg-white/15')}
-                      style={{ height: 34 }}
-                    />
-                  ) : null}
-                </View>
-                <View className={cn('flex-1 gap-0.5', !isLast && 'pb-2')}>
-                  <Text
-                    className={cn(
-                      'text-base font-semibold leading-6',
-                      titleMuted ? 'text-white/50' : 'text-white',
-                    )}
-                  >
-                    {step.title}
-                  </Text>
-                  <Pressable onPress={step.onSubtitlePress} disabled={!step.onSubtitlePress}>
-                    <Text
-                      className={cn(
-                        'text-sm leading-[18px]',
-                        step.subtitleTone === 'brand' && 'text-brand',
-                        step.subtitleTone === 'danger' && 'text-red-400',
-                        (!step.subtitleTone || step.subtitleTone === 'muted') && 'text-white/60',
-                      )}
-                    >
-                      {step.subtitle}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+        <StepTracker steps={steps} />
 
         <Text className="text-center text-sm text-white/60">
           You can close this screen. It keeps going in the background.

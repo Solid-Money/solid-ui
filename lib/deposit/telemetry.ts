@@ -4,6 +4,7 @@ import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track, trackIdentity } from '@/lib/analytics';
 import { getAttributionChannel } from '@/lib/attribution';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 import { StatusInfo, User } from '@/lib/types';
 import { useAttributionStore } from '@/store/useAttributionStore';
 
@@ -109,6 +110,8 @@ export const depositErrorMessage = (error: unknown): string => {
   }
   if (raw.includes(ERRORS.WAIT_TRANSACTION_RECEIPT)) return ERRORS.WAIT_TRANSACTION_RECEIPT;
   if (raw.includes(ERRORS.ERROR_SWITCHING_CHAIN)) return ERRORS.ERROR_SWITCHING_CHAIN;
+  // Linking the wallet failed: the server says why, in words meant for the user.
+  if (error instanceof WalletLinkError) return error.message;
   return '';
 };
 

@@ -10,6 +10,10 @@ export interface SpendModeSheetProps {
   activeMode?: SpendMode;
   /** Opens the spend-mode explanation from within this sheet. */
   onHelpPress: () => void;
+  /** Opens "How collateral works", from the "?" beside "Collateral assets". */
+  onCollateralHelpPress: () => void;
+  /** Opens the borrow position, from "View Credit details" on the Credit panel. */
+  onViewCreditDetails: () => void;
   /** Opens the add-funds flow from the balance panel. */
   onAddFunds?: () => void;
 }

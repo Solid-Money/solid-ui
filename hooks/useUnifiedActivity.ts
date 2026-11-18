@@ -11,6 +11,7 @@ import { TransactionStatus } from '@/lib/types';
 import { hasCard, isTransactionStuck } from '@/lib/utils';
 import { isCashbackPayoutActivity } from '@/lib/utils/cashbackActivity';
 import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
+import { isDepositDeliveryActivity } from '@/lib/utils/transferPresentation';
 import { mergeActivityFeeds, UnifiedActivityItem } from '@/lib/utils/unifiedActivity';
 
 export type UseUnifiedActivityResult = {
@@ -40,7 +41,9 @@ export type UseUnifiedActivityResult = {
  * Stuck pending and cancelled rows are left out, matching what the wallet list
  * has always shown, and so is the bare "Receive soUSD" a cashback payout lands
  * as — the card row it was earned on already names the figure. See
- * `lib/utils/cashbackActivity`.
+ * `lib/utils/cashbackActivity`. So is a direct deposit's delivery to the Safe,
+ * which is the deposit's own row a second time — see
+ * `lib/utils/transferPresentation`.
  */
 export function useUnifiedActivity(): UseUnifiedActivityResult {
   const { data: cardStatus } = useCardStatus();
@@ -84,6 +87,7 @@ export function useUnifiedActivity(): UseUnifiedActivityResult {
     const visible = deduplicated.filter(transaction => {
       if (transaction.status === TransactionStatus.CANCELLED) return false;
       if (isCashbackPayoutActivity(transaction, cashbackPayoutHashes)) return false;
+      if (isDepositDeliveryActivity(transaction)) return false;
       const isPending = transaction.status === TransactionStatus.PENDING;
       return !(isPending && isTransactionStuck(transaction.timestamp));
     });

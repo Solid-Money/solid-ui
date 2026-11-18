@@ -1,16 +1,21 @@
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 
-import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import type {
+  CollateralRowFigures,
+  CreditModeFigures,
+} from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import type {
   SpendableAssetIcon,
   SpendableAssetRow,
 } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import type { ReactNode } from 'react';
 
 /**
  * The cards the spend-mode surfaces are built from.
@@ -24,36 +29,50 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
  * header, 16 below the last row; the divider (27) and the "Spendable assets" title (34) only when
  * there is a row to title. A row is 48pt, or 56 with a second line. Fixed per row, so the sheet can
  * reserve room for the panel before it renders.
+ *
+ * With Base's stables and crypto beside Fuse's, a Safe can hold a dozen of these, and a panel
+ * that grew a row each pushed the sheet off the screen. The list stops growing at four and a half
+ * rows and scrolls inside the panel instead; the half row showing is what says there is more.
  */
 const BALANCE_HEADER_HEIGHT = 23 + 50;
 const BALANCE_ASSETS_TITLE_HEIGHT = 27 + 34;
 const BALANCE_PANEL_BOTTOM = 16;
+const MAX_ASSET_LIST_HEIGHT = 4.5 * 56;
 const assetRowHeight = (row: Pick<SpendableAssetRow, 'subtitle' | 'detail'>) =>
   row.subtitle || row.detail ? 56 : 48;
+const assetListContentHeight = (rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[]) =>
+  rows.reduce((sum, row) => sum + assetRowHeight(row), 0);
+const assetListHeight = (rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[]) =>
+  Math.min(assetListContentHeight(rows), MAX_ASSET_LIST_HEIGHT);
 export const balancePanelHeight = (
   rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[],
 ) =>
   BALANCE_HEADER_HEIGHT +
-  (rows.length
-    ? BALANCE_ASSETS_TITLE_HEIGHT + rows.reduce((sum, row) => sum + assetRowHeight(row), 0)
-    : 0) +
+  (rows.length ? BALANCE_ASSETS_TITLE_HEIGHT + assetListHeight(rows) : 0) +
   BALANCE_PANEL_BOTTOM;
 /** Figma 25961:3504. Fixed, so the sheet can reserve room for any stack of these. */
 export const BORROWED_PANEL_HEIGHT = 126;
-/** Figma 29128:9537: 14 above and below the two-line label. */
-export const ENABLE_EURO_CARD_HEIGHT = 73;
 
 /**
- * Figma 29123:9483, which grows a 58pt row per collateral asset: the borrowed block and the
+ * Figma 30394:14715, which grows a 58pt row per collateral asset: the borrowed block and the
  * divider take 120, the collateral title 18 + 20 + 8 above the rows, and 12 is left below them.
- * Fixed per row count, so the sheet can still reserve room for the panel before it renders.
+ * Under all of it, a divider and the 52pt "View Credit details" row. Fixed per row count, so the
+ * sheet can still reserve room for the panel before it renders. Past three and a half rows the
+ * list scrolls, as the balance panel's does.
  */
-const CREDIT_PANEL_BASE_HEIGHT = 120 + 18 + 28 + 12;
+const CREDIT_BORROWED_HEIGHT = 119;
+const CREDIT_PANEL_BASE_HEIGHT = CREDIT_BORROWED_HEIGHT + 1 + 18 + 28 + 12;
 const COLLATERAL_ROW_HEIGHT = 58;
+const MAX_COLLATERAL_LIST_HEIGHT = 3.5 * COLLATERAL_ROW_HEIGHT;
+const CREDIT_DETAILS_LINK_HEIGHT = 52;
+const collateralListHeight = (collateralRows: number) =>
+  Math.min(COLLATERAL_ROW_HEIGHT * collateralRows, MAX_COLLATERAL_LIST_HEIGHT);
 export const creditPanelHeight = (collateralRows: number) =>
-  collateralRows > 0
-    ? CREDIT_PANEL_BASE_HEIGHT + COLLATERAL_ROW_HEIGHT * collateralRows
-    : BORROWED_PANEL_HEIGHT;
+  (collateralRows > 0
+    ? CREDIT_PANEL_BASE_HEIGHT + collateralListHeight(collateralRows)
+    : BORROWED_PANEL_HEIGHT) +
+  1 +
+  CREDIT_DETAILS_LINK_HEIGHT;
 /**
  * Figma 26974:14829, at its two-line wrap on the 419pt artboard. Not fixed like the panels:
  * a narrower sheet wraps the message to a third line, so the sheet measures the real one.
@@ -73,6 +92,25 @@ const COLLATERAL_ICON = {
     width: 17,
     height: 17,
   },
+  // Figma 30396:14661: Bitcoin is a glyph in the tinted circle, like the yield shares.
+  cbbtc: {
+    source: getAsset('images/spend-mode-collateral-btc.svg'),
+    width: 18,
+    height: 18,
+  },
+} as const;
+const CREDIT_DETAILS_CHEVRON = getAsset('images/spend-mode-credit-details-chevron.svg');
+
+/**
+ * The crypto Base takes as collateral, drawn with the marks the deposit screen uses. WETH takes
+ * the ETH mark, as `getTokenIcon` draws it on the repay step.
+ */
+const COLLATERAL_TOKEN_LOGO = {
+  cbbtc: getAsset('images/cbbtc.png'),
+  weth: getAsset('images/eth.png'),
+  sol: getAsset('images/sol.png'),
+  aave: getAsset('images/aave.png'),
+  zec: getAsset('images/zec.png'),
 } as const;
 
 const TOKEN_LOGO = {
@@ -89,6 +127,15 @@ const YIELD_GLYPH = {
   eur: COLLATERAL_ICON.eur,
 } as const;
 const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
+/**
+ * soETH's mark: the ETH Yield icon the portfolio draws, which is the ETH glyph already in the
+ * same 10% white circle the soUSD and soEUR glyphs sit in here. Figma has no spend-mode glyph for
+ * it, so the whole icon is drawn at the circle's size rather than a glyph inside one.
+ */
+const ETH_YIELD_ICON = getAsset('images/portfolio/eth.svg');
+
+/** The card mark the "How you earn" sheet gives card credit, drawn at the rows' 32pt. */
+const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
 
 /**
  * A spendable asset's 32pt logo. The stablecoins use their token logos (USDT's is drawn 36.7pt
@@ -96,6 +143,18 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  * (Figma "so-token / soUSD / badge dot").
  */
 const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+  if (icon === 'cardCredit') {
+    return <Image accessible={false} source={CARD_CREDIT_LOGO} style={styles.tokenLogo} />;
+  }
+  if (icon === 'cbbtc' || icon === 'weth' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
+    return (
+      <Image
+        accessible={false}
+        source={COLLATERAL_TOKEN_LOGO[icon]}
+        style={styles.collateralLogo}
+      />
+    );
+  }
   if (icon === 'usdc' || icon === 'eurc') {
     return (
       <Image
@@ -113,6 +172,15 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
     );
   }
 
+  if (icon === 'soeth') {
+    return (
+      <View accessible={false} style={styles.tokenLogo}>
+        <Image source={ETH_YIELD_ICON} style={styles.ethYieldIcon} />
+        <Image source={BADGE_DOT} style={styles.badgeDot} />
+      </View>
+    );
+  }
+
   const glyph = icon === 'sousd' ? YIELD_GLYPH.usd : YIELD_GLYPH.eur;
   return (
     <View accessible={false} style={styles.tokenLogo}>
@@ -123,6 +191,54 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
     </View>
   );
 };
+
+/**
+ * A collateral row's mark: the yield glyphs and Bitcoin's in their tinted circle, or a token's own
+ * logo for the crypto Figma has not drawn a glyph for.
+ */
+const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
+  if (icon === 'eth') {
+    return <Image accessible={false} source={ETH_YIELD_ICON} style={styles.collateralEthIcon} />;
+  }
+  if (icon === 'usd' || icon === 'eur' || icon === 'cbbtc') {
+    return (
+      <View accessible={false} style={styles.collateralIcon}>
+        <Image
+          source={COLLATERAL_ICON[icon].source}
+          style={{ width: COLLATERAL_ICON[icon].width, height: COLLATERAL_ICON[icon].height }}
+        />
+      </View>
+    );
+  }
+  return (
+    <Image accessible={false} source={COLLATERAL_TOKEN_LOGO[icon]} style={styles.collateralLogo} />
+  );
+};
+
+/**
+ * A panel's rows at a fixed height, scrolling once they outgrow it.
+ *
+ * Gesture handler's scroll view rather than React Native's, so on native a drag inside the list
+ * scrolls the list instead of dragging the bottom sheet it sits in.
+ */
+const PanelList = ({
+  height,
+  overflows,
+  children,
+}: {
+  height: number;
+  overflows: boolean;
+  children: ReactNode;
+}) => (
+  <ScrollView
+    style={{ height }}
+    scrollEnabled={overflows}
+    nestedScrollEnabled
+    showsVerticalScrollIndicator={false}
+  >
+    {children}
+  </ScrollView>
+);
 
 interface BalancePanelProps {
   /** "$246.50": every spendable asset, euro ones at their dollar value. */
@@ -140,7 +256,8 @@ interface BalancePanelProps {
 
 /**
  * "Your balance" with the Add funds pill, over the assets it is made of (Figma 29120:9486): USDC,
- * USDT and soUSD on Fuse, and EURC on Base once euro spending is enabled, each with its own value.
+ * USDT and soUSD on Fuse, and what the Base module spends (soUSD, soETH, soEUR, EURC, the stables
+ * and the crypto) once Base spending is enabled, each with its own value.
  * A euro asset reads in euros with its dollar value under it.
  */
 export const SpendModeBalancePanel = ({
@@ -190,29 +307,36 @@ export const SpendModeBalancePanel = ({
             <HelpBadge />
           )}
         </View>
-        {rows.map(row => (
-          <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
-            <AssetLogo icon={row.icon} />
-            <View style={styles.assetLeft}>
-              <Text className="text-[16px] font-medium leading-[20px] text-white">{row.name}</Text>
-              {row.subtitle ? (
-                <Text className="text-[14px] font-normal leading-[18px] text-white/50">
-                  {row.subtitle}
+        <PanelList
+          height={assetListHeight(rows)}
+          overflows={assetListContentHeight(rows) > MAX_ASSET_LIST_HEIGHT}
+        >
+          {rows.map(row => (
+            <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
+              <AssetLogo icon={row.icon} />
+              <View style={styles.assetLeft}>
+                <Text className="text-[16px] font-medium leading-[20px] text-white">
+                  {row.name}
                 </Text>
-              ) : null}
-            </View>
-            <View style={styles.assetRight}>
-              <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                {row.value}
-              </Text>
-              {row.detail ? (
-                <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                  {row.detail}
+                {row.subtitle ? (
+                  <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.subtitle}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={styles.assetRight}>
+                <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                  {row.value}
                 </Text>
-              ) : null}
+                {row.detail ? (
+                  <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.detail}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+        </PanelList>
       </>
     ) : null}
   </View>
@@ -291,37 +415,56 @@ export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
 
 interface CreditPanelProps extends BorrowedSummaryFigures {
   collateral: CreditModeFigures['collateral'];
-  /** The "?" beside "Collateral assets". */
+  /** The closest any loan is to liquidation, for the chip beside "Borrowed". */
+  risk: CreditModeFigures['risk'];
+  /** Whether anything is borrowed: with nothing, there is no health to report. */
+  hasDebt: boolean;
+  /** The "?" beside "Collateral assets": opens "How collateral works". */
   onHelpPress?: () => void;
+  /** "View Credit details" at the foot: opens the borrow position. */
+  onViewDetails: () => void;
 }
 
 /**
- * The Credit panel (Figma 29123:9483): the borrowed block over the assets that back it, on
- * every instance the card borrows on — soUSD on Fuse and, once euro spending is enabled, soEUR
- * on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
- * is in dollars.
+ * The chip beside "Borrowed" (Figma 30396:14678): green "Healthy", or the borrow-position
+ * sheet's own warning in its red once a loan nears liquidation. Left out with nothing borrowed.
+ */
+const RISK_CHIP = {
+  none: { label: 'Healthy', text: 'text-[#94F27F]', background: 'rgba(148, 242, 127, 0.15)' },
+  caution: {
+    label: 'Getting close',
+    text: 'text-[#D96167]',
+    background: 'rgba(217, 97, 103, 0.15)',
+  },
+  'at-risk': { label: 'At risk', text: 'text-[#D96167]', background: 'rgba(217, 97, 103, 0.15)' },
+} as const;
+
+/**
+ * The Credit panel (Figma 30394:14715): the borrowed block with its health chip over the assets
+ * that back it, each with its own LTV, on every instance the card borrows on — soUSD on Fuse and,
+ * once Base spending is enabled, soUSD, soETH, soEUR and the crypto collateral (cbBTC, WETH, SOL,
+ * AAVE, cbZEC) on Base — and "View Credit details" at the foot. A euro asset reads in euros with its dollar
+ * value under it, because the line it backs is in dollars.
  */
 export const SpendModeCreditPanel = ({
   collateral,
+  risk,
+  hasDebt,
   onHelpPress,
+  onViewDetails,
   ...borrowed
 }: CreditPanelProps) => (
-  <View
-    style={[
-      styles.panel,
-      !collateral.length && styles.borrowedPanel,
-      { height: creditPanelHeight(collateral.length) },
-    ]}
-  >
-    {/* Without a row to list — a Safe the lens cannot read yet, or one on v1 — the panel is the
-        borrowed block alone, as before, rather than a collateral title over nothing. */}
-    {collateral.length ? (
-      <View style={styles.creditBorrowed}>
-        <BorrowedSummary {...borrowed} />
-      </View>
-    ) : (
+  <View style={[styles.panel, { height: creditPanelHeight(collateral.length) }]}>
+    {/* Without a row to list — a Safe the lens cannot read yet, or one on v1 — the borrowed
+        block stands alone, as before, rather than a collateral title over nothing. */}
+    <View
+      style={[
+        styles.creditBorrowed,
+        { height: collateral.length ? CREDIT_BORROWED_HEIGHT : BORROWED_PANEL_HEIGHT },
+      ]}
+    >
       <BorrowedSummary {...borrowed} />
-    )}
+    </View>
     {collateral.length ? <View style={styles.divider} /> : null}
     {collateral.length ? (
       <View style={styles.collateral}>
@@ -344,36 +487,62 @@ export const SpendModeCreditPanel = ({
               <HelpBadge />
             )}
           </View>
-          <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
-            Keeps earning
-          </Text>
-        </View>
-        {collateral.map(row => (
-          <View key={row.key} style={styles.collateralRow}>
-            <View accessible={false} style={styles.collateralIcon}>
-              <Image
-                source={COLLATERAL_ICON[row.icon].source}
-                style={{
-                  width: COLLATERAL_ICON[row.icon].width,
-                  height: COLLATERAL_ICON[row.icon].height,
-                }}
-              />
-            </View>
-            <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
-              {row.label}
+          {/* True of the yield shares only: Bitcoin locked as collateral earns nothing. */}
+          {collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
+            <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
+              Keeps earning
             </Text>
-            <View style={styles.collateralValue}>
-              <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                {row.value}
-              </Text>
-              {row.usdEquivalent ? (
-                <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                  {row.usdEquivalent}
+          ) : null}
+        </View>
+        <PanelList
+          height={collateralListHeight(collateral.length)}
+          overflows={COLLATERAL_ROW_HEIGHT * collateral.length > MAX_COLLATERAL_LIST_HEIGHT}
+        >
+          {collateral.map(row => (
+            <View key={row.key} style={styles.collateralRow}>
+              <CollateralLogo icon={row.icon} />
+              {/* Figma 30396:14672: the label over the token's own LTV, inside the 58pt row. */}
+              <View style={styles.collateralLabel}>
+                <Text className="text-[16px] font-medium leading-[20px] text-white">
+                  {row.label}
                 </Text>
-              ) : null}
+                {row.ltv ? (
+                  <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.ltv}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={styles.collateralValue}>
+                <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                  {row.value}
+                </Text>
+                {row.usdEquivalent ? (
+                  <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                    {row.usdEquivalent}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+        </PanelList>
+      </View>
+    ) : null}
+    <View style={styles.divider} />
+    <Pressable
+      accessibilityLabel="View Credit details"
+      accessibilityRole="button"
+      className="active:opacity-80"
+      onPress={onViewDetails}
+      style={styles.detailsLink}
+    >
+      <Text className="text-[16px] font-medium text-[#94F27F]">View Credit details</Text>
+      <Image accessible={false} source={CREDIT_DETAILS_CHEVRON} style={styles.detailsChevron} />
+    </Pressable>
+    {hasDebt ? (
+      <View style={[styles.riskChip, { backgroundColor: RISK_CHIP[risk].background }]}>
+        <Text className={`text-[14px] font-medium ${RISK_CHIP[risk].text}`}>
+          {RISK_CHIP[risk].label}
+        </Text>
       </View>
     ) : null}
   </View>
@@ -427,6 +596,8 @@ const styles = StyleSheet.create({
     width: 31.976,
   },
   badgeDot: { height: 14, left: 20, position: 'absolute', top: 20, width: 14 },
+  // The ETH Yield icon carries its own circle, at the yield icon's size and offset.
+  ethYieldIcon: { height: 31.373, marginTop: 0.31, width: 31.976 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -456,8 +627,27 @@ const styles = StyleSheet.create({
   },
   fill: { backgroundColor: '#94F27F', borderRadius: 5, height: 10 },
 
-  // The borrowed block ends with its track at 99; the divider sits 20 under it, at 119.
-  creditBorrowed: { height: 119, paddingTop: 23 },
+  // The borrowed block ends with its track at 99; the divider sits 20 under it, at 119 — or,
+  // with no collateral to list, at the bare borrowed panel's 126.
+  creditBorrowed: { paddingTop: 23 },
+  // Figma 30396:14678: 19 down, its right edge on the figures' 365 of 385.
+  riskChip: {
+    borderRadius: 100,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    position: 'absolute',
+    right: 20,
+    top: 19,
+  },
+  // Figma 30985:15442: the full width, 52 tall, the label and its chevron centred 6 apart.
+  detailsLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    height: CREDIT_DETAILS_LINK_HEIGHT,
+    justifyContent: 'center',
+  },
+  detailsChevron: { height: 16, width: 16 },
   divider: { backgroundColor: 'rgba(255, 255, 255, 0.08)', height: 1 },
   collateral: { paddingBottom: 12, paddingLeft: 20, paddingRight: 25, paddingTop: 18 },
   collateralTitle: {
@@ -483,6 +673,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 32,
   },
+  collateralLogo: { borderRadius: 16, height: 32, width: 32 },
+  // soETH: the ETH Yield icon carries its own circle, at the collateral circle's size.
+  collateralEthIcon: { height: 31.396, width: 32 },
+  collateralLabel: { flex: 1, gap: 2 },
   collateralValue: { alignItems: 'flex-end', gap: 4 },
 
   // Figma places the badge at 15, the message at 50.5 and 12 from the top, and leaves 15

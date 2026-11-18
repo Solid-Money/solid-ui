@@ -165,6 +165,18 @@
   }
 }
 
+/* The page itself never scrolls — every screen scrolls inside a React Native Web view — but
+ * anything parked just outside the window still made it scrollable: on desktop the hidden toast
+ * waits 124px below the bottom edge. `overflow: hidden` only stops the user scrolling, not code,
+ * so when the Sumsub widget scrolled one of its fields into view, the whole app slid up over a
+ * black band. `clip` cannot be scrolled at all, and what it clips no longer extends the page.
+ * After the mobile block so it wins there too; `hidden` is the fallback where `clip` is unknown. */
+#root,
+#__next {
+  overflow: hidden;
+  overflow: clip;
+}
+
 /* Bounce animation for dialog on web */
 @keyframes bounceInDown {
   0% {

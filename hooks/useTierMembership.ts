@@ -491,12 +491,20 @@ export const useSubscribeToTier = () => {
       priceUsd,
       moduleAddress,
       moduleEnabled,
+      funding,
     }: {
       tier: RewardsTier;
       priceUsd: number;
       moduleAddress: string;
       /** Whether the Safe has already enabled the module. */
       moduleEnabled: boolean;
+      /**
+       * The LI.FI swap that brought the USDC in, when the payment was bridged
+       * from another chain. The backend reads it back and lets the first
+       * charge absorb the bridge's cost. The caller marks it spent once this
+       * resolves — see `markUpgradeFundingSpent`.
+       */
+      funding?: { transactionHash: string; fromChainId: number };
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
@@ -550,6 +558,7 @@ export const useSubscribeToTier = () => {
       const state = await confirmTierSubscription({
         tier,
         transactionHash: result.transactionHash,
+        ...(funding ? { funding } : {}),
       });
 
       return { state, transactionHash: result.transactionHash, tier, priceUsd };

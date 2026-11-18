@@ -2,16 +2,20 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import {
+  baseSpendableAssets,
   CARD_SPENDABLE_ASSETS,
   CardSpendableAsset,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
+import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
 import {
   baseEurcHeld,
   cardSpendableAssetsFor,
+  soEurUsdPerShare,
   sumCardSpendableUSD,
+  unreachableBaseHoldings,
 } from '@/lib/utils/cardSpendable';
 
 const SOUSD = ADDRESSES.fuse.vault;
@@ -171,6 +175,61 @@ describe('sumCardSpendableUSD', () => {
 
     expect(sumCardSpendableUSD(tokens, extended)).toBeCloseTo(2.08, 6);
   });
+
+  describe('soEUR', () => {
+    const soEurAssets = baseSpendableAssets([ADDRESSES.base.soEurcVault]);
+    // Its quote is always 0 in `useBalances`; the price comes from `soEurUsdPerShare`.
+    const soEur = token({
+      contractTickerSymbol: 'soEUR',
+      contractAddress: ADDRESSES.base.soEurcVault,
+      balance: '10000000', // 10 shares
+      quoteRate: 0,
+      chainId: base.id,
+    });
+
+    it('counts soEUR at the price it is given, so Cash matches "Your balance"', () => {
+      // The reported case: €59.21 in the balance panel, €49.03 on Cash — the €10.18 of soEUR.
+      expect(
+        sumCardSpendableUSD([soEur, usdc()], [...CARD_SPENDABLE_ASSETS, ...soEurAssets], 1.2),
+      ).toBeCloseTo(13, 6);
+    });
+
+    it('leaves soEUR out while it has no price, rather than counting it at par', () => {
+      expect(sumCardSpendableUSD([soEur], soEurAssets)).toBe(0);
+    });
+  });
+});
+
+describe('soEurUsdPerShare', () => {
+  const BASE_EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+  const eurc = (quoteRate: number, contractAddress = BASE_EURC) =>
+    token({ contractTickerSymbol: 'EURC', contractAddress, quoteRate, chainId: base.id });
+
+  // The build's EURC address comes from the environment; pinned so the match is on it.
+  beforeEach(() => {
+    jest.replaceProperty(BASE_SPEND_DEPLOYMENT, 'spendTokenAddress', BASE_EURC);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('prices a share at the vault rate through the Safe’s EURC quote', () => {
+    expect(soEurUsdPerShare([eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
+  });
+
+  it('does not take its quote from another token calling itself EURC', () => {
+    const impostor = eurc(50, '0x000000000000000000000000000000000000dEaD');
+
+    expect(soEurUsdPerShare([impostor], 1.02, 1.12)).toBeCloseTo(1.02 * 1.12, 6);
+    expect(soEurUsdPerShare([impostor, eurc(1.16)], 1.02, 1.12)).toBeCloseTo(1.02 * 1.16, 6);
+  });
+
+  it('falls back to the card’s euro rate when the Safe holds no EURC', () => {
+    expect(soEurUsdPerShare([usdc()], 1.02, 1.12)).toBeCloseTo(1.02 * 1.12, 6);
+  });
+
+  it('has no price without the vault rate or any euro rate', () => {
+    expect(soEurUsdPerShare([eurc(1.16)], undefined, 1.12)).toBeUndefined();
+    expect(soEurUsdPerShare([usdc()], 1.02, undefined)).toBeUndefined();
+  });
 });
 
 /**
@@ -314,6 +373,90 @@ describe('cardSpendableAssetsFor', () => {
 
     it('is zero before the balances load', () => {
       expect(baseEurcHeld(undefined, [baseDeployment({ enabled: false })])).toBe(0);
+    });
+  });
+
+  /** What the "Use your Base balance" banner and the declined receipt's Base fix add up. */
+  describe('unreachableBaseHoldings', () => {
+    const BASE_USDC = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+    const BASE_CBBTC = '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf';
+    /** On no list in this build: a token the backend allowlists after it shipped. */
+    const BASE_FUTURE = '0x00000000000000000000000000000000000000f0';
+
+    const onBase = (contractAddress: string, overrides: Partial<TokenBalance> = {}): TokenBalance =>
+      token({
+        contractTickerSymbol: 'TKN',
+        contractAddress,
+        balance: '37606313',
+        contractDecimals: 6,
+        quoteRate: 1,
+        chainId: base.id,
+        ...overrides,
+      });
+
+    const deployments = [
+      baseDeployment({
+        enabled: false,
+        spendTokens: [BASE_USDC, BASE_EURC.toLowerCase(), BASE_CBBTC, BASE_FUTURE],
+      }),
+    ];
+
+    it('finds USDC on Base the card cannot reach yet', () => {
+      expect(
+        unreachableBaseHoldings([onBase(BASE_USDC, { contractTickerSymbol: 'USDC' })], deployments),
+      ).toEqual([
+        {
+          address: BASE_USDC,
+          symbol: 'USDC',
+          amount: 37.606313,
+          valueUSD: 37.606313,
+          euroOnly: false,
+        },
+      ]);
+    });
+
+    it('follows the backend allowlist, so a token added later counts under its own ticker', () => {
+      const [holding] = unreachableBaseHoldings(
+        [onBase(BASE_FUTURE, { contractTickerSymbol: 'NEW', quoteRate: 2 })],
+        deployments,
+      );
+
+      expect(holding).toMatchObject({ symbol: 'NEW', valueUSD: 75.212626, euroOnly: false });
+    });
+
+    it('marks EURC as euro-only', () => {
+      expect(unreachableBaseHoldings([eurc()], deployments)).toEqual([
+        expect.objectContaining({ symbol: 'EURC', euroOnly: true }),
+      ]);
+    });
+
+    it('ignores tokens off the allowlist, off Base, or unpriced', () => {
+      expect(
+        unreachableBaseHoldings(
+          [
+            onBase('0x0000000000000000000000000000000000000002'),
+            onBase(BASE_USDC, { chainId: fuse.id }),
+            onBase(BASE_CBBTC, { quoteRate: 0 }),
+          ],
+          deployments,
+        ),
+      ).toEqual([]);
+    });
+
+    it('lists the richest holding first', () => {
+      const holdings = unreachableBaseHoldings(
+        [onBase(BASE_USDC), onBase(BASE_CBBTC, { balance: '1000000', quoteRate: 69_000 })],
+        deployments,
+      );
+
+      expect(holdings.map(holding => holding.address)).toEqual([BASE_CBBTC, BASE_USDC]);
+    });
+
+    it('is empty when the backend serves no Base allowlist', () => {
+      expect(
+        unreachableBaseHoldings([onBase(BASE_USDC)], [baseDeployment({ spendTokens: [] })]),
+      ).toEqual([]);
+      expect(unreachableBaseHoldings([onBase(BASE_USDC)], undefined)).toEqual([]);
     });
   });
 });

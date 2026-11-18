@@ -44,6 +44,16 @@ export const useSupportChatAvailability = (): {
 };
 
 /**
+ * Whether "Chat with us" opens the in-house chat. Only a definite "off" (the
+ * server answered and this user isn't switched over, or no support API is
+ * configured) keeps Intercom. While the answer is still loading, or the check
+ * failed, the chat screen waits or offers a retry: before this, a tap in that
+ * moment opened Intercom for users who have the in-house chat.
+ */
+export const useOpensSupportChat = (): boolean =>
+  useSupportChatAvailability().availability !== 'off';
+
+/**
  * Keeps the shared thread current while something shows it: loads it once
  * (which is what puts the unread dot on the header button) and catches up
  * whenever the realtime socket reconnects.

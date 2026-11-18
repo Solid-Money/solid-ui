@@ -13,6 +13,7 @@ import {
   useTierMembership,
   useTierUpgradeChainState,
 } from '@/hooks/useTierMembership';
+import { markUpgradeFundingSpent, useCashPayment } from '@/hooks/useTierUpgradeFunding';
 import { track } from '@/lib/analytics';
 import { getUserErrorMessage } from '@/lib/errors';
 import {
@@ -33,6 +34,7 @@ import {
 } from '@/lib/tierUpgrade';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
+import BridgedCashReview from './BridgedCashReview';
 import TierDetailRow from './TierDetailRow';
 
 /** A check on this screen refused the upgrade; its message is already user copy. */
@@ -63,6 +65,7 @@ const UpgradeReviewContent = () => {
   const offer = tier ? findOffer(membership, tier) : undefined;
   // A tier a trial is lending is being kept, not gained — see `isTierOnTrial`.
   const keeping = tier ? isTierOnTrial(membership, tier) : false;
+  const payment = useCashPayment({ membership, chain, feeUsd: offer?.annualFeeUsd ?? 0 });
 
   if (isLoading) return <Loading />;
 
@@ -80,6 +83,12 @@ const UpgradeReviewContent = () => {
         </Button>
       </View>
     );
+  }
+
+  // Paying from another chain is its own review: a quote, a bridge and a
+  // second signature once the USDC lands.
+  if (route === 'cash' && !payment.payingFromFuse && offer.annualFeeUsd !== null) {
+    return <BridgedCashReview tier={tier} feeUsd={offer.annualFeeUsd} payment={payment} />;
   }
 
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
@@ -116,18 +125,23 @@ const UpgradeReviewContent = () => {
   // The cash route has the same hole and closes it the same way: the offer step
   // checked the USDC balance, and that check is minutes old by the time anyone
   // presses this.
+  //
+  // For cash, a bridged payment that has landed counts with what the bridge
+  // took off it covered — the same answer the offer step gave.
   const canPay =
     chain !== undefined &&
     balances !== undefined &&
     (route === 'lock'
       ? canPayLockWith(paymentAsset, remainingFuse, balances)
-      : canAffordUpgrade({
-          route,
-          offer,
-          lockedFuse: membership.lock.lockedFuse,
-          availableFuse: chain.fuse,
-          availableUsdc: chain.usdcAmount,
-        }));
+      : payment.billingTokenAddress
+        ? payment.affordable
+        : canAffordUpgrade({
+            route,
+            offer,
+            lockedFuse: membership.lock.lockedFuse,
+            availableFuse: chain.fuse,
+            availableUsdc: chain.usdcAmount,
+          }));
 
   // Only once we have actually read the balances. Nothing to say while they load.
   const shortOfFunds = chain !== undefined && !canPay;
@@ -201,14 +215,23 @@ const UpgradeReviewContent = () => {
       }
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, { tier, price_usd: offer.annualFeeUsd });
 
+      const arrived = payment.funding.state === 'arrived' ? payment.funding.swap : undefined;
       const result = await subscribe({
         tier,
         priceUsd: offer.annualFeeUsd,
         moduleAddress: membership.contracts.subscriptionModuleAddress,
         moduleEnabled: chain?.moduleEnabled ?? false,
+        // The bridged payment that brought this USDC in, so the backend can
+        // cover what the bridge took. Harmless when the balance covers the fee
+        // without it: the backend only looks when the Safe is short.
+        ...(arrived
+          ? { funding: { transactionHash: arrived.txHash, fromChainId: arrived.fromChainId } }
+          : {}),
       });
 
-      if (result) close();
+      if (!result) return;
+      if (arrived) markUpgradeFundingSpent(arrived.clientTxId);
+      close();
     } catch (error) {
       // Our own checks above speak for themselves; anything from the chain or
       // the SDK is translated, never shown raw.
@@ -252,6 +275,17 @@ const UpgradeReviewContent = () => {
         ) : (
           <>
             <TierDetailRow label="Amount" value={formatUsd(offer.annualFeeUsd)} withDivider />
+            {/* A bridged payment that landed short: what the bridge took comes
+                off the first charge, and the user should see that it did. */}
+            {payment.coverUsd > 0 ? (
+              <TierDetailRow
+                label="Bridge fees"
+                value="Covered"
+                valueClassName="text-[#94F27F]"
+                secondaryValue={formatUsd(payment.coverUsd)}
+                withDivider
+              />
+            ) : null}
             <TierDetailRow label="Billed" value="Once a year" withDivider />
             <TierDetailRow label="Fee" value="Free" />
           </>

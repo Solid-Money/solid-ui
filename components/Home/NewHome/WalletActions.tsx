@@ -10,6 +10,7 @@ import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { HOME_SWAP_PRESET } from '@/lib/swapDefaults';
 import { cn } from '@/lib/utils';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
@@ -150,6 +151,8 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
       {showSwap && (
         <View className="h-14" style={styles.equalActionSlot}>
           <SwapModal
+            entryPoint="home"
+            preset={HOME_SWAP_PRESET}
             trigger={
               <ActionPill compact={compact}>
                 <HomeSwap

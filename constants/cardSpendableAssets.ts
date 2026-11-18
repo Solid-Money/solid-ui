@@ -1,8 +1,11 @@
+import { zeroAddress } from 'viem';
 import { base, fuse } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
+import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 import { ADDRESSES } from '@/lib/config';
+import { isSoBtcConfigured, SOBTC_ADDRESSES } from '@/lib/soBtc';
 
 /**
  * One asset a card is allowed to spend.
@@ -65,11 +68,11 @@ export interface CardSpendableAsset {
  *
  * USDC, USDT and soUSD on Fuse, in the order the backend actually draws from them.
  * A Wirex purchase is paid by Wirex out of its own Master Account and reimbursed by
- * debiting the user's Safe on Fuse through `SolidCashModule` at settlement, so any of
- * these held on another chain is not reachable and is deliberately left out —
- * counting it would show the user spending power they do not have. The one
- * exception is EURC on Base once euro spending is enabled — see
- * {@link baseEurcSpendableAsset}.
+ * debiting the user's Safe through `SolidCashModule` at settlement, so an asset held
+ * where no module can reach it is deliberately left out — counting it would show the
+ * user spending power they do not have. What the Base module spends (soUSD, soETH,
+ * soEUR, EURC, the stables and the crypto collateral) is added once Base spending is
+ * enabled — see {@link baseSpendableAssets}.
  *
  * This list must stay in step with the module's on-chain allowlist, which is admin
  * configuration rather than a deploy. An asset allowlisted on-chain but missing here
@@ -101,33 +104,62 @@ export const baseEurcSpendableAsset = (addresses: string[]): CardSpendableAsset 
   qualifier: 'for euro purchases',
 });
 
-/**
- * Everything the Base instance spends, as named entries: EURC, and soEUR once the instance
- * allowlists it.
- *
- * The backend serves the instance's spend tokens as one list. Read as one EURC entry, soEUR on it
- * was described to the cardholder as EURC; this names each by address, soEUR by this build's soEUR
- * vault, and keeps every other address under EURC as before.
- */
-export const baseSpendableAssets = (addresses: string[]): CardSpendableAsset[] => {
-  const soEur = ADDRESSES.base.soEurcVault.toLowerCase();
-  const lower = addresses.map(address => address.toLowerCase());
-  const eurc = lower.filter(address => address !== soEur);
+/** Coinbase's wrapped ZEC on Base. Not in the deposit token table, which takes ZEC on BSC. */
+const BASE_CBZEC = '0xb2000000000000000000008501b13360000cb2ec';
 
-  return [
-    ...(eurc.length ? [baseEurcSpendableAsset(eurc)] : []),
-    ...(lower.includes(soEur)
-      ? [
-          {
-            symbol: 'soEUR',
-            chainIds: [base.id],
-            addresses: [soEur],
-            qualifier: 'for euro purchases',
-          },
-        ]
-      : []),
-  ];
+/** WBTC on Base (the LayerZero OFT). Retired from the deposit token table, still card-spendable. */
+const BASE_WBTC = '0x0555e30da8f98308edb960aa94c0db47230d2b9c';
+
+/** A configured Base vault share, lowercased; undefined in a build without that vault. */
+const baseShare = (address: string): string | undefined =>
+  address === zeroAddress ? undefined : address.toLowerCase();
+
+/**
+ * A Base spend token's ticker, from its address: soEUR, soUSD, soETH and soBTC by this build's
+ * vaults (soUSD, soETH and soBTC deposited on Base keep their shares there), EURC by the bridge
+ * config's Base EURC, cbZEC and WBTC by the addresses above, the rest — USDC, USDT, cbBTC, WETH, SOL, AAVE — by the
+ * deposit token table, which already holds each one's Base contract. EURC is matched directly
+ * rather than through that table because it is the one that carries the euro qualifier.
+ * `undefined` for an address this build cannot name.
+ */
+const baseTokenSymbol = (address: string): string | undefined => {
+  if (address === ADDRESSES.base.soEurcVault.toLowerCase()) return 'soEUR';
+  if (address === baseShare(ADDRESSES.base.vault)) return 'soUSD';
+  if (address === baseShare(ADDRESSES.base.soEthVault)) return 'soETH';
+  if (isSoBtcConfigured && address === baseShare(SOBTC_ADDRESSES.base.vault)) return 'soBTC';
+  if (address === EURC_TOKENS[base.id]?.address.toLowerCase()) return 'EURC';
+  if (address === BASE_CBZEC) return 'cbZEC';
+  if (address === BASE_WBTC) return 'WBTC';
+  return WALLET_DEPOSIT_TOKENS.find(token => token.contracts[base.id]?.toLowerCase() === address)
+    ?.symbol;
 };
+
+/**
+ * Everything the Base instance spends, one named entry per token, in the backend's draw order.
+ *
+ * The backend serves the instance's spend tokens as one list. This used to name soEUR and file
+ * every other address under EURC, which held while EURC and soEUR were all Base spent — with USDC,
+ * USDT and the crypto collateral on the list it would have called all of them "EURC for euro
+ * purchases". Each is now named by its own address, and one this build cannot name is left out:
+ * the rule at the top of this file, that an asset over-reported is a decline the user cannot
+ * explain while one under-reported is merely missing from the figure.
+ */
+export const baseSpendableAssets = (addresses: string[]): CardSpendableAsset[] =>
+  addresses.flatMap((raw): CardSpendableAsset[] => {
+    const address = raw.toLowerCase();
+    const symbol = baseTokenSymbol(address);
+    if (!symbol) return [];
+    if (symbol === 'EURC') return [baseEurcSpendableAsset([address])];
+
+    return [
+      {
+        symbol,
+        chainIds: [base.id],
+        addresses: [address],
+        ...(symbol === 'soEUR' && { qualifier: 'for euro purchases' }),
+      },
+    ];
+  });
 
 const joinWithAnd = (items: string[]): string =>
   items.length <= 1

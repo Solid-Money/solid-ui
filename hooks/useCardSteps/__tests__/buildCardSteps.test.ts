@@ -1,4 +1,5 @@
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { SSN_INVALID_RISK } from '@/hooks/useCardSteps/kycDisplayHelpers';
 import { buildCardSteps } from '@/hooks/useCardSteps/stepHelpers';
 import {
   BridgeCustomerEndorsement,
@@ -243,6 +244,56 @@ describe('buildCardSteps - deposit-and-hold step', () => {
     });
 
     expect(steps.map(s => s.key)).toEqual(['deposit', 'kyc', 'activate', 'spend']);
+  });
+});
+
+/**
+ * Didit approved a US applicant whose SSN was not 9 digits (a city name, in the
+ * reported case), so the application could not be sent to the issuer. The step
+ * used to say "Additional verification required" over the bare reason, and
+ * nothing on screen said a new verification is where the SSN goes.
+ */
+describe('buildCardSteps - an approval refused on the SSN', () => {
+  const ssnRefused = (options?: Options) =>
+    build({
+      options: {
+        depositRequired: true,
+        savingsDepositMet: true,
+        // Not a Rain status: Rain never saw the application.
+        rainApplicationStatus: 'didit_forward_failed' as RainApplicationStatus,
+        kycStatus: KycStatus.INCOMPLETE,
+        kycWarnings: [
+          {
+            risk: SSN_INVALID_RISK,
+            short_description: 'The Social Security Number you entered is not valid.',
+          },
+        ],
+        ...options,
+      },
+    });
+
+  it('explains what happened and what to do on the KYC step', () => {
+    const kyc = ssnRefused().find(s => s.key === 'kyc');
+
+    expect(kyc?.completed).toBe(false);
+    expect(kyc?.description).toContain('ID check passed');
+    expect(kyc?.description).toContain('9-digit SSN');
+  });
+
+  it('offers to re-enter the SSN through the Rain KYC action', () => {
+    const handleRainKYCPress = jest.fn();
+
+    const kyc = ssnRefused({ handleRainKYCPress }).find(s => s.key === 'kyc');
+
+    expect(kyc?.buttonText).toBe('Re-enter SSN');
+    expect(kyc?.onPress).toBe(handleRainKYCPress);
+  });
+
+  it('keeps the generic copy for other incomplete verifications', () => {
+    const kyc = ssnRefused({ kycWarnings: [] }).find(s => s.key === 'kyc');
+
+    expect(kyc?.buttonText).toBe('Continue verification');
+    expect(kyc?.description).not.toContain('SSN');
   });
 });
 

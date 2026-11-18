@@ -89,6 +89,7 @@ describe('isPersistedQueryKey', () => {
     expect(isPersistedQueryKey(['vault', 'balance', SAFE, 'USDC'])).toBe(true);
     expect(isPersistedQueryKey(['analytics', 'apys'])).toBe(true);
     expect(isPersistedQueryKey(['rewards', 'userData', 'u1'])).toBe(true);
+    expect(isPersistedQueryKey(['cardSpendDeployments', 'u1'])).toBe(true);
 
     expect(isPersistedQueryKey(['vault', 'balanceSoFuseWei', SAFE])).toBe(false);
     expect(isPersistedQueryKey(['analytics', 'historicalAPY', '7', 'usdc'])).toBe(false);

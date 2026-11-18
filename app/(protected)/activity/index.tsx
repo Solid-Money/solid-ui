@@ -11,6 +11,7 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useContactNames } from '@/hooks/useContactNames';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useUnifiedActivity } from '@/hooks/useUnifiedActivity';
 import { ActivityTab } from '@/lib/types';
@@ -61,9 +62,12 @@ export default function Activity() {
     refetchAll,
   } = useUnifiedActivity();
 
+  // The rows name saved addresses by contact ("Sent to Alice"); search has to see the same names.
+  const contacts = useContactNames();
+
   const visibleItems = useMemo(
-    () => filterUnifiedActivity(items, { tab, query }),
-    [items, tab, query],
+    () => filterUnifiedActivity(items, { tab, query, contacts }),
+    [items, tab, query, contacts],
   );
 
   const handleTabChange = useCallback(

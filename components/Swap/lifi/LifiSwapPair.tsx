@@ -22,6 +22,24 @@ const formatOutput = (raw: string, decimals: number) => {
 const balanceOf = (asset: SwapAsset | undefined): number | undefined =>
   asset && 'balance' in asset ? (asset as SwapAssetWithBalance).balance : undefined;
 
+const priceOf = (asset: SwapAsset | undefined): number =>
+  asset && 'priceUsd' in asset ? (asset as SwapAssetWithBalance).priceUsd : 0;
+
+/**
+ * An amount's dollar value at the wallet's price, or the quote's when the
+ * wallet has none. The wallet's is there as soon as the amount is typed, and
+ * stays put while the quote reloads; the quote's only once LI.FI answers.
+ */
+export const fiatValueOf = (
+  amount: number,
+  asset: SwapAsset | undefined,
+  quotedUsd: string | null | undefined,
+): number | undefined => {
+  const price = priceOf(asset);
+  if (price > 0 && amount > 0) return amount * price;
+  return quotedUsd ? Number(quotedUsd) : undefined;
+};
+
 /**
  * The From/To cards for a swap that leaves Fuse. Exact-in only: the To card
  * shows LI.FI's quote and can't be typed into.
@@ -62,14 +80,20 @@ const LifiSwapPair: React.FC = () => {
     return quote ? formatOutput(quote.toAmount, quote.toToken.decimals) : '';
   }, [typedValue, isQuoting, quote]);
 
-  const inputFiat = useMemo(() => {
-    if (!quote || isQuoting) return undefined;
-    return quote.fromAmountUsd ? Number(quote.fromAmountUsd) : undefined;
-  }, [quote, isQuoting]);
+  const inputFiat = useMemo(
+    () =>
+      fiatValueOf(
+        Number(typedValue) || 0,
+        fromAsset,
+        quote && !isQuoting ? quote.fromAmountUsd : undefined,
+      ),
+    [typedValue, fromAsset, quote, isQuoting],
+  );
   const outputFiat = useMemo(() => {
     if (!quote || isQuoting) return undefined;
-    return quote.toAmountUsd ? Number(quote.toAmountUsd) : undefined;
-  }, [quote, isQuoting]);
+    const amount = Number(formatUnits(BigInt(quote.toAmount), quote.toToken.decimals));
+    return fiatValueOf(amount, toAsset, quote.toAmountUsd);
+  }, [quote, isQuoting, toAsset]);
 
   return (
     <View className="relative flex flex-col gap-4">
@@ -103,6 +127,7 @@ const LifiSwapPair: React.FC = () => {
         fiatValue={outputFiat}
         showBalance={false}
         title="To"
+        side="get"
         disabled
         isLoading={isQuoting}
       />

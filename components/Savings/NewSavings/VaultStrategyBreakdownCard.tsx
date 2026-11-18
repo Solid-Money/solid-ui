@@ -189,8 +189,8 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
   const { data: strategies = [], isLoading: isBreakdownLoading } = useVaultBreakdown(
     vault.name.toLowerCase(),
   );
-  const sevenDayApy = Math.max(apys?.sevenDay ?? 0, 0);
-  const sevenDayApyLabel = formatNumber(sevenDayApy, 1) + '%';
+  // Two decimals like the rows: one decimal rounds EUR's 0.04% down to "0%".
+  const sevenDayApyLabel = formatPercent(apys?.sevenDay ?? 0);
   const selectedStrategy = strategies[selectedStrategyIndex] ?? strategies[0];
   const visibleStrategies = isExpanded ? strategies : strategies.slice(0, COLLAPSED_STRATEGY_COUNT);
   const hasHiddenStrategies = strategies.length > COLLAPSED_STRATEGY_COUNT;

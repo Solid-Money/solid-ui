@@ -16,6 +16,8 @@ import {
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
   EXPO_PUBLIC_FUSE_GAS_RESERVE,
 } from '@/lib/config';
+import { ensureWalletLinked } from '@/lib/deposit/externalWallet';
+import { WalletLinkError } from '@/lib/deposit/walletLinkError';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -193,6 +195,15 @@ const useDepositFromEOAFuse = (
 
       let txHash: `0x${string}` | undefined;
       if (token === 'WFUSE') {
+        // The WFUSE deposit is pulled by the backend, which pulls only from the
+        // user's Safe or a wallet linked to their account. Link this one, if it
+        // isn't yet, before the approval prompt. Native FUSE is deposited by the
+        // wallet itself and needs no link.
+        await ensureWalletLinked(account, user.safeAddress, {
+          onSignRequest: () =>
+            setDepositStatus({ status: Status.PENDING, message: 'Sign to link your wallet' }),
+        });
+
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
@@ -496,6 +507,9 @@ const useDepositFromEOAFuse = (
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_CHAIN)) {
         errMsg = ERRORS.ERROR_SWITCHING_CHAIN;
+      } else if (error instanceof WalletLinkError) {
+        // Linking the wallet failed: the server says why, in words meant for the user.
+        errMsg = error.message;
       }
 
       setDepositStatus({ status: Status.ERROR });

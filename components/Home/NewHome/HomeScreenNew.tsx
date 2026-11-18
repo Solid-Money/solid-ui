@@ -8,7 +8,14 @@ import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import RainClosingHomeBanner from '@/components/Card/RainSunset/RainClosingHomeBanner';
+import { RainClosingSheet } from '@/components/Card/RainSunset/RainClosingSheet';
+import EuroLaunchPopup from '@/components/Home/NewHome/EuroLaunchPopup';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
+import HomeBalancePills from '@/components/Home/NewHome/HomeBalancePills';
+import HomeIncidentNotice, {
+  IncidentNoticeSheet,
+} from '@/components/Home/NewHome/HomeIncidentNotice';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
@@ -28,7 +35,9 @@ import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHomeLinkAction } from '@/hooks/useHomeLinkAction';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
@@ -38,7 +47,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { markStartup, reportHomeContentReady } from '@/lib/startupTiming';
 import { CardProvider } from '@/lib/types';
-import { formatBalanceUSD, hasCard } from '@/lib/utils';
+import { formatBalance, hasCard } from '@/lib/utils';
 import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -74,6 +83,7 @@ export default function HomeScreenNew() {
   const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
   const { provider: cardProvider } = useCardProvider();
+  const { symbol: displaySymbol, toDisplayAmount } = useCardDisplayCurrency();
 
   const userHasCard = hasCard(cardStatus);
   const showWirexTiles = userHasCard && cardProvider === CardProvider.WIREX;
@@ -113,6 +123,15 @@ export default function HomeScreenNew() {
     }
     router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
   }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide]);
+
+  // `?whatsNew=`, `?deposit=` and `?spendMode=` open what a push or link was
+  // about over this screen (`constants/homeLinkParams`).
+  useHomeLinkAction({
+    isCardKnown: !isCardStatusLoading,
+    hasCard: userHasCard,
+    isSpendModeKnown: !spendModeFigures.isLoading,
+    canChangeMode: spendModeFigures.canChangeMode,
+  });
 
   const {
     isLoading: isLoadingTokens,
@@ -227,6 +246,9 @@ export default function HomeScreenNew() {
   // the Assets rows, Borrowed included, add up to it. Gross holdings are "Total assets" on the
   // overview. If debt couldn't be read the figure is flagged incomplete below the headline.
   const totalBalance = portfolio.netBalance;
+  // Shown in the main currency, like the card tiles beside it. The card details it reads are
+  // already part of the loading gate above, so the figure never flips from dollars to euros.
+  const displayTotal = totalBalance === undefined ? undefined : toDisplayAmount(totalBalance);
   // Whether the action row offers Swap and Send at all. Deliberately NOT
   // `depositCompleted` on its own: that only knows about wallet funding, and a
   // cardholder who funds their card directly has none of it — see
@@ -240,7 +262,9 @@ export default function HomeScreenNew() {
     cardHoldsOwnBalance,
   });
   const walletTitle =
-    isBalanceSectionLoading || totalBalance === undefined ? null : formatBalanceUSD(totalBalance);
+    isBalanceSectionLoading || displayTotal === undefined
+      ? null
+      : formatBalance(displayTotal, displaySymbol);
   // Which rung of the card funnel belongs under the card, if any — null once the
   // user is done or has snoozed the current one. See `resolveHomePromptStep`.
   const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
@@ -265,6 +289,14 @@ export default function HomeScreenNew() {
         <>
           <CardDetailsPane />
           <SpendModeModals figures={spendModeFigures} />
+          <IncidentNoticeSheet />
+          {/* Rain sunset: opened from the Home banner and the card notice alike. */}
+          <RainClosingSheet />
+          <EuroLaunchPopup
+            isWirexCardholder={showWirexTiles}
+            // Undefined until the card details answer, so the popup never guesses "not on euro".
+            mainCurrency={cardDetails ? (cardDetails.main_currency ?? 'USD') : undefined}
+          />
         </>
       }
       scrollEnabled={!isCardPaneOpen}
@@ -272,6 +304,12 @@ export default function HomeScreenNew() {
       refreshing={isRefreshing}
     >
       <View className="mb-5 w-full gap-5 pb-24">
+        {/* A known incident (an outage, a delay) the team has posted. Renders
+            nothing when there is none, which is nearly always. */}
+        <HomeIncidentNotice className="px-4" />
+        {/* Rain sunset: the card-closing banner, in the same slot (Figma "1 · Home ·
+            Card closing banner"). Nothing for anyone it does not affect. */}
+        <RainClosingHomeBanner className="px-4" />
         {isBalanceSectionLoading ? (
           // Mirror the loaded wrappers and their heights so the wallet card does
           // not jump when the headline and actions replace these.
@@ -286,7 +324,7 @@ export default function HomeScreenNew() {
               <Skeleton className="h-14 flex-1 rounded-full" />
             </View>
           </View>
-        ) : totalBalance === undefined ? (
+        ) : displayTotal === undefined ? (
           <View className="items-center gap-3">
             <Text className="text-[16px] text-white/70">Balance</Text>
             <Text className="text-[45px] font-semibold">—</Text>
@@ -302,7 +340,18 @@ export default function HomeScreenNew() {
         ) : (
           <View className="gap-5">
             <HeroExit spec={HERO_EXIT.balance}>
-              <WalletBalanceHeadline balance={totalBalance} />
+              <WalletBalanceHeadline balance={displayTotal} symbol={displaySymbol} />
+              {/* Beside the balance, never in it: card credit can only be spent
+                  with the card, so it stays out of `totalBalance`. */}
+              <HomeBalancePills
+                dailyYield={
+                  portfolio.dailyYield === undefined
+                    ? undefined
+                    : toDisplayAmount(portfolio.dailyYield)
+                }
+                yieldSymbol={displaySymbol}
+                canHaveCardCredit={showWirexTiles}
+              />
               {portfolio.isError && (
                 <TouchableOpacity
                   accessibilityRole="button"

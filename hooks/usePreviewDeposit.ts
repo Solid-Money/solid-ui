@@ -9,7 +9,19 @@ import { getLifiQuote } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { config } from '@/lib/wagmi';
 
-export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId?: number) => {
+/**
+ * `ownerAddress` is the wallet the deposit comes from. LI.FI simulates the
+ * route from it, so it must be a real holder: quoting from the token contract
+ * itself reverted every time and the preview showed 0. Without one there is no
+ * quote, and `isQuoteUnavailable` says so instead of reporting 0.
+ */
+export const usePreviewDeposit = (
+  amount: string,
+  tokenAddress?: string,
+  chainId?: number,
+  ownerAddress?: string,
+  decimals = 6,
+) => {
   const queryClient = useQueryClient();
 
   const { data: exchangeRate, isLoading: isExchangeRateLoading } = useQuery({
@@ -29,15 +41,19 @@ export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId
     currentChainUsdcAddress &&
     tokenAddress.toLowerCase() === currentChainUsdcAddress.toLowerCase();
 
-  const shouldFetchLifi =
+  const needsQuote =
     !!amount && Number(amount) > 0 && !!tokenAddress && !!chainId && !isMainnetUsdc && !isUsdc;
+  const shouldFetchLifi = needsQuote && !!ownerAddress;
 
-  const { data: lifiAmountOut, isLoading: isLifiLoading } = useQuery({
-    queryKey: ['lifiQuote', amount, tokenAddress, chainId],
+  const {
+    data: lifiAmountOut,
+    isLoading: isLifiLoading,
+    isError: isLifiError,
+  } = useQuery({
+    queryKey: ['lifiQuote', amount, tokenAddress, chainId, ownerAddress, decimals],
     queryFn: async () => {
-      if (!tokenAddress || !chainId || !mainnetUsdcAddress) return '0';
-      // Assuming 6 decimals for input token (USDC/USDT) as per existing logic
-      const fromAmount = parseUnits(amount, 6);
+      if (!tokenAddress || !chainId || !mainnetUsdcAddress || !ownerAddress) return '0';
+      const fromAmount = parseUnits(amount, decimals);
 
       const quote = await getLifiQuote({
         fromChain: chainId,
@@ -45,14 +61,17 @@ export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId
         fromToken: tokenAddress,
         toToken: mainnetUsdcAddress,
         fromAmount,
-        fromAddress: tokenAddress,
-        toAddress: tokenAddress,
+        fromAddress: ownerAddress,
+        toAddress: ownerAddress,
       });
       return quote?.estimate?.toAmount || '0';
     },
     enabled: shouldFetchLifi,
     staleTime: 30 * 1000, // 30 seconds
   });
+
+  const isQuoteUnavailable =
+    needsQuote && (!ownerAddress || isLifiError || (!!lifiAmountOut && Number(lifiAmountOut) <= 0));
 
   let estimatedUsdcAmount = 0;
   if (isMainnetUsdc || isUsdc) {
@@ -72,6 +91,7 @@ export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId
   return {
     amountOut,
     isLoading: isExchangeRateLoading || isLifiLoading,
+    isQuoteUnavailable,
     exchangeRate,
     routingFee,
   };

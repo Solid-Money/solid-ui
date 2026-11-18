@@ -21,6 +21,7 @@ export const useWalletTokens = () => {
     baseTokens,
     arbitrumTokens,
     bscTokens,
+    optimismTokens,
     tokens,
     unifiedTokens,
     isLoading,
@@ -37,7 +38,8 @@ export const useWalletTokens = () => {
       polygonTokens.length > 0 ||
       baseTokens.length > 0 ||
       arbitrumTokens.length > 0 ||
-      bscTokens.length > 0,
+      bscTokens.length > 0 ||
+      optimismTokens.length > 0,
     [
       ethereumTokens.length,
       fuseTokens.length,
@@ -45,6 +47,7 @@ export const useWalletTokens = () => {
       baseTokens.length,
       arbitrumTokens.length,
       bscTokens.length,
+      optimismTokens.length,
     ],
   );
 
@@ -81,6 +84,7 @@ export const useWalletTokens = () => {
     baseTokens,
     arbitrumTokens,
     bscTokens,
+    optimismTokens,
     tokens,
     unifiedTokens,
     uniqueTokens,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { onlineManager, useQuery } from '@tanstack/react-query';
 
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { WhatsNew } from '@/lib/types';
@@ -19,7 +19,10 @@ jest.mock('@/lib/mmvkStorage', () => ({
 }));
 
 jest.mock('@/lib/api', () => ({ fetchLatestWhatsNew: jest.fn() }));
-jest.mock('@tanstack/react-query', () => ({ useQuery: jest.fn() }));
+jest.mock('@tanstack/react-query', () => ({
+  useQuery: jest.fn(),
+  onlineManager: { isOnline: jest.fn(() => true), subscribe: jest.fn(() => () => {}) },
+}));
 
 const announcement: WhatsNew = {
   _id: 'new-announcement',
@@ -76,6 +79,206 @@ describe('useWhatsNew auto-open', () => {
     act(() => jest.advanceTimersByTime(5000));
 
     expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe('useWhatsNew opening a linked page', () => {
+  const ID = '000000000000000000000001';
+  const step = (title: string) => ({ title, text: '', imageUrl: '' });
+  const active: WhatsNew = {
+    ...announcement,
+    _id: ID,
+    showOnLoad: false,
+    steps: [step('Card'), step('Euro yield'), step('Credit')],
+  };
+
+  const render = async () => {
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready={false} />);
+    });
+    return renderer!;
+  };
+
+  const request = async (id: string, page: number) => {
+    await act(async () => {
+      useWhatsNewStore.getState().requestWhatsNew(id, page);
+    });
+  };
+
+  /** What the server answers a link's refetch with. */
+  const serverHas = (latest: WhatsNew | null) => {
+    const refetch = jest.fn().mockResolvedValue({ isSuccess: true, data: latest });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+    return refetch;
+  };
+
+  beforeEach(() => {
+    mockStorage.clear();
+    useWhatsNewStore.setState({
+      whatsNew: active,
+      isVisible: false,
+      initialStep: 0,
+      request: null,
+    });
+    (onlineManager.isOnline as jest.Mock).mockReturnValue(true);
+    serverHas(active);
+  });
+
+  it('opens the announcement on the page the link named', async () => {
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      isVisible: true,
+      initialStep: 2,
+      request: null,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens on the last page when the link names one that was since removed', async () => {
+    const renderer = await render();
+    await request(ID, 7);
+
+    expect(useWhatsNewStore.getState().initialStep).toBe(2);
+    act(() => renderer.unmount());
+  });
+
+  it('opens the announcement that replaced the linked one on its first page', async () => {
+    const replacement: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
+    const refetch = serverHas(replacement);
+    useWhatsNewStore.setState({ whatsNew: null });
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(refetch).toHaveBeenCalled();
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: replacement,
+      isVisible: true,
+      initialStep: 0,
+      request: null,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('asks the server even when the stored copy is the linked announcement', async () => {
+    // Stored this session, replaced on the server since.
+    const replacement: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
+    const refetch = serverHas(replacement);
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(refetch).toHaveBeenCalled();
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: replacement,
+      isVisible: true,
+      initialStep: 0,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens nothing when no announcement is active', async () => {
+    serverHas(null);
+    useWhatsNewStore.setState({ whatsNew: null });
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    act(() => renderer.unmount());
+  });
+
+  it('does not revive a stored announcement the server has switched off', async () => {
+    serverHas(null);
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    act(() => renderer.unmount());
+  });
+
+  it('opens the stored copy when the server cannot be reached', async () => {
+    const refetch = jest
+      .fn()
+      .mockResolvedValue({ isSuccess: false, isError: true, data: undefined });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: active,
+      isVisible: true,
+      initialStep: 1,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens the stored copy offline without waiting for a connection', async () => {
+    (onlineManager.isOnline as jest.Mock).mockReturnValue(false);
+    const refetch = serverHas(null);
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(refetch).not.toHaveBeenCalled();
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: true, initialStep: 2 });
+    act(() => renderer.unmount());
+  });
+
+  it('opens the stored copy when the connection drops during the refresh', async () => {
+    let goOnline: ((online: boolean) => void) | undefined;
+    const unsubscribe = jest.fn();
+    (onlineManager.subscribe as jest.Mock).mockImplementation(listener => {
+      goOnline = listener;
+      return unsubscribe;
+    });
+    // Paused by React Query until the connection is back.
+    let settle: (result: unknown) => void = () => {};
+    const refetch = jest.fn(() => new Promise(resolve => (settle = resolve)));
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch });
+
+    const renderer = await render();
+    await request(ID, 2);
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: { id: ID } });
+
+    await act(async () => goOnline!(false));
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: active,
+      isVisible: true,
+      initialStep: 2,
+      request: null,
+    });
+    expect(unsubscribe).toHaveBeenCalled();
+
+    // The paused refresh finishing later does not answer the link again.
+    act(() => useWhatsNewStore.setState({ isVisible: false }));
+    await act(async () => settle({ isSuccess: true, data: null }));
+    expect(useWhatsNewStore.getState()).toMatchObject({ whatsNew: active, isVisible: false });
+    act(() => renderer.unmount());
+  });
+
+  it('starts the next opening at the top once the linked one is closed', async () => {
+    const seen: ReturnType<typeof useWhatsNew>[] = [];
+    const Capture = () => {
+      seen.push(useWhatsNew(false));
+      return null;
+    };
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Capture />);
+    });
+    await request(ID, 1);
+    expect(useWhatsNewStore.getState().initialStep).toBe(1);
+
+    act(() => seen[seen.length - 1].closeWhatsNew());
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, initialStep: 0 });
     act(() => renderer!.unmount());
   });
 });

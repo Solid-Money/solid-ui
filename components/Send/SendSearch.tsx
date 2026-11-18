@@ -13,7 +13,7 @@ import { SEND_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCrossChainSendConfig } from '@/hooks/useCrossChainSendConfig';
 import { fetchAddressBook } from '@/lib/api';
-import { TransactionStatus, TransactionType } from '@/lib/types';
+import { isRecentSendActivity } from '@/lib/sendRecipients';
 import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { getCrossChainSendToken } from '@/lib/utils/cross-chain-send';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
@@ -58,13 +58,7 @@ const SendSearch: React.FC = () => {
   });
 
   const sendActivities = useMemo(() => {
-    const filtered = activities.filter(
-      activity =>
-        (activity.type === TransactionType.SEND ||
-          activity.type === TransactionType.CROSS_CHAIN_SEND) &&
-        activity.toAddress &&
-        activity.status === TransactionStatus.SUCCESS,
-    );
+    const filtered = activities.filter(isRecentSendActivity);
 
     // Deduplicate by address - keep only the most recent transaction per address
     const addressMap = new Map<string, (typeof filtered)[0]>();

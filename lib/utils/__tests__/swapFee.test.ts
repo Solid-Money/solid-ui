@@ -1,6 +1,12 @@
 import { zeroAddress } from 'viem';
 
-import { buildSwapFeeTransfer, computeSwapFee, noSwapFee, SwapFeeBasis } from '@/lib/utils/swapFee';
+import {
+  buildSwapFeeTransfer,
+  computeSwapFee,
+  grossForSwapAmount,
+  noSwapFee,
+  SwapFeeBasis,
+} from '@/lib/utils/swapFee';
 
 /** A 6-decimal token amount, the common case (USDC/USDT on Fuse). */
 const usdc = (whole: number) => BigInt(Math.round(whole * 1_000_000));
@@ -107,6 +113,36 @@ describe('computeSwapFee — exact out (fee added on top of the required input)'
 
     expect(fee.feeAmount).toBe(0n);
     expect(fee.totalAmount).toBe(usdc(100));
+  });
+});
+
+describe('grossForSwapAmount — an exact-out input carried over to exact in', () => {
+  const routed = (amount: bigint, rate: number) =>
+    computeSwapFee({ amount, rate, basis: SwapFeeBasis.DeductedFromInput }).swapAmount;
+
+  it('pays enough that the fee comes out and the route still gets what it needs', () => {
+    const gross = grossForSwapAmount(usdc(100), CORE_RATE);
+    expect(gross).toBe(100_502_513n);
+    expect(routed(gross, CORE_RATE)).toBe(100_000_001n);
+  });
+
+  it.each([
+    [1n, CORE_RATE],
+    [999n, CORE_RATE],
+    [usdc(18.43), PRIME_RATE],
+    [123_456_789_012_345_678_901n, CORE_RATE],
+    [usdc(5000), 0.3],
+  ])('leaves %p, or one unit more, to route at %p', (amount, rate) => {
+    const left = routed(grossForSwapAmount(amount, rate), rate);
+    expect(left >= amount).toBe(true);
+    expect(left - amount <= 1n).toBe(true);
+  });
+
+  it('adds nothing when no fee applies', () => {
+    expect(grossForSwapAmount(usdc(100), ULTRA_RATE)).toBe(usdc(100));
+    expect(grossForSwapAmount(usdc(100), undefined)).toBe(usdc(100));
+    expect(grossForSwapAmount(usdc(100), Number.NaN)).toBe(usdc(100));
+    expect(grossForSwapAmount(0n, CORE_RATE)).toBe(0n);
   });
 });
 

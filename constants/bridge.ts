@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
-import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 
@@ -218,9 +218,11 @@ export const BRIDGE_TOKENS: BridgeTokens = {
  * address (`SAVINGS_FUND_EURC`), which takes EURC on Base only.
  *
  * Base only for now. The backend also accepts EURC sent from Ethereum
- * (0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c) and bridges it to Base, but that
- * leg is not offered until the backend wallet carries an Ethereum EURC float to
- * pay the bridge's exact-output overshoot. Adding the entry back offers it.
+ * (`EURC_ETHEREUM_ADDRESS`) and bridges it to Base, but that leg is not offered
+ * here until the backend wallet carries an Ethereum EURC float to pay the
+ * bridge's exact-output overshoot. Adding the entry offers it. The wallet and
+ * soEURC deposit screens take Ethereum EURC through rhino.fi instead, which
+ * pays it out as EURC on Base and needs no float of ours.
  */
 export const EURC_TOKENS: Record<number, BridgeToken> = {
   [base.id]: {
@@ -232,6 +234,69 @@ export const EURC_TOKENS: Record<number, BridgeToken> = {
     isPermit: false,
   },
 };
+
+/**
+ * ETH and WETH on Base, as soETH deposit tokens only. The Safe deposits them into
+ * the Base soETH teller itself (lib/deposit/soEthBase.ts). Kept out of
+ * BRIDGE_TOKENS[base], which every surface that offers a token on a chain reads:
+ * listing them there would offer them to bridging and card funding as well.
+ */
+export const SOETH_BASE_DEPOSIT_TOKENS: Record<string, BridgeToken> = {
+  ETH: {
+    name: 'ETH',
+    fullName: 'Ether',
+    address: '0x0000000000000000000000000000000000000000',
+    decimals: 18,
+    icon: require('@/assets/images/eth.png'),
+    isPermit: false,
+    isNative: true,
+  },
+  WETH: {
+    name: 'WETH',
+    fullName: 'Wrapped Ether',
+    address: '0x4200000000000000000000000000000000000006',
+    decimals: 18,
+    icon: require('@/assets/images/weth.png'),
+    isPermit: false,
+  },
+};
+
+/**
+ * What soBTC takes, by chain: WBTC on Ethereum and WBTC on Base (BitGo's LayerZero OFT). Offered
+ * to the BTC vault alone, like SOETH_BASE_DEPOSIT_TOKENS, so neither appears in bridging or card
+ * funding.
+ */
+export const SOBTC_DEPOSIT_TOKENS: Record<number, Record<string, BridgeToken>> = {
+  [mainnet.id]: {
+    WBTC: {
+      name: 'WBTC',
+      fullName: 'Wrapped BTC',
+      address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      decimals: 8,
+      icon: require('@/assets/images/wbtc.png'),
+      isPermit: false,
+    },
+  },
+  [base.id]: {
+    WBTC: {
+      name: 'WBTC',
+      fullName: 'Wrapped BTC',
+      address: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
+      decimals: 8,
+      icon: require('@/assets/images/wbtc.png'),
+      isPermit: false,
+    },
+  },
+};
+
+/**
+ * Circle's EURC on Ethereum, as rhino.fi lists it
+ * (`/sda/deposit-addresses/ETHEREUM/BASE/supported-tokens`) and Circle
+ * publishes it. Only for the screens that take it through rhino.fi (the wallet
+ * deposit address, soEURC's direct deposit); not in `EURC_TOKENS`, which would
+ * offer it to card funding and the savings deposit form as well.
+ */
+export const EURC_ETHEREUM_ADDRESS = '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c';
 
 export const getUsdcAddress = (chainId: number) => {
   const usdcAddress = BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
@@ -255,6 +320,28 @@ export const getBridgeTokenDecimals = (chainId: number, tokenName: string): numb
   return token?.decimals ?? 6;
 };
 
+/**
+ * Chains the wallet holds tokens on that are not bridge sources.
+ *
+ * Kept out of `BRIDGE_TOKENS` for the same reason Base USDT is: every surface
+ * that offers a chain reads that map, so listing Optimism there would offer it
+ * for card funding, savings and withdrawals, none of which have a route on it.
+ * It is only somewhere a deposit lands (see `WALLET_DEPOSIT_TOKENS`), so it
+ * needs a name and an icon wherever a held token's chain is drawn.
+ */
+const WALLET_ONLY_CHAINS: BridgeTokens = {
+  [optimism.id]: {
+    name: 'Optimism',
+    icon: require('@/assets/images/op.png'),
+    sort: 7,
+  },
+};
+
+/**
+ * The name and icon to draw a chain with: a bridge source, or a chain the
+ * wallet only holds tokens on. Callers read `.name` and `.icon` off it
+ * unguarded, so a token held on Optimism must not come back undefined.
+ */
 export const getBridgeChain = (chainId: number) => {
-  return BRIDGE_TOKENS[chainId];
+  return BRIDGE_TOKENS[chainId] ?? WALLET_ONLY_CHAINS[chainId];
 };

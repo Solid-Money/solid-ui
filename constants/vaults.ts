@@ -4,11 +4,14 @@ import { base, fuse, mainnet } from 'viem/chains';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import {
   ADDRESSES,
+  EXPO_PUBLIC_MINIMUM_BTC_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
+import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
+import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { Vault, VaultType } from '@/lib/types';
 
 const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
@@ -16,9 +19,7 @@ const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
 /**
  * soEURC — EURC on Base, earning in euros.
  *
- * In every build's VAULTS, so a soEURC held anywhere is recognised and can be withdrawn. Who is
- * OFFERED it is per user: everyone on QA/preview, the Wirex test users in production — see
- * `useEurVaultAccess`, which the Earn row, savings vault list, deposit picker and deep link check.
+ * Offered to everyone, in every build, like the other vaults.
  * v1 takes EURC on Base only, from the Solid wallet or a connected external wallet;
  * there is no fast withdraw and no on-ramp or bridge into it.
  */
@@ -43,6 +44,33 @@ export const EUR_VAULT: Vault = {
   vaultName: 'EUR Yield',
 };
 
+/**
+ * soBTC — BTC Yield. WBTC on Ethereum and WBTC on Base, each kept in its own chain's vault; one
+ * share, held on Base whichever was deposited. Withdrawals pay WBTC on Ethereum (lib/soBtc.ts).
+ *
+ * Listed only in a build with both soBTC deployments (`isSoBtcConfigured`).
+ */
+export const BTC_VAULT: Vault = {
+  name: 'BTC',
+  type: VaultType.BTC,
+  vaultToken: 'soBTC',
+  icon: 'images/btc.png',
+  decimals: SOBTC_DECIMALS,
+  minimumAmount: EXPO_PUBLIC_MINIMUM_BTC_DEPOSIT_AMOUNT,
+  vaults: [
+    // Base first: screens that show one share address read vaults[0].
+    { address: SOBTC_ADDRESSES.base.vault, chainId: base.id },
+    // Shares only sit on Ethereum between the two steps of a withdrawal.
+    { address: SOBTC_ADDRESSES.ethereum.vault, chainId: mainnet.id },
+  ],
+  depositConfig: {
+    methods: ['wallet'],
+    supportedChains: [mainnet.id, base.id],
+    supportedTokens: ['WBTC'],
+  },
+  vaultName: 'BTC Yield',
+};
+
 export const VAULTS: Vault[] = [
   {
     name: 'USDC',
@@ -60,8 +88,8 @@ export const VAULTS: Vault[] = [
         address: ADDRESSES.fuse.vault,
         chainId: fuse.id,
       },
-      // Shares sit on Base between a withdrawal's bridge and its queue request.
-      // Kept last: screens that show one share address read vaults[0].
+      // soUSD deposited on Base keeps its shares on Base, where the card spends
+      // them. Kept last: screens that show one share address read vaults[0].
       ...(ADDRESSES.base.vault !== zeroAddress
         ? [{ address: ADDRESSES.base.vault, chainId: base.id }]
         : []),
@@ -114,16 +142,23 @@ export const VAULTS: Vault[] = [
         address: ADDRESSES.fuse.soEthVault,
         chainId: fuse.id,
       },
+      // ETH and WETH deposited on Base, and Ethereum deposits, mint their shares
+      // on Base, where the card spends and lends against them. Kept last:
+      // screens that show one share address read vaults[0].
+      ...(isSoEthBaseConfigured ? [{ address: ADDRESSES.base.soEthVault, chainId: base.id }] : []),
     ],
     depositConfig: {
       methods: ['wallet'],
-      supportedChains: [mainnet.id],
+      // Base takes a deposit from the Solid wallet only: the Safe calls the Base
+      // teller itself (lib/deposit/soEthBase.ts).
+      supportedChains: isSoEthBaseConfigured ? [mainnet.id, base.id] : [mainnet.id],
       supportedTokens: ['WETH', 'ETH'],
     },
     vaultName: 'ETH Yield',
   },
-  // Always last: `useSavingStore` persists the selected vault as an index into
-  // this list, so inserting a vault ahead of the others would move a returning
-  // user's selection onto a different vault.
+  // `useSavingStore` persists the selected vault as an index into this list, so
+  // a vault is only ever added at the end: inserting one ahead of the others
+  // would move a returning user's selection onto a different vault.
   EUR_VAULT,
+  ...(isSoBtcConfigured ? [BTC_VAULT] : []),
 ];

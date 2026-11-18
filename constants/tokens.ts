@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { Token } from '@cryptoalgebra/fuse-sdk';
-import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
@@ -45,6 +45,7 @@ export const NATIVE_TOKENS: Record<number, string> = {
   [arbitrum.id]: 'ETH',
   [bsc.id]: 'BNB',
   [polygon.id]: 'POL',
+  [optimism.id]: 'ETH',
 };
 
 /** CoinGecko API coin ids */
@@ -55,6 +56,7 @@ export const NATIVE_COINGECKO_TOKENS: Record<number, string> = {
   [arbitrum.id]: 'ethereum',
   [bsc.id]: 'binancecoin',
   [polygon.id]: 'polygon-ecosystem-token',
+  [optimism.id]: 'ethereum',
 };
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {

@@ -9,6 +9,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
+import {
+  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
+  isBridgePaymasterAddress,
+} from '@/lib/protocolAddresses';
 import { AddressBookRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
@@ -22,12 +26,17 @@ const crossChainFields = {
   token: z.string().optional(),
 };
 
+const walletAddressField = z
+  .string()
+  .refine(val => val.trim().length > 0, { error: 'Address is required' })
+  .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
+  .refine(val => !isBridgePaymasterAddress(val.trim()), {
+    error: BRIDGE_PAYMASTER_RECIPIENT_ERROR,
+  })
+  .transform(val => val.trim());
+
 const addressBookSchema = z.object({
-  walletAddress: z
-    .string()
-    .refine(val => val.trim().length > 0, { error: 'Address is required' })
-    .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
-    .transform(val => val.trim()),
+  walletAddress: walletAddressField,
   name: z
     .string()
     .min(1, { error: 'Name is required' })
@@ -37,11 +46,7 @@ const addressBookSchema = z.object({
 });
 
 const addressBookSchemaOptionalName = z.object({
-  walletAddress: z
-    .string()
-    .refine(val => val.trim().length > 0, { error: 'Address is required' })
-    .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
-    .transform(val => val.trim()),
+  walletAddress: walletAddressField,
   name: z
     .string()
     .transform(val => val.trim())
@@ -103,7 +108,7 @@ export const useAddressBook = (options?: {
 
   const addToAddressBookMutation = useMutation({
     mutationFn: (data: AddressBookRequest) => withRefreshToken(() => addToAddressBook(data)),
-    onSuccess: () => {
+    onSuccess: (_data, saved) => {
       queryClient.invalidateQueries({ queryKey: ['address-book'] });
       if (options?.onSuccess) {
         options.onSuccess();
@@ -115,6 +120,13 @@ export const useAddressBook = (options?: {
             badgeText: 'Success',
           },
         });
+        // Send to the contact just saved. The form starts from the store's
+        // address and the user may have edited it; leaving the store as it was
+        // sent a user's funds to the old prefill, not the contact they named.
+        const { setAddress, setName, setSearchQuery } = useSendStore.getState();
+        setAddress(saved.walletAddress);
+        setName(saved.name ?? '');
+        setSearchQuery(saved.name || saved.walletAddress);
         setModal(recipientNextModal());
       }
     },

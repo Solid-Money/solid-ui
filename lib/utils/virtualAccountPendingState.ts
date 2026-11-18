@@ -16,6 +16,9 @@ import { getVirtualAccountRainStatus } from '@/lib/utils/virtualAccountRainStatu
  *  - `denied`: Rain said no (or locked/cancelled the application).
  *  - `verification-declined`: Didit declined the identity check before anything
  *    reached Rain, so the user may verify again.
+ *  - `verification-resubmit`: Didit approved, but the answers cannot be sent to
+ *    Rain (a US SSN that is not 9 digits), so the user has to verify again and
+ *    enter it properly.
  *  - `deposit-required`: Didit approved, but the hand-off to Rain is held until
  *    the minimum savings deposit is held.
  *  - `waiting`: a decision genuinely still to come.
@@ -30,6 +33,7 @@ export type VirtualAccountPendingState =
   | 'approved'
   | 'denied'
   | 'verification-declined'
+  | 'verification-resubmit'
   | 'deposit-required'
   | 'waiting';
 
@@ -61,6 +65,10 @@ export function resolveVirtualAccountPendingState(
   ) {
     return 'verification-declined';
   }
+
+  // Ahead of the deposit hold: the forward got past the deposit and failed on
+  // the answers, so "Submit application" would only replay that failure.
+  if (rainRow?.resubmitVerification === true) return 'verification-resubmit';
 
   if (rainRow?.forwardPendingDeposit === true) return 'deposit-required';
 

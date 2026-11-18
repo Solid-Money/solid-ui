@@ -39,6 +39,18 @@ export interface CardBottomSheetProps {
   designTop: number;
   /** Space Figma leaves below the body's last element, before any safe-area inset. */
   designBottom: number;
+  /**
+   * Native only: let the body scroll once it is taller than the screen. The sheet still sizes
+   * to its content below that. For a body that can outgrow a small phone — the borrow position
+   * with a loan on each instance; web already scrolls.
+   */
+  scrollable?: boolean;
+  /**
+   * Native only: how this sheet treats one already open beneath it. `push` keeps that one in
+   * place, dimmed under this sheet's backdrop — for a sheet opened from inside another, like
+   * "How collateral works" over the spend-mode picker. Gorhom's default, `switch`, hides it.
+   */
+  stackBehavior?: 'push' | 'switch' | 'replace';
   children: (body: CardSheetBody) => ReactNode;
 }
 

@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
 import { Address, formatUnits } from 'viem';
-import { base, fuse } from 'viem/chains';
+import { base, fuse, mainnet } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -21,21 +21,25 @@ import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
+import { getBridgeTokenDecimals } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import useDepositFromEOABtc, { SOBTC_EOA_BASE_UNSUPPORTED } from '@/hooks/useDepositFromEOABtc';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAEur from '@/hooks/useDepositFromEOAEur';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
+import useDepositFromSolidBtc from '@/hooks/useDepositFromSolidBtc';
 import useDepositFromSolidEth from '@/hooks/useDepositFromSolidEth';
 import useDepositFromSolidEur from '@/hooks/useDepositFromSolidEur';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import useUser from '@/hooks/useUser';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
@@ -44,6 +48,7 @@ import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { formatBtcAmount } from '@/lib/soBtc';
 import { Status, TokenBalance, TokenType, VaultType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { showTextInputFromStart } from '@/lib/utils/textInput';
@@ -74,6 +79,17 @@ function getGaslessText(
   return `Gasless deposit - Please deposit above ${amountLabel} so we can cover your fees`;
 }
 
+/**
+ * soBTC's note under the form. Either input ends as soBTC on Base; an Ethereum WBTC deposit gets
+ * there over LayerZero, whose fee is paid in ETH on Ethereum (from the Safe or the connected wallet).
+ */
+function getSoBtcDepositNote(chainId: number | undefined): string {
+  if (chainId === mainnet.id) {
+    return 'You get soBTC on Base. Your WBTC stays on Ethereum; a small bridge fee in ETH applies and soBTC arrives in a few minutes.';
+  }
+  return 'You get soBTC on Base right away. Your WBTC stays on Base.';
+}
+
 function DepositToVaultForm() {
   const {
     setModal,
@@ -82,6 +98,7 @@ function DepositToVaultForm() {
     principalToken,
     depositFromSolid,
     depositSourceChosen,
+    externalWalletAddress,
     setPrincipalToken,
     setSrcChainId,
     setDepositSourceChosen,
@@ -93,11 +110,13 @@ function DepositToVaultForm() {
       principalToken: state.principalToken,
       depositFromSolid: state.depositFromSolid,
       depositSourceChosen: state.depositSourceChosen,
+      externalWalletAddress: state.externalWallet.address,
       setPrincipalToken: state.setPrincipalToken,
       setSrcChainId: state.setSrcChainId,
       setDepositSourceChosen: state.setDepositSourceChosen,
     })),
   );
+  const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
@@ -330,9 +349,41 @@ function DepositToVaultForm() {
     vault.minimumAmount,
   );
 
+  const {
+    balance: balanceBtc,
+    deposit: depositBtc,
+    depositStatus: depositStatusBtc,
+    hash: hashBtc,
+    error: errorBtc,
+  } = useDepositFromEOABtc(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const {
+    balance: balanceSolidBtc,
+    deposit: depositSolidBtc,
+    depositStatus: depositStatusSolidBtc,
+    hash: hashSolidBtc,
+    error: errorSolidBtc,
+  } = useDepositFromSolidBtc(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
   const isFuseVault = vault.type === VaultType.FUSE;
   const isEthVault = vault.type === VaultType.ETH;
   const isEurVault = vault.type === VaultType.EUR;
+  // soBTC: WBTC on Ethereum or on Base, 8 decimals on both (lib/soBtc.ts).
+  const isBtcVault = vault.type === VaultType.BTC;
+  const useSolidForBtc = isBtcVault && depositFromSolid;
+  // A connected wallet can't deposit WBTC on Base (the shares would mint to that wallet, not the
+  // Safe). Say so up front instead of reading a 0 balance and failing every amount.
+  const isBtcEoaOnBase = isBtcVault && !depositFromSolid && normalizedSelection.chainId === base.id;
+  /** One hook's value for the soBTC vault, from the Solid wallet or the external one. */
+  const btcPick = <T,>(solid: T, eoa: T) => (useSolidForBtc ? solid : eoa);
   const isNativeFuse = isFuseVault && normalizedSelection.principalToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
@@ -343,7 +394,8 @@ function DepositToVaultForm() {
   const useSolidForUsdc = isUsdVault && depositFromSolid;
   // Exactly one of these holds whenever the deposit comes from the Solid
   // balance, which is also when the form has no external wallet to name.
-  const isDepositFromSolid = useSolidForFuse || useSolidForEth || useSolidForEur || useSolidForUsdc;
+  const isDepositFromSolid =
+    useSolidForFuse || useSolidForEth || useSolidForEur || useSolidForUsdc || useSolidForBtc;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
@@ -368,82 +420,92 @@ function DepositToVaultForm() {
     }
   }, [isNativeFuse, useSolidForFuse, setPrincipalToken]);
 
-  const balanceForVault = isEurVault
-    ? useSolidForEur
-      ? balanceSolidEur
-      : balanceEur
-    : isEthVault
-      ? useSolidForEth
-        ? balanceSolidEth
-        : balanceEth
-      : isFuseVault
-        ? useSolidForFuse
-          ? balanceSolidFuse
-          : balanceFuse
-        : useSolidForUsdc
-          ? balanceSolidUsdc
-          : balance;
+  const balanceForVault = isBtcVault
+    ? btcPick(balanceSolidBtc, balanceBtc)
+    : isEurVault
+      ? useSolidForEur
+        ? balanceSolidEur
+        : balanceEur
+      : isEthVault
+        ? useSolidForEth
+          ? balanceSolidEth
+          : balanceEth
+        : isFuseVault
+          ? useSolidForFuse
+            ? balanceSolidFuse
+            : balanceFuse
+          : useSolidForUsdc
+            ? balanceSolidUsdc
+            : balance;
   const balanceDecimals = selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6);
-  const depositFn = isEurVault
-    ? useSolidForEur
-      ? depositSolidEur
-      : depositEur
-    : isEthVault
-      ? useSolidForEth
-        ? depositSolidEth
-        : depositEth
-      : isFuseVault
-        ? useSolidForFuse
-          ? depositSolidFuse
-          : depositFuse
-        : useSolidForUsdc
-          ? depositSolidUsdc
-          : deposit;
-  const depositStatusForVault = isEurVault
-    ? useSolidForEur
-      ? depositStatusSolidEur
-      : depositStatusEur
-    : isEthVault
-      ? useSolidForEth
-        ? depositStatusSolidEth
-        : depositStatusEth
-      : isFuseVault
-        ? useSolidForFuse
-          ? depositStatusSolidFuse
-          : depositStatusFuse
-        : useSolidForUsdc
-          ? depositStatusSolidUsdc
-          : depositStatus;
-  const hashForVault = isEurVault
-    ? useSolidForEur
-      ? hashSolidEur
-      : hashEur
-    : isEthVault
-      ? useSolidForEth
-        ? hashSolidEth
-        : hashEth
-      : isFuseVault
-        ? useSolidForFuse
-          ? hashSolidFuse
-          : hashFuse
-        : useSolidForUsdc
-          ? hashSolidUsdc
-          : hash;
-  const errorForVault = isEurVault
-    ? useSolidForEur
-      ? errorSolidEur
-      : errorEur
-    : isEthVault
-      ? useSolidForEth
-        ? errorSolidEth
-        : errorEth
-      : isFuseVault
-        ? useSolidForFuse
-          ? errorSolidFuse
-          : errorFuse
-        : useSolidForUsdc
-          ? errorSolidUsdc
-          : error;
+  const depositFn = isBtcVault
+    ? btcPick(depositSolidBtc, depositBtc)
+    : isEurVault
+      ? useSolidForEur
+        ? depositSolidEur
+        : depositEur
+      : isEthVault
+        ? useSolidForEth
+          ? depositSolidEth
+          : depositEth
+        : isFuseVault
+          ? useSolidForFuse
+            ? depositSolidFuse
+            : depositFuse
+          : useSolidForUsdc
+            ? depositSolidUsdc
+            : deposit;
+  const depositStatusForVault = isBtcVault
+    ? btcPick(depositStatusSolidBtc, depositStatusBtc)
+    : isEurVault
+      ? useSolidForEur
+        ? depositStatusSolidEur
+        : depositStatusEur
+      : isEthVault
+        ? useSolidForEth
+          ? depositStatusSolidEth
+          : depositStatusEth
+        : isFuseVault
+          ? useSolidForFuse
+            ? depositStatusSolidFuse
+            : depositStatusFuse
+          : useSolidForUsdc
+            ? depositStatusSolidUsdc
+            : depositStatus;
+  const hashForVault = isBtcVault
+    ? btcPick(hashSolidBtc, hashBtc)
+    : isEurVault
+      ? useSolidForEur
+        ? hashSolidEur
+        : hashEur
+      : isEthVault
+        ? useSolidForEth
+          ? hashSolidEth
+          : hashEth
+        : isFuseVault
+          ? useSolidForFuse
+            ? hashSolidFuse
+            : hashFuse
+          : useSolidForUsdc
+            ? hashSolidUsdc
+            : hash;
+  const errorForVault = isBtcVault
+    ? btcPick(errorSolidBtc, errorBtc)
+    : isEurVault
+      ? useSolidForEur
+        ? errorSolidEur
+        : errorEur
+      : isEthVault
+        ? useSolidForEth
+          ? errorSolidEth
+          : errorEth
+        : isFuseVault
+          ? useSolidForFuse
+            ? errorSolidFuse
+            : errorFuse
+          : useSolidForUsdc
+            ? errorSolidUsdc
+            : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY, isAPYsLoading } = useMaxAPY(vault.type);
@@ -455,14 +517,19 @@ function DepositToVaultForm() {
     const balanceAmount = balanceForVault
       ? Number(formatUnits(balanceForVault, balanceDecimals))
       : 0;
-    const tokenLabel = isFuseVault
-      ? (selectedTokenInfo?.name ?? 'WFUSE')
-      : isEthVault
-        ? (selectedTokenInfo?.name ?? 'WETH')
-        : isEurVault
-          ? 'EURC'
-          : 'USDC';
+    const tokenLabel = isBtcVault
+      ? (selectedTokenInfo?.name ?? 'WBTC')
+      : isFuseVault
+        ? (selectedTokenInfo?.name ?? 'WFUSE')
+        : isEthVault
+          ? (selectedTokenInfo?.name ?? 'WETH')
+          : isEurVault
+            ? 'EURC'
+            : 'USDC';
     const maxAmount = balanceAmount;
+    // BTC balances need their decimals: formatNumber's default rounds 0.00049 BTC to 0.
+    const formatLimit = (value: number) =>
+      isBtcVault ? formatBtcAmount(value, '').trim() : formatNumber(value);
 
     return z.object({
       amount: z
@@ -478,12 +545,13 @@ function DepositToVaultForm() {
           error: 'Amount too low',
         })
         .refine(val => Number(val) <= maxAmount, {
-          error: `Available balance is ${formatNumber(maxAmount)} ${tokenLabel}`,
+          error: `Available balance is ${formatLimit(maxAmount)} ${tokenLabel}`,
         }),
     });
   }, [
     balanceForVault,
     balanceDecimals,
+    isBtcVault,
     isFuseVault,
     isEthVault,
     isEurVault,
@@ -566,6 +634,7 @@ function DepositToVaultForm() {
   const {
     amountOut: previewAmountOut,
     isLoading: isPreviewDepositLoading,
+    isQuoteUnavailable,
     routingFee,
   } = usePreviewDeposit(
     // The preview quotes a route into USDC, which a EURC deposit never takes:
@@ -573,6 +642,11 @@ function DepositToVaultForm() {
     isEurVault ? '0' : watchedAmount || '0',
     selectedTokenInfo?.address,
     normalizedSelection.chainId,
+    // LI.FI simulates the route from the wallet the deposit comes from.
+    depositFromSolid ? user?.safeAddress : externalWalletAddress,
+    normalizedSelection.chainId
+      ? getBridgeTokenDecimals(normalizedSelection.chainId, selectedTokenInfo.name)
+      : undefined,
   );
 
   // Use vault's accountant rate for display; amountOut from preview (USDC + LiFi) or vault rate (e.g. FUSE)
@@ -583,8 +657,11 @@ function DepositToVaultForm() {
   const isAmountOutLoading =
     vault.name === 'USDC' ? isPreviewDepositLoading : vaultExchangeRate === undefined;
   const displayRate = vault.name === 'USDC' ? vaultExchangeRate : vaultExchangeRate;
+  // With no route quoted there is no amount to show, and 0 reads as a real one.
+  const showNoQuote = vault.name === 'USDC' && isQuoteUnavailable;
 
   const getButtonText = () => {
+    if (isBtcEoaOnBase) return 'Use your Solid wallet for WBTC on Base';
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
     if (depositStatusForVault.status === Status.PENDING) return depositStatusForVault.message;
@@ -602,20 +679,32 @@ function DepositToVaultForm() {
     setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
     if (!hashForVault) return;
 
+    // A Base WBTC deposit lands on Base in its own transaction; an Ethereum one bridges, like soUSD.
+    const isBtcOnBase = isBtcVault && normalizedSelection.chainId === base.id;
     const explorerUrl = isFuseVault
       ? explorerUrls[fuse.id]?.blockscout
-      : isEurVault
+      : isEurVault || isBtcOnBase
         ? base.blockExplorers.default.url
         : explorerUrls[layerzero.id]?.layerzeroscan;
 
-    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : isEurVault ? 'EURC' : 'USDC';
-    const toastIcon = isFuseVault
-      ? 'images/fuse-4x.png'
-      : isEthVault
-        ? 'images/eth.png'
-        : isEurVault
-          ? 'images/eurc.png'
-          : 'images/usdc.png';
+    const toastToken = isBtcVault
+      ? (selectedTokenInfo?.name ?? 'BTC')
+      : isFuseVault
+        ? 'FUSE'
+        : isEthVault
+          ? 'ETH'
+          : isEurVault
+            ? 'EURC'
+            : 'USDC';
+    const toastIcon = isBtcVault
+      ? 'images/wbtc.png'
+      : isFuseVault
+        ? 'images/fuse-4x.png'
+        : isEthVault
+          ? 'images/eth.png'
+          : isEurVault
+            ? 'images/eurc.png'
+            : 'images/usdc.png';
 
     Toast.show({
       type: 'success',
@@ -684,7 +773,7 @@ function DepositToVaultForm() {
   };
 
   const isFormDisabled = () => {
-    return isLoading || !isValid || !watchedAmount;
+    return isBtcEoaOnBase || isLoading || !isValid || !watchedAmount;
   };
 
   return (
@@ -717,7 +806,9 @@ function DepositToVaultForm() {
                 <View className="flex-row items-center gap-2">
                   <Wallet color="#A1A1A1" size={16} />
                   <Text className="text-base text-muted-foreground">
-                    {formatNumber(Number(formattedBalance))} {selectedTokenInfo.name}
+                    {isBtcVault
+                      ? formatBtcAmount(Number(formattedBalance), selectedTokenInfo.name)
+                      : `${formatNumber(Number(formattedBalance))} ${selectedTokenInfo.name}`}
                   </Text>
                   <Max
                     onPress={() => {
@@ -795,6 +886,10 @@ function DepositToVaultForm() {
                       <Text className="text-lg font-semibold">
                         {isAmountOutLoading ? (
                           <Skeleton className="h-7 w-20 bg-white/20" />
+                        ) : showNoQuote ? (
+                          '—'
+                        ) : isBtcVault ? (
+                          formatBtcAmount(amountOut || 0, '')
                         ) : isScreenMedium ? (
                           compactNumberFormat(amountOut || 0)
                         ) : (
@@ -812,7 +907,9 @@ function DepositToVaultForm() {
                       {`1 ${vaultToken} = `}
                       {vault.name === 'USDC'
                         ? `$${formatNumber(displayRate ?? 0)}`
-                        : `${formatNumber(displayRate ?? 0)} ${selectedTokenInfo.name}`}
+                        : isBtcVault
+                          ? `${(displayRate ?? 0).toFixed(8)} BTC`
+                          : `${formatNumber(displayRate ?? 0)} ${selectedTokenInfo.name}`}
                     </Text>
                   </View>
                 </View>
@@ -823,9 +920,11 @@ function DepositToVaultForm() {
                       <Skeleton className="h-7 w-20 bg-white/20" />
                     ) : (
                       <Text className="text-lg font-semibold">
-                        {vault.name === 'USDC'
-                          ? `$${formatNumber(routingFee)}`
-                          : `${getVaultCurrencySymbol(vault.type)}0`}
+                        {showNoQuote
+                          ? '—'
+                          : vault.name === 'USDC'
+                            ? `$${formatNumber(routingFee)}`
+                            : `${getVaultCurrencySymbol(vault.type)}0`}
                       </Text>
                     )}
                   </View>
@@ -839,6 +938,9 @@ function DepositToVaultForm() {
                       ) : isEurVault && !isAPYsLoading ? (
                         // EUR Yield's rate is 0% for now: shown, not a skeleton that never resolves.
                         '0.00%'
+                      ) : isBtcVault && !isAPYsLoading ? (
+                        // No soBTC rate reported yet: a dash, never an invented one.
+                        '—'
                       ) : (
                         <Skeleton className="h-7 w-20 bg-white/20" />
                       )}
@@ -859,7 +961,11 @@ function DepositToVaultForm() {
                 <View className="flex-row items-start gap-2">
                   <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
                   <Text className="max-w-xs text-sm text-muted-foreground">
-                    {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
+                    {isBtcEoaOnBase
+                      ? SOBTC_EOA_BASE_UNSUPPORTED
+                      : isBtcVault
+                        ? getSoBtcDepositNote(normalizedSelection.chainId)
+                        : getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
                   </Text>
                 </View>
               </View>

@@ -13,6 +13,7 @@ import {
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
 } from '@/lib/config';
+import { readAccountSuspended } from '@/lib/errors/accountSuspended';
 import { AuthTokens, CardProvider, CardResponse, RainContractResponseDto, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -100,12 +101,17 @@ export function formatCentsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+/** Format a balance behind `symbol`; show "<$0.01" when amount is positive but less than 0.01 */
+export function formatBalance(value: number, symbol = '$', decimals = 2): string {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return `${symbol}0.00`;
+  if (num < 0.01) return `<${symbol}0.01`;
+  return `${symbol}${formatNumber(num, decimals)}`;
+}
+
 /** Format USD balance; show "<$0.01" when amount is positive but less than 0.01 */
 export function formatBalanceUSD(value: number, decimals = 2): string {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num <= 0) return `$0.00`;
-  if (num < 0.01) return '<$0.01';
-  return `$${formatNumber(num, decimals)}`;
+  return formatBalance(value, '$', decimals);
 }
 
 export function formatUSD(number: number) {
@@ -157,6 +163,24 @@ export const setIsLoggingOut = (value: boolean) => {
 
 export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
+};
+
+// Called instead of the logout handler when the backend says the account is
+// suspended, so the user is told why rather than that their session expired.
+let globalSuspendedHandler: (() => void) | null = null;
+
+export const setGlobalSuspendedHandler = (handler: () => void) => {
+  globalSuspendedHandler = handler;
+};
+
+/**
+ * Sign out and say the account is suspended. Falls back to the plain logout
+ * when no suspended handler is registered (a test, or before the app mounts).
+ */
+const endSuspendedSession = () => {
+  if (isLoggingOut) return;
+  if (globalSuspendedHandler) globalSuspendedHandler();
+  else globalLogoutHandler?.();
 };
 
 export const isHTTPError = (error: any, status: number) => {
@@ -313,6 +337,17 @@ export const ensureFreshAccessToken = async (): Promise<void> => {
 // Optional call: test suites that mock lib/api don't provide it.
 setAuthPreflight?.(ensureFreshAccessToken);
 
+/**
+ * Ends the session as suspended when `error` is the backend's suspension
+ * refusal (always a 403), and says whether it was.
+ */
+const endSessionIfSuspended = async (error: any): Promise<boolean> => {
+  if (!isHTTPError(error, 403) && !isHTTPError(error?.response, 403)) return false;
+  if (!(await readAccountSuspended(error))) return false;
+  endSuspendedSession();
+  return true;
+};
+
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
@@ -324,6 +359,12 @@ export const withRefreshToken = async <T>(
     // A superseded request (react-query aborts the previous one when the query
     // key changes) is expected control flow, not a failure to log.
     if (error?.name === 'AbortError') {
+      throw error;
+    }
+
+    // Suspended by an admin: the token is genuine, so refreshing it cannot help.
+    // End the session and say why, instead of letting every screen fail on its own.
+    if (await endSessionIfSuspended(error)) {
       throw error;
     }
 
@@ -340,6 +381,10 @@ export const withRefreshToken = async <T>(
     try {
       await refreshSessionTokens();
     } catch (refreshTokenError) {
+      if (await readAccountSuspended(refreshTokenError)) {
+        endSuspendedSession();
+        throw refreshTokenError;
+      }
       if (onError) {
         onError();
       } else if (
@@ -353,8 +398,15 @@ export const withRefreshToken = async <T>(
       throw refreshTokenError;
     }
 
-    // Retry original request with new access token
-    return await apiCall();
+    // Retry original request with new access token. A suspension placed after
+    // the refresh is refused here instead; it ends the session the same way,
+    // and nothing is refreshed again.
+    try {
+      return await apiCall();
+    } catch (retryError) {
+      await endSessionIfSuspended(retryError);
+      throw retryError;
+    }
   }
 };
 
@@ -410,7 +462,7 @@ export const isSoFUSEToken = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
 };
 
-/** soUSD on Base, where withdrawals bridge to once the vault moved off Ethereum. */
+/** soUSD on Base: deposits made on Base keep their shares there, where the card spends them. */
 export const isSoUSDBase = (contractAddress: string): boolean => {
   if (!contractAddress || ADDRESSES.base.vault === zeroAddress) return false;
   return contractAddress.toLowerCase() === ADDRESSES.base.vault.toLowerCase();
@@ -433,8 +485,16 @@ export const isSoETHFuse = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.soEthVault.toLowerCase();
 };
 
+/** soETH on Base: Base deposits and Ethereum deposits mint here, and the card spends it. */
+export const isSoETHBase = (contractAddress: string): boolean => {
+  if (!contractAddress || ADDRESSES.base.soEthVault === zeroAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.base.soEthVault.toLowerCase();
+};
+
 export const isSoETHToken = (contractAddress: string): boolean => {
-  return isSoETHEthereum(contractAddress) || isSoETHFuse(contractAddress);
+  return (
+    isSoETHEthereum(contractAddress) || isSoETHFuse(contractAddress) || isSoETHBase(contractAddress)
+  );
 };
 
 /**

@@ -10,17 +10,26 @@ import { CardProvider, DepositFeeQuote } from '@/lib/types';
  * destination lives on. Where that is depends on the flow that handed
  * out the address, and on who it was handed to:
  *
- * | Flow           | Who             | Charged on                                        |
- * | -------------- | --------------- | ------------------------------------------------- |
- * | Fund your card | Rain            | Every chain but Base, where the card is funded    |
- * | Fund your card | Either, EURC    | Every chain but Base, where EURC is delivered     |
- * | Wallet         | Wirex, EURC     | Every chain but Base, where EURC is delivered     |
- * | Wallet         | Wirex           | Stablecoins, on every chain but Fuse, where the   |
- * |                |                 | Safe the card spends from lives                   |
- * | Wallet         | No card         | Nothing                                           |
- * | Savings        | Rain or no card | Every chain but the vault's: Base for soUSD and   |
- * |                |                 | soEURC, Ethereum for soETH, Fuse for soFUSE       |
- * | Savings        | Wirex           | Nothing, for Phase 1                              |
+ * | Address              | Who             | Charged on                                  |
+ * | -------------------- | --------------- | ------------------------------------------- |
+ * | Card (`RAIN_CARD`)   | Rain or no card | Every chain but Base, where the card is     |
+ * |                      |                 | funded                                      |
+ * | Card (`RAIN_CARD`)   | Either, EURC    | Every chain but Base, where EURC is         |
+ * |                      |                 | delivered                                   |
+ * | Card (`RAIN_CARD`)   | Wirex           | Stablecoins, on every chain but Base, where |
+ * |                      |                 | the Safe the card spends from lives, and    |
+ * |                      |                 | Fuse, which delivers to the Safe there      |
+ * | Wallet (`WALLET`)    | Anyone          | Stablecoins, on every chain but Base, where |
+ * |                      |                 | they are bridged to the Safe. Anything else |
+ * |                      |                 | is forwarded to the Safe where it arrived   |
+ * | Savings (`PROTOCOL`) | Rain or no card | Every chain but the vault's: Base for soUSD |
+ * |                      |                 | and soEURC, Ethereum for soETH, Fuse for    |
+ * |                      |                 | soFUSE                                      |
+ * | Savings (`PROTOCOL`) | Wirex           | Nothing, for Phase 1                        |
+ *
+ * The flow decides the address, except on the wallet screen: it mints a
+ * `WALLET` address, but a Wirex cardholder's dollars on Fuse get a card one
+ * (see `getWalletOwnAddress`), so the screen says which it handed out.
  *
  * The client collects nothing here. This only decides whether a deposit address
  * screen warns that the deposit will be charged, so a rule that changes belongs
@@ -63,13 +72,17 @@ const VAULT_CHAIN_IDS: Record<string, number> = {
   soEURC: base.id,
 };
 
+/** The kind of address the backend prices a deposit on. */
+export type DepositFeeDestinationType = 'PROTOCOL' | 'RAIN_CARD' | 'WALLET';
+
 /**
  * Whether this deposit can be charged: the default rate in parts per million
  * when it can, 0 when it is free by rule.
  *
- * Only a Wirex card changes the rules. No card, a Rain card and the deprecated
- * Bridge card (which `useCardProvider` already reports as no card) all follow
- * the Rain rows.
+ * Only a Wirex card changes the card rules. No card, a Rain card and the
+ * deprecated Bridge card (which `useCardProvider` already reports as no card)
+ * all follow the Rain rows. The wallet's own address is priced the same for
+ * everyone (the backend books it on the Rain card row, for every program).
  */
 export function getDepositFeeRatePpm({
   provider,
@@ -77,23 +90,38 @@ export function getDepositFeeRatePpm({
   chainId,
   symbol,
   vaultToken,
+  walletAddress,
 }: {
   /** The user's card issuer, or null when they have no card. */
   provider: CardProvider | null | undefined;
   product: DepositFeeProduct;
   /** Chain the deposit is sent on. */
   chainId: number;
-  /** Currency being sent. Only a Wirex cardholder's fee depends on it. */
+  /** Currency being sent. */
   symbol?: string;
   /** Share token a savings deposit mints (soUSD, soETH, soFUSE, soEURC). Unused otherwise. */
   vaultToken?: string;
+  /**
+   * The kind of address the wallet screen minted: `WALLET` unless it was a
+   * card one (a Wirex cardholder's dollars on Fuse). Unused otherwise.
+   */
+  walletAddress?: 'WALLET' | 'RAIN_CARD';
 }): number {
   const isWirex = provider === CardProvider.WIREX;
+  const destinationType = getDepositFeeDestinationType(product, walletAddress);
+
+  // The wallet's own address bridges the dollar stablecoins to the Safe on
+  // Base, and forwards anything else to the Safe on the chain it arrived on,
+  // which costs nothing. So only a dollar stablecoin sent off Base is charged,
+  // whoever sends it.
+  if (destinationType === 'WALLET') {
+    return isStablecoinSymbol(symbol) && chainId !== base.id ? DEFAULT_DEPOSIT_FEE_RATE_PPM : 0;
+  }
 
   // A EURC card deposit goes to the Safe on Base whoever issued the card, so it
   // is charged only when it has to be bridged there.
   const isEurc = symbol?.toUpperCase() === 'EURC';
-  if (isEurc && (product === 'card' || (product === 'wallet' && isWirex))) {
+  if (isEurc && destinationType === 'RAIN_CARD') {
     return chainId === base.id ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
   }
 
@@ -110,28 +138,30 @@ export function getDepositFeeRatePpm({
   }
 
   // A Wirex card holds no balance of its own, so funding it is funding the Safe
-  // on Fuse, whichever flow the address came from. Only stablecoins are routed
-  // there by the deposit pipeline; ETH and FUSE are sent straight to the Safe.
+  // it spends from: on Base, or on Fuse for a deposit sent on Fuse. Either is
+  // free; anything else is bridged to Base. Only stablecoins are routed there
+  // by the deposit pipeline; ETH and FUSE are sent straight to the Safe.
   if (isWirex) {
-    return isStablecoinSymbol(symbol) && chainId !== fuse.id ? DEFAULT_DEPOSIT_FEE_RATE_PPM : 0;
+    return isStablecoinSymbol(symbol) && chainId !== base.id && chainId !== fuse.id
+      ? DEFAULT_DEPOSIT_FEE_RATE_PPM
+      : 0;
   }
 
-  if (product === 'card') return chainId === base.id ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
-
-  // The wallet flow charges cardholders only. Rain cardholders are sent to "Fund
-  // your card" instead, so whoever is left here has no card.
-  return 0;
+  return chainId === base.id ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
 }
 
 /**
- * The deposit address the backend prices a flow's deposit on. The card and
- * wallet flows both mint theirs as `RAIN_CARD`, which the backend delivers to
- * whichever card the user holds - the Rain card on Base, or a Wirex card's Safe
- * on Fuse, or the Safe on Base for EURC - and prices on that route.
+ * The deposit address the backend prices a flow's deposit on: savings'
+ * `PROTOCOL` address, the card's `RAIN_CARD` one (which the backend delivers to
+ * whichever card the user holds - the Rain card on Base, a Wirex card's Safe on
+ * Base or on Fuse, or the Safe on Base for EURC), and for the wallet the kind
+ * of address the screen minted, `WALLET` unless it says otherwise.
  */
 export const getDepositFeeDestinationType = (
   product: DepositFeeProduct,
-): 'PROTOCOL' | 'RAIN_CARD' => (product === 'savings' ? 'PROTOCOL' : 'RAIN_CARD');
+  walletAddress: 'WALLET' | 'RAIN_CARD' = 'WALLET',
+): DepositFeeDestinationType =>
+  product === 'savings' ? 'PROTOCOL' : product === 'card' ? 'RAIN_CARD' : walletAddress;
 
 /**
  * The rate the notice quotes, or undefined while it is still being asked for.

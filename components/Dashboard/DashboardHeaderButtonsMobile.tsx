@@ -25,6 +25,7 @@ const DashboardHeaderButtonsMobile = () => {
       />
 
       <SwapModal
+        entryPoint="dashboard"
         trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
       />
 

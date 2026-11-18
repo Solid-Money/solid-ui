@@ -37,7 +37,7 @@ jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
 jest.mock('@/lib/api', () => ({
   updateSafeAddress: (...args: unknown[]) => mockUpdateSafeAddress(...args),
 }));
-jest.mock('@/lib/utils', () => ({
+jest.mock('@/lib/utils/utils', () => ({
   withRefreshToken: (apiCall: () => Promise<unknown>) => apiCall(),
 }));
 jest.mock('@/hooks/useAnalytics', () => ({

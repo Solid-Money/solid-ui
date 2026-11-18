@@ -52,6 +52,12 @@ export const ERROR_ACTIONS = {
   account: { title: 'Couldn’t update your account', label: 'Account', money: false },
   referral: { title: 'Couldn’t add the referral', label: 'Referral', money: false },
   subscription: { title: 'Couldn’t update your plan', label: 'Plan', money: false },
+  ai_api: { title: 'Couldn’t update your AI API keys', label: 'AI API', money: false },
+  ai_api_billing: {
+    title: 'Couldn’t allow AI API charges',
+    label: 'AI API billing',
+    money: false,
+  },
   load: { title: 'Couldn’t load this', label: 'Loading', money: false },
   refresh: { title: 'Couldn’t refresh', label: 'Refresh', money: false },
   generic: { title: 'Something went wrong', label: 'App', money: false },

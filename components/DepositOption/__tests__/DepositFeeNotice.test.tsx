@@ -1,5 +1,5 @@
 import React from 'react';
-import { base, fuse, mainnet } from 'viem/chains';
+import { base, fuse, mainnet, polygon } from 'viem/chains';
 
 import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { CardProvider } from '@/lib/types';
@@ -59,29 +59,57 @@ test('warns a Rain cardholder funding their card off Base, and not on it', () =>
   expect(notice(base.id)).toEqual([]);
 });
 
-test('warns a Wirex cardholder sending a stablecoin to the wallet off Fuse, and only then', () => {
-  const notice = (chainId: number, symbol: string) =>
+// The wallet's own address bridges dollars to the Safe on Base, and the backend
+// charges that whoever holds which card.
+test('warns anyone sending dollars to a wallet address off Base, and only then', () => {
+  for (const provider of [null, CardProvider.RAIN, CardProvider.WIREX]) {
+    const notice = (chainId: number, symbol: string) =>
+      render(
+        <DepositFeeNotice product="wallet" provider={provider} chainId={chainId} symbol={symbol} />,
+      );
+
+    expect(notice(mainnet.id, 'USDT')).toEqual([FEE_LINE]);
+    expect(notice(polygon.id, 'USDC')).toEqual([FEE_LINE]);
+    expect(notice(base.id, 'USDC')).toEqual([]);
+    // Forwarded to the Safe where it arrived, not bridged.
+    expect(notice(mainnet.id, 'ETH')).toEqual([]);
+  }
+});
+
+// A Wirex cardholder's dollars on Fuse get a card address, which delivers to
+// their Safe there, free.
+test('prices a card address on the wallet screen as the card', () => {
+  const notice = (chainId: number) =>
     render(
       <DepositFeeNotice
         product="wallet"
         provider={CardProvider.WIREX}
         chainId={chainId}
-        symbol={symbol}
+        symbol="USDC"
+        walletAddress="RAIN_CARD"
       />,
     );
 
-  expect(notice(base.id, 'USDC')).toEqual([FEE_LINE]);
-  expect(notice(mainnet.id, 'USDT')).toEqual([FEE_LINE]);
-  expect(notice(fuse.id, 'USDC')).toEqual([]);
-  expect(notice(mainnet.id, 'ETH')).toEqual([]);
+  expect(notice(fuse.id)).toEqual([]);
+  expect(notice(base.id)).toEqual([]);
+  expect(notice(mainnet.id)).toEqual([FEE_LINE]);
 });
 
-test('shows nothing on the wallet deposit to someone with no card', () => {
-  expect(
+// The Safe it spends from is on Base now; Fuse delivers to the Safe there.
+test('warns a Wirex cardholder funding their card off Base and Fuse, and only then', () => {
+  const notice = (chainId: number) =>
     render(
-      <DepositFeeNotice product="wallet" provider={null} chainId={mainnet.id} symbol="USDC" />,
-    ),
-  ).toEqual([]);
+      <DepositFeeNotice
+        product="card"
+        provider={CardProvider.WIREX}
+        chainId={chainId}
+        symbol="USDT"
+      />,
+    );
+
+  expect(notice(base.id)).toEqual([]);
+  expect(notice(fuse.id)).toEqual([]);
+  expect(notice(polygon.id)).toEqual([FEE_LINE]);
 });
 
 test("follows the vault's chain on a savings deposit", () => {
@@ -122,14 +150,18 @@ describe('the rate', () => {
 });
 
 describe('the quote', () => {
-  test('is asked of the card address for the card and wallet flows', () => {
+  test('is asked of the address each flow hands out', () => {
     rainCardNotice();
+    render(
+      <DepositFeeNotice product="wallet" provider={null} chainId={polygon.id} symbol="USDT" />,
+    );
     render(
       <DepositFeeNotice
         product="wallet"
         provider={CardProvider.WIREX}
-        chainId={base.id}
-        symbol="USDT"
+        chainId={mainnet.id}
+        symbol="USDC"
+        walletAddress="RAIN_CARD"
       />,
     );
 
@@ -142,9 +174,16 @@ describe('the quote', () => {
         enabled: true,
       },
       {
-        destinationType: 'RAIN_CARD',
-        chainId: base.id,
+        destinationType: 'WALLET',
+        chainId: polygon.id,
         symbol: 'USDT',
+        provider: null,
+        enabled: true,
+      },
+      {
+        destinationType: 'RAIN_CARD',
+        chainId: mainnet.id,
+        symbol: 'USDC',
         provider: CardProvider.WIREX,
         enabled: true,
       },

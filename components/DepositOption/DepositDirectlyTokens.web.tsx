@@ -3,15 +3,18 @@ import { View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
+import RhinoNetworksNotice from '@/components/DepositOption/RhinoDeposit/RhinoNetworksNotice';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDepositDirectlyRhino } from '@/hooks/useDepositDirectlyRhino';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { showErrorToast } from '@/lib/errors';
+import { getRhinoListNotice, isOfferedRhinoRow, RhinoRowState } from '@/lib/rhinoDeposit';
 import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -22,8 +25,15 @@ type TokenOption = {
   symbol: string;
   name: string;
   icon: any;
+  /** How it is served on this chain: rhino.fi's soUSD route, or our session on Fuse. */
+  state: RhinoRowState;
 };
 
+/**
+ * "Deposit directly": the stablecoin to send on the chain already picked. Only
+ * those with an address — rhino.fi's soUSD route off Fuse, our own session on
+ * Fuse — and a loader or a retry while rhino.fi's routes cannot say.
+ */
 const DepositDirectlyTokens = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { setModal, directDepositSession, setDirectDepositSession } = useDepositStore(
@@ -35,28 +45,45 @@ const DepositDirectlyTokens = () => {
   );
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
+  const { rhino, resolve, openRhino, clearRhino } = useDepositDirectlyRhino();
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const hasTrackedTokenView = useRef(false);
+  // The latest pick, and whether this step is still on screen: a session that
+  // answers after the user picked again, or left, is not acted on.
+  const pickRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const chainId = directDepositSession.chainId || 1;
   const network = BRIDGE_TOKENS[chainId];
 
-  // Get available tokens for this chain
-  const availableTokens = useMemo(() => {
+  // The tokens this chain carries, and how each is served there.
+  const chainTokens = useMemo(() => {
     const allowedSymbols = getAllowedTokensForChain(chainId);
 
     return Object.entries(network?.tokens ?? {})
       .filter(([symbol]) => allowedSymbols.includes(symbol))
-      .map(([symbol, token]) => {
+      .map(([symbol, token]): TokenOption => {
         const icon =
           token.icon || (symbol === 'USDT' ? USDT_ICON : symbol === 'USDC' ? USDC_ICON : USDC_ICON);
         return {
           symbol,
           name: token.fullName || token.name || symbol,
           icon,
+          state: resolve(chainId, symbol),
         };
       });
-  }, [chainId, network?.tokens]);
+  }, [chainId, network?.tokens, resolve]);
+  const availableTokens = useMemo(
+    () => chainTokens.filter(token => isOfferedRhinoRow(token.state)),
+    [chainTokens],
+  );
+  const notice = getRhinoListNotice(chainTokens.map(token => token.state));
 
   // Track when token selection screen is viewed
   useEffect(() => {
@@ -73,6 +100,8 @@ const DepositDirectlyTokens = () => {
   }, [availableTokens, chainId, network?.name]);
 
   const handleTokenSelect = async (token: TokenOption) => {
+    const pick = ++pickRef.current;
+    const isCurrent = () => mountedRef.current && pickRef.current === pick;
     try {
       setSelectedToken(token.symbol);
 
@@ -95,11 +124,21 @@ const DepositDirectlyTokens = () => {
         token_name: token.name,
       });
 
+      // rhino.fi's address for it: no session to mint.
+      if (token.state.kind === 'rhino') {
+        setSelectedToken(null);
+        openRhino(token.state.selection);
+        return;
+      }
+
+      // Fuse: our own session, as before.
+      clearRhino();
       // Store selected token
       setDirectDepositSession({ selectedToken: token.symbol });
 
       // Create direct deposit session
-      const session = await createDirectDepositSession(chainId, token.symbol);
+      const session = await createDirectDepositSession(chainId, token.symbol, { isCurrent });
+      if (!isCurrent()) return;
 
       // Track session creation
       track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -115,6 +154,7 @@ const DepositDirectlyTokens = () => {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
     } catch (error) {
       console.error('Failed to create direct deposit session:', error);
+      if (!isCurrent()) return;
       setSelectedToken(null);
 
       // Reported (with a Ref) by the shared helper; no separate capture.
@@ -150,6 +190,16 @@ const DepositDirectlyTokens = () => {
             />
           );
         })}
+        {notice ? (
+          <RhinoNetworksNotice
+            notice={notice}
+            symbol="a stablecoin"
+            noun="tokens"
+            hasRows={availableTokens.length > 0}
+            onRetry={rhino.retry}
+            className="rounded-[15px] bg-card"
+          />
+        ) : null}
       </View>
     </View>
   );

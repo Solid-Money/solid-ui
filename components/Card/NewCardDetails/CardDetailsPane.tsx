@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
+import CardLivePopup from '@/components/Card/CardLivePopup';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
 import CardCashbackCard from '@/components/Card/NewCardDetails/CardCashbackCard';
@@ -27,23 +28,25 @@ import {
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import EnableCardSpendingCard from '@/components/Card/NewCardDetails/EnableCardSpendingCard';
-import EnableEuroSpendCard from '@/components/Card/NewCardDetails/EnableEuroSpendCard';
 import EnableRealTimeFundingCard from '@/components/Card/NewCardDetails/EnableRealTimeFundingCard';
 import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
 import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import useCreditModeFigures from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
+import RainClosingCardNotice from '@/components/Card/RainSunset/RainClosingCardNotice';
 import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { formatUsd, onChainToUsd } from '@/constants/cardSpendModule';
 import { isCardSpendV2Configured } from '@/constants/cardSpendV2';
-import { DigitalWalletType } from '@/constants/digital-wallet';
+import { DEVICE_DIGITAL_WALLET, DigitalWalletType } from '@/constants/digital-wallet';
 import { CARD_FROZEN_BY_SOLID_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
+import { useBaseCreditInstance } from '@/hooks/useCardCreditPositions';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import {
@@ -52,13 +55,18 @@ import {
 } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
-import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
+import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
+import { useRainSunset } from '@/hooks/useRainSunset';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { monthlyCashbackCap } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackCap,
+  resolveAllTimeCashback,
+  resolveCashbackMonth,
+} from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
-import { CardStatus } from '@/lib/types';
+import { CardProvider, CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
   canToggleCardFreeze,
@@ -112,9 +120,17 @@ const CardDetailsPane = () => {
 
   const { data: cardDetails, refetch, dataUpdatedAt } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
+  // Rain sunset: the card-closing notice under the card art.
+  const { sunset: rainSunset } = useRainSunset();
+  const showsClosingNotice = Boolean(rainSunset?.notice && rainSunset.hasRainCard);
   const { data: customer } = useCustomer();
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
+  // Either read: the status names the issuer from KYC on, so the card-live popup is never preceded
+  // by a flash of Rain's while the card read catches up.
+  const isWirexCard =
+    provider === CardProvider.WIREX || cardStatus?.provider === CardProvider.WIREX;
+  const openDepositFlow = useOpenDepositFlow();
   const [isFreezing, setIsFreezing] = useState(false);
   // When Solid last refused an unfreeze. Until a card read newer than that lands,
   // the details on screen are the ones that offered it, so a refresh that fails
@@ -134,7 +150,15 @@ const CardDetailsPane = () => {
   // Which funds the card draws on — cash, credit or both. UI only for now: the
   // sheet previews the three modes and never commits one.
   const spendModeFigures = useSpendModeFigures();
-  const euroSpend = useEuroSpendEnablement();
+  // The borrow-position card counts Base as well as Fuse, so a loan drawn only on Base still
+  // shows here. Base is read only for a cardholder live on it; everyone else reads Fuse alone,
+  // through the registration the figures above already use.
+  const { isLive: borrowsOnBase } = useBaseCreditInstance();
+  const creditFigures = useCreditModeFigures({ enabled: borrowsOnBase });
+  const showsBorrowPosition =
+    spendModeFigures.showsBorrowPosition ||
+    creditFigures.hasDebt ||
+    (spendModeFigures.canBorrow && creditFigures.hasLine);
   /**
    * Real-Time Funding: the card draws from the cardholder's own wallet at the
    * moment of the swipe, on an ERC-20 allowance they grant in advance.
@@ -316,8 +340,10 @@ const CardDetailsPane = () => {
     router.push(path.REWARDS_BENEFITS);
   }, [closePane]);
 
-  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  // In the cardholder's cashback currency — euros, euro caps and a euro
+  // lifetime for a euro cardholder, never mixed with dollars.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
   // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
   // while this absolute pane does not. Keep the pane on the measured card centre so
   // opening it never adds the resulting half-scrollbar horizontal drift.
@@ -355,6 +381,13 @@ const CardDetailsPane = () => {
             // country the status endpoint reports (it's absent for test overrides).
             issuingCountryCode={cardDetails?.issuing_country ?? cardStatus?.country}
           />
+          {/* Rain sunset: right under the card art (Figma "2 · Card screen · closing
+              notice"), above the action row. */}
+          {showsClosingNotice ? (
+            <HeroEnter spec={HERO_ENTER.closingNotice} style={styles.closingNotice}>
+              <RainClosingCardNotice />
+            </HeroEnter>
+          ) : null}
           <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
             <CardActionsRow
               isCardFrozen={isCardFrozen}
@@ -385,19 +418,6 @@ const CardDetailsPane = () => {
           {spendModeFigures.canChangeMode ? (
             <HeroEnter spec={HERO_ENTER.spendMode} style={styles.spendModeCard}>
               <SpendingModeCard mode={spendModeFigures.mode} onChangeMode={openSpendMode} />
-            </HeroEnter>
-          ) : null}
-          {/* Wirex cards only, and gone for good once enabled — the backend stores the enablement per
-              chain, so it does not come back on another device. Offered in the spend-mode sheet,
-              above the balance it adds EURC to (Figma 29128:9415), so it shows here only for a
-              card with no spend mode row to open that sheet from. */}
-          {euroSpend.shouldOffer && !spendModeFigures.canChangeMode ? (
-            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.euroSpendCard}>
-              <EnableEuroSpendCard
-                isEnabling={euroSpend.isEnabling}
-                error={euroSpend.error}
-                onEnable={() => euroSpend.enable('card_screen')}
-              />
             </HeroEnter>
           ) : null}
           {/* Until the allowance is granted, Rain declines every authorization on
@@ -438,13 +458,13 @@ const CardDetailsPane = () => {
               see `showsBorrowPosition`. A cardholder on Credit needs to see what they can
               spend against BEFORE they spend it; gating on the loan meant the first thing
               they learned about their own line was a decline. */}
-          {spendModeFigures.showsBorrowPosition ? (
+          {showsBorrowPosition ? (
             <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.borrowPositionCard}>
               <BorrowPositionCard
-                borrowed={spendModeFigures.borrowed}
-                creditLimit={spendModeFigures.creditLimit}
-                borrowApy={spendModeFigures.borrowApy}
-                borrowedProgress={spendModeFigures.borrowedProgress}
+                borrowed={creditFigures.borrowed}
+                creditLimit={creditFigures.creditLimit}
+                borrowApy={creditFigures.borrowApy}
+                borrowedProgress={creditFigures.borrowedProgress}
                 onPress={() => setIsBorrowPositionOpen(true)}
               />
             </HeroEnter>
@@ -454,11 +474,12 @@ const CardDetailsPane = () => {
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
               cashbackRate={resolveUserCashbackRate(rewardsData)}
-              cashbackThisMonth={cashbackThisMonth}
-              cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-              maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-              tierMonthlyCap={rewardsData?.maxCashbackMonthly}
-              allTimeCashback={allTimeCashback}
+              currency={cashbackMonth?.currency}
+              cashbackThisMonth={cashbackMonth?.cashbackThisMonth ?? 0}
+              cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+              maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+              tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
+              {...allTimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
             />
           </HeroEnter>
@@ -490,10 +511,32 @@ const CardDetailsPane = () => {
           <CardDetailsHeader onBack={close} />
         </View>
       </View>
-      <CardWelcomePopup
-        isOpen={isOpen && shouldShowWelcomePopup}
-        onClose={() => setShouldShowWelcomePopup(false)}
-      />
+      {/* Wait until the issuer query has answered (provider resolves non-null)
+          before choosing a popup, so a Wirex card never flashes the non-Wirex
+          welcome popup first. */}
+      {provider !== null &&
+        (isWirexCard ? (
+          <CardLivePopup
+            isOpen={isOpen && shouldShowWelcomePopup}
+            onClose={() => setShouldShowWelcomePopup(false)}
+            last4={cardDetails?.card_details?.last_4}
+            onAddFunds={
+              canAddFundsToCard(fundsAccess)
+                ? () => openDepositFlow({ source: 'card_live_popup', buttonText: 'Add funds' })
+                : undefined
+            }
+            wallet={DEVICE_DIGITAL_WALLET}
+            onAddToWallet={wallet => {
+              setWalletFromManage(wallet);
+              setIsAddToWalletOpen(true);
+            }}
+          />
+        ) : (
+          <CardWelcomePopup
+            isOpen={isOpen && shouldShowWelcomePopup}
+            onClose={() => setShouldShowWelcomePopup(false)}
+          />
+        ))}
       <ManageCardSheet
         isOpen={isOpen && spendSheetSource !== null}
         onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
@@ -559,9 +602,9 @@ const styles = StyleSheet.create({
   },
   // Figma vertical rhythm (26134:23654): 51 from the panel to the action icons, 53
   // to the spend-mode row, then 20 between each card down the stack.
+  closingNotice: { marginTop: 24 },
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
-  euroSpendCard: { marginTop: 20 },
   realTimeFundingCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
   cashbackCard: { marginTop: 20 },

@@ -5,12 +5,15 @@ import { Href, useNavigationContainerRef, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
 import { KNOWN_HOSTS } from '@/constants/deeplink';
+import { homeLinkParamsFor, parseHomeLinkAction } from '@/constants/homeLinkParams';
 import { cardThreeDsRequestPath, cardTransactionDetailPath, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { registerPushToken } from '@/lib/api';
+import { pushNotificationData } from '@/lib/pushNotificationData';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
+import { VaultType } from '@/lib/types';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -50,8 +53,9 @@ type NotificationData = {
   declineCode?: string;
   /**
    * Insufficient-funds decline (Wirex) and EURC arrival: the fix the push led with —
-   * `turn_on_euro`, `swap` or `add_funds`. The tap still opens the receipt (or the card
-   * screen, via `link`), which works the fix out again from what the user holds by then.
+   * `turn_on_euro`, `swap` or `add_funds`. The tap still opens the receipt, which works the fix
+   * out again from what the user holds by then. EURC arrival links `/card` with `turn_on_euro`,
+   * which opens Main currency here and the card screen on builds from before it.
    */
   fix?: string;
   /** Insufficient-funds decline: the gap, as a decimal in `shortfallCurrency`. */
@@ -95,14 +99,29 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
   '/': path.HOME,
   '/card': path.CARD_INFO,
   '/card/activate': path.CARD_ACTIVATE,
+  '/card/main-currency': path.CARD_MAIN_CURRENCY,
   '/savings': path.SAVINGS,
   '/activity': path.ACTIVITY,
   '/referral': path.REFERRAL,
   '/rewards': path.REWARDS,
   '/rewards/benefits': path.REWARDS_BENEFITS,
+  '/rewards/ai-api': path.AI_API,
+  // Referral v4. Both screens hand over to today's referral popup while v4 is off.
+  '/rewards/refer': path.REFER,
+  '/rewards/refer/invites': path.REFER_INVITES,
   '/savings/fuse': path.SAVINGS_FUSE,
+  '/earn': path.EARN,
   '/support': path.SUPPORT,
 };
+
+/** Vaults `/savings?vault=` may open: the savings screen's own selector values. */
+const LINKABLE_VAULTS: readonly string[] = Object.values(VaultType);
+
+/** `/rewards/ai-api?key=`: a key id, which is a 24-hex Mongo id. */
+const LINKABLE_AI_API_KEY = /^[a-f0-9]{24}$/i;
+
+/** Key sheet views `/rewards/ai-api?view=` may open: only "Change limit", for the limit pushes. */
+const LINKABLE_AI_API_VIEWS: readonly string[] = ['limit'];
 
 /**
  * The screen a push's deep link names, or undefined if it names none.
@@ -117,9 +136,15 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
  * something a user supplied is not the day to start looking for the control
  * point.
  *
- * `/rewards?referral=open` is the one path whose query changes the destination:
- * it is the referral sheet, which is its own Href. Everything else ignores the
- * query, which by then is only the campaign.
+ * Four paths read their query, because it is what picks the destination:
+ * `/rewards?referral=open` is the referral sheet; `/savings?vault=eur` is that
+ * vault's page (Euro yield); `/rewards/ai-api?key=<id>&view=limit` is that AI
+ * API key's "Change limit", where the limit pushes send a user to raise it;
+ * and `/` carries the one-shot Home params (`constants/homeLinkParams`) that
+ * open What's New on a given page, the deposit sheet or the spend-mode
+ * selector. Each is read through its own allowlist, and only the params it
+ * names are passed on. Everything else ignores the query, which by then is
+ * only the campaign.
  *
  * Returns undefined rather than throwing for a malformed, foreign or
  * unrecognised link so the caller falls back to the `type` switch: a link we
@@ -143,6 +168,29 @@ function routeForLink(link?: string): Href | undefined {
 
     if (pathname === '/rewards' && url.searchParams.get('referral') === 'open') {
       return path.REFERRAL_PROGRAM;
+    }
+
+    if (pathname === '/savings') {
+      const vault = url.searchParams.get('vault');
+      if (vault && LINKABLE_VAULTS.includes(vault)) {
+        return { pathname: '/savings', params: { vault } } as Href;
+      }
+    }
+
+    // A view names nothing without the key it is a view of, so it only rides
+    // along with one.
+    if (pathname === '/rewards/ai-api') {
+      const key = url.searchParams.get('key');
+      const view = url.searchParams.get('view');
+      if (key && LINKABLE_AI_API_KEY.test(key)) {
+        const params = view && LINKABLE_AI_API_VIEWS.includes(view) ? { key, view } : { key };
+        return { pathname: '/rewards/ai-api', params } as Href;
+      }
+    }
+
+    if (pathname === '/') {
+      const action = parseHomeLinkAction(param => url.searchParams.get(param));
+      if (action) return { pathname: '/', params: homeLinkParamsFor(action) } as Href;
     }
 
     return ROUTE_BY_LINK_PATH[pathname];
@@ -188,10 +236,17 @@ function getNotificationRoute(data?: NotificationData): Href {
   }
 
   const linked = routeForLink(data?.link);
+  // The EURC-arrived push links `/card` so builds without Main currency still land somewhere
+  // useful; this build opens Main currency, where the approval it asks for is.
+  if (linked === path.CARD_INFO && data?.fix === 'turn_on_euro') return path.CARD_MAIN_CURRENCY;
   if (linked) return linked;
 
   // A support reply always opens the chat, whatever host its link was built with.
   if (type === SUPPORT_PUSH_TYPE) return path.SUPPORT;
+
+  // AI API pushes (limit warning, limit reached, paused, cashback credited) all
+  // carry a link; this covers one whose link this build cannot read.
+  if (type?.startsWith('ai_api_')) return path.AI_API;
 
   // Legacy routing, for pushes that predate the deep link. Lifecycle types are
   // deliberately absent: they never had a branch here, so every one of them
@@ -329,7 +384,7 @@ function handleNotificationResponse(
     rememberResponse(id);
   }
 
-  const data = response.notification.request.content.data as NotificationData | undefined;
+  const data = pushNotificationData(response.notification.request) as NotificationData | undefined;
   recordOpen(data);
 
   try {

@@ -1,16 +1,47 @@
 import { base, fuse } from 'viem/chains';
 
-import { buildSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
+import {
+  buildSpendableAssetRows,
+  cardCreditAssetRow,
+  withCardCreditRow,
+} from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { baseSpendableAssets, CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
-import { TokenBalance, TokenType } from '@/lib/types';
+import { CardCreditSummary, TokenBalance, TokenType } from '@/lib/types';
 
 jest.mock('@/hooks/useBalances', () => ({ useBalances: jest.fn() }));
 jest.mock('@/hooks/useCardSpendableBalance', () => ({ useCardSpendableAssets: jest.fn() }));
 jest.mock('@/hooks/useVaultExchangeRate', () => ({ useVaultExchangeRate: jest.fn() }));
+jest.mock('@/hooks/useMainCurrency', () => ({ useMainCurrency: jest.fn() }));
+jest.mock('@/hooks/useCardCredit', () => ({ useCardCredit: jest.fn() }));
+// A test build has no Base soUSD or soETH vault configured; give it production's, as a
+// production build names them.
+jest.mock('@/lib/config', () => {
+  const actual = jest.requireActual('@/lib/config');
+  return {
+    ...actual,
+    ADDRESSES: {
+      ...actual.ADDRESSES,
+      base: {
+        ...actual.ADDRESSES.base,
+        vault: actual.PRODUCTION_VAULT_ADDRESSES.base.vault,
+        soEthVault: actual.PRODUCTION_VAULT_ADDRESSES.base.soEthVault,
+      },
+    },
+  };
+});
 
 const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const BASE_USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
+const CBBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
+const WETH = '0x4200000000000000000000000000000000000006';
+const SOL = '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82';
+const AAVE = '0x63706e401c06ac8513145b7687A14804d17f814b';
+const CBZEC = '0xB2000000000000000000008501b13360000cb2EC';
+const BASE_SOUSD = '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31';
+const BASE_SOETH = '0x9b0e0EFA48C00eBEeA845AeA197F0bB71529D235';
 
 const token = (overrides: Partial<TokenBalance>): TokenBalance => ({
   contractTickerSymbol: 'USDC',
@@ -100,6 +131,30 @@ describe('buildSpendableAssetRows', () => {
     expect(soEur?.usd).toBeCloseTo(10.2 * 1.1658, 4);
   });
 
+  it('values soEUR through the card euro rate when the Safe holds no EURC', () => {
+    const soUsd = HOLDINGS[2];
+    const { rows, totalUsd, dollarUsd } = buildSpendableAssetRows(
+      [
+        soUsd,
+        token({
+          contractTickerSymbol: 'soEUR',
+          contractAddress: ADDRESSES.base.soEurcVault,
+          balance: '10000000',
+          quoteRate: 0,
+          chainId: base.id,
+        }),
+      ],
+      [...CARD_SPENDABLE_ASSETS, ...baseSpendableAssets([EURC, ADDRESSES.base.soEurcVault])],
+      1.017,
+      1.125,
+    );
+
+    expect(rows.find(row => row.name === 'soEUR')?.usd).toBeCloseTo(10.17 * 1.125, 4);
+    // The balance counts both vaults; Cash, which pays dollar purchases, still counts soUSD alone.
+    expect(totalUsd).toBeCloseTo(18.47 * 1.0828 + 10.17 * 1.125, 4);
+    expect(dollarUsd).toBeCloseTo(18.47 * 1.0828, 4);
+  });
+
   it('leaves out an asset the Safe does not hold', () => {
     const { rows } = buildSpendableAssetRows([HOLDINGS[0]], CARD_SPENDABLE_ASSETS, undefined);
 
@@ -111,6 +166,153 @@ describe('buildSpendableAssetRows', () => {
       rows: [],
       totalUsd: 0,
       dollarUsd: 0,
+    });
+  });
+
+  /**
+   * The Base instance's list holds dollars and crypto as well as euros. Every address used to
+   * be filed under EURC, which would have called USDC, USDT and the collateral "EURC for euro
+   * purchases".
+   */
+  describe('the Base spend tokens', () => {
+    it("names each by its own address, in the backend's draw order", () => {
+      const assets = baseSpendableAssets([
+        BASE_USDC,
+        BASE_USDT,
+        EURC,
+        ADDRESSES.base.soEurcVault,
+        BASE_SOUSD,
+        BASE_SOETH,
+        CBBTC,
+        WETH,
+        SOL,
+        AAVE,
+        CBZEC,
+      ]);
+
+      expect(assets.map(asset => [asset.symbol, asset.qualifier])).toEqual([
+        ['USDC', undefined],
+        ['USDT', undefined],
+        ['EURC', 'for euro purchases'],
+        ['soEUR', 'for euro purchases'],
+        ['soUSD', undefined],
+        ['soETH', undefined],
+        ['cbBTC', undefined],
+        ['WETH', undefined],
+        ['SOL', undefined],
+        ['AAVE', undefined],
+        ['cbZEC', undefined],
+      ]);
+      expect(assets.every(asset => asset.chainIds?.[0] === base.id)).toBe(true);
+    });
+
+    it('leaves out an address this build cannot name rather than calling it EURC', () => {
+      expect(baseSpendableAssets(['0x000000000000000000000000000000000000dEaD', EURC])).toEqual([
+        expect.objectContaining({ symbol: 'EURC' }),
+      ]);
+    });
+
+    it('lists Base USDC as a dollar row and Bitcoin by name, in dollars, with its amount', () => {
+      const { rows, dollarUsd } = buildSpendableAssetRows(
+        [
+          token({ contractAddress: BASE_USDC, balance: '25000000', chainId: base.id }),
+          token({
+            contractTickerSymbol: 'cbBTC',
+            contractAddress: CBBTC,
+            balance: '120000',
+            contractDecimals: 8,
+            quoteRate: 80_000,
+            chainId: base.id,
+          }),
+        ],
+        baseSpendableAssets([BASE_USDC, CBBTC]),
+        undefined,
+      );
+
+      expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
+        ['usdc', 'USDC', undefined, '$25.00', undefined],
+        // 0.0012 BTC at $80,000.
+        ['cbbtc', 'cbBTC', 'Bitcoin', '$96.00', '0.0012 cbBTC'],
+      ]);
+      // Bitcoin counts in the balance, not as dollars.
+      expect(dollarUsd).toBeCloseTo(25, 4);
+    });
+
+    it('lists Base soUSD as a dollar row named for Base, and soETH as ETH Yield in dollars', () => {
+      const { rows, dollarUsd, totalUsd } = buildSpendableAssetRows(
+        [
+          token({
+            contractTickerSymbol: 'soUSD',
+            contractAddress: BASE_SOUSD,
+            balance: '10000000',
+            quoteRate: 1.0885,
+            chainId: base.id,
+          }),
+          token({
+            contractTickerSymbol: 'soETH',
+            contractAddress: BASE_SOETH,
+            balance: '500000000000000000',
+            contractDecimals: 18,
+            quoteRate: 2_100,
+            chainId: base.id,
+          }),
+        ],
+        baseSpendableAssets([BASE_SOUSD, BASE_SOETH]),
+        undefined,
+      );
+
+      expect(rows.map(row => [row.icon, row.name, row.subtitle, row.value, row.detail])).toEqual([
+        ['sousd', 'soUSD', 'USD Yield on Base', '$10.89', '10.00 soUSD'],
+        ['soeth', 'soETH', 'ETH Yield', '$1,050.00', '0.5 soETH'],
+      ]);
+      // soETH counts in the balance, not as dollars.
+      expect(dollarUsd).toBeCloseTo(10.885, 4);
+      expect(totalUsd).toBeCloseTo(1060.885, 4);
+    });
+  });
+
+  /** Eli, Nov 4: card credit heads the list, since every purchase uses it first. */
+  describe('card credit', () => {
+    const credit = (overrides: Partial<CardCreditSummary> = {}): CardCreditSummary => ({
+      availableUsd: 10,
+      pendingUsd: 0,
+      lifetimeGrantedUsd: 10,
+      lifetimeSpentUsd: 0,
+      spendable: true,
+      sources: [],
+      ...overrides,
+    });
+
+    it('reads what is left, used first', () => {
+      expect(cardCreditAssetRow(credit({ availableUsd: 12.5 }))).toEqual({
+        key: 'card-credit',
+        icon: 'cardCredit',
+        name: 'Card bonus',
+        subtitle: 'Used first',
+        value: '$12.50',
+        usd: 0,
+        isDollar: false,
+      });
+    });
+
+    it.each([
+      ['no summary', undefined],
+      ['nothing left', credit({ availableUsd: 0, pendingUsd: 4 })],
+      ['no active card to spend it with', credit({ spendable: false })],
+    ])('is left out with %s', (_label, summary) => {
+      expect(cardCreditAssetRow(summary)).toBeNull();
+    });
+
+    it('goes on top and adds nothing to the balance', () => {
+      const breakdown = buildSpendableAssetRows(HOLDINGS, CARD_SPENDABLE_ASSETS, 1.0);
+      const withCredit = withCardCreditRow(breakdown, credit());
+
+      expect(withCredit.rows.map(row => row.icon)).toEqual([
+        'cardCredit',
+        ...breakdown.rows.map(row => row.icon),
+      ]);
+      expect(withCredit.totalUsd).toBe(breakdown.totalUsd);
+      expect(withCredit.dollarUsd).toBe(breakdown.dollarUsd);
     });
   });
 });

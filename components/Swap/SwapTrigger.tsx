@@ -1,12 +1,16 @@
 import React, { ReactNode } from 'react';
 
 import SlotTrigger from '@/components/SlotTrigger';
-import { SWAP_MODAL } from '@/constants/modals';
-import { useSwapState } from '@/store/swapStore';
+import { SwapPreset } from '@/lib/swapDefaults';
+import { SwapEntryPoint, useSwapState } from '@/store/swapStore';
 
 type SwapTriggerProps = {
   trigger?: ReactNode;
   children?: ReactNode;
+  /** Where this button sits, for `swap_modal_viewed`. */
+  entryPoint?: SwapEntryPoint;
+  /** The pair the form opens on; the last pair used when left out. */
+  preset?: SwapPreset;
 };
 
 /**
@@ -15,11 +19,11 @@ type SwapTriggerProps = {
  *
  * The actual modal is rendered by SwapModalProvider at the app root.
  */
-const SwapTrigger = ({ trigger, children }: SwapTriggerProps) => {
-  const setModal = useSwapState(state => state.actions.setModal);
+const SwapTrigger = ({ trigger, children, entryPoint = 'unknown', preset }: SwapTriggerProps) => {
+  const openSwap = useSwapState(state => state.actions.openSwap);
 
   const handlePress = () => {
-    setModal(SWAP_MODAL.OPEN_FORM);
+    openSwap({ entryPoint, ...preset });
   };
 
   const content = trigger || children;

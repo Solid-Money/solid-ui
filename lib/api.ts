@@ -14,6 +14,8 @@ import {
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
+import { getBotProtectionHeaders } from '@/lib/botProtection';
+import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -58,6 +60,8 @@ import {
   CardAccessResponse,
   CardBalanceResponseDto,
   CardCollateralAvailableDto,
+  CardCreditHistoryResponse,
+  CardCreditSummary,
   CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
@@ -81,14 +85,15 @@ import {
   Deposit,
   DepositAssetsResponse,
   DepositFeeQuote,
+  DepositTokensAccessResponse,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
   DiditVerificationStatusResponse,
+  DirectDepositDestinationType,
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
   EphemeralKeyResponse,
-  EurVaultAccessResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
   FeatureAccessResponse,
@@ -109,6 +114,7 @@ import {
   LifiOrder,
   LifiQuoteResponse,
   LifiStatusResponse,
+  MainCurrency,
   MppCredentialsResponse,
   OnboardingFeeProduct,
   OnboardingFeeQuote,
@@ -131,14 +137,22 @@ import {
   RainRtfStatus,
   RecordStocksFeeParams,
   RecordSwapFeeParams,
+  ReferralInviteLookup,
   ReferralSummary,
+  ReferralV4Summary,
   RegionInterestPayload,
   ResumeRainForwardResponse,
   RewardsTier,
   RewardsUserData,
+  RhinoDepositAddressRequest,
+  RhinoDepositAddressResponse,
+  RhinoDepositAssetsResponse,
+  RhinoDepositsResponse,
   SavingsSummaryResponse,
+  SignedTurnkeyRequest,
   SourceDepositInstructions,
   StatementDownload,
+  StatementFormat,
   StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
@@ -157,6 +171,7 @@ import {
   TotalAPYResponse,
   TransfiCashoutConfig,
   TransfiCashoutDepositInstructions,
+  TransfiCashoutLimits,
   TransfiCashoutOrderStatus,
   TransfiCashoutPaymentMethod,
   TransfiCashoutQuote,
@@ -172,6 +187,7 @@ import {
   TransfiStatusResponse,
   UpdateActivityEvent,
   User,
+  VaAccessResponse,
   VaultBreakdown,
   VaultType,
   WalletEligibilityResponse,
@@ -192,6 +208,8 @@ import {
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
+
+import type { UserFeePromotionsResponse } from '@/lib/utils/feePromotion';
 
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
@@ -382,7 +400,7 @@ export const updateSafeAddress = async (safeAddress: string) => {
       body: JSON.stringify({ safeAddress }),
     },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toApiError(response, 'Failed to link Safe address');
   return response.json();
 };
 
@@ -1750,9 +1768,17 @@ const wirexBankHeaders = (withBody = false) => {
  * Always 200 — a user with no Wirex account comes back as
  * `{ rails: [], isWirexUser: false }` rather than a 404, so the caller reads
  * that flag instead of handling an error.
+ *
+ * `countryHint` is where the app thinks the user is. The server routes on it
+ * only for a user with no residence on file, and stores nothing.
  */
-export const getWirexBankOverview = async (): Promise<WirexBankOverviewDto> => {
-  const response = await fetch(WIREX_BANK_BASE, {
+export const getWirexBankOverview = async (countryHint?: string): Promise<WirexBankOverviewDto> => {
+  // Not `new URL()`: the base is relative on web when the API is same-origin.
+  const query = countryHint
+    ? `?${new URLSearchParams({ country: countryHint.toUpperCase() }).toString()}`
+    : '';
+
+  const response = await fetch(`${WIREX_BANK_BASE}${query}`, {
     credentials: 'include',
     headers: wirexBankHeaders(),
   });
@@ -2058,6 +2084,23 @@ export const getTransfiCashoutPaymentMethods = async (
   return response.json();
 };
 
+/** The USDC limits for one cash-out through a payout method. */
+export const getTransfiCashoutLimits = async (
+  currency: string,
+  paymentCode: string,
+): Promise<TransfiCashoutLimits> => {
+  const params = new URLSearchParams({ currency, paymentCode });
+  const response = await fetch(`${CASHOUT_BASE()}/limits?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  // A malformed body fails the query, and the screen checks only the balance.
+  const limits = readCashoutLimits(await response.json());
+  if (!limits) throw new Error('Cash-out limits response is malformed');
+  return limits;
+};
+
 /** What a USDC amount pays out in the chosen currency and method. */
 export const getTransfiCashoutQuote = async (
   amount: string,
@@ -2270,10 +2313,19 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
   return response.json();
 };
 
-export const checkVaAccess = async (countryCode: string): Promise<CardAccessResponse> => {
+/**
+ * Whether the Rain virtual account can be opened on an ID from `countryCode`,
+ * and which provider the user's account comes from. `residence` is where the
+ * app thinks the user lives, used only when the server has none on file.
+ */
+export const checkVaAccess = async (
+  countryCode: string,
+  residence?: string,
+): Promise<VaAccessResponse> => {
   const jwt = getJWTToken();
   const url = new URL('/accounts/v1/didit/check-va-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
   url.searchParams.append('countryCode', countryCode.toUpperCase());
+  if (residence) url.searchParams.append('residence', residence.toUpperCase());
 
   const response = await fetch(url.toString(), {
     credentials: 'include',
@@ -2348,6 +2400,7 @@ export const getSubOrgIdByUsername = async (username: string) => {
     headers: {
       'Content-Type': 'application/json',
       ...getPlatformHeaders(),
+      ...(await getBotProtectionHeaders()),
     },
     credentials: 'include',
     body: JSON.stringify({
@@ -2384,6 +2437,99 @@ export const fetchReferralSummary = async (): Promise<ReferralSummary> => {
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/referral/summary`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Referral program v4: terms, totals, every invited friend (v4 and legacy) and
+ * the user's own invite. `terms.enabled === false` — or any failure, 404
+ * included while the endpoint is not deployed — means the app keeps today's
+ * referral program, so callers treat an error as "off", never as a blocker.
+ */
+export const fetchReferralV4Summary = async (): Promise<ReferralV4Summary> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/referral/v4/summary`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Who a referral code belongs to and what the friend gets. Public — the invite
+ * page and the signup "Invite code" field read it before there is a session —
+ * so no auth header. An unknown code is `{ valid: false }`, not a 404.
+ */
+export const fetchReferralInvite = async (code: string): Promise<ReferralInviteLookup> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/referral/invite/${encodeURIComponent(code)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** The user's card credit: what is left, what is held, and where it came from. */
+export const fetchCardCreditSummary = async (): Promise<CardCreditSummary> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-credit`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Card credit grants, holds, spends and refunds, newest first. */
+export const fetchCardCreditHistory = async (
+  params: { limit?: number; before?: string } = {},
+): Promise<CardCreditHistoryResponse> => {
+  const jwt = getJWTToken();
+  // Not `new URL()`: the base is relative on web when the API is same-origin.
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.before) query.set('before', params.before);
+  const search = query.toString();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-credit/history${search ? `?${search}` : ''}`,
     {
       method: 'GET',
       headers: {
@@ -2598,6 +2744,12 @@ export const confirmTierLock = async (body: {
 export const confirmTierSubscription = async (body: {
   tier: RewardsTier;
   transactionHash: string;
+  /**
+   * The cross-chain transfer that brought the USDC in, when it was bridged.
+   * The backend reads it back from LI.FI and lets the first charge absorb what
+   * the bridge took, so a transfer that landed a little short still pays.
+   */
+  funding?: { transactionHash: string; fromChainId: number };
 }): Promise<TierMembershipState> => {
   const jwt = getJWTToken();
   const response = await fetch(
@@ -2662,9 +2814,14 @@ export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };
 
-export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
+/**
+ * The tier comparison. `currency: 'EUR'` asks for the monthly caps in euros, at the tiers' euro
+ * caps — what a euro cardholder's cashback is capped at.
+ */
+export const fetchTierBenefits = async (currency?: MainCurrency): Promise<TierBenefits[]> => {
+  const query = currency === 'EUR' ? '?currency=EUR' : '';
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits${query}`,
     {
       method: 'GET',
       headers: {
@@ -2697,6 +2854,30 @@ export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
     },
     credentials: 'include',
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The fee promotions running now that would save this user something, with
+ * how many free fees they have left under each — e.g. their next SEPA deposits
+ * to the euro account being free. Empty when nothing is running, and for a
+ * user whose plan already pays nothing on the promoted fee.
+ */
+export const fetchFeePromotions = async (): Promise<UserFeePromotionsResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/promotions`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };
@@ -3042,6 +3223,7 @@ export const initGenericOtp = async (
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
@@ -3082,7 +3264,25 @@ export const createBridgeTransfer = async (params: {
   return response.json();
 };
 
-export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
+/**
+ * Response of `verify-generic-otp`. From the SEC-010 backend on, a verified
+ * code no longer changes the email: `stepUpRequired` asks for the account's
+ * passkey to sign the change (see {@link confirmEmailChange}), carrying
+ * `verificationToken`. An older backend omits the flag and has already saved
+ * the address.
+ */
+export type VerifyGenericOtpResponse = {
+  success: boolean;
+  message?: string;
+  verificationToken: string;
+  stepUpRequired?: boolean;
+};
+
+export const verifyGenericOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+): Promise<VerifyGenericOtpResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -3099,7 +3299,44 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
         otpId,
         otpCode,
         email,
+        // This build finishes the change with a passkey (confirmEmailChange).
+        // The backend refuses builds that don't, before the code is spent:
+        // they would report success while the account kept its old address.
+        supportsPasskeyConfirmation: true,
       }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
+/**
+ * Last step of an in-app email change. Hands the backend the Turnkey
+ * UPDATE_USER_EMAIL that the account's passkey just signed; the backend relays
+ * it to Turnkey and only saves the address once Turnkey accepts the signature,
+ * so a session token alone can never move the recovery email.
+ *
+ * `recoveryEmailHoldUntil` is when the new address can start an account
+ * recovery — a freshly changed one waits before it can.
+ */
+export const confirmEmailChange = async (
+  otpId: string,
+  signedRequest: SignedTurnkeyRequest,
+): Promise<{ success: boolean; email: string; recoveryEmailHoldUntil?: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/confirm-email-change`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ otpId, signedRequest }),
     },
   );
   const data = await response.json();
@@ -3125,6 +3362,55 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
 
   return response.json();
 };
+
+/** An external wallet the user linked by signature; deposits may pull from it. */
+export type LinkedWallet = { address: string; linkedAt: string };
+
+const linkedWalletsRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/linked-wallets${path}`,
+    {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  // Unlinking answers 204 with no body.
+  if (response.status === 204) return undefined as T;
+  if (!response.ok) throw await response.json().catch(() => ({}));
+  // A success whose body isn't JSON rejects rather than passing as empty.
+  return (await response.json()) as T;
+};
+
+export const getLinkedWallets = async (): Promise<LinkedWallet[]> => {
+  const wallets = await linkedWalletsRequest<unknown>('');
+  if (
+    !Array.isArray(wallets) ||
+    !wallets.every(wallet => typeof (wallet as { address?: unknown })?.address === 'string')
+  ) {
+    throw new Error('Unexpected response listing linked wallets');
+  }
+  return wallets as LinkedWallet[];
+};
+
+/** The message the wallet must sign to be linked; valid for one use, for 10 minutes. */
+export const createWalletLinkChallenge = (
+  address: string,
+): Promise<{ message: string; expiresAt: string }> =>
+  linkedWalletsRequest('/challenge', { method: 'POST', body: JSON.stringify({ address }) });
+
+export const linkWallet = (address: string, signature: string): Promise<LinkedWallet> =>
+  linkedWalletsRequest('', { method: 'POST', body: JSON.stringify({ address, signature }) });
+
+export const unlinkWallet = (address: string): Promise<void> =>
+  linkedWalletsRequest(`/${address}`, { method: 'DELETE' });
 
 export const depositTransactions = async (safeAddress: string): Promise<DepositTransaction[]> => {
   const jwt = getJWTToken();
@@ -3523,6 +3809,7 @@ export const initSignupOtp = async (email: string) => {
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
       body: JSON.stringify({ email }),
     },
@@ -3652,6 +3939,7 @@ export const emailExists = async (email: string): Promise<boolean> => {
       method: 'HEAD',
       headers: {
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
     },
   );
@@ -4324,6 +4612,36 @@ export const getCardSpendable = async (): Promise<CardSpendableResponse> => {
 };
 
 /**
+ * Sets the Wirex cardholder's main currency. No transaction: it takes effect on the next payment.
+ *
+ * Euro is refused with a 400 until EURC is turned on for the card, so callers run that approval
+ * first. Switching back to dollars leaves EURC on.
+ */
+export const setCardMainCurrency = async (
+  mainCurrency: MainCurrency,
+): Promise<{ main_currency: MainCurrency }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/main-currency`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ main_currency: mainCurrency }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
  * Every spend-module deployment and whether this user has already enabled each one.
  *
  * Its own request rather than a field on the registration read, for the same reason the
@@ -4411,17 +4729,20 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
   return response.json();
 };
 
-/** Whether the EUR vault may be offered to this user — see useEurVaultAccess. */
-export const getEurVaultAccess = async (): Promise<EurVaultAccessResponse> => {
+/** Whether the new deposit tokens may be offered to this user — see useDepositTokensAccess. */
+export const getDepositTokensAccess = async (): Promise<DepositTokensAccessResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/savings/eur/access`, {
-    headers: {
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/tokens/access`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
     },
-    credentials: 'include',
-  });
+  );
 
   if (!response.ok) throw response;
 
@@ -4468,14 +4789,17 @@ export const getAvailableStatements = async (): Promise<AvailableStatementsRespo
 const STATEMENT_FILENAME = /filename="([^"]+)"/;
 
 /**
- * One month's statement — card activity and wallet transactions together — as
- * CSV text. The server names the file (it marks the current month `-partial`),
- * so the name is read from Content-Disposition and only rebuilt here if that
- * header is not exposed to the client.
+ * One month's statement — the wallet and the card as one account — as a PDF's
+ * bytes or as CSV text. The server names the file (it marks the current month
+ * `-partial`), so the name is read from Content-Disposition and only rebuilt
+ * here if that header is not exposed to the client.
  */
-export const downloadStatement = async (month: string): Promise<StatementDownload> => {
+export const downloadStatement = async (
+  month: string,
+  format: StatementFormat,
+): Promise<StatementDownload> => {
   const jwt = getJWTToken();
-  const params = new URLSearchParams({ month, format: 'csv' });
+  const params = new URLSearchParams({ month, format });
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/statements?${params.toString()}`,
@@ -4491,9 +4815,17 @@ export const downloadStatement = async (month: string): Promise<StatementDownloa
   if (!response.ok) throw response;
 
   const disposition = response.headers.get('Content-Disposition') ?? '';
-  const filename = STATEMENT_FILENAME.exec(disposition)?.[1] ?? `solid-statement-${month}.csv`;
+  const filename =
+    STATEMENT_FILENAME.exec(disposition)?.[1] ?? `solid-statement-${month}.${format}`;
 
-  return { filename, content: await response.text() };
+  if (format === 'pdf') {
+    return {
+      filename,
+      content: new Uint8Array(await response.arrayBuffer()),
+      mimeType: 'application/pdf',
+    };
+  }
+  return { filename, content: await response.text(), mimeType: 'text/csv' };
 };
 
 /**
@@ -4609,7 +4941,7 @@ const DIRECT_DEPOSIT_SESSION_TIMEOUT_MS = 30000;
 export const createDirectDepositSession = async (
   chainId: number,
   tokenSymbol: string,
-  destinationType?: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType?: DirectDepositDestinationType,
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
@@ -4644,7 +4976,7 @@ export const createDirectDepositSession = async (
  */
 export const getDetectedDirectDeposit = async (
   since: number,
-  destinationType?: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType?: DirectDepositDestinationType,
 ): Promise<DetectedDirectDepositResponse> => {
   const jwt = getJWTToken();
 
@@ -4674,7 +5006,7 @@ export const getDetectedDirectDeposit = async (
  * default where none is set.
  */
 export const getDepositFeeQuote = async (
-  destinationType: 'PROTOCOL' | 'RAIN_CARD',
+  destinationType: 'PROTOCOL' | 'RAIN_CARD' | 'WALLET',
   chainId: number,
   tokenSymbol: string,
 ): Promise<DepositFeeQuote> => {
@@ -4745,6 +5077,90 @@ export const deleteDirectDepositSession = async (
   return response.json();
 };
 
+// rhino.fi Smart Deposit Address API
+
+/**
+ * The chains rhino.fi takes deposits on, the tokens on each and where each can
+ * be paid out. Unauthenticated, like `/deposit/assets`: the answer is config and
+ * the same for everyone. `enabled: false` means rhino.fi is not configured on
+ * this backend, and nothing rhino is offered.
+ */
+export const getRhinoDepositAssets = async (): Promise<RhinoDepositAssetsResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/rhino/assets`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The user's rhino.fi deposit address for a (chain, token, destination).
+ *
+ * A POST because the backend creates the address on first ask, but the answer is
+ * stable: one address per destination, the same on every EVM chain. Like the
+ * direct-deposit session it can wait on a third party, so it fails rather than
+ * hangs. 400: the combination is not offered; 412: the user has no wallet yet;
+ * 503: rhino.fi is unavailable or not configured.
+ */
+export const createRhinoDepositAddress = async (
+  request: RhinoDepositAddressRequest,
+): Promise<RhinoDepositAddressResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/rhino/address`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(request),
+    },
+    DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The user's rhino.fi deposits seen since `since` (epoch ms) — the leg before
+ * the payout reaches Solid, which the regular deposit pipeline reports from
+ * there on.
+ */
+export const getRhinoDeposits = async (since: number): Promise<RhinoDepositsResponse> => {
+  const jwt = getJWTToken();
+
+  const params = new URLSearchParams({ since: String(since) });
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/rhino/deposits?${params}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const fetchHistoricalAPY = async (
   days: string = '30',
   vault?: VaultType,
@@ -4752,7 +5168,8 @@ export const fetchHistoricalAPY = async (
   const params = new URLSearchParams({ days });
   // Every vault but the USD default names itself. soEURC used to fall to the
   // default and would have charted the USD vault's history as its own; the
-  // analytics API takes `vault=eur` and answers a flat 0% until it earns.
+  // analytics API takes `vault=eur` and answers from soEUR's own exchange-rate
+  // table (a flat 0% where that table is not configured).
   switch (vault) {
     case VaultType.FUSE:
       params.set('vault', VaultType.FUSE);
@@ -4762,6 +5179,9 @@ export const fetchHistoricalAPY = async (
       break;
     case VaultType.EUR:
       params.set('vault', VaultType.EUR);
+      break;
+    case VaultType.BTC:
+      params.set('vault', VaultType.BTC);
       break;
     default:
   }
@@ -4781,6 +5201,7 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
       username,
       targetPublicKey,
     },
+    { headers: await getBotProtectionHeaders() },
   );
   return response.data;
 };
@@ -4814,6 +5235,7 @@ export const initRecoveryOtp = async (
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
       body: JSON.stringify({
         identifier: trimmed,
@@ -5045,6 +5467,44 @@ export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfi
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+/** How long the dashboard's TransFi list may take before the build's applies alone. */
+const TRANSFI_PROHIBITED_TIMEOUT_MS = 10_000;
+
+/**
+ * Where TransFi's cash deposits and cash-outs are hidden, as set on the admin
+ * dashboard (Config → Countries). Public, and empty until someone sets it; the
+ * build's own list always applies on top.
+ */
+export const getTransfiProhibitedCountries = async (): Promise<{
+  prohibitedCountries: string[];
+}> => {
+  // Callers hold TransFi back until this settles, so a request that never
+  // answers must not hide it for good: time it out, and the build's list applies.
+  const response = await fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/country-access/transfi`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+    TRANSFI_PROHIBITED_TIMEOUT_MS,
+  );
+
+  if (!response.ok) throw response;
+
+  const body: unknown = await response.json();
+  const countries = (body as { prohibitedCountries?: unknown } | null)?.prohibitedCountries;
+  // A malformed answer is a failed read, not an empty list: an empty list
+  // would quietly drop every country the dashboard closed.
+  if (!Array.isArray(countries)) {
+    throw new Error('Malformed TransFi prohibited-countries response');
+  }
+  return {
+    prohibitedCountries: countries.filter((code): code is string => typeof code === 'string'),
+  };
 };
 
 export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {

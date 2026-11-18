@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 
@@ -9,10 +10,14 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
 import { SWAP_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardSpendable } from '@/hooks/useCardSpendable';
+import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { track } from '@/lib/analytics';
+import { showErrorToast } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
@@ -69,11 +74,19 @@ interface NotEnoughToPayCardProps {
 const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   const [isFundOpen, setIsFundOpen] = useState(false);
   const [covered, setCovered] = useState(false);
+  // Base was just turned on from this receipt and the balance is being re-read. Held for that read
+  // only: the fix is worked out again from what Base still cannot reach — nothing, once it is on —
+  // while the balance above is still the one read before, which would flash Swap or Add funds at a
+  // cardholder who is done. Once the read lands, the receipt says what that balance says.
+  const [turnedOnBase, setTurnedOnBase] = useState(false);
 
-  const { data: spendable } = useCardSpendable({
+  const { data: spendable, refetch: refetchSpendable } = useCardSpendable({
     refetchInterval: covered ? false : UNCOVERED_POLL_MS,
   });
-  const { eurc, euroSpend } = useUnusableEurc();
+  const { eurc } = useUnusableEurc();
+  const unreachableBase = useUnreachableBaseBalance();
+  const baseSpend = useEuroSpendEnablement();
+  const router = useRouter();
   const { swappable } = useMovableHoldings();
 
   const figures = useMemo(
@@ -97,6 +110,8 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     payment,
     merchantCurrency: transaction.currency,
     unusableEurc: eurc,
+    unreachableBaseUsd: unreachableBase.usd,
+    paymentUsd: comparable ? comparable.payment * rateToUsd : undefined,
     swapValueUsd: holding?.valueUSD,
     shortfallUsd: shortfall !== undefined ? shortfall * rateToUsd : undefined,
   });
@@ -132,10 +147,28 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     setIsFundOpen(true);
   }, [trackPress]);
 
+  // Opens Main currency, where the one-time approval that lets the card pay with EURC is.
   const turnOnEuro = useCallback(() => {
     trackPress('turn_on_euro');
-    euroSpend.enable('declined_receipt');
-  }, [euroSpend, trackPress]);
+    router.push(path.CARD_MAIN_CURRENCY);
+  }, [router, trackPress]);
+
+  // Turned on right here: one passkey prompt, then the balance is re-read at once rather than on
+  // the next poll. Tracked on the press, while `fix` is still the one the cardholder tapped.
+  const turnOnBase = useCallback(async () => {
+    trackPress('turn_on_base');
+    try {
+      if (!(await baseSpend.enableAsync('declined_receipt'))) return;
+      setTurnedOnBase(true);
+      try {
+        await refetchSpendable();
+      } finally {
+        setTurnedOnBase(false);
+      }
+    } catch (error) {
+      void showErrorToast(error, { action: 'card_settings' });
+    }
+  }, [baseSpend, refetchSpendable, trackPress]);
 
   const swapUsd = (target ?? 0) * rateToUsd;
   const swapInput = holding ? swapAmountFor(swapUsd, holding) : undefined;
@@ -176,6 +209,11 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
       {isCovered && available ? (
         <Text className="text-center text-[14px] text-white/60">
           {`You now have ${formatCardCurrency(available.amount, available.currency)} available. Ask the shop to try again.`}
+        </Text>
+      ) : turnedOnBase ? (
+        // Only while the re-read is in flight; still short after it, and the fixes come back.
+        <Text className="text-center text-[14px] text-white/60">
+          Your card can now use your Base balance. Checking your balance…
         </Text>
       ) : (
         <>
@@ -219,29 +257,35 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
                 <Text className="text-[16px] font-semibold text-white">Add funds instead</Text>
               </Pressable>
             </>
-          ) : fix === 'turn_on_euro' ? (
+          ) : fix === 'turn_on_base' ? (
             <>
+              <Text className="text-[13px] text-white/70">
+                {`Your ${formatCardCurrency(Math.floor(unreachableBase.usd / rateToUsd), currency, {
+                  trimWhole: true,
+                })} on Base can't be used by your card until you turn it on.`}
+              </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: euroSpend.isEnabling, busy: euroSpend.isEnabling }}
-                // Disabled while the enable user operation is in flight: a second batch against a
-                // Safe the first is registering reverts `AlreadyRegistered`.
-                disabled={euroSpend.isEnabling}
+                accessibilityState={{ disabled: baseSpend.isEnabling, busy: baseSpend.isEnabling }}
                 className={PRIMARY_BUTTON}
-                onPress={turnOnEuro}
+                disabled={baseSpend.isEnabling}
+                onPress={() => void turnOnBase()}
               >
-                {euroSpend.isEnabling ? (
-                  <ActivityIndicator color="black" size="small" />
+                {baseSpend.isEnabling ? (
+                  <ActivityIndicator color="#000000" />
                 ) : (
                   <Text className="text-[16px] font-semibold text-black">
-                    Turn on euro spending
+                    Let your card use your Base balance
                   </Text>
                 )}
               </Pressable>
-              {euroSpend.error ? (
-                <Text className="text-center text-[14px] text-red-400">{euroSpend.error}</Text>
-              ) : null}
             </>
+          ) : fix === 'turn_on_euro' ? (
+            <Pressable accessibilityRole="button" className={PRIMARY_BUTTON} onPress={turnOnEuro}>
+              <Text className="text-[16px] font-semibold text-black">
+                Let your card pay with EURC
+              </Text>
+            </Pressable>
           ) : (
             <Pressable accessibilityRole="button" className={PRIMARY_BUTTON} onPress={openAddFunds}>
               <Text className="text-[16px] font-semibold text-black">Add funds</Text>

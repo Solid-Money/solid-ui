@@ -276,3 +276,58 @@ describe('buildCashbackBreakdown', () => {
     expect(breakdown.footer).toBeUndefined();
   });
 });
+
+describe('buildCashbackBreakdown on a euro purchase', () => {
+  it("quotes the next tier's figure in euros, on the purchase's euro amount", () => {
+    // A €100 purchase, earning 3% in euros. The dollar price of the purchase
+    // (`purchaseUsd`) must not be what the upsell is worked out on.
+    const breakdown = buildCashbackBreakdown({
+      info: info({ amount: '+€3.00' }),
+      cashback: row({
+        currency: 'EUR',
+        fiatAmount: '100.00',
+        fiatCurrency: 'EUR',
+        cashbackPercentage: 0.03,
+        cashbackPercentageSource: 'Tier',
+        projectedEurValue: 3,
+      }),
+      purchaseUsd: 117,
+      rewardsData: rewards(RewardsTier.CORE),
+    });
+
+    expect(breakdown.amountLabel).toBe('+€3.00');
+    expect(footerText(breakdown)).toBe(
+      'Prime would have paid you €4.00 on this purchase, plus 10% on subscriptions. ',
+    );
+  });
+
+  it('compares against the euro payout, not a dollar one', () => {
+    // Paid €4.00 at the Prime rate already: there is nothing to sell, even
+    // though the purchase's dollar value would have suggested more.
+    const breakdown = buildCashbackBreakdown({
+      info: info({ amount: '+€4.00', isPaid: true, isPending: false, isEscrowed: false }),
+      cashback: row({
+        currency: 'EUR',
+        status: CashbackStatus.Paid,
+        fiatAmount: '100.00',
+        soEurAmount: '4',
+        soEurRate: '1',
+      }),
+      purchaseUsd: 117,
+      rewardsData: rewards(RewardsTier.CORE),
+    });
+
+    expect(breakdown.footer?.kind).not.toBe('upsell');
+  });
+
+  it('offers no upsell when the euro row carries no purchase amount', () => {
+    const breakdown = buildCashbackBreakdown({
+      info: info({ amount: '+€3.00' }),
+      cashback: row({ currency: 'EUR', projectedEurValue: 3 }),
+      purchaseUsd: 117,
+      rewardsData: rewards(RewardsTier.CORE),
+    });
+
+    expect(breakdown.footer?.kind).not.toBe('upsell');
+  });
+});

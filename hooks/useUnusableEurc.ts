@@ -5,7 +5,7 @@ import { useCardSpendDeployments, useEuroSpendEnablement } from '@/hooks/useEuro
 import { baseEurcHeld } from '@/lib/utils/cardSpendable';
 
 /**
- * EURC on Base the card cannot spend yet, and the flow that changes that.
+ * EURC on Base the card cannot spend yet. Main currency is where that changes.
  *
  * Non-zero only while euro spending is still on offer to this Wirex cardholder
  * (`shouldOffer`): once it is on, the same EURC is part of what the card spends
@@ -24,7 +24,7 @@ export const useUnusableEurc = () => {
     [euroSpend.shouldOffer, tokens, data?.deployments],
   );
 
-  return { eurc, euroSpend };
+  return { eurc };
 };
 
 export default useUnusableEurc;

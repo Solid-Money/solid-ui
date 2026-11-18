@@ -1,14 +1,14 @@
-import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
+import * as Sentry from '@sentry/react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { useShallow } from 'zustand/react/shallow';
 
-import { updateSafeAddress } from '@/lib/api';
 import { User } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
+import { linkSafeAddress } from '@/lib/utils/safeAddressSync';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { fetchIsDeposited } from './useAnalytics';
-import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Hook to handle post-signup/post-login initialization tasks that don't need to block
@@ -41,27 +41,21 @@ export const usePostSignupInit = (user: User | undefined) => {
         // 1. Update safe address if needed (non-blocking failure)
         if (user.safeAddress && !safeAddressSynced[user.userId]) {
           try {
-            await withRefreshToken(() => updateSafeAddress(user.safeAddress));
+            // Also resolves when this account's Safe is already linked.
+            await linkSafeAddress(user.safeAddress);
             markSafeAddressSynced(user.userId);
           } catch (error: any) {
-            // 409 means safe address is already registered - this is expected, not an error.
-            // It must not end the initialization either: the balance and points
-            // below still have to load. Login saves the address too, so the two
-            // can race and this one is answered 409.
-            if (error?.status === 409) {
-              markSafeAddressSynced(user.userId);
-            } else {
-              Sentry.captureException(error, {
-                tags: {
-                  type: 'safe_address_update_error_lazy',
-                },
-                user: {
-                  id: user.userId,
-                  address: user.safeAddress,
-                },
-                level: 'warning',
-              });
-            }
+            // Left unsynced so the next launch tries again.
+            Sentry.captureException(error, {
+              tags: {
+                type: 'safe_address_update_error_lazy',
+              },
+              user: {
+                id: user.userId,
+                address: user.safeAddress,
+              },
+              level: 'warning',
+            });
           }
         }
 

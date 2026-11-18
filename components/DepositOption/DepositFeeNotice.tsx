@@ -24,6 +24,12 @@ type DepositFeeNoticeProps = {
   symbol?: string;
   /** Share token a savings deposit mints. */
   vaultToken?: string;
+  /**
+   * The kind of address the wallet screen minted, which decides what it is
+   * charged: `WALLET` unless it was a card one (a Wirex cardholder's dollars
+   * on Fuse). Unused by the other flows.
+   */
+  walletAddress?: 'WALLET' | 'RAIN_CARD';
   className?: string;
 };
 
@@ -39,11 +45,19 @@ const DepositFeeNotice = ({
   chainId,
   symbol,
   vaultToken,
+  walletAddress,
   className,
 }: DepositFeeNoticeProps) => {
-  const rulePpm = getDepositFeeRatePpm({ provider, product, chainId, symbol, vaultToken });
+  const rulePpm = getDepositFeeRatePpm({
+    provider,
+    product,
+    chainId,
+    symbol,
+    vaultToken,
+    walletAddress,
+  });
   const { data: quote, isError } = useDepositFeeQuote({
-    destinationType: getDepositFeeDestinationType(product),
+    destinationType: getDepositFeeDestinationType(product, walletAddress),
     chainId,
     symbol,
     provider,

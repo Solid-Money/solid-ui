@@ -3,7 +3,6 @@ import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
-import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
 
@@ -21,10 +20,7 @@ interface MoreSavingsOptionsProps {
  * APY pill + simulation above).
  */
 const MoreSavingsOptions = ({ selectedType, apyByType, onSelect }: MoreSavingsOptionsProps) => {
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
-  const others = SAVINGS_VAULTS.filter(
-    vault => vault.type !== selectedType && isVaultOffered(vault.type, isEurVaultEnabled),
-  );
+  const others = SAVINGS_VAULTS.filter(vault => vault.type !== selectedType);
   if (others.length === 0) return null;
 
   return (

@@ -39,6 +39,8 @@ export interface HomePromptStepInput {
   hasUncoveredDecline?: boolean;
   /** Wirex: EURC on Base the card cannot spend because euro spending is off. */
   holdsUnusableEurc?: boolean;
+  /** Wirex: dollars or crypto on Base the card cannot spend because Base is off. */
+  holdsUnreachableBase?: boolean;
 }
 
 /**
@@ -57,8 +59,10 @@ export interface HomePromptStepInput {
  *    balance still does not cover (Figma 28856:9595).
  * 8. `euro-spending` — Wirex: EURC the card cannot spend until euro spending is
  *    on (Figma 28856:9637).
- * 9. `add-to-wallet` — funded card that isn't in Apple/Google Wallet.
- * 10. `cashback` — the card has been used; the terminal banner.
+ * 9. `base-spending` — Wirex: dollars or crypto on Base the card cannot spend
+ *    until Base is on. Not drawn; the euro banner's layout.
+ * 10. `add-to-wallet` — funded card that isn't in Apple/Google Wallet.
+ * 11. `cashback` — the card has been used; the terminal banner.
  *
  * Pure, so the ladder can be tested without mounting the screen. `useHomePrompt`
  * gathers the inputs, applies the snooze and hands the answer to
@@ -81,6 +85,7 @@ export function resolveHomePromptStep({
   eligibility,
   hasUncoveredDecline = false,
   holdsUnusableEurc = false,
+  holdsUnreachableBase = false,
 }: HomePromptStepInput): HomePromptKey | null {
   // Verified long ago and spent on a card that is now gone: "Your Solid card is
   // ready! Activate" would be the wrong news, and was all this user was shown.
@@ -90,13 +95,14 @@ export function resolveHomePromptStep({
 
   if (!depositCompleted) return 'fund';
 
-  // Both ahead of the cashback banner — which a Wirex cardholder never sees anyway,
+  // All ahead of the cashback banner — which a Wirex cardholder never sees anyway,
   // because the cashback tile hides it — so a funded cardholder who has used the
   // card, and so had no banner at all, is told why a payment failed and what their
-  // EURC is waiting for. A decline is the more urgent of the two: it is a payment
+  // Base balance is waiting for. A decline is the most urgent: it is a payment
   // they are trying to make, possibly at a till right now.
   if (hasUncoveredDecline) return 'card-declined';
   if (holdsUnusableEurc) return 'euro-spending';
+  if (holdsUnreachableBase) return 'base-spending';
 
   // The card has been used, so every earlier step is behind the user. This
   // outranks the wallet nudge: the design treats "has transactions" as the last

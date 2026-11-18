@@ -17,7 +17,7 @@ describe('resolveCardPendingDestination', () => {
   const resolve = (
     cardStatus: CardStatusResponse | null | undefined,
     overrides: {
-      kycFlow?: 'card' | 'va' | 'transfi' | null;
+      kycFlow?: 'card' | 'card_migration' | 'va' | 'transfi' | null;
       hasRainVerificationCta?: boolean;
     } = {},
   ) =>
@@ -55,11 +55,16 @@ describe('resolveCardPendingDestination', () => {
   });
 
   describe('moves the user on once it is not', () => {
-    it('sends an approved Wirex user to activate, where step two opens itself', () => {
-      // Wirex has no second adjudication, so there is no rainApplicationStatus.
+    it('sends an approved Wirex user straight to the Approved screen', () => {
+      // Wirex has no second adjudication, so its approval is the last decision before the
+      // card: the onboarding opens the Approved screen directly rather than via activate.
       expect(resolve({ kycStatus: KycStatus.APPROVED, provider: CardProvider.WIREX })).toBe(
-        path.CARD_ACTIVATE,
+        path.CARD_READY,
       );
+    });
+
+    it('keeps an approved user with no named issuer on activate', () => {
+      expect(resolve({ kycStatus: KycStatus.APPROVED })).toBe(path.CARD_ACTIVATE);
     });
 
     it('sends an approved Rain user to ready only once Rain approved too', () => {
@@ -138,6 +143,17 @@ describe('resolveCardPendingDestination', () => {
       ]) {
         expect(resolve({ kycStatus }, { kycFlow: 'va' })).toBeNull();
       }
+    });
+
+    it("sends a cardholder's move to the new card back to the new-card screen", () => {
+      // Their card status describes the card they are replacing: read here, it
+      // would send them to that card instead of the move's own status screen.
+      expect(
+        resolve(
+          { status: CardStatus.ACTIVE, provider: CardProvider.RAIN },
+          { kycFlow: 'card_migration' },
+        ),
+      ).toEqual(path.CARD_NEW_CARD);
     });
 
     it('stays put while the Rain external-verification CTA is on screen', () => {

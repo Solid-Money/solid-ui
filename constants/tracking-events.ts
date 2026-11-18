@@ -25,7 +25,12 @@ export const TRACKING_EVENTS = {
   WITHDRAW_TRANSACTION_ERROR: 'withdraw_transaction_error',
 
   // Transaction Flow Events - Swap
+  /** With `entry_point`: where the swap was opened from (home, coin_page, ...). */
   SWAP_MODAL_VIEWED: 'swap_modal_viewed',
+  /** A price came back for the pair and amount on screen. Once per distinct quote. */
+  SWAP_PRICE_SHOWN: 'swap_price_shown',
+  /** No price for the pair and amount on screen, with `error_code` from lib/swapErrors. */
+  SWAP_PRICE_FAILED: 'swap_price_failed',
   SWAP_AMOUNT_ENTRY_STARTED: 'swap_amount_entry_started',
   SWAP_TOKEN_SELECTOR_OPENED: 'swap_token_selector_opened',
   SWAP_MODAL_ABANDONED: 'swap_modal_abandoned',
@@ -130,6 +135,12 @@ export const TRACKING_EVENTS = {
   DEPOSIT_DIRECT_SESSION_COMPLETED: 'deposit_direct_session_completed',
   DEPOSIT_DIRECT_SESSION_DELETED: 'deposit_direct_session_deleted',
 
+  // Deposit Method: rhino.fi deposit address (every network row but Fuse)
+  DEPOSIT_RHINO_NETWORK_SELECTED: 'deposit_rhino_network_selected',
+  DEPOSIT_RHINO_ADDRESS_VIEWED: 'deposit_rhino_address_viewed',
+  DEPOSIT_RHINO_ADDRESS_COPIED: 'deposit_rhino_address_copied',
+  DEPOSIT_RHINO_ADDRESS_FAILED: 'deposit_rhino_address_failed',
+
   // Deposit Method: Credit Card (Method 3)
   DEPOSIT_CARD_WIDGET_LOADING: 'deposit_card_widget_loading',
   DEPOSIT_CARD_WIDGET_LOADED: 'deposit_card_widget_loaded',
@@ -158,6 +169,8 @@ export const TRACKING_EVENTS = {
   VIRTUAL_ACCOUNT_REGION_BLOCKED: 'virtual_account_region_blocked',
   VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_VIEWED: 'virtual_account_document_country_viewed',
   VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_CONFIRMED: 'virtual_account_document_country_confirmed',
+  VIRTUAL_ACCOUNT_RESIDENCE_VIEWED: 'virtual_account_residence_viewed',
+  VIRTUAL_ACCOUNT_RESIDENCE_CONFIRMED: 'virtual_account_residence_confirmed',
   VIRTUAL_ACCOUNT_KYC_REQUIRED: 'virtual_account_kyc_required',
   VIRTUAL_ACCOUNT_TOS_VIEWED: 'virtual_account_tos_viewed',
   VIRTUAL_ACCOUNT_TOS_ACCEPTED: 'virtual_account_tos_accepted',
@@ -165,6 +178,9 @@ export const TRACKING_EVENTS = {
   VIRTUAL_ACCOUNT_CREATION_FAILED: 'virtual_account_creation_failed',
   VIRTUAL_ACCOUNT_DETAILS_VIEWED: 'virtual_account_details_viewed',
   VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED: 'virtual_account_details_load_failed',
+  // A Wirex user whose bank account cannot be opened: carries Wirex's
+  // capability status, which is the reason.
+  VIRTUAL_ACCOUNT_UNAVAILABLE: 'virtual_account_unavailable',
   VIRTUAL_ACCOUNT_DETAIL_COPIED: 'virtual_account_detail_copied',
   // The one-time Rain setup fee. The drop-off between the sheet and the payment
   // is what tells us whether the fee is the thing stopping people, as distinct
@@ -193,6 +209,9 @@ export const TRACKING_EVENTS = {
   CASH_OUT_ORDER_FAILED: 'cash_out_order_failed',
   CASH_OUT_DEPOSIT_SENT: 'cash_out_deposit_sent',
   CASH_OUT_DEPOSIT_FAILED: 'cash_out_deposit_failed',
+  CASH_OUT_BRIDGE_SENT: 'cash_out_bridge_sent',
+  CASH_OUT_BRIDGE_DELIVERED: 'cash_out_bridge_delivered',
+  CASH_OUT_BRIDGE_FAILED: 'cash_out_bridge_failed',
   BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
   BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
   BUY_CRYPTO_KYC_SHARE_RESULT: 'buy_crypto_kyc_share_result',
@@ -332,6 +351,10 @@ export const TRACKING_EVENTS = {
   // whichever rung of the funnel the user is on (Figma 25141:6965).
   HOME_PROMPT_DISMISSED: 'home_prompt_dismissed',
   HOME_PROMPT_CTA_PRESSED: 'home_prompt_cta_pressed',
+  // Home notice for a known incident (outage, delay)
+  INCIDENT_NOTICE_OPENED: 'incident_notice_opened',
+  INCIDENT_NOTICE_DISMISSED: 'incident_notice_dismissed',
+  INCIDENT_NOTICE_CHAT_PRESSED: 'incident_notice_chat_pressed',
 
   // Card Waitlist Events
   CARD_WAITLIST_STARTED: 'card_waitlist_started',
@@ -354,6 +377,17 @@ export const TRACKING_EVENTS = {
   REGION_UNAVAILABLE_CONTINUE_PRESSED: 'region_unavailable_continue_pressed',
   REGION_UNAVAILABLE_CHANGE_COUNTRY_PRESSED: 'region_unavailable_change_country_pressed',
   CARD_ACTIVATE_PAGE_VIEWED: 'card_activate_page_viewed',
+  // Wirex card onboarding (Country → What you'll need → Sumsub → Checking → Approved →
+  // Activating → Card is live). One "viewed" per screen, keyed by `step`, so the funnel between
+  // opening the identity check and a live card — which no event covered — can be read end to end.
+  CARD_ONBOARDING_STEP_VIEWED: 'card_onboarding_step_viewed',
+  CARD_ONBOARDING_CTA_PRESSED: 'card_onboarding_cta_pressed',
+  // The card currency picked on the Approved screen, and whether it was the suggested one.
+  CARD_CURRENCY_SELECTED: 'card_currency_selected',
+  // Both activation approvals signed with one passkey prompt, or not — and why.
+  CARD_ACTIVATION_SIGNATURES: 'card_activation_signatures',
+  CARD_LIVE_POPUP_SHOWN: 'card_live_popup_shown',
+  CARD_LIVE_POPUP_ACTION: 'card_live_popup_action',
   // Pressed from the failure banner on /card/activate. Carries the failure
   // code, so a retry wave after an issuer outage is separable from a user
   // pressing again at a failure that will not clear.
@@ -429,8 +463,8 @@ export const TRACKING_EVENTS = {
   CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
   CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
   // The "Not enough to pay" card on a declined receipt. Viewed carries the fix it led with
-  // (turn_on_euro | swap | add_funds) and whether the balance already covers the payment;
-  // pressed carries which button was tapped. Together with the decline push's open they make
+  // (turn_on_euro | turn_on_base | swap | add_funds) and whether the balance already covers
+  // the payment; pressed carries which button was tapped. Together with the decline push's open they make
   // "declined → fixed" a funnel instead of a guess.
   CARD_DECLINE_FIX_VIEWED: 'card_decline_fix_viewed',
   CARD_DECLINE_FIX_PRESSED: 'card_decline_fix_pressed',
@@ -557,6 +591,10 @@ export const TRACKING_EVENTS = {
   TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
   TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
   TIER_SUBSCRIBE_FAILED: 'tier_subscribe_failed',
+  // Paying the annual fee from another chain: the LI.FI swap into USDC on Fuse.
+  TIER_FUNDING_SWAP_PRESSED: 'tier_funding_swap_pressed',
+  TIER_FUNDING_SWAP_SENT: 'tier_funding_swap_sent',
+  TIER_FUNDING_SWAP_FAILED: 'tier_funding_swap_failed',
   TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
   TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
   TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',
@@ -574,6 +612,39 @@ export const TRACKING_EVENTS = {
   // Statements
   STATEMENT_DOWNLOAD_TAPPED: 'statement_download_tapped',
   STATEMENT_DOWNLOAD_FAILED: 'statement_download_failed',
+
+  // AI API: Solid keys for AI agents, paid from the Wallet with cashback. The
+  // funnel splits at the mandate signature, like tier membership's, because a
+  // dismissed passkey prompt is a decision rather than an error.
+  // `ai_api_key_created` and `ai_api_key_deleted` are sent by the backend, not
+  // from here, so each key counts once.
+  AI_API_BENEFIT_PRESSED: 'ai_api_benefit_pressed',
+  AI_API_GET_KEY_PRESSED: 'ai_api_get_key_pressed',
+  AI_API_MANDATE_CANCELLED: 'ai_api_mandate_cancelled',
+  AI_API_MANDATE_SIGNED: 'ai_api_mandate_signed',
+  AI_API_KEY_CREATE_FAILED: 'ai_api_key_create_failed',
+  AI_API_KEY_COPIED: 'ai_api_key_copied',
+  AI_API_SETUP_SNIPPET_COPIED: 'ai_api_setup_snippet_copied',
+  AI_API_KEY_LIMIT_CHANGED: 'ai_api_key_limit_changed',
+  AI_API_KEY_RENAMED: 'ai_api_key_renamed',
+  AI_API_ADD_FUNDS_PRESSED: 'ai_api_add_funds_pressed',
+
+  // Referral program v4: invite bonuses paid as card credit, plus a share of what
+  // friends spend. The referrer's side first, then card credit itself, then the
+  // invited friend's side — the invite page and the code reaching signup, by
+  // whichever route it came (`source`: link / install_referrer / clipboard / manual).
+  REFERRAL_SCREEN_VIEWED: 'referral_screen_viewed',
+  REFERRAL_LINK_COPIED: 'referral_link_copied',
+  REFERRAL_LINK_SHARED: 'referral_link_shared',
+  REFERRAL_QR_SHOWN: 'referral_qr_shown',
+  REFERRAL_REWARD_SHEET_OPENED: 'referral_reward_sheet_opened',
+  REFERRAL_INVITES_VIEWED: 'referral_invites_viewed',
+  REFERRAL_FRIEND_VIEWED: 'referral_friend_viewed',
+  CARD_CREDIT_PILL_TAPPED: 'card_credit_pill_tapped',
+  CARD_CREDIT_SHEET_VIEWED: 'card_credit_sheet_viewed',
+  INVITE_SCREEN_VIEWED: 'invite_screen_viewed',
+  INVITE_CODE_APPLIED: 'invite_code_applied',
+  INVITE_CODE_INVALID: 'invite_code_invalid',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

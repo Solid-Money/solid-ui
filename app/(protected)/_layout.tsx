@@ -7,6 +7,7 @@ import {
   useLocalSearchParams,
   usePathname,
   useRouter,
+  useSegments,
 } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
@@ -26,7 +27,7 @@ import RewardsUpgradeFeedback from '@/components/Rewards/RewardsUpgradeFeedback'
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
-import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
+import { tokenBalancesQueryOptions, useBalancesPolling } from '@/hooks/useBalances';
 import { useSyncNativeHelp } from '@/hooks/useHelp';
 import { useNotificationPermissionReminder } from '@/hooks/useNotificationPermissionReminder';
 import { detectPasskeyBlock, passkeyNotSupportedHref } from '@/hooks/usePasskey';
@@ -39,6 +40,7 @@ import FuseVault from '@/lib/abis/FuseVault';
 import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
+import { searchFromParams, signInTarget } from '@/lib/signInTarget';
 import { config } from '@/lib/wagmi';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -145,6 +147,9 @@ export default function ProtectedLayout() {
   // Live activity, balance and card transaction updates for the signed-in user,
   // over one Socket.IO connection (see lib/realtime/realtimeClient).
   useRealtime(!!user);
+  // The one balance poll for every screen, slowed while the socket above is
+  // live. Screens read the cache it keeps warm instead of each polling.
+  useBalancesPolling();
   // Help center links open natively for users who have the in-house help center.
   useSyncNativeHelp();
   // Finishes a tier lock that was sent but never confirmed — the receipt wait
@@ -211,6 +216,21 @@ export default function ProtectedLayout() {
       handleResumeBankTransferParams(resumeParams);
     }
   }, [resumeParams, handleResumeBankTransferParams]);
+
+  // A link into the app opened while signed out (the support-reply email, a
+  // push, a shared link) is sent to onboarding or welcome below. Remember where
+  // it was going, query included: sign-in and sign-up finish on `redirectFrom`
+  // instead of Home.
+  const segments = useSegments();
+  const needsSignIn = _hasHydrated && (!usersCount || !user);
+  useEffect(() => {
+    if (!needsSignIn) return;
+    const target =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? signInTarget(window.location.pathname, window.location.search)
+        : signInTarget(pathname, searchFromParams(globalSearchParams, segments));
+    if (target) useUserStore.getState().setRedirectFrom(target);
+  }, [needsSignIn, pathname, globalSearchParams, segments]);
 
   // A browser that cannot create a passkey (another app's built-in browser,
   // or no WebAuthn at all) can neither sign up nor sign in, so say so before

@@ -13,6 +13,8 @@ interface LazyWhatsNewModalProps {
   whatsNew: WhatsNew;
   isOpen: boolean;
   onClose: () => void;
+  /** The page to open on, passed through to `WhatsNewModal`. */
+  initialStep?: number;
 }
 
 /**
@@ -26,7 +28,12 @@ interface LazyWhatsNewModalProps {
  * No visible fallback is needed: the modal stays hidden while its images are
  * prefetched and while the lazy bundle is loading.
  */
-const LazyWhatsNewModal = ({ whatsNew, isOpen, onClose }: LazyWhatsNewModalProps) => {
+const LazyWhatsNewModal = ({
+  whatsNew,
+  isOpen,
+  onClose,
+  initialStep = 0,
+}: LazyWhatsNewModalProps) => {
   const imageUrls = useMemo(
     () => whatsNew.steps.map(step => step.imageUrl.trim()).filter(Boolean),
     [whatsNew.steps],
@@ -64,7 +71,15 @@ const LazyWhatsNewModal = ({ whatsNew, isOpen, onClose }: LazyWhatsNewModalProps
 
   return (
     <Suspense fallback={null}>
-      <WhatsNewModal whatsNew={whatsNew} isOpen={isOpen} onClose={onClose} />
+      <WhatsNewModal
+        // Remounts for a different page or announcement, so the carousel starts
+        // there instead of keeping the index of the previous opening.
+        key={`${whatsNew._id}-${initialStep}`}
+        whatsNew={whatsNew}
+        isOpen={isOpen}
+        onClose={onClose}
+        initialStep={initialStep}
+      />
     </Suspense>
   );
 };

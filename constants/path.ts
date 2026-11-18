@@ -76,7 +76,15 @@ type Path = {
    * deliver and a challenge nobody was told about still has to be answerable.
    */
   CARD_3DS: Href;
+  CARD_MAIN_CURRENCY: Href;
   CARD_ACTIVATE: Href;
+  /**
+   * Rain sunset: a Rain cardholder's move to their new (Wirex) card — the
+   * "Get your new Solid card" screen, then the Wirex verification and issuance.
+   */
+  CARD_NEW_CARD: Href;
+  /** Rain sunset: withdraw the whole balance on a closing card to the wallet. */
+  CARD_CLOSING_WITHDRAW: Href;
   CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
   SETTINGS: Href;
@@ -84,11 +92,22 @@ type Path = {
   PASSKEY_NOT_SUPPORTED: Href;
   POINTS: Href;
   REFERRAL: Href;
-  /** Deep link that opens the referral program popup on the rewards screen. */
+  /**
+   * Deep link to the referral program: the v4 Refer screen when the program is
+   * live, today's referral popup on the rewards screen otherwise. The rewards
+   * screen makes that call, which is why every entry point goes through here.
+   */
   REFERRAL_PROGRAM: Href;
+  /** Referral v4: the Refer & Earn screen. Falls back to `REFERRAL_PROGRAM` while v4 is off. */
+  REFER: Href;
+  /** Referral v4: every invited friend and what each has earned the user. */
+  REFER_INVITES: Href;
   POINTS_LEADERBOARD: Href;
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
+  AI_API: Href;
+  AI_API_KEY: Href;
+  AI_API_SETUP: Href;
   OVERVIEW: Href;
   /**
    * @deprecated Same story as `CARD` — `/card-onboard` served the standalone card
@@ -143,7 +162,10 @@ export const path: Path = {
   CARD_READY: '/card/ready' as Href,
   CARD_PENDING: '/card/pending' as Href,
   CARD_3DS: '/card/3ds' as Href,
+  CARD_MAIN_CURRENCY: '/card/main-currency' as Href,
   CARD_ACTIVATE: '/card/activate',
+  CARD_NEW_CARD: '/card/new-card' as Href,
+  CARD_CLOSING_WITHDRAW: '/card/closing-withdraw' as Href,
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
   EARN: '/earn',
   SETTINGS: '/settings',
@@ -152,9 +174,17 @@ export const path: Path = {
   POINTS: '/points',
   REFERRAL: '/referral',
   REFERRAL_PROGRAM: { pathname: '/rewards', params: { referral: 'open' } } as Href,
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  REFER: '/rewards/refer' as Href,
+  REFER_INVITES: '/rewards/refer/invites' as Href,
   POINTS_LEADERBOARD: '/points/leaderboard',
   REWARDS: '/rewards',
   REWARDS_BENEFITS: '/rewards/benefits',
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  AI_API: '/rewards/ai-api' as Href,
+  // The new key, shown once. Never carries the key itself — see useAiApiRevealStore.
+  AI_API_KEY: '/rewards/ai-api-key' as Href,
+  AI_API_SETUP: '/rewards/ai-api-setup' as Href,
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-onboard',
   CARD_WAITLIST_SUCCESS: '/card-onboard/success',
@@ -214,6 +244,34 @@ export const cardInfoWalletGuidePath = (wallet: DigitalWalletType): Href =>
  */
 export const cardTransactionDetailPath = (transactionId: string): Href =>
   `/activity/card-${transactionId}` as Href;
+
+/** Referral v4: one invited friend, by their user id. */
+export const referFriendPath = (referredUserId: string): Href =>
+  ({
+    pathname: '/rewards/refer/[friendId]',
+    params: { friendId: referredUserId },
+    // Expo Router's generated route types are rebuilt when the dev server
+    // starts, so a route added in the same change is not in them yet.
+  }) as unknown as Href;
+
+/**
+ * The public invite page for a referral code — the in-app address of the
+ * `https://app.solid.xyz/invite/CODE` link a referrer shares.
+ */
+export const invitePath = (code: string): Href => `/invite/${encodeURIComponent(code)}` as Href;
+
+/** `?flow=wirex` on the country screen: step 1 of the Wirex onboarding, under its stepper. */
+export const WIREX_ONBOARDING_FLOW = 'wirex';
+
+/**
+ * The country screen as step 1 of the Wirex card onboarding (Figma 1 · Country). The plain
+ * `CARD_COUNTRY_SELECTION` keeps today's screen for every other entry point.
+ */
+export const wirexCountrySelectionPath = (): Href =>
+  ({
+    pathname: '/card-onboard/country_selection',
+    params: { flow: WIREX_ONBOARDING_FLOW },
+  }) as Href;
 
 export const cardThreeDsRequestPath = (
   transactionId: string,

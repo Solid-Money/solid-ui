@@ -1,3 +1,4 @@
+import { ACCOUNT_SUSPENDED_MESSAGE, isAccountSuspendedError } from '@/lib/errors/accountSuspended';
 import { getUserErrorMessage } from '@/lib/errors/classify';
 export const ERRORS = {
   USERNAME_ALREADY_EXISTS: 'Username already exists',
@@ -29,6 +30,40 @@ export const PASSKEY_ACCOUNT_NOT_FOUND_CODE = 'PASSKEY_ACCOUNT_NOT_FOUND';
  * with the same address cannot succeed; another address can.
  */
 export const EMAIL_DOMAIN_NOT_ALLOWED_CODE = 'EMAIL_DOMAIN_NOT_ALLOWED';
+
+/**
+ * Backend code when it couldn't verify that a recovery, signup or email-change
+ * request came from the real app or a real browser (App Check / Turnstile, see
+ * lib/botProtection.ts). Usually an outdated build, or a page blocking the
+ * Turnstile script; updating or refreshing fixes it.
+ */
+export const BOT_CHECK_FAILED_CODE = 'BOT_CHECK_FAILED';
+export const BOT_CHECK_FAILED_MESSAGE =
+  'We couldn’t verify this device. Update the app or refresh the page, then try again.';
+
+/** An email change to an address another account already holds. */
+export const EMAIL_ALREADY_LINKED_CODE = 'EMAIL_ALREADY_LINKED';
+export const EMAIL_ALREADY_LINKED_MESSAGE =
+  'This email is already linked to another account. Use a different email.';
+
+/**
+ * Whether an API error is a rate limit. The backend answers 429 with its own
+ * wording; older checks only matched Turnkey's phrasing.
+ */
+export const isRateLimitedError = (error: unknown): boolean => {
+  const err = error as { status?: unknown; statusCode?: unknown } | null;
+  return err?.statusCode === 429 || err?.status === 429;
+};
+
+/**
+ * The email change reached the backend without a valid passkey confirmation —
+ * or the verified code it belonged to has expired or was already used. The
+ * user has to request a new code.
+ */
+export const EMAIL_CHANGE_STEP_UP_REQUIRED_CODE = 'EMAIL_CHANGE_STEP_UP_REQUIRED';
+
+/** Turnkey did not accept the passkey's signature for the email change. */
+export const EMAIL_CHANGE_CONFIRM_FAILED_CODE = 'EMAIL_CHANGE_CONFIRM_FAILED';
 
 export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE =
   "This email provider isn't supported. Please use a different email address.";
@@ -97,6 +132,9 @@ export const loginErrorMessage = (error: unknown): string => {
   // WebAuthn reports a dismissed prompt as a failure; the platform's wording for
   // it describes the machinery, not the thing the user just chose to do.
   if (err?.name === 'NotAllowedError') return 'User cancelled login';
+
+  // An admin suspended the account: signing in again cannot help, support can.
+  if (isAccountSuspendedError(error)) return ACCOUNT_SUSPENDED_MESSAGE;
 
   if (isUnlinkedPasskeyError(error)) {
     // A typed reply names which flavour it is, and its copy is the precise one.

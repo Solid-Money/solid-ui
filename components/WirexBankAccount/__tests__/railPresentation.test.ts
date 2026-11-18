@@ -4,6 +4,7 @@ import {
   RAIL_PRESENTATION,
   replaceRail,
   selectActiveRail,
+  unavailableRail,
   unavailableReason,
   visibleRails,
 } from '@/components/WirexBankAccount/railPresentation';
@@ -103,6 +104,35 @@ describe('unavailableReason', () => {
 
   it('falls back to a generic line for a status we do not enumerate', () => {
     expect(unavailableReason('SomeFutureStatus', 'EUR')).toContain('Check back');
+  });
+
+  it('sends a NotFulfilled user to support, not to a verification they cannot start', () => {
+    expect(unavailableReason('NotFulfilled', 'EUR')).toContain('support');
+  });
+});
+
+describe('unavailableRail', () => {
+  const closed = sepaRail({ account: undefined, capabilityStatus: 'NotFulfilled' });
+
+  it('explains the first rail when nothing can be shown', () => {
+    // The "No bank accounts are available for you yet" case Viking1 hit.
+    expect(
+      unavailableRail(
+        overviewOf([closed, achRail({ account: undefined, capabilityStatus: 'NotAvailable' })]),
+      ),
+    ).toBe(closed);
+  });
+
+  it('stays out of the way while some rail is usable', () => {
+    expect(unavailableRail(overviewOf([closed, achRail()]))).toBeNull();
+    expect(
+      unavailableRail(overviewOf([sepaRail({ account: undefined, canActivate: true })])),
+    ).toBeNull();
+  });
+
+  it('has nothing to explain without rails', () => {
+    expect(unavailableRail(overviewOf([]))).toBeNull();
+    expect(unavailableRail(undefined)).toBeNull();
   });
 });
 
@@ -259,5 +289,19 @@ describe('RAIL_PRESENTATION', () => {
       label: 'USD',
       flag: 'images/us.png',
     });
+  });
+
+  it('tells a payer the IBAN only takes euros from their own account', () => {
+    // Wirex sends back a deposit from someone else, or in another currency.
+    const { blurb } = RAIL_PRESENTATION[WirexBankAccountType.SEPA];
+    expect(blurb).toContain('euros');
+    expect(blurb).toContain('in your own name');
+  });
+
+  it('says the euros arrive as euros', () => {
+    // Paid on as EURC, never converted to dollars.
+    const { blurb } = RAIL_PRESENTATION[WirexBankAccountType.SEPA];
+    expect(blurb).toContain('EURC');
+    expect(blurb).not.toContain('dollars');
   });
 });

@@ -1,5 +1,11 @@
 import React, { ReactNode, useCallback } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -56,9 +62,11 @@ export interface ResponsiveModalProps {
   containerClassName?: string;
   overlayClassName?: string;
   titleClassName?: string;
+  titleTextClassName?: string;
   /** Overlay the mobile header on its scrolling content with a fading scrim. */
   gradientHeader?: boolean;
   showBackButton?: boolean;
+  showCloseButton?: boolean;
   /** Use the 40px controls and 20px title from compact mobile design headers. */
   compactHeader?: boolean;
   /** Use 40px header controls for screens designed with the smaller controls. */
@@ -86,6 +94,8 @@ export interface ResponsiveModalProps {
    * overflowing and the overlay scrolling the header away).
    */
   fillViewportHeight?: boolean;
+  /** Height of the card on wide screens, capped to fit the viewport. */
+  wideScreenHeight?: number;
   /**
    * How the modal presents itself below the medium breakpoint.
    *
@@ -115,8 +125,10 @@ const ResponsiveModal = ({
   containerClassName,
   overlayClassName,
   titleClassName,
+  titleTextClassName,
   gradientHeader = false,
   showBackButton = false,
+  showCloseButton = true,
   compactHeader = false,
   compactControls = false,
   onBackPress,
@@ -129,11 +141,13 @@ const ResponsiveModal = ({
   scrollViewProps,
   hideHeader = false,
   fillViewportHeight = false,
+  wideScreenHeight,
   mobilePresentation = 'sheet',
   nativeFullScreen = false,
   mobileTopOffset,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
+  const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isNativeSmall = Platform.OS !== 'web' && !isScreenMedium;
   const showGradientHeader = gradientHeader && !isScreenMedium;
@@ -145,8 +159,12 @@ const ResponsiveModal = ({
   // small screens already use, capping the card to the viewport (see below).
   const webFill = fillViewportHeight && Platform.OS === 'web';
   const useNativeFullScreen = nativeFullScreen && Platform.OS !== 'web';
-  const useNativeFlexLayout = isNativeSmallScreen || webFill;
-  const useFixedHeightLayout = useNativeFlexLayout && !disableScroll;
+  const fixedCardHeight =
+    isScreenMedium && wideScreenHeight !== undefined
+      ? Math.min(wideScreenHeight, windowHeight * 0.9)
+      : undefined;
+  const useFlexLayout = isNativeSmallScreen || webFill || fixedCardHeight !== undefined;
+  const useFixedHeightLayout = useFlexLayout && !disableScroll;
   const dialogHeight = useSharedValue(0);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
   const containerHeightRef = React.useRef(0);
@@ -158,24 +176,15 @@ const ResponsiveModal = ({
     }
   }, [dialogHeight, useFixedHeightLayout]);
 
-  const titleEntering = shouldAnimate
-    ? (isForward ? FadeInRight : FadeInLeft).duration(10).springify()
-    : undefined;
-
-  const titleExiting = shouldAnimate
-    ? (isForward ? FadeOutLeft : FadeOutRight).duration(10)
-    : undefined;
-
-  const contentEntering = shouldAnimate
-    ? (isForward ? FadeInRight : FadeInLeft).duration(250)
-    : undefined;
-
-  const contentExiting = shouldAnimate
-    ? (isForward ? FadeOutLeft : FadeOutRight).duration(250)
-    : undefined;
+  const slideIn = isForward ? FadeInRight : FadeInLeft;
+  const slideOut = isForward ? FadeOutLeft : FadeOutRight;
+  const contentEntering = shouldAnimate ? slideIn.duration(250) : undefined;
+  const contentExiting = shouldAnimate ? slideOut.duration(250) : undefined;
+  const titleEntering = shouldAnimate ? slideIn.duration(10).springify() : undefined;
+  const titleExiting = shouldAnimate ? slideOut.duration(10) : undefined;
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
-    if (useNativeFlexLayout) {
+    if (useFlexLayout) {
       return {};
     }
 
@@ -194,7 +203,7 @@ const ResponsiveModal = ({
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
-  }, [shouldAnimate, useNativeFlexLayout]);
+  }, [shouldAnimate, useFlexLayout]);
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -209,7 +218,13 @@ const ResponsiveModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
-        style={useNativeFullScreen ? { height: '100%', maxHeight: '100%' } : undefined}
+        style={
+          useNativeFullScreen
+            ? { height: '100%', maxHeight: '100%' }
+            : fixedCardHeight !== undefined
+              ? { height: fixedCardHeight }
+              : undefined
+        }
         overlayClassName={overlayClassName}
         webPresentation={isDrawer ? 'bottom-sheet' : 'modal'}
         nativePresentation={isDrawer ? 'bottom-sheet' : 'modal'}
@@ -235,14 +250,14 @@ const ResponsiveModal = ({
         showCloseButton={false}
       >
         <Animated.View
-          style={[useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined, dialogAnimatedStyle]}
+          style={[useFlexLayout ? { flex: 1, minHeight: 0 } : undefined, dialogAnimatedStyle]}
           className={cn('overflow-hidden')}
         >
           <View
             className={cn(showGradientHeader ? 'gap-0' : 'gap-8', containerClassName)}
-            style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
+            style={useFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
             onLayout={event => {
-              if (!useNativeFlexLayout) {
+              if (!useFlexLayout) {
                 dialogHeight.value = event.nativeEvent.layout.height;
               }
             }}
@@ -298,6 +313,7 @@ const ResponsiveModal = ({
                       className={cn(
                         'native:text-2xl shrink text-center text-xl font-semibold',
                         compactHeader && 'native:text-xl',
+                        titleTextClassName,
                       )}
                     >
                       {title}
@@ -308,40 +324,44 @@ const ResponsiveModal = ({
                 )}
                 <View className="flex-row items-center gap-2">
                   {hasActionButton && actionButton}
-                  <DialogCloseButton
-                    accessibilityLabel="Close"
-                    style={compactControls ? { width: 40, height: 40 } : undefined}
-                  />
+                  {showCloseButton ? (
+                    <DialogCloseButton
+                      accessibilityLabel="Close"
+                      style={compactControls ? { width: 40, height: 40 } : undefined}
+                    />
+                  ) : !hasActionButton ? (
+                    <View className={cn('w-[50px] shrink-0', compactControls && 'w-10')} />
+                  ) : null}
                 </View>
               </DialogHeader>
-            ) : (
+            ) : showCloseButton ? (
               <View className="flex-row justify-end">
                 <DialogCloseButton />
               </View>
-            )}
+            ) : null}
             {disableScroll ? (
               <Animated.View
                 entering={contentEntering}
                 exiting={contentExiting}
                 key={contentKey}
-                style={hideHeader || useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
+                style={hideHeader || useFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
               >
                 {children}
               </Animated.View>
             ) : (
               <View
                 className="relative"
-                style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
+                style={useFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
               >
                 <KeyboardAvoidingView
                   behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                   enabled={Platform.OS !== 'web'}
-                  style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
+                  style={useFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
                 >
                   <ScrollView
                     ref={scrollViewRef}
                     {...scrollViewProps}
-                    className="web:max-h-[80vh]"
+                    className={wideScreenHeight === undefined ? 'web:max-h-[80vh]' : undefined}
                     contentContainerClassName="pb-4 md:pb-10"
                     // The sheet runs to the bottom edge of the screen, so the last
                     // element (usually the primary button) needs to clear the home
@@ -380,6 +400,7 @@ const ResponsiveModal = ({
                       entering={contentEntering}
                       exiting={contentExiting}
                       key={contentKey}
+                      style={wideScreenHeight !== undefined ? { flexGrow: 1 } : undefined}
                     >
                       {children}
                     </Animated.View>

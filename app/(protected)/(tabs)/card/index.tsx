@@ -4,6 +4,7 @@ import { Redirect } from 'expo-router';
 import PageLayout from '@/components/PageLayout';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { CardProvider } from '@/lib/types';
 import {
   canReplaceClosedCard,
   getActiveCardRoute,
@@ -12,6 +13,7 @@ import {
   hasPendingCard,
 } from '@/lib/utils';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
+import { routesToNewCard } from '@/lib/utils/rainSunset';
 
 /**
  * `/card` is deprecated as a destination — it used to render the standalone card
@@ -26,6 +28,12 @@ export default function Card() {
 
   if (isLoading) {
     return <PageLayout isLoading>{null}</PageLayout>;
+  }
+
+  // Rain sunset: a Rain application that can no longer become a card, where the
+  // new card is available — the new-card screen, not the Rain issuance flow.
+  if (routesToNewCard(cardStatus)) {
+    return <Redirect href={path.CARD_NEW_CARD} />;
   }
 
   // BD users who haven't met the minimum card deposit are sent to the issuance
@@ -54,6 +62,14 @@ export default function Card() {
   // A Rain application is already in flight (KYC submitted, card pending) —
   // resume the issuance flow rather than restarting onboarding.
   if (hasCardStatusWithRainApplication(cardStatus)) {
+    return <Redirect href={path.CARD_ACTIVATE} />;
+  }
+
+  // A Wirex applicant — approved, asked for another document, or declined — has
+  // a screen of their own in the onboarding, and the issuance flow is where it
+  // lives. Country selection would ask them to start a verification they have
+  // already been through.
+  if (cardStatus?.provider === CardProvider.WIREX) {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
 

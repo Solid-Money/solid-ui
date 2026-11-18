@@ -14,11 +14,12 @@ import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
 import { getUserErrorMessage, isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
-import { KycStatus, SumsubSessionFlow } from '@/lib/types';
+import { DepositModal, KycStatus, SumsubSessionFlow } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import type { KycHandoffOutcome } from '@/components/kyc/KycStatusViews';
 
@@ -106,6 +107,10 @@ export function useSumsubSession() {
       // back where they asked for an IBAN rather than on a card page they never
       // wanted.
       if (kycFlow === 'va') return String(path.HOME);
+      // Rain sunset: a Rain cardholder's move to their new card. Every outcome
+      // is shown on the new-card screen, which reads the move's own status —
+      // the issuance flow belongs to the Rain card they still hold.
+      if (kycFlow === 'card_migration') return String(path.CARD_NEW_CARD);
       // Card. Sumsub GREEN hands off to Wirex, which then adjudicates. So:
       //  - APPROVED (Wirex approved) → activate, where the user issues the card.
       //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
@@ -160,8 +165,28 @@ export function useSumsubSession() {
   destinationRef.current =
     session.phase === 'completed' ? (session.destination ?? null) : destinationRef.current;
   const retryRedirect = useCallback(() => {
-    router.replace((destinationRef.current ?? String(path.CARD_ACTIVATE)) as any);
-  }, [router]);
+    const fallback =
+      kycFlow === 'va'
+        ? path.HOME
+        : kycFlow === 'card_migration'
+          ? path.CARD_NEW_CARD
+          : path.CARD_ACTIVATE;
+    router.replace((destinationRef.current ?? String(fallback)) as any);
+  }, [kycFlow, router]);
+
+  /**
+   * Back to the bank screens on the home page, re-asking which provider serves
+   * the user: the virtual account's equivalent of sending a card applicant back
+   * through the country screen.
+   */
+  const returnToBankScreen = useCallback(
+    (modal: DepositModal) => {
+      queryClient.invalidateQueries({ queryKey: [WIREX_BANK_OVERVIEW_KEY] });
+      useDepositStore.getState().setModal(modal);
+      router.replace(path.HOME as any);
+    },
+    [queryClient, router],
+  );
 
   /**
    * One automatic retry, because the hand-off is only ever a pass-through: if we
@@ -267,11 +292,45 @@ export function useSumsubSession() {
        * country at all, it silently produced a verified user with no card.
        */
       if (e?.code === 'COUNTRY_REQUIRED') {
+        // The virtual account asks where the user lives on its own bank screen
+        // (`WirexResidenceStep`); the card's country screen would send them on
+        // to a card they did not ask for.
+        if (kycFlow === 'va') {
+          track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+            provider: 'wirex',
+            action: 'country_required',
+          });
+          returnToBankScreen(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+          return;
+        }
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
           action: 'country_required',
           kycProvider: 'sumsub',
         });
         router.replace(path.CARD_COUNTRY_SELECTION as any);
+        return;
+      }
+      /**
+       * VIRTUAL_ACCOUNT_PROVIDER_MISMATCH (400): this user's account is Rain's,
+       * not Wirex's — they verified with Didit already, an admin switched them,
+       * or they live outside the IBAN countries. A Sumsub check here would be a
+       * second verification, so send them to the Rain account instead.
+       */
+      if (e?.code === 'VIRTUAL_ACCOUNT_PROVIDER_MISMATCH') {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+          provider: 'rain',
+          action: 'provider_mismatch',
+        });
+        returnToBankScreen(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+        return;
+      }
+      /**
+       * RAIN_MIGRATION_UNAVAILABLE (400): a Rain cardholder's move to the new
+       * card, in a country the new card partner does not serve (or the move was
+       * switched off). The new-card screen re-reads the status and explains.
+       */
+      if (e?.code === 'RAIN_MIGRATION_UNAVAILABLE') {
+        router.replace(path.CARD_NEW_CARD as any);
         return;
       }
       /**
@@ -293,11 +352,26 @@ export function useSumsubSession() {
       setSession({ phase: 'error', message: getUserErrorMessage(e, { action: 'kyc' }) });
       void showErrorToast(e, { action: 'kyc' });
     }
-  }, [debugState, readDeclaredCountry, redirectBasedOnKycStatus, router, sumsubFlow]);
+  }, [
+    debugState,
+    kycFlow,
+    readDeclaredCountry,
+    redirectBasedOnKycStatus,
+    returnToBankScreen,
+    router,
+    sumsubFlow,
+  ]);
 
   const markStarted = useCallback(() => {
+    // The same marker Didit writes, so Home can tell a card applicant who opened Sumsub and
+    // walked away ("Finish getting your card") from one who never started. Card only: the
+    // banner is about the card, and a bank-account or buy-crypto check is not one.
+    if (sumsubFlow === 'card') {
+      const userId = useUserStore.getState().users.find(user => user.selected)?.userId;
+      if (userId) useKycStore.getState().markKycStarted(userId);
+    }
     setSession({ phase: 'started' });
-  }, []);
+  }, [sumsubFlow]);
 
   const onVerificationComplete = useCallback(() => {
     Toast.show({
@@ -359,8 +433,14 @@ export function useSumsubSession() {
       router.back();
       return;
     }
-    router.replace(path.CARD_ACTIVATE as any);
-  }, [router]);
+    router.replace(
+      (kycFlow === 'va'
+        ? path.HOME
+        : kycFlow === 'card_migration'
+          ? path.CARD_NEW_CARD
+          : path.CARD_ACTIVATE) as any,
+    );
+  }, [kycFlow, router]);
 
   // `message` is the SDK's own text: reported, never shown.
   const onVerificationError = useCallback((message: string) => {

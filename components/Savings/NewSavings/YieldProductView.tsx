@@ -1,14 +1,20 @@
 import { Pressable, View } from 'react-native';
 import { ChevronRight, Info } from 'lucide-react-native';
 
+import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import CountUp from '@/components/CountUp';
 import { EarnChip } from '@/components/Earn/EarnChips';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { formatYieldAmount, yieldProductName } from '@/components/Earn/yieldProducts';
+import {
+  formatYieldAmount,
+  YIELD_ASSET_NOUN,
+  yieldProductName,
+} from '@/components/Earn/yieldProducts';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { PendingWithdrawal } from '@/hooks/useBaseWithdrawRequests';
 import { yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
@@ -35,6 +41,8 @@ const INTRO: Record<VaultType, string> = {
   [VaultType.FUSE]: 'On your FUSE. Interest is added all the time, and it counts toward your tier.',
   [VaultType.EUR]:
     'On your euros. Your EURC is held and shown in euros, and you can withdraw it whenever you want.',
+  [VaultType.BTC]:
+    'On your bitcoin. Deposit WBTC on Ethereum or Base, earn in BTC, and keep your BTC exposure.',
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (
@@ -69,8 +77,10 @@ export interface YieldProductViewProps {
   isLoading: boolean;
   isFunded: boolean;
   balanceUsd: number;
-  /** Undefined while the rate loads. */
+  /** Undefined while the rate loads, or when there is none. */
   apy: number | undefined;
+  /** Whether `apy` is still loading: once it isn't, a missing rate is shown as missing. */
+  isApyLoading?: boolean;
   interestUsd: number;
   isInterestLoading: boolean;
   /** Interest added over the last 30 days; undefined while it can't be worked out. */
@@ -85,6 +95,11 @@ export interface YieldProductViewProps {
   onOpenHelp: () => void;
   onOpenWallet?: () => void;
   onOpenCredit?: () => void;
+  /**
+   * This product's withdrawals waiting to be paid out. They have left the balance above, so
+   * the page says where they went — a full withdrawal would otherwise just read as no funds.
+   */
+  pendingWithdrawals?: PendingWithdrawal[];
 }
 
 /**
@@ -98,6 +113,7 @@ export default function YieldProductView({
   isFunded,
   balanceUsd,
   apy,
+  isApyLoading = false,
   interestUsd,
   isInterestLoading,
   past30Usd,
@@ -110,6 +126,7 @@ export default function YieldProductView({
   onOpenHelp,
   onOpenWallet,
   onOpenCredit,
+  pendingWithdrawals = [],
 }: YieldProductViewProps) {
   const name = yieldProductName(vaultType);
   const isEur = isEurVault(vaultType);
@@ -120,6 +137,13 @@ export default function YieldProductView({
   // otherwise read "+$0.00 today".
   const rate = Math.max(apy ?? 0, 0) / 100;
   const estimate = yieldEstimate((balanceUsd * rate) / 365, (balanceUsd * rate) / 12);
+
+  const withdrawing =
+    pendingWithdrawals.length > 0 ? (
+      <View className="mx-4 overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+        <WithdrawingRow withdrawals={pendingWithdrawals} />
+      </View>
+    ) : null;
 
   const footer = (
     <Text className="mx-4 text-center text-[13px] leading-[18px] text-white/40">
@@ -170,6 +194,8 @@ export default function YieldProductView({
               </View>
             ) : null}
           </View>
+
+          {withdrawing}
 
           <SavingsFundedActions vaultType={vaultType} />
 
@@ -235,13 +261,21 @@ export default function YieldProductView({
                 Earn <Text className="text-[36px] font-semibold text-[#94F27F]">{apyLabel}</Text> a
                 year
               </Text>
-            ) : (
+            ) : isApyLoading ? (
               <Skeleton className="h-11 w-64 rounded-xl bg-white/10" />
+            ) : (
+              // No rate to quote (BTC Yield has none until its strategies start): say what it
+              // earns on rather than wait on a rate forever.
+              <Text className="text-center text-[36px] font-semibold leading-[44px] text-white">
+                Earn on your {YIELD_ASSET_NOUN[vaultType]}
+              </Text>
             )}
             <Text className="max-w-[340px] text-center text-[15px] leading-[22px] text-white/60">
               {INTRO[vaultType]}
             </Text>
           </View>
+
+          {withdrawing}
 
           <StartEarningButton vaultType={vaultType} />
 

@@ -19,18 +19,31 @@ import { WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
  * prompt is raised: signing with the wrong key would burn the challenge and
  * return a signature error that says nothing about the real cause.
  */
+/** The rail Wirex left behind, or why the link did not complete. */
+export interface WirexWalletLinkResult {
+  rail: WirexBankRailStatusDto | null;
+  error: string | null;
+}
+
 export function useWirexWalletLink() {
   const initLink = useInitWirexWalletLink();
   const completeLink = useCompleteWirexWalletLink();
   const { signMessage, canSign, walletAddress } = useWalletMessageSigner();
   const [error, setError] = useState<string | null>(null);
 
-  const link = useCallback(async (): Promise<WirexBankRailStatusDto | null> => {
+  /**
+   * Runs the whole link. Never throws: a failure is stored in `error` for the
+   * screen and also returned, so the caller can record what went wrong.
+   */
+  const link = useCallback(async (): Promise<WirexWalletLinkResult> => {
     setError(null);
+    const fail = (message: string): WirexWalletLinkResult => {
+      setError(message);
+      return { rail: null, error: message };
+    };
 
     if (!canSign) {
-      setError('Your wallet is not ready yet. Try again in a moment.');
-      return null;
+      return fail('Your wallet is not ready yet. Try again in a moment.');
     }
 
     try {
@@ -44,8 +57,7 @@ export function useWirexWalletLink() {
         challenge.walletAddress &&
         challenge.walletAddress.toLowerCase() !== walletAddress.toLowerCase()
       ) {
-        setError('This account is linked to a different wallet. Please contact support.');
-        return null;
+        return fail('This account is linked to a different wallet. Please contact support.');
       }
 
       // Raises the passkey prompt. That prompt IS the user's authorisation —
@@ -53,10 +65,9 @@ export function useWirexWalletLink() {
       const signature = await signMessage(challenge.challenge);
 
       const rail = await completeLink.mutateAsync(signature);
-      return rail ?? null;
+      return { rail: rail ?? null, error: null };
     } catch (caught) {
-      setError(await describeLinkFailure(caught));
-      return null;
+      return fail(await describeLinkFailure(caught));
     }
   }, [canSign, completeLink, initLink, signMessage, walletAddress]);
 

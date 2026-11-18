@@ -60,6 +60,29 @@ describe('isReceivedSoUsdCashback', () => {
   });
 });
 
+describe('isReceivedSoUsdCashback on a euro row', () => {
+  const euro = (overrides: Partial<Cashback> = {}) =>
+    makeCashback({
+      _id: 'eur',
+      currency: 'EUR',
+      soUsdAmount: undefined,
+      soUsdRate: undefined,
+      soEurAmount: '2.5',
+      soEurRate: '1.01',
+      ...overrides,
+    });
+
+  it('is true for a Paid euro cashback with a positive soEUR amount', () => {
+    expect(isReceivedSoUsdCashback(euro())).toBe(true);
+  });
+
+  it('is false until the soEUR payout is recorded, or when it is zero', () => {
+    expect(isReceivedSoUsdCashback(euro({ status: CashbackStatus.Escrowed }))).toBe(false);
+    expect(isReceivedSoUsdCashback(euro({ soEurAmount: undefined }))).toBe(false);
+    expect(isReceivedSoUsdCashback(euro({ soEurAmount: '0' }))).toBe(false);
+  });
+});
+
 describe('getReceivedSoUsdCashbackIds', () => {
   it('returns ids for only the received soUSD payouts', () => {
     const cashbacks = [

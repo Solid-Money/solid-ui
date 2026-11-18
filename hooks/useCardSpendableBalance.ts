@@ -3,7 +3,14 @@ import { useMemo } from 'react';
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
-import { cardSpendableAssetsFor, sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
+import { useMainCurrency } from '@/hooks/useMainCurrency';
+import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
+import {
+  baseEurcUsdQuote,
+  cardSpendableAssetsFor,
+  soEurUsdPerShare,
+  sumCardSpendableUSD,
+} from '@/lib/utils/cardSpendable';
 
 /**
  * The assets this cardholder's card can spend: the Fuse set, plus EURC on Base once they
@@ -32,14 +39,48 @@ export const useCardSpendableAssets = (): CardSpendableAsset[] => {
  * belong to the card screen, where the permission is granted — showing them here
  * would make a fully funded account read as $0 spendable for the seconds before its
  * registration query lands.
+ *
+ * Loading until the deployment list first answers, too. Balances are restored from disk on
+ * launch, so without this the figure read the Fuse set alone — a euro cardholder's dollar
+ * cents — and then jumped to the full balance when the list landed.
+ *
+ * "Not yet answered" is pending while fetching or paused: a launch offline pauses the query,
+ * and `isLoading` alone reads a paused query as settled. A failed list is an answer — the
+ * query leaves pending — and the figure falls back to the Fuse set, which the card can always
+ * reach. A disabled query (no user yet) is idle and does not hold the figure.
+ *
+ * soEUR counts at the price the spend-mode sheet's "Your balance" gives it, so the Cash figure
+ * above that panel matches it. It waits on that price the same way, rather than landing without
+ * the soEUR and then jumping: the soEUR rate, and the card's euro rate when no Base EURC quote
+ * stands in for it. `isSoEurPricePending` is that wait alone, for a screen that ignores the rest.
  */
-export const useCardSpendableBalanceUSD = (): { data: number; isLoading: boolean } => {
+export const useCardSpendableBalanceUSD = (): {
+  data: number;
+  isLoading: boolean;
+  isSoEurPricePending: boolean;
+} => {
   const { tokens, isLoading } = useBalances();
+  const { isPending, fetchStatus } = useCardSpendDeployments();
   const assets = useCardSpendableAssets();
+  const soEurSpendable = assets.some(asset => asset.symbol === 'soEUR');
+  const soEurRate = useVaultExchangeRate('EUR', soEurSpendable);
+  const { usdPerEur, isLoading: isCardDetailsLoading } = useMainCurrency();
 
-  const data = useMemo(() => sumCardSpendableUSD(tokens, assets), [tokens, assets]);
+  const data = useMemo(
+    () => sumCardSpendableUSD(tokens, assets, soEurUsdPerShare(tokens, soEurRate.data, usdPerEur)),
+    [tokens, assets, soEurRate.data, usdPerEur],
+  );
+  const isDeploymentsUnanswered = isPending && fetchStatus !== 'idle';
+  const isSoEurPricePending =
+    soEurSpendable &&
+    ((soEurRate.isPending && soEurRate.fetchStatus !== 'idle') ||
+      (isCardDetailsLoading && baseEurcUsdQuote(tokens) === undefined));
 
-  return { data, isLoading };
+  return {
+    data,
+    isLoading: isLoading || isDeploymentsUnanswered || isSoEurPricePending,
+    isSoEurPricePending,
+  };
 };
 
 export default useCardSpendableBalanceUSD;

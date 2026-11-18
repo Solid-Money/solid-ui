@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { CardStatusPage } from '@/components/Card/CardStatusPage';
+import { WirexChecking } from '@/components/Card/WirexOnboarding/WirexStatusScreens';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -16,7 +17,7 @@ import { track } from '@/lib/analytics';
 import { resumeRainKycForward } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import { RainApplicationStatus } from '@/lib/types';
+import { CardProvider, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { resolveCardPendingDestination } from '@/lib/utils/cardPendingRouting';
 import { resolveVirtualAccountPendingState } from '@/lib/utils/virtualAccountPendingState';
@@ -89,7 +90,8 @@ export default function CardPending() {
   }, [router, setDepositModal]);
 
   // Didit declined the virtual-account identity check before anything reached
-  // Rain, so a fresh verification is allowed.
+  // Rain — or approved answers Rain cannot accept — so a fresh verification is
+  // allowed.
   const handleRetryVerification = useCallback(() => {
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
       action: 'retry_virtual_account_kyc',
@@ -265,6 +267,27 @@ export default function CardPending() {
     );
   }
 
+  if (virtualAccountState === 'verification-resubmit') {
+    return (
+      <CardStatusPage
+        title="Re-enter your SSN"
+        description={
+          'Your ID check passed, but the Social Security\nNumber you entered is not a valid 9-digit number.\nVerify again and enter your full SSN, digits only.'
+        }
+        header="Identity Verification"
+        image={heroImage}
+      >
+        <Button
+          variant="brand"
+          onPress={handleRetryVerification}
+          className="mt-6 h-12 w-full rounded-xl"
+        >
+          <Text className="text-base font-bold text-primary-foreground">Re-enter SSN</Text>
+        </Button>
+      </CardStatusPage>
+    );
+  }
+
   if (virtualAccountState === 'deposit-required') {
     return (
       <CardStatusPage
@@ -291,6 +314,17 @@ export default function CardPending() {
           <Text className="text-base font-bold">Add funds</Text>
         </Button>
       </CardStatusPage>
+    );
+  }
+
+  // A Wirex card applicant waits on the onboarding's own Checking screen. Same polling and the
+  // same self-routing above: the moment Wirex decides, they are moved on.
+  if (!isVirtualAccountFlow && cardStatusResponse?.provider === CardProvider.WIREX) {
+    return (
+      <WirexChecking
+        onGoHome={() => router.replace(path.HOME)}
+        onBack={() => (router.canGoBack() ? router.back() : router.replace(path.HOME))}
+      />
     );
   }
 

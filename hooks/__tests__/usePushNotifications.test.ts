@@ -1,4 +1,5 @@
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 // The hook pulls in expo-notifications, firebase messaging and the API client
 // at import time. None of that is involved in routing or attribution, which is
@@ -48,15 +49,83 @@ describe('routeForLink', () => {
     ['/', path.HOME],
     ['/card', path.CARD_INFO],
     ['/card/activate', path.CARD_ACTIVATE],
+    ['/card/main-currency', path.CARD_MAIN_CURRENCY],
     ['/savings', path.SAVINGS],
     ['/activity', path.ACTIVITY],
     ['/referral', path.REFERRAL],
     ['/rewards', path.REWARDS],
     ['/rewards/benefits', path.REWARDS_BENEFITS],
+    ['/rewards/ai-api', path.AI_API],
+    ['/rewards/refer', path.REFER],
+    ['/rewards/refer/invites', path.REFER_INVITES],
     ['/savings/fuse', path.SAVINGS_FUSE],
+    ['/earn', path.EARN],
     ['/support', path.SUPPORT],
   ])('maps %s to its screen', (p, expected) => {
     expect(routeForLink(link(p))).toEqual(expected);
+  });
+
+  describe('paths whose query picks the destination', () => {
+    const ID = '000000000000000000000001';
+
+    it('opens the savings vault a link names', () => {
+      expect(routeForLink(link('/savings?vault=eur&utm_medium=push'))).toEqual({
+        pathname: '/savings',
+        params: { vault: 'eur' },
+      });
+    });
+
+    it('opens the savings screen for a vault it does not know', () => {
+      expect(routeForLink(link('/savings?vault=doge'))).toEqual(path.SAVINGS);
+    });
+
+    describe('an AI API limit push', () => {
+      const KEY_ID = '65f1a2b3c4d5e6f7a8b9c0d1';
+
+      it('opens that key’s limit, passing on only the key and the view', () => {
+        expect(
+          routeForLink(
+            link(
+              `/rewards/ai-api?key=${KEY_ID}&view=limit&utm_source=ai_api_limit_warning&utm_medium=push&utm_campaign=ai_api`,
+            ),
+          ),
+        ).toEqual({ pathname: '/rewards/ai-api', params: { key: KEY_ID, view: 'limit' } });
+      });
+
+      it('opens the key without a view it does not know', () => {
+        expect(routeForLink(link(`/rewards/ai-api?key=${KEY_ID}&view=delete`))).toEqual({
+          pathname: '/rewards/ai-api',
+          params: { key: KEY_ID },
+        });
+      });
+
+      it.each([
+        ['a key that is not an id', '/rewards/ai-api?key=../../card&view=limit'],
+        ['a key one character short', `/rewards/ai-api?key=${KEY_ID.slice(1)}&view=limit`],
+        ['a view without a key', '/rewards/ai-api?view=limit'],
+      ])('opens the AI API screen alone for %s', (_label, p) => {
+        expect(routeForLink(link(p))).toEqual(path.AI_API);
+      });
+    });
+
+    it('opens What’s New on the page a campaign chose, passing on only those params', () => {
+      expect(
+        routeForLink(link(`/?whatsNew=${ID}&whatsNewStep=2&utm_source=x_a&utm_campaign=x`)),
+      ).toEqual({ pathname: '/', params: { whatsNew: ID, whatsNewStep: '2' } });
+    });
+
+    it.each([
+      ['/?deposit=open', { deposit: 'open' }],
+      ['/?deposit=cash', { deposit: 'cash' }],
+      ['/?spendMode=open', { spendMode: 'open' }],
+    ])('opens %s over Home', (p, params) => {
+      expect(routeForLink(link(p))).toEqual({ pathname: '/', params });
+    });
+
+    it('opens plain Home for Home params it cannot read', () => {
+      expect(routeForLink(link('/?deposit=crypto&screen=card-info'))).toEqual(path.HOME);
+      expect(routeForLink(link('/?whatsNew=not-an-id'))).toEqual(path.HOME);
+    });
   });
 
   it('ignores the campaign query', () => {
@@ -144,6 +213,26 @@ describe('getNotificationRoute', () => {
       ).toEqual(path.CARD_INFO);
     });
 
+    it('opens Main currency for the EURC-arrived push, which links the card for older builds', () => {
+      expect(
+        getNotificationRoute({
+          type: 'deposit-completed',
+          fix: 'turn_on_euro',
+          link: link('/card?utm_source=eurc_arrived_euro_spending_off&utm_medium=push'),
+        }),
+      ).toEqual(path.CARD_MAIN_CURRENCY);
+    });
+
+    it('keeps a decline push with the same fix on its receipt', () => {
+      expect(
+        getNotificationRoute({
+          type: 'card-transaction',
+          transactionId: 'tx-1',
+          fix: 'turn_on_euro',
+        }),
+      ).not.toEqual(path.CARD_MAIN_CURRENCY);
+    });
+
     it('still opens the referral sheet where that is what the link says', () => {
       expect(
         getNotificationRoute({
@@ -151,6 +240,35 @@ describe('getNotificationRoute', () => {
           link: link('/rewards?referral=open&utm_medium=push'),
         }),
       ).toEqual(path.REFERRAL_PROGRAM);
+    });
+
+    it('sends a portal campaign push where its variant points', () => {
+      expect(
+        getNotificationRoute({
+          type: 'campaign-euro_yield_nov-b',
+          link: link('/?deposit=cash&utm_source=euro_yield_nov_b&utm_medium=push'),
+        }),
+      ).toEqual({ pathname: '/', params: { deposit: 'cash' } });
+
+      expect(
+        getNotificationRoute({
+          type: 'campaign-test',
+          link: link('/savings?vault=eur&utm_source=test_a&utm_medium=push'),
+        }),
+      ).toEqual({ pathname: '/savings', params: { vault: 'eur' } });
+    });
+
+    it('opens the limit of the key an AI API limit push is about', () => {
+      const keyId = '65f1a2b3c4d5e6f7a8b9c0d1';
+      expect(
+        getNotificationRoute({
+          type: 'ai_api_limit_warning',
+          keyId,
+          link: link(
+            `/rewards/ai-api?key=${keyId}&view=limit&utm_source=ai_api_limit_warning&utm_medium=push`,
+          ),
+        }),
+      ).toEqual({ pathname: '/rewards/ai-api', params: { key: keyId, view: 'limit' } });
     });
   });
 
@@ -190,6 +308,8 @@ describe('getNotificationRoute', () => {
       ['rewards-using-card', path.CARD_INFO],
       ['rewards-fuse-vault', path.SAVINGS_FUSE],
       ['rewards-tier-reached', path.REWARDS],
+      ['ai_api_limit_reached', path.AI_API],
+      ['ai_api_paused', path.AI_API],
     ])('still routes %s on its type', (type, expected) => {
       expect(getNotificationRoute({ type })).toEqual(expected);
     });
@@ -232,6 +352,23 @@ const responseFor = (identifier: string, data: Record<string, string>) => ({
   notification: { request: { identifier, content: { data } } },
 });
 
+/**
+ * The same tap on iOS, for a push sent through FCM: `content.data` is null and
+ * the data keys sit in the APNs payload on `trigger.payload`.
+ */
+const iosResponseFor = (identifier: string, data: Record<string, string>) => ({
+  notification: {
+    request: {
+      identifier,
+      content: { data: null },
+      trigger: {
+        type: 'push',
+        payload: { aps: { sound: 'default' }, 'gcm.message_id': '1', ...data },
+      },
+    },
+  },
+});
+
 describe('handleNotificationResponse', () => {
   beforeEach(() => resetHandledResponses());
 
@@ -243,6 +380,58 @@ describe('handleNotificationResponse', () => {
     handleNotificationResponse(responseFor('n1', spend), navigate);
 
     expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+  });
+
+  describe('on iOS', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { track } = require('@/lib/analytics');
+
+    beforeEach(() => track.mockClear());
+
+    it('opens the transaction a spend push is about, not home', () => {
+      const navigate = jest.fn();
+
+      handleNotificationResponse(iosResponseFor('n1', spend), navigate);
+
+      expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+    });
+
+    it('follows the deep link a lifecycle push carries', () => {
+      const navigate = jest.fn();
+
+      handleNotificationResponse(
+        iosResponseFor('n1', {
+          type: 'kyc-approved',
+          link: link('/card?utm_source=id_verified_your_card_is_ready&utm_medium=push'),
+        }),
+        navigate,
+      );
+
+      expect(navigate).toHaveBeenCalledWith(path.CARD_INFO);
+    });
+
+    it('records the open with its type and campaign', () => {
+      handleNotificationResponse(
+        iosResponseFor('n1', {
+          ...spend,
+          utm_source: 'card_approved',
+          utm_medium: 'push',
+          utm_campaign: 'solid_transactional',
+        }),
+        jest.fn(),
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        TRACKING_EVENTS.PUSH_NOTIFICATION_OPENED,
+        expect.objectContaining({
+          notification_type: 'card-transaction',
+          utm_source: 'card_approved',
+          utm_medium: 'push',
+          utm_campaign: 'solid_transactional',
+          status: 'approved',
+        }),
+      );
+    });
   });
 
   it('acts on one tap once, however many times it is delivered', () => {

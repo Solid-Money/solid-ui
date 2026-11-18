@@ -5,6 +5,7 @@ import {
   activateTierTrial,
   claimYieldBoost,
   fetchReferralSummary,
+  fetchReferralV4Summary,
   fetchRewardsConfig,
   fetchRewardsUserData,
   fetchTierBenefits,
@@ -12,10 +13,12 @@ import {
   optInToRewards,
 } from '@/lib/api';
 import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
-import { RewardsUserData, YieldBoostSummary } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
+import { MainCurrency, RewardsUserData, YieldBoostSummary } from '@/lib/types';
+import { isAnyHTTPError, withRefreshToken } from '@/lib/utils';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
+
+import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
 
 const REWARDS = 'rewards';
 
@@ -47,6 +50,36 @@ export const useReferralSummary = (options?: { refetchInterval?: number | false 
     staleTime: secondsToMilliseconds(30),
     gcTime: secondsToMilliseconds(300),
     refetchInterval: options?.refetchInterval ?? false,
+  });
+};
+
+/**
+ * A 4xx is an answer — the endpoint is not deployed yet (404), or this user
+ * cannot have it — and asking again will not change it. Anything else gets one
+ * more try.
+ */
+const retryUnlessClientError = (failureCount: number, error: unknown) =>
+  !isAnyHTTPError(error, [400, 401, 403, 404, 405, 410, 422]) && failureCount < 1;
+
+/**
+ * Referral program v4.
+ *
+ * Doubles as the program's switch: until this answers with
+ * `terms.enabled === true` the app keeps today's referral modal, so a failure —
+ * a 404 while the endpoint is not deployed, a network error — reads as "off".
+ * That is also why it never toasts and gives up on a 4xx straight away: nobody
+ * should see an error, or wait through retries, for a program they cannot see.
+ */
+export const useReferralV4Summary = (options?: { enabled?: boolean }) => {
+  const userId = useSelectedUserId();
+  return useQuery({
+    queryKey: [REWARDS, 'referralV4Summary', userId],
+    queryFn: () => withRefreshToken(() => fetchReferralV4Summary()),
+    enabled: !!userId && options?.enabled !== false,
+    staleTime: secondsToMilliseconds(30),
+    gcTime: secondsToMilliseconds(300),
+    retry: retryUnlessClientError,
+    meta: { errorToast: false },
   });
 };
 
@@ -89,9 +122,15 @@ export const useRewardsUserData = (options?: {
 };
 
 export const useTierBenefits = () => {
+  // A euro cardholder's caps are in euros, so the comparison is asked for in their main currency.
+  // Read off the card details already cached for the card screens; dollars until they answer.
+  const userId = useSelectedUserId();
+  const { data: cardDetails } = useQuery(cardDetailsQueryOptions(userId));
+  const currency: MainCurrency = cardDetails?.main_currency === 'EUR' ? 'EUR' : 'USD';
+
   return useQuery({
-    queryKey: [REWARDS, 'tierBenefits'],
-    queryFn: fetchTierBenefits,
+    queryKey: [REWARDS, 'tierBenefits', currency],
+    queryFn: () => fetchTierBenefits(currency),
     staleTime: secondsToMilliseconds(60),
   });
 };

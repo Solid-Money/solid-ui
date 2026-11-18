@@ -116,7 +116,8 @@ export const getMovableHoldings = (
 export const MIN_SWAPPABLE_VALUE_USD = 1;
 
 /** soUSD, soETH, soFUSE: Solid vault shares, by the ticker convention every vault follows. */
-const isSolidVaultShare = (symbol: string | undefined): boolean => /^so[A-Z]/.test(symbol ?? '');
+export const isSolidVaultShare = (symbol: string | undefined): boolean =>
+  /^so[A-Z]/.test(symbol ?? '');
 
 /** The quote rate is carried to a millionth of a dollar for the threshold check. */
 const RATE_SCALE = 1_000_000;
@@ -127,7 +128,11 @@ const RATE_SCALE = 1_000_000;
  * and the two meet only as `balance × rate ≥ threshold × 10^decimals`. A float
  * balance would round an 18-decimal holding before the comparison ever ran.
  */
-const meetsSwapThreshold = (balance: bigint, decimals: number, quoteRate: number): boolean => {
+export const meetsSwapThreshold = (
+  balance: bigint,
+  decimals: number,
+  quoteRate: number,
+): boolean => {
   if (!Number.isInteger(decimals) || decimals < 0) return false;
   if (!Number.isFinite(quoteRate) || quoteRate <= 0) return false;
   const rate = BigInt(Math.round(quoteRate * RATE_SCALE));
