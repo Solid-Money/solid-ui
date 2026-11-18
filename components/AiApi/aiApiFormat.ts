@@ -120,7 +120,8 @@ export const aiApiModelPriceExample = (model: AiApiPricedModel, cashbackRate: nu
     solid,
     official,
     afterCashback,
-    savingsAfterCashback: percentBelowOfficial(afterCashback, official),
+    // No saving is claimed when the blend is $0: see `aiApiModelDiscount`.
+    savingsAfterCashback: solid > 0 ? percentBelowOfficial(afterCashback, official) : null,
   };
 };
 
@@ -140,11 +141,17 @@ export const aiApiModelIsFree = (model: AiApiPricedModel): boolean =>
  * Figma's 3:1 input:output blend, rounded down so the tag never claims more
  * than the blend saves. Null when there is no list price to compare with, or
  * nothing is saved.
+ *
+ * Also null when the blend is $0. A free model is tagged `Free` instead, and a
+ * model the backend says isn't free while every price the app is sent is 0
+ * charges for something the app doesn't show (cache writes), so a "−100%" would
+ * overstate the saving.
  */
 export const aiApiModelDiscount = (model: AiApiPricedModel): number | null => {
   const { officialInputUsdPerMTok: officialIn, officialOutputUsdPerMTok: officialOut } = model;
   if (!officialIn || !officialOut || officialIn <= 0 || officialOut <= 0) return null;
   const { solid, official } = modelPricesAtBlend(model);
+  if (solid <= 0) return null;
   return percentBelowOfficial(solid, official);
 };
 
