@@ -174,15 +174,26 @@ describe('cashbackFiguresByCurrency', () => {
     ]);
   });
 
-  it('always lists the own currency, and the other only when there is some', () => {
+  it('keeps one zero in the preferred currency when both totals are zero', () => {
     expect(cashbackFiguresByCurrency({ USD: 0, EUR: 0 }, 'EUR')).toEqual([
       { value: 0, currency: 'EUR' },
     ]);
     expect(cashbackFiguresByCurrency({ USD: 25 }, 'USD')).toEqual([{ value: 25, currency: 'USD' }]);
   });
+
+  it.each([
+    ['EUR', 'USD'],
+    ['USD', 'EUR'],
+  ] as const)('omits a zero %s total and keeps even a sub-cent %s total', (own, other) => {
+    expect(cashbackFiguresByCurrency({ [own]: 0, [other]: 0.001 }, own)).toEqual([
+      { value: 0.001, currency: other },
+    ]);
+  });
 });
 
 describe('resolveLifetimeCashback', () => {
+  const usd = (value: number) => [{ value, currency: 'USD' }];
+
   it("takes the backend's lifetime figure, escrow included, over the card's paid total", () => {
     // Paid on every card held plus escrow, worked out server-side; the card's
     // own paid total misses a retired card's history.
@@ -191,36 +202,34 @@ describe('resolveLifetimeCashback', () => {
         rewardsFor({ cashbackLifetime: 131.75 }),
         cardCashback({ totalUsdValue: 25 }),
       ),
-    ).toEqual({ lifetimeCashback: 131.75, lifetimeCashbackOther: undefined });
+    ).toEqual({ lifetimeCashback: usd(131.75) });
   });
 
   it("counts a new cardholder's escrowed cashback rather than reading $0", () => {
-    expect(
-      resolveLifetimeCashback(
-        rewardsFor({ cashbackThisMonth: 0, cashbackPendingThisMonth: 3.2, cashbackLifetime: 3.2 }),
-        cardCashback({}),
-      ).lifetimeCashback,
-    ).toBeCloseTo(3.2);
+    const [figure] = resolveLifetimeCashback(
+      rewardsFor({ cashbackThisMonth: 0, cashbackPendingThisMonth: 3.2, cashbackLifetime: 3.2 }),
+      cardCashback({}),
+    ).lifetimeCashback;
+    expect(figure.currency).toBe('USD');
+    expect(figure.value).toBeCloseTo(3.2);
   });
 
   it("never reads below this month's figure", () => {
     expect(
       resolveLifetimeCashback(rewardsFor({ cashbackLifetime: 5 }), cardCashback({}))
         .lifetimeCashback,
-    ).toBe(10);
+    ).toEqual(usd(10));
   });
 
   describe('without a lifetime figure from the backend', () => {
     it("takes the card's paid total, floored at this month's figure", () => {
       expect(resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))).toEqual({
-        lifetimeCashback: 25,
-        lifetimeCashbackOther: undefined,
+        lifetimeCashback: usd(25),
         lifetimeCashbackIsPartial: true,
       });
       // The details lag behind this month's settled and escrowed $10.
       expect(resolveLifetimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 3 }))).toEqual({
-        lifetimeCashback: 10,
-        lifetimeCashbackOther: undefined,
+        lifetimeCashback: usd(10),
         lifetimeCashbackIsPartial: true,
       });
     });
@@ -234,15 +243,14 @@ describe('resolveLifetimeCashback', () => {
           rewardsFor({ cashbackThisMonth: 20, cashbackPendingThisMonth: 9 }),
           cardCashback({ totalUsdValue: 129 }),
         ).lifetimeCashback,
-      ).toBe(129);
+      ).toEqual(usd(129));
     });
 
     it('shows the card total while the rewards data is still loading', () => {
       expect(resolveLifetimeCashback(undefined, cardCashback({ totalUsdValue: 42.5 }))).toEqual({
-        lifetimeCashback: 42.5,
-        lifetimeCashbackOther: undefined,
+        lifetimeCashback: usd(42.5),
       });
-      expect(resolveLifetimeCashback(undefined, undefined).lifetimeCashback).toBe(0);
+      expect(resolveLifetimeCashback(undefined, undefined).lifetimeCashback).toEqual(usd(0));
     });
   });
 
@@ -265,8 +273,10 @@ describe('resolveLifetimeCashback', () => {
     // €14.00 (this month's settled and escrowed euros beat the lagging €9.20)
     // and $150 — not €164.
     expect(result).toEqual({
-      lifetimeCashback: 14,
-      lifetimeCashbackOther: { value: 150, currency: 'USD' },
+      lifetimeCashback: [
+        { value: 14, currency: 'EUR' },
+        { value: 150, currency: 'USD' },
+      ],
       lifetimeCashbackIsPartial: true,
     });
   });
@@ -283,8 +293,10 @@ describe('resolveLifetimeCashback', () => {
         cardCashback({ totalUsdValue: 150 }),
       ),
     ).toEqual({
-      lifetimeCashback: 33.5,
-      lifetimeCashbackOther: { value: 151.2, currency: 'USD' },
+      lifetimeCashback: [
+        { value: 33.5, currency: 'EUR' },
+        { value: 151.2, currency: 'USD' },
+      ],
     });
   });
 
@@ -300,10 +312,25 @@ describe('resolveLifetimeCashback', () => {
         cardCashback({ currency: 'EUR' }),
       ),
     ).toEqual({
-      lifetimeCashback: 14,
-      lifetimeCashbackOther: undefined,
+      lifetimeCashback: [{ value: 14, currency: 'EUR' }],
       lifetimeCashbackIsPartial: true,
     });
+  });
+
+  it('shows only the dollars of a euro cardholder who has earned no euros yet', () => {
+    // A fresh switch to euros: a "€0.00 + $25.00" headline would lead with
+    // nothing, so the dollars stand alone (see `cashbackFiguresByCurrency`).
+    expect(
+      resolveLifetimeCashback(
+        rewardsFor({
+          cashbackCurrency: 'EUR',
+          cashbackEur: { ...eurMonth, cashbackThisMonth: 0, cashbackPendingThisMonth: 0 },
+          cashbackLifetime: 25,
+          cashbackLifetimeEur: 0,
+        }),
+        cardCashback({ totalUsdValue: 25 }),
+      ),
+    ).toEqual({ lifetimeCashback: usd(25) });
   });
 
   describe('lifetimeCashbackIsPartial', () => {
@@ -333,8 +360,10 @@ describe('resolveLifetimeCashback', () => {
           cardCashback({ totalUsdValue: 150 }),
         ),
       ).toEqual({
-        lifetimeCashback: 33.5,
-        lifetimeCashbackOther: { value: 150, currency: 'USD' },
+        lifetimeCashback: [
+          { value: 33.5, currency: 'EUR' },
+          { value: 150, currency: 'USD' },
+        ],
         lifetimeCashbackIsPartial: true,
       });
     });
@@ -357,6 +386,6 @@ describe('resolveLifetimeCashback', () => {
         }),
         cardCashback({ totalUsdValue: Number.NaN }),
       ).lifetimeCashback,
-    ).toBe(0);
+    ).toEqual(usd(0));
   });
 });

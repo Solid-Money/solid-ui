@@ -10,8 +10,8 @@ import Svg, {
 } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
+import { formatCashbackFigures } from '@/lib/formatMonthlyCashback';
 import { formatBalance } from '@/lib/utils';
-import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
 
@@ -79,7 +79,7 @@ interface RewardsSummaryCardProps {
   referrals: number;
   /**
    * What the cashback sheet shows. The card's own figure is its
-   * `lifetimeCashback` (with `lifetimeCashbackOther` beneath it), so the card
+   * `lifetimeCashback`, formatted the same way as the sheet's row, so the card
    * and the sheet it opens can't disagree.
    */
   cashbackDetails: CashbackDetailsData;
@@ -103,22 +103,15 @@ const RewardsIcon = () => (
 
 interface SummaryStatProps {
   label: string;
-  value: number;
-  /** "$" unless the figure is in another currency (a euro cardholder's cashback). */
-  symbol?: string;
-  /**
-   * A second figure printed small beneath the first, never added to it — the
-   * cashback earned in the cardholder's other currency.
-   */
-  secondary?: string;
+  value: string;
   onPress?: () => void;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value, symbol = '$', secondary, onPress }: SummaryStatProps) => (
+const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
   <Pressable
     accessibilityRole={onPress ? 'button' : undefined}
-    accessibilityLabel={`${label}. ${formatBalance(value, symbol)}${secondary ? ` ${secondary}` : ''}`}
+    accessibilityLabel={`${label}. ${value}`}
     disabled={!onPress}
     onPress={onPress}
     className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
@@ -133,23 +126,13 @@ const SummaryStat = ({ label, value, symbol = '$', secondary, onPress }: Summary
     >
       {label}
     </Text>
-    <View className="items-center">
-      <Text
-        className="text-[26px] text-white"
-        // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
-        style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
-      >
-        {formatBalance(value, symbol)}
-      </Text>
-      {secondary ? (
-        <Text
-          className="text-sm text-white/50"
-          style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
-        >
-          {secondary}
-        </Text>
-      ) : null}
-    </View>
+    <Text
+      className="text-center text-[26px] text-white"
+      // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
+      style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
+    >
+      {value}
+    </Text>
   </Pressable>
 );
 
@@ -161,7 +144,7 @@ const SummaryStat = ({ label, value, symbol = '$', secondary, onPress }: Summary
  * same thing. The cashback figure counts what is still in escrow alongside what
  * has been paid — see `resolveLifetimeCashback`, which the caller applies — and
  * is the same figure as the sheet's "Lifetime cashback" row. Cashback in the
- * cardholder's other currency sits beneath it, never added in.
+ * cardholder's other currency is printed beside it, never added in.
  */
 const RewardsSummaryCard = ({
   referrals,
@@ -188,23 +171,18 @@ const RewardsSummaryCard = ({
           trigger={
             <SummaryStat
               label="Lifetime cashback"
-              value={cashbackDetails.lifetimeCashback}
-              symbol={CURRENCY_SYMBOLS[cashbackDetails.currency ?? 'USD']}
-              secondary={
-                cashbackDetails.lifetimeCashbackOther
-                  ? `+ ${formatBalance(
-                      cashbackDetails.lifetimeCashbackOther.value,
-                      CURRENCY_SYMBOLS[cashbackDetails.lifetimeCashbackOther.currency],
-                    )}`
-                  : undefined
-              }
+              value={formatCashbackFigures(cashbackDetails.lifetimeCashback)}
             />
           }
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />
         <View className="w-px bg-white/10" />
-        <SummaryStat label="Referrals" value={referrals} onPress={onReferralsPress} />
+        <SummaryStat
+          label="Referrals"
+          value={formatBalance(referrals)}
+          onPress={onReferralsPress}
+        />
       </View>
 
       <View className="absolute left-0 right-0 top-16 h-px bg-white/10" />

@@ -1,59 +1,52 @@
-import { type ReactNode } from 'react';
 import { type TextStyle, View } from 'react-native';
 
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 
-const WHOLE_STYLE: TextStyle = {
+export const BALANCE_VALUE_STYLE: TextStyle = {
   fontSize: 45,
   fontWeight: '600',
   fontFamily: 'MonaSans_600SemiBold',
   color: '#ffffff',
 };
-const MUTED_DECIMAL_STYLE: TextStyle = {
-  ...WHOLE_STYLE,
+export const MUTED_BALANCE_VALUE_STYLE: TextStyle = {
+  ...BALANCE_VALUE_STYLE,
   color: 'rgba(255, 255, 255, 0.5)',
 };
 
-interface BalanceHeadlineProps {
+interface BalanceAmountProps {
   balance: number;
-  label: string;
   mutedDecimals?: boolean;
   /** The currency symbol; `balance` must already be in that currency. */
   symbol?: string;
 }
 
-/** Shared headline geometry for the Home and Earn balance summaries. */
-export const BalanceHeadline = ({
+export const BalanceAmount = ({
   balance,
-  label,
   mutedDecimals = true,
   symbol = '$',
-}: BalanceHeadlineProps) => {
-  const decimalStyle = mutedDecimals ? MUTED_DECIMAL_STYLE : WHOLE_STYLE;
+}: BalanceAmountProps) => {
+  const decimalStyle = mutedDecimals ? MUTED_BALANCE_VALUE_STYLE : BALANCE_VALUE_STYLE;
 
   return (
-    <View className="items-center gap-1 pt-2">
-      <Text className="text-base font-medium text-muted-foreground">{label}</Text>
-      <CountUp
-        prefix={symbol}
-        count={balance ?? 0}
-        decimalPlaces={2}
-        animateOnMount={false}
-        classNames={{ wrapper: 'text-foreground' }}
-        styles={{
-          wholeText: WHOLE_STYLE,
-          decimalText: decimalStyle,
-          decimalSeparator: decimalStyle,
-        }}
-      />
-    </View>
+    <CountUp
+      prefix={symbol}
+      count={balance ?? 0}
+      decimalPlaces={2}
+      animateOnMount={false}
+      classNames={{ wrapper: 'text-foreground' }}
+      styles={{
+        wholeText: BALANCE_VALUE_STYLE,
+        decimalText: decimalStyle,
+        decimalSeparator: decimalStyle,
+      }}
+    />
   );
 };
 
-/** Keeps the pill on the same vertical baseline beneath the shared headline. */
-export const BalancePillRow = ({ children }: { children: ReactNode }) => (
-  <View className="items-center" style={{ transform: [{ translateY: -10 }] }}>
-    {children}
+export const BalanceHeadline = ({ label, ...amount }: BalanceAmountProps & { label: string }) => (
+  <View className="items-center gap-1 pt-2">
+    <Text className="text-base font-medium text-muted-foreground">{label}</Text>
+    <BalanceAmount {...amount} />
   </View>
 );

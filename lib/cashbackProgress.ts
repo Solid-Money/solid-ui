@@ -136,18 +136,18 @@ export interface CashbackFigure {
  * Per-currency amounts as figures to print side by side ("€12.40 + $150.00"),
  * the cardholder's own currency first. They are never added together.
  *
- * The cardholder's own currency is always listed, even at zero; the other only
- * when there is something in it.
+ * When both amounts are zero, show a single zero in the cardholder's currency.
  */
 export const cashbackFiguresByCurrency = (
   amounts: Partial<Record<CashbackCurrency, number>>,
   currency: CashbackCurrency,
 ): CashbackFigure[] => {
   const other: CashbackCurrency = currency === 'EUR' ? 'USD' : 'EUR';
-  const figures: CashbackFigure[] = [{ value: toPositive(amounts[currency]), currency }];
-  const otherValue = toPositive(amounts[other]);
-  if (otherValue > 0) figures.push({ value: otherValue, currency: other });
-  return figures;
+  const ownFigure = { value: toPositive(amounts[currency]), currency };
+  const otherFigure: CashbackFigure = { value: toPositive(amounts[other]), currency: other };
+  if (otherFigure.value === 0) return [ownFigure];
+  if (ownFigure.value === 0) return [otherFigure];
+  return [ownFigure, otherFigure];
 };
 
 /**
@@ -182,10 +182,10 @@ const laneLifetime = (
 
 /**
  * Lifetime cashback, per currency — the rewards card's headline and the
- * cashback sheet's "Lifetime cashback" row: `lifetimeCashback` in the month's
- * currency, and `lifetimeCashbackOther` when the cardholder also has cashback
- * in the other one — shown beside it, never added to it. See `laneLifetime`
- * for what each figure counts.
+ * cashback sheet's "Lifetime cashback" row: one figure per currency the
+ * cardholder has cashback in, the month's currency first, printed side by side
+ * and never added together (see `cashbackFiguresByCurrency`). See
+ * `laneLifetime` for what each figure counts.
  *
  * `lifetimeCashbackIsPartial` says a figure on show is the fallback rather
  * than the backend's complete one: it can still be missing escrow from last
@@ -196,17 +196,13 @@ const laneLifetime = (
 export const resolveLifetimeCashback = (
   rewards: RewardsUserData | undefined,
   cardCashback: CashbackData | undefined,
-): {
-  lifetimeCashback: number;
-  lifetimeCashbackOther?: CashbackFigure;
-  lifetimeCashbackIsPartial?: boolean;
-} => {
+): { lifetimeCashback: CashbackFigure[]; lifetimeCashbackIsPartial?: boolean } => {
   const currency = resolveCashbackMonth(rewards)?.currency ?? 'USD';
   const fromBackend: Record<CashbackCurrency, number | undefined> = {
     USD: rewards?.cashbackLifetime,
     EUR: rewards?.cashbackLifetimeEur,
   };
-  const [own, other] = cashbackFiguresByCurrency(
+  const lifetimeCashback = cashbackFiguresByCurrency(
     {
       USD: laneLifetime(fromBackend.USD, cardCashback?.totalUsdValue, rewards),
       EUR: laneLifetime(fromBackend.EUR, cardCashback?.eur?.totalEurValue, rewards?.cashbackEur),
@@ -215,12 +211,8 @@ export const resolveLifetimeCashback = (
   );
   const isPartial =
     rewards !== undefined &&
-    [own, other].some(figure => figure && typeof fromBackend[figure.currency] !== 'number');
-  return {
-    lifetimeCashback: own.value,
-    lifetimeCashbackOther: other,
-    ...(isPartial && { lifetimeCashbackIsPartial: true }),
-  };
+    lifetimeCashback.some(figure => typeof fromBackend[figure.currency] !== 'number');
+  return { lifetimeCashback, ...(isPartial && { lifetimeCashbackIsPartial: true }) };
 };
 
 /** A non-finite or negative amount contributes nothing rather than NaN. */

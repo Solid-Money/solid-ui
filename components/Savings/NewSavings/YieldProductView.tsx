@@ -15,6 +15,7 @@ import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { PendingWithdrawal } from '@/hooks/useBaseWithdrawRequests';
+import { formatApyPercent } from '@/lib/displayApy';
 import { yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
@@ -131,8 +132,9 @@ export default function YieldProductView({
   const name = yieldProductName(vaultType);
   const isEur = isEurVault(vaultType);
   const formatAmount = (value: number | undefined) => formatYieldAmount(value, vaultType);
-  // EUR Yield's rate is 0% for now, and shown as such rather than left blank.
-  const apyLabel = apy ? `${apy.toFixed(1)}%` : isEur ? '0.0%' : undefined;
+  // EUR Yield's rate is 0% for now, and shown as such rather than left blank. A small
+  // positive rate (a new vault's trailing day can be one) never reads as 0.0%.
+  const apyLabel = apy ? formatApyPercent(apy) : isEur ? '0.0%' : undefined;
   // Per day once that reaches a cent, else per month, as on Assets: a small balance would
   // otherwise read "+$0.00 today".
   const rate = Math.max(apy ?? 0, 0) / 100;

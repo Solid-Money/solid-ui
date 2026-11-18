@@ -12,6 +12,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useAiApiOverview } from '@/hooks/useAiApi';
 import { track } from '@/lib/analytics';
+import { cn } from '@/lib/utils';
 import { useAiApiRevealStore } from '@/store/useAiApiRevealStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -19,7 +20,7 @@ import { useUserStore } from '@/store/useUserStore';
 import AiApiCreateKeySheet from './AiApiCreateKeySheet';
 import AiApiDashboard from './AiApiDashboard';
 import AiApiHeader, { AiApiInfoButton } from './AiApiHeader';
-import AiApiIntro from './AiApiIntro';
+import AiApiIntro, { AiApiIntroFooter } from './AiApiIntro';
 import AiApiKeySheet, { type AiApiKeySheetView } from './AiApiKeySheet';
 import { AiApiModelsSheet } from './AiApiModels';
 
@@ -152,6 +153,10 @@ export default function AiApiScreen() {
     router.push(path.AI_API_KEY);
   };
 
+  const hasKeys = !!overview?.keys.length;
+  const canCreateKey = !!overview?.available && overview.keys.length < overview.maxKeys;
+  const showsIntro = !!overview && !isLoading && !isError && (!hasKeys || isIntroOpen);
+  const showsIntroFooter = showsIntro && canCreateKey;
   let body;
   if (isLoading) {
     body = <LoadingState />;
@@ -177,50 +182,46 @@ export default function AiApiScreen() {
     // screen is hidden for anyone it isn't open to.
     return <Redirect href={path.REWARDS} />;
   } else {
-    const hasKeys = overview.keys.length > 0;
-    const canCreateKey = overview.available && overview.keys.length < overview.maxKeys;
-    body =
-      !hasKeys || isIntroOpen ? (
-        <AiApiIntro
-          cashbackRate={overview.cashbackRate}
-          cashbackTier={overview.cashbackTier}
-          cashbackTiers={overview.cashbackTiers}
-          cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
-          settlementDays={overview.cashbackSettlementDays}
-          models={overview.models}
-          onOpenModels={() => setIsModelsOpen(true)}
-          ctaLabel={hasKeys ? 'New key' : 'Get API key'}
-          onCta={canCreateKey ? openCreate : undefined}
-        />
-      ) : (
-        <AiApiDashboard
-          overview={overview}
-          canCreateKey={canCreateKey}
-          onOpenKey={openKey}
-          onNewKey={openCreate}
-          onOpenSetup={openSetup}
-          onOpenHowItWorks={() => setIsIntroOpen(true)}
-          onOpenModels={() => setIsModelsOpen(true)}
-          onAddFunds={() => {
-            // Straight to the address that funds AI API charges — USDC on the
-            // billing chain, Base — rather than the deposit chooser, whose
-            // default lands money in savings, which a charge cannot draw on.
-            // `toSafe`: the Safe itself, even for a Wirex cardholder, whose
-            // stablecoins would otherwise get the card's address and be bridged
-            // to Fuse, out of reach of the charge.
-            setWalletDeposit({
-              symbol: 'USDC',
-              chainId: overview.billing.chainId,
-              isChangingToken: false,
-              toSafe: true,
-            });
-            setDepositModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
-          }}
-        />
-      );
+    body = showsIntro ? (
+      <AiApiIntro
+        cashbackRate={overview.cashbackRate}
+        cashbackTier={overview.cashbackTier}
+        cashbackTiers={overview.cashbackTiers}
+        cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
+        settlementDays={overview.cashbackSettlementDays}
+        models={overview.models}
+        billingTokens={overview.billing.billingTokens}
+        onOpenSetup={openSetup}
+      />
+    ) : (
+      <AiApiDashboard
+        overview={overview}
+        canCreateKey={canCreateKey}
+        onOpenKey={openKey}
+        onNewKey={openCreate}
+        onOpenSetup={openSetup}
+        onOpenHowItWorks={() => setIsIntroOpen(true)}
+        onOpenModels={() => setIsModelsOpen(true)}
+        onAddFunds={() => {
+          // Straight to the address that funds AI API charges — USDC on the
+          // billing chain, Base — rather than the deposit chooser, whose
+          // default lands money in savings, which a charge cannot draw on.
+          // `toSafe`: the Safe itself, even for a Wirex cardholder, whose
+          // stablecoins would otherwise get the card's address and be bridged
+          // to Fuse, out of reach of the charge.
+          setWalletDeposit({
+            symbol: 'USDC',
+            chainId: overview.billing.chainId,
+            isChangingToken: false,
+            toSafe: true,
+          });
+          setDepositModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+        }}
+      />
+    );
   }
 
-  const showsDashboard = !!overview?.keys.length && !isIntroOpen;
+  const showsDashboard = hasKeys && !isIntroOpen;
 
   return (
     <PageLayout
@@ -230,6 +231,9 @@ export default function AiApiScreen() {
       additionalContent={
         overview ? (
           <>
+            {showsIntroFooter ? (
+              <AiApiIntroFooter label={hasKeys ? 'New key' : 'Get API key'} onPress={openCreate} />
+            ) : null}
             <AiApiCreateKeySheet
               isOpen={isCreateOpen}
               onOpenChange={setIsCreateOpen}
@@ -265,9 +269,16 @@ export default function AiApiScreen() {
         ) : null
       }
     >
-      <View className="mx-auto w-full max-w-lg gap-4 pb-32 pt-6 md:py-12">
+      <View
+        className={cn(
+          'mx-auto w-full max-w-lg gap-4 md:py-12',
+          showsIntro ? 'pt-4' : 'pt-6',
+          showsIntroFooter ? 'pb-12' : 'pb-32',
+        )}
+      >
         <AiApiHeader
-          title="AI API"
+          title={showsIntro ? 'AI agents' : 'AI API'}
+          compact={showsIntro}
           onBack={isIntroOpen && overview?.keys.length ? () => setIsIntroOpen(false) : undefined}
           right={showsDashboard ? <AiApiInfoButton onPress={() => setIsIntroOpen(true)} /> : null}
         />

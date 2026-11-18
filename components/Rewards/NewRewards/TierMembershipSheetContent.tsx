@@ -10,6 +10,8 @@ import { useCancelTierSubscription, useTierMembership } from '@/hooks/useTierMem
 import { getAsset } from '@/lib/assets';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
+  availableRoutes,
+  findOffer,
   formatFuse,
   formatMembershipDate,
   formatMembershipDay,
@@ -17,11 +19,18 @@ import {
   membershipDateLabel,
 } from '@/lib/tierUpgrade';
 import { RewardsTier, TierSubscriptionStatus } from '@/lib/types';
+import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 const GLOW_ASSET = 'images/rewards-tiers/glow.svg' as const;
 const GLOW_SIZE = 260;
 const STAR_SIZE = 150;
+/**
+ * How long the sheet gets to finish closing before the upgrade modal opens —
+ * the same hand-off the upgrade modal gives the deposit flow. Two portals
+ * animating at once can leave Android on a black surface.
+ */
+const UPGRADE_HANDOFF_DELAY_MS = 250;
 
 interface TierMembershipSheetContentProps {
   onClose: () => void;
@@ -47,11 +56,18 @@ const TierMembershipSheetContent = ({
   );
   const { mutateAsync: cancelSubscription, isPending: isCancelling } = useCancelTierSubscription();
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const openTierUpgrade = useTierUpgradeStore(state => state.open);
 
   const tier = membership?.currentTier ?? RewardsTier.CORE;
   const subscription = membership?.subscription ?? null;
+  // The tier the paid membership is for, which is not always the tier held: a
+  // Prime member who has also locked for Ultra is on Ultra, paying for Prime.
+  const subscriptionTierName = subscription ? getTierDisplayName(subscription.tier) : '';
   const lock = membership?.lock;
   const dateLabel = membershipDateLabel(membership);
+  const subscriptionEnded =
+    subscription?.status === TierSubscriptionStatus.EXPIRED ||
+    subscription?.status === TierSubscriptionStatus.REPLACED;
 
   // A membership already set to end has nothing left to cancel, and neither has
   // one that has run out — offering the action there would be offering to do
@@ -59,8 +75,24 @@ const TierMembershipSheetContent = ({
   const canCancel =
     subscription !== null &&
     !subscription.cancelAtPeriodEnd &&
-    subscription.status !== TierSubscriptionStatus.EXPIRED &&
+    !subscriptionEnded &&
     subscription.status !== TierSubscriptionStatus.CANCELLED;
+
+  // A Prime member can move up to Ultra for cash, which ends Prime today and
+  // starts a year of Ultra — the upgrade flow says so before anything is signed.
+  const ultraOffer = findOffer(membership, RewardsTier.ULTRA);
+  const canUpgradeToUltra =
+    !!membership?.enabled &&
+    subscription?.tier === RewardsTier.PRIME &&
+    !subscriptionEnded &&
+    !!ultraOffer &&
+    !ultraOffer.held &&
+    availableRoutes(ultraOffer, membership.contracts).includes('cash');
+
+  const handleUpgradeToUltra = () => {
+    onClose();
+    setTimeout(() => openTierUpgrade(RewardsTier.ULTRA), UPGRADE_HANDOFF_DELAY_MS);
+  };
 
   return (
     <View className="px-5 pb-8" style={{ paddingTop: topPadding }}>
@@ -123,7 +155,7 @@ const TierMembershipSheetContent = ({
       {subscription ? (
         <View className="mt-4 overflow-hidden rounded-[20px] bg-[#232323]">
           <TierDetailRow
-            label="Annual fee"
+            label={`${subscriptionTierName} annual fee`}
             value={formatUsd(Number(subscription.priceUsd))}
             withDivider={Boolean(dateLabel)}
           />
@@ -152,13 +184,27 @@ const TierMembershipSheetContent = ({
             {isCancelling
               ? 'Cancelling…'
               : isConfirmingCancel
-                ? `Tap again to stop renewing — you keep ${getTierDisplayName(tier)} until ${formatMembershipDate(subscription?.currentPeriodEnd)}`
-                : 'Cancel membership'}
+                ? `Tap again to stop renewing — you keep ${subscriptionTierName} until ${formatMembershipDate(subscription?.currentPeriodEnd)}`
+                : `Cancel ${subscriptionTierName} membership`}
           </Text>
         </Pressable>
       ) : null}
 
-      <Button variant="brand" onPress={onClose} className="mt-6 h-14 rounded-full">
+      {canUpgradeToUltra ? (
+        <Button
+          variant="outline"
+          onPress={handleUpgradeToUltra}
+          className="mt-6 h-14 rounded-full border-0 bg-white/10"
+        >
+          <Text className="text-base font-bold text-white">Upgrade to Ultra</Text>
+        </Button>
+      ) : null}
+
+      <Button
+        variant="brand"
+        onPress={onClose}
+        className={canUpgradeToUltra ? 'mt-3 h-14 rounded-full' : 'mt-6 h-14 rounded-full'}
+      >
         <Text className="text-base font-bold text-black">Close</Text>
       </Button>
     </View>

@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
+  getWalletDepositCoinOf,
   getWalletDepositExtraNetworks,
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
@@ -113,7 +114,9 @@ type WalletDepositSelectorsProps = {
  * what was picked first and what the minimum is quoted in, so it leads.
  *
  * They open differently on purpose. The currency has its own step, which is also
- * the first step of the flow. The network drops a list down in place, because
+ * the first step of the flow: "Select token", or the coin's own screen for one
+ * of a coin's tokens (BTC: "Bitcoin"), from where back reaches "Select token"
+ * for another coin. The network drops a list down in place, because
  * changing it is an adjustment to the screen you are already on — sending that
  * one to a full screen made a small change feel like starting again.
  */
@@ -127,6 +130,7 @@ const WalletDepositSelectors = ({
 }: WalletDepositSelectorsProps) => {
   const setModal = useDepositStore(state => state.setModal);
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
+  const viewer = useWalletDepositViewer();
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
@@ -140,6 +144,12 @@ const WalletDepositSelectors = ({
         label={symbol}
         isLocked={isLocked}
         onPress={() => {
+          const coin = getWalletDepositCoinOf(symbol, viewer);
+          if (coin) {
+            setWalletDeposit({ isChangingToken: true, coin: coin.coin });
+            setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_COIN);
+            return;
+          }
           setWalletDeposit({ isChangingToken: true });
           setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
         }}

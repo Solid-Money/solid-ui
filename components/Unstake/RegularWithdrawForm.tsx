@@ -6,9 +6,9 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
 import { Wallet } from 'lucide-react-native';
-import { formatUnits, parseUnits, zeroAddress } from 'viem';
+import { erc20Abi, formatUnits, parseUnits, zeroAddress } from 'viem';
 import { base, fuse, mainnet } from 'viem/chains';
-import { useBalance } from 'wagmi';
+import { useBalance, useReadContract } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -31,15 +31,18 @@ import useWithdraw from '@/hooks/useWithdraw';
 import useWithdrawSoEth from '@/hooks/useWithdrawSoEth';
 import useWithdrawSoEurc from '@/hooks/useWithdrawSoEurc';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
+import { ADDRESSES } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { getSoEthWithdrawChain, SOETH_WITHDRAW_CHAINS } from '@/lib/soEthWithdraw';
 import {
   getSoUsdWithdrawChain,
+  resumeWithdrawAmount,
   SOUSD_WITHDRAW_CHAIN_ID,
   SOUSD_WITHDRAW_CHAINS,
   SoUsdWithdrawChainId,
 } from '@/lib/soUsdWithdraw';
+import { sponsoredMinimumCopy, useSponsoredMinimum } from '@/lib/sponsoredMinimum';
 import { Status, TokenType, VaultType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
@@ -248,6 +251,7 @@ const RegularWithdrawForm = () => {
     formState: { errors, isValid: isBridgeValid },
     watch,
     reset,
+    setError,
     setValue,
     trigger,
   } = useForm<WithdrawFormData>({
@@ -311,19 +315,58 @@ const RegularWithdrawForm = () => {
     setActiveStep(hasPendingSession || isOnWithdrawChain ? 2 : 1);
   }, [hasPendingSession, isOnWithdrawChain, isBridgeLoading, isBridgeSoEthLoading]);
 
-  // Prefill the amount from a resumed session once per vault so the user does
-  // not have to re-enter what they already bridged.
+  // Step 1 can only bridge from the paymaster's minimum (0.1 soUSD when this
+  // was written); below it every try reverted as "Couldn't withdraw".
+  const { data: bridgeMinimum } = useSponsoredMinimum(
+    isUsdVault ? ADDRESSES.fuse.teller : undefined,
+  );
+
+  // The soUSD shares on the withdraw chain. The bridge fee comes out of the
+  // shares step 1 sends, so fewer arrive than were sent: a resumed step 2
+  // prefilled with the sent amount asked for shares that weren't there and
+  // reverted on every retry, leaving the user's funds parked on that chain.
+  const { data: arrivedShares } = useReadContract({
+    abi: erc20Abi,
+    address: withdrawChain.vault,
+    functionName: 'balanceOf',
+    args: [user?.safeAddress as Address],
+    chainId: withdrawChain.chain.id,
+    query: {
+      enabled: !!user?.safeAddress && session?.vault === 'USD',
+      // The shares may still be on their way when step 2 opens: read again
+      // every 15 s while fewer than were sent are there (arrivals fall short
+      // of it by the bridge fee), for up to half an hour after step 1.
+      refetchInterval: query => {
+        if (!session || session.vault !== 'USD') return false;
+        const shares = query.state.data;
+        const waiting = shares === undefined || shares < parseUnits(session.amount, 6);
+        return waiting && Date.now() - session.createdAt < 30 * 60 * 1000 ? 15_000 : false;
+      },
+    },
+  });
+
+  // What a resumed withdraw can take: what step 1 sent, or what arrived if less.
+  const resumeAmount = useMemo(() => {
+    if (!session) return undefined;
+    return session.vault === 'USD'
+      ? resumeWithdrawAmount(session.amount, arrivedShares)
+      : session.amount;
+  }, [session, arrivedShares]);
+
+  // Prefill the amount from a resumed session so the user does not have to
+  // re-enter what they already bridged, again once the arrived shares load.
   const prefilledVaultRef = useRef<string | null>(null);
   useEffect(() => {
-    if (session && prefilledVaultRef.current !== session.vault) {
-      prefilledVaultRef.current = session.vault;
-      setValue('amount', session.amount);
+    const key = session && resumeAmount ? `${session.vault}:${resumeAmount}` : null;
+    if (session && resumeAmount && key && prefilledVaultRef.current !== key) {
+      prefilledVaultRef.current = key;
+      setValue('amount', resumeAmount);
       trigger('amount');
     }
-    if (!session && selectedVault && prefilledVaultRef.current === selectedVault) {
+    if (!session && selectedVault && prefilledVaultRef.current?.startsWith(`${selectedVault}:`)) {
       prefilledVaultRef.current = null;
     }
-  }, [session, selectedVault, setValue, trigger]);
+  }, [session, resumeAmount, selectedVault, setValue, trigger]);
 
   // Under the amount: dollars from the share's USD quote, or euros for soEURC,
   // which has no USD quote and is never shown in dollars.
@@ -348,6 +391,12 @@ const RegularWithdrawForm = () => {
   };
 
   const onBridgeSubmit = async (data: WithdrawFormData) => {
+    if (bridgeMinimum !== undefined && parseUnits(String(data.amount), 6) < bridgeMinimum) {
+      setError('amount', {
+        message: sponsoredMinimumCopy('withdrawal', bridgeMinimum, 'soUSD'),
+      });
+      return;
+    }
     try {
       await bridge(data.amount.toString());
       setTransaction({

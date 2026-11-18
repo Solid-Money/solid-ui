@@ -65,6 +65,7 @@ import {
   resolveCashbackMonth,
   resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
+import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardProvider, CardStatus } from '@/lib/types';
 import {
@@ -475,8 +476,7 @@ const CardDetailsPane = () => {
               triggerContainerClassName="w-full"
               cashbackRate={resolveUserCashbackRate(rewardsData)}
               currency={cashbackMonth?.currency}
-              cashbackThisMonth={cashbackMonth?.cashbackThisMonth ?? 0}
-              cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+              monthlyCashbackLabel={formatMonthlyCashback(rewardsData)}
               maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
               tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
               {...lifetimeCashback}

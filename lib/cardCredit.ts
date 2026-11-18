@@ -36,9 +36,9 @@ export const dailyYieldPillLabel = (
 export const showsCardCreditPill = (credit: CardCreditSummary | null | undefined): boolean =>
   !!credit && credit.spendable && credit.availableUsd > 0;
 
-/** "$10 card credit". */
+/** "$10 card bonus". */
 export const cardCreditPillLabel = (availableUsd: number): string =>
-  `${usdShort(availableUsd)} card credit`;
+  `${usdShort(availableUsd)} card bonus`;
 
 /**
  * "From Dana's invite." — where the credit came from, newest grant first.

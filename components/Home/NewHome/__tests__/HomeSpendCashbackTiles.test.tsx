@@ -24,6 +24,7 @@ jest.mock('@/hooks/useRewards', () => ({
 jest.mock('@/hooks/useCardDetails', () => ({
   useCardDetails: () => ({ data: { cashback: mockCardCashback } }),
 }));
+jest.mock('@/components/ui/skeleton', () => 'Skeleton');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/lib/utils', () => ({
   formatBalance: (value: number, symbol: string) => `${symbol}${value.toFixed(2)}`,
@@ -78,10 +79,9 @@ test('hands the cashback sheet dollar figures for a dollar cardholder', () => {
   expect(mockSheetProps).toHaveBeenLastCalledWith(
     expect.objectContaining({
       currency: 'USD',
-      cashbackThisMonth: 2.5,
+      monthlyCashbackLabel: '$7.60',
       maxCashbackMonthly: 100,
-      lifetimeCashback: 25,
-      lifetimeCashbackOther: undefined,
+      lifetimeCashback: [{ value: 25, currency: 'USD' }],
     }),
   );
   act(() => tree.unmount());
@@ -94,7 +94,7 @@ test("hands the cashback sheet the backend's lifetime figure, escrow included", 
 
   const tree = render();
   expect(mockSheetProps).toHaveBeenLastCalledWith(
-    expect.objectContaining({ lifetimeCashback: 40.25, lifetimeCashbackOther: undefined }),
+    expect.objectContaining({ lifetimeCashback: [{ value: 40.25, currency: 'USD' }] }),
   );
   act(() => tree.unmount());
 });
@@ -115,19 +115,55 @@ test("shows a euro cardholder's cashback in euros, never added to dollars", () =
   mockCardCashback = { totalUsdValue: 25, currency: 'EUR', eur: { totalEurValue: 9 } };
 
   const tree = render();
-  expect(texts(tree)).toContain('+€2.00');
-  expect(texts(tree)).not.toContain('+$7.60');
+  expect(texts(tree)).toContain('+€2.00 + $7.60');
   expect(mockSheetProps).toHaveBeenLastCalledWith(
     expect.objectContaining({
       currency: 'EUR',
-      cashbackThisMonth: 1.2,
-      cashbackPendingThisMonth: 0.8,
+      monthlyCashbackLabel: '€2.00 + $7.60',
       maxCashbackMonthly: 50,
       tierMonthlyCap: 50,
-      lifetimeCashback: 9,
-      lifetimeCashbackOther: { value: 25, currency: 'USD' },
+      lifetimeCashback: [
+        { value: 9, currency: 'EUR' },
+        { value: 25, currency: 'USD' },
+      ],
     }),
   );
+  act(() => tree.unmount());
+});
+
+test.each([
+  [3, '$3.00'],
+  [0, '€0.00'],
+] as const)(
+  'shows %s pending dollars on a euro card with no euro earnings as %s',
+  (pendingUsd, expected) => {
+    mockRewards = {
+      ...USD_REWARDS,
+      cashbackCurrency: 'EUR',
+      cashbackThisMonth: 0,
+      cashbackPendingThisMonth: pendingUsd,
+      cashbackEur: { cashbackThisMonth: 0, cashbackPendingThisMonth: 0, maxCashbackMonthly: 100 },
+    };
+    const tree = render();
+    expect(texts(tree)).toContain(`+${expected}`);
+    expect(mockSheetProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        monthlyCashbackLabel: expected,
+        lifetimeCashback: [{ value: 25, currency: 'USD' }],
+      }),
+    );
+    act(() => tree.unmount());
+  },
+);
+
+test('lists dollars first after a switch from euros to dollars', () => {
+  mockRewards = {
+    ...USD_REWARDS,
+    cashbackCurrency: 'USD',
+    cashbackEur: { cashbackThisMonth: 1, cashbackPendingThisMonth: 3 },
+  };
+  const tree = render();
+  expect(texts(tree)).toContain('+$7.60 + €4.00');
   act(() => tree.unmount());
 });
 
@@ -172,9 +208,10 @@ test('keeps the balance visible when mode switching is unavailable', () => {
   act(() => tree.unmount());
 });
 
-test('does not report an unresolved spendable balance as zero', () => {
+test('shows a skeleton while the spendable balance loads', () => {
   const tree = render({ isLoading: true, cashBalance: '$0.00' });
-  expect(texts(tree)).toContain('—');
+  expect(tree.root.findAllByType('Skeleton')).toHaveLength(1);
+  expect(texts(tree)).toContain('Available to spend');
   expect(texts(tree)).not.toContain('$0.00');
   act(() => tree.unmount());
 });

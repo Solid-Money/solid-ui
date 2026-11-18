@@ -9,14 +9,12 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import {
   monthlyCashbackCap,
-  monthlyCashbackTotal,
   resolveCashbackMonth,
   resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
+import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
-import { formatBalance } from '@/lib/utils';
-import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 /**
  * The terminal banner of the home CTA ladder (Figma 25740:4138): the user has a
@@ -40,20 +38,15 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
   // In the cardholder's cashback currency: euros for a euro cardholder.
   const cashbackMonth = resolveCashbackMonth(rewardsData);
   const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
-  const cashbackThisMonth = cashbackMonth?.cashbackThisMonth ?? 0;
+  const monthlyCashbackLabel = formatMonthlyCashback(rewardsData);
   const lifetimeCashback = resolveLifetimeCashback(rewardsData, cardDetails?.cashback);
-  const earnedThisMonth = monthlyCashbackTotal(
-    cashbackMonth?.cashbackThisMonth,
-    cashbackMonth?.cashbackPendingThisMonth,
-  );
 
   return (
     <CashbackDetailsSheet
       triggerContainerClassName={className ?? ''}
       cashbackRate={rate}
       currency={cashbackCurrency}
-      cashbackThisMonth={cashbackThisMonth}
-      cashbackPendingThisMonth={cashbackMonth?.cashbackPendingThisMonth}
+      monthlyCashbackLabel={monthlyCashbackLabel}
       maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
       tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
       {...lifetimeCashback}
@@ -70,9 +63,7 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
           </Text>
           <View style={styles.earned}>
             <Text style={styles.earnedLabel}>Earned this month</Text>
-            <Text style={styles.earnedAmount}>
-              {formatBalance(earnedThisMonth, CURRENCY_SYMBOLS[cashbackCurrency])}
-            </Text>
+            <Text style={styles.earnedAmount}>{monthlyCashbackLabel}</Text>
           </View>
         </Pressable>
       }
@@ -102,13 +93,14 @@ const styles = StyleSheet.create({
     width: 160,
   },
   rate: { color: '#94F27F' },
-  earned: { alignItems: 'flex-end', gap: 1 },
+  earned: { alignItems: 'flex-end', flexShrink: 1, gap: 1 },
   earnedLabel: {
     color: 'rgba(255,255,255,0.7)',
     fontFamily: 'MonaSans_400Regular',
     fontSize: 14,
   },
   earnedAmount: {
+    textAlign: 'right',
     color: '#94F27F',
     fontFamily: 'MonaSans_600SemiBold',
     fontSize: 22,

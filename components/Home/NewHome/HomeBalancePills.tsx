@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { BalancePillRow } from '@/components/BalanceHeadline';
 import CardCreditSheet from '@/components/CardCredit/CardCreditSheet';
 import { ReferIcon } from '@/components/Referral/v4/ReferV4Primitives';
+import { TAB_SUMMARY_BADGE, TAB_SUMMARY_BADGE_LABEL } from '@/components/TabSummary';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardCredit } from '@/hooks/useCardCredit';
@@ -24,7 +24,7 @@ interface HomeBalancePillsProps {
 
 /**
  * The pills under the Home balance (Figma 29602:13516): "+$0.35 today" while
- * savings are earning, and "$10 card credit" while there is credit to spend.
+ * savings are earning, and "$10 card bonus" while there is credit to spend.
  *
  * Card credit sits here, beside the balance, and is never added into it: it
  * can only be spent with the card, so a balance that counted it would promise
@@ -55,22 +55,22 @@ const HomeBalancePills = ({
   if (!todayLabel && !showCredit) return null;
 
   return (
-    <BalancePillRow>
-      <View className="flex-row flex-wrap items-center justify-center gap-2 px-4 pt-[6px]">
+    <>
+      <View className="flex-row flex-wrap items-center justify-center gap-2">
         {todayLabel ? (
-          <View className="h-[35px] justify-center rounded-full bg-card px-[14px]">
-            <Text className="text-[16px] leading-[18px] text-brand">{todayLabel}</Text>
+          <View className={`${TAB_SUMMARY_BADGE} bg-card`}>
+            <Text className={`${TAB_SUMMARY_BADGE_LABEL} text-brand`}>{todayLabel}</Text>
           </View>
         ) : null}
         {showCredit && credit ? (
           <Pressable
             onPress={openCardCredit}
             accessibilityRole="button"
-            accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. What is card credit?`}
-            className="h-[35px] flex-row items-center gap-1.5 rounded-full bg-card pl-3 pr-[14px] active:opacity-70 web:hover:bg-card-hover"
+            accessibilityLabel={`${cardCreditPillLabel(credit.availableUsd)}. View card bonus details.`}
+            className={`${TAB_SUMMARY_BADGE} bg-card active:opacity-70 web:hover:bg-card-hover`}
           >
-            <ReferIcon asset="images/referral-v4/gift-16.svg" size={16} />
-            <Text className="text-[16px] leading-[18px] text-white">
+            <ReferIcon asset="images/referral-v4/card-bonus-16.svg" size={16} />
+            <Text className={`${TAB_SUMMARY_BADGE_LABEL} text-white`}>
               {cardCreditPillLabel(credit.availableUsd)}
             </Text>
           </Pressable>
@@ -79,7 +79,7 @@ const HomeBalancePills = ({
       {credit ? (
         <CardCreditSheet isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} credit={credit} />
       ) : null}
-    </BalancePillRow>
+    </>
   );
 };
 

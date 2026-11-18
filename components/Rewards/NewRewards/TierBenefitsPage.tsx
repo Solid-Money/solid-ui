@@ -21,7 +21,13 @@ import {
 import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
-import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
+import {
+  RewardsTier,
+  type TierBenefits,
+  type TierFees,
+  type TierMembershipContracts,
+  type TierOffer,
+} from '@/lib/types';
 
 import {
   type CashbackCategoryKey,
@@ -294,7 +300,18 @@ function Panel({ title, s, children }: { title?: string; s: number; children: Re
   );
 }
 
-function ValuePill({ value, s, locked = false }: { value: string; s: number; locked?: boolean }) {
+function ValuePill({
+  value,
+  s,
+  locked = false,
+  struckValue,
+}: {
+  value: string;
+  s: number;
+  locked?: boolean;
+  /** A regular price, drawn struck through before `value` while a sale runs. */
+  struckValue?: string;
+}) {
   return (
     <View
       style={{
@@ -314,6 +331,21 @@ function ValuePill({ value, s, locked = false }: { value: string; s: number; loc
           contentFit="contain"
         />
       )}
+      {struckValue ? (
+        <Text
+          accessibilityLabel={`Regular price ${struckValue}`}
+          style={[
+            medium(s),
+            {
+              fontSize: 14 * s,
+              color: 'rgba(255,255,255,0.45)',
+              textDecorationLine: 'line-through',
+            },
+          ]}
+        >
+          {struckValue}
+        </Text>
+      ) : null}
       <Text style={[medium(s), locked && { fontSize: 15 * s, color: 'rgba(255,255,255,0.45)' }]}>
         {value}
       </Text>
@@ -772,6 +804,7 @@ export function TierBenefitsPage({
   benefits,
   allBenefits,
   offer,
+  contracts,
   showUpgradeSpace,
 }: {
   tier: RewardsTier;
@@ -791,12 +824,14 @@ export function TierBenefitsPage({
    */
   allBenefits?: TierBenefits[];
   offer?: TierOffer;
+  /** The membership's contracts, which decide whether the cash price is one that can be paid. */
+  contracts?: Pick<TierMembershipContracts, 'billingTokenAddress' | 'revenueTreasuryAddress'>;
   showUpgradeSpace: boolean;
 }) {
   const s = scaleFor(width);
   const table = tierPresentationFees(tier, fees);
   const visibleFeeLines = table.lines.filter(line => line.key !== 'fx');
-  const offers = tierOfferRows(offer);
+  const offers = tierOfferRows(offer, contracts);
   const focused = useIsFocused();
   const reduceMotion = useReducedMotion();
   const entrance = useSharedValue(reduceMotion ? 1 : 0);
@@ -946,7 +981,7 @@ export function TierBenefitsPage({
                   <Text style={[medium(s), { fontFamily: 'MonaSans_400Regular' }]}>
                     {row.label}
                   </Text>
-                  <ValuePill value={row.value} s={s} />
+                  <ValuePill value={row.value} struckValue={row.listValue} s={s} />
                 </View>
               ))}
             </View>

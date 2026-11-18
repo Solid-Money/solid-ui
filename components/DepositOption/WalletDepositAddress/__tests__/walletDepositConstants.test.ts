@@ -4,6 +4,10 @@ import {
   formatWalletDepositMinimum,
   getAllWalletDepositTokens,
   getDefaultWalletDepositSelection,
+  getWalletDepositChoices,
+  getWalletDepositCoin,
+  getWalletDepositCoinName,
+  getWalletDepositCoinOf,
   getWalletDepositExtraNetworks,
   getWalletDepositExtraRow,
   getWalletDepositMinimum,
@@ -16,6 +20,7 @@ import {
   getWalletOwnAddress,
   getWalletRhinoSelection,
   groupWalletDepositTokens,
+  isWalletDepositCoin,
   matchesWalletDepositSearch,
   resolveWalletDepositChain,
   resolveWalletDepositExtraChain,
@@ -23,7 +28,11 @@ import {
   resolveWalletDepositSymbol,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { isWalletDepositContract, WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
+import {
+  isWalletDepositContract,
+  WALLET_DEPOSIT_COINS,
+  WALLET_DEPOSIT_TOKENS,
+} from '@/constants/walletDepositTokens';
 import {
   RHINO_ASSETS,
   RHINO_ASSETS_WITH_BASE_USDT_ROUTES,
@@ -425,17 +434,17 @@ describe('getAllWalletDepositTokens', () => {
     expect(new Set(symbols).size).toBe(symbols.length);
   });
 
-  // The design's order: stablecoins, then ETH first among the crypto, Mark's
-  // list after it, and the wrapped natives last.
+  // The design's order: stablecoins, then ETH first among the crypto, the
+  // Bitcoins and FUSE after it, then Mark's list, and the wrapped natives last.
   it('lists them in the order "Select token" shows them', () => {
     expect(symbolsOf(getAllWalletDepositTokens(ALL))).toEqual([
       'USDC',
       'USDT',
       'EURC',
       'ETH',
-      'FUSE',
       'WBTC',
       'cbBTC',
+      'FUSE',
       'cbZEC',
       'AAVE',
       'SOL',
@@ -527,6 +536,133 @@ describe('matchesWalletDepositSearch', () => {
   it('lists everything for an empty query, and nothing for a token not offered', () => {
     expect(search('  ')).toHaveLength(getAllWalletDepositTokens(ALL).length);
     expect(search('doge')).toEqual([]);
+  });
+});
+
+/** A "Select token" row as the test reads it: a coin by name, a token by ticker. */
+const choiceLabel = (choice: Parameters<typeof isWalletDepositCoin>[0]) =>
+  isWalletDepositCoin(choice)
+    ? `${choice.name} (${symbolsOf(choice.tokens).join(', ')})`
+    : choice.symbol;
+
+describe('WALLET_DEPOSIT_COINS', () => {
+  it('names only tokens the list has, each under one coin', () => {
+    const symbols = WALLET_DEPOSIT_COINS.flatMap(coin => coin.symbols);
+    expect(new Set(symbols).size).toBe(symbols.length);
+    symbols.forEach(symbol =>
+      expect(WALLET_DEPOSIT_TOKENS.some(token => token.symbol === symbol)).toBe(true),
+    );
+  });
+
+  it('keeps each coin in the group its tokens are in', () => {
+    WALLET_DEPOSIT_COINS.forEach(coin =>
+      coin.symbols.forEach(symbol =>
+        expect(WALLET_DEPOSIT_TOKENS.find(token => token.symbol === symbol)?.group).toBe(
+          coin.group,
+        ),
+      ),
+    );
+  });
+});
+
+describe('getWalletDepositChoices', () => {
+  // Ether, Bitcoin and Fuse each one row, where their first token was listed.
+  it('folds each coin’s tokens into one row for the coin', () => {
+    expect(getWalletDepositChoices(ALL).map(choiceLabel)).toEqual([
+      'USDC',
+      'USDT',
+      'EURC',
+      'Ether (ETH, WETH)',
+      'Bitcoin (WBTC, cbBTC)',
+      'Fuse (FUSE, WFUSE)',
+      'cbZEC',
+      'AAVE',
+      'SOL',
+    ]);
+  });
+
+  it('lists a coin’s tokens in the order its screen shows them', () => {
+    const withBitcoin = { ...ALL, rhino: { status: 'ready', assets: RHINO_ASSETS_WITH_BITCOIN } };
+    const bitcoin = getWalletDepositChoices(withBitcoin as typeof ALL).find(
+      choice => isWalletDepositCoin(choice) && choice.coin === 'bitcoin',
+    );
+    expect(bitcoin && choiceLabel(bitcoin)).toBe('Bitcoin (BTC, WBTC, cbBTC)');
+  });
+
+  // With nothing to pick between, the one token is listed as itself.
+  it('lists a coin offered as one token as that token', () => {
+    expect(getWalletDepositChoices(BASIC).map(choiceLabel)).toEqual([
+      'USDC',
+      'USDT',
+      'EURC',
+      'Ether (ETH, WETH)',
+      'WBTC',
+      'Fuse (FUSE, WFUSE)',
+    ]);
+  });
+
+  it('draws a coin with its own mark, under the crypto heading', () => {
+    const groups = groupWalletDepositTokens(getWalletDepositChoices(ALL));
+    const crypto = groups.find(group => group.key === 'crypto')?.tokens ?? [];
+    const ether = crypto.find(isWalletDepositCoin);
+    expect(ether).toMatchObject({ coin: 'ether', name: 'Ether', icon: 'images/eth.png' });
+  });
+});
+
+describe('getWalletDepositCoinOf', () => {
+  it('finds the coin row a token is listed under', () => {
+    expect(getWalletDepositCoinOf('WETH', ALL)?.coin).toBe('ether');
+    expect(getWalletDepositCoinOf('cbBTC', ALL)?.coin).toBe('bitcoin');
+    expect(getWalletDepositCoinOf('FUSE', ALL)?.coin).toBe('fuse');
+  });
+
+  it('finds none for a token listed as itself', () => {
+    expect(getWalletDepositCoinOf('USDC', ALL)).toBeUndefined();
+    // cbBTC is not everyone's yet, and native BTC waits on rhino.fi's Bitcoin.
+    expect(getWalletDepositCoinOf('WBTC', BASIC)).toBeUndefined();
+    expect(getWalletDepositCoinOf(undefined, ALL)).toBeUndefined();
+  });
+});
+
+describe('getWalletDepositCoin', () => {
+  it('lists the coin’s tokens this person is offered', () => {
+    expect(symbolsOf(getWalletDepositCoin('bitcoin', ALL)?.tokens ?? [])).toEqual([
+      'WBTC',
+      'cbBTC',
+    ]);
+    expect(symbolsOf(getWalletDepositCoin('bitcoin', BASIC)?.tokens ?? [])).toEqual(['WBTC']);
+    expect(getWalletDepositCoin('dogecoin', ALL)).toBeUndefined();
+  });
+
+  it('names the coin its screen is titled with', () => {
+    expect(getWalletDepositCoinName('bitcoin')).toBe('Bitcoin');
+    expect(getWalletDepositCoinName(undefined)).toBeUndefined();
+  });
+});
+
+describe('matchesWalletDepositSearch on a coin', () => {
+  const search = (query: string) =>
+    getWalletDepositChoices(ALL)
+      .filter(choice => matchesWalletDepositSearch(choice, query))
+      .map(choiceLabel);
+
+  it('matches the coin’s name, or any of its tokens', () => {
+    expect(search('btc')).toEqual(['Bitcoin (WBTC, cbBTC)']);
+    expect(search('Bitcoin')).toEqual(['Bitcoin (WBTC, cbBTC)']);
+    expect(search('weth')).toEqual(['Ether (ETH, WETH)']);
+    expect(search('ethereum')).toEqual(['Ether (ETH, WETH)']);
+    expect(search('wfuse')).toEqual(['Fuse (FUSE, WFUSE)']);
+  });
+
+  it('finds every coin with a token that answers', () => {
+    expect(search('coinbase')).toEqual(['Bitcoin (WBTC, cbBTC)', 'cbZEC']);
+    expect(search('wrapped')).toEqual([
+      'Ether (ETH, WETH)',
+      'Bitcoin (WBTC, cbBTC)',
+      'Fuse (FUSE, WFUSE)',
+      'cbZEC',
+      'SOL',
+    ]);
   });
 });
 
@@ -665,14 +801,14 @@ describe('without the new deposit tokens', () => {
       'USDT',
       'EURC',
       'ETH',
-      'FUSE',
       'WBTC',
+      'FUSE',
       'WETH',
       'WFUSE',
     ]);
     expect(
       symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX, rhino: READY })),
-    ).toEqual(['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WBTC', 'WETH', 'WFUSE']);
+    ).toEqual(['USDC', 'USDT', 'EURC', 'ETH', 'WBTC', 'FUSE', 'WETH', 'WFUSE']);
   });
 
   it('offers each on the chains it was offered on, and none on Optimism', () => {

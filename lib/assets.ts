@@ -224,6 +224,10 @@ export const ASSETS = {
     module: require('@/assets/images/ai-api/model-openai.svg'),
     hash: '05098715',
   },
+  'images/ai-api/saving-help.svg': {
+    module: require('@/assets/images/ai-api/saving-help.svg'),
+    hash: 'd1f86286',
+  },
   'images/app-update-hero.png': {
     module: require('@/assets/images/app-update-hero.png'),
     hash: '4ac925b5',
@@ -798,6 +802,18 @@ export const ASSETS = {
     hash: '6fe74800',
   },
   'images/info-error.tsx': { module: require('@/assets/images/info-error.tsx'), hash: '75c1c092' },
+  'images/invite/card-glass-desktop.png': {
+    module: require('@/assets/images/invite/card-glass-desktop.png'),
+    hash: '983b39bd',
+  },
+  'images/invite/card-glass-mobile.png': {
+    module: require('@/assets/images/invite/card-glass-mobile.png'),
+    hash: 'aaf51c63',
+  },
+  'images/invite/hero-light.jpg': {
+    module: require('@/assets/images/invite/hero-light.jpg'),
+    hash: 'dd5a0829',
+  },
   'images/invite-yellow.png': {
     module: require('@/assets/images/invite-yellow.png'),
     hash: '0175f2e5',
@@ -1117,9 +1133,17 @@ export const ASSETS = {
     module: require('@/assets/images/referral-new-whatsapp.png'),
     hash: '6a535fd2',
   },
+  'images/referral-v4/card-16.svg': {
+    module: require('@/assets/images/referral-v4/card-16.svg'),
+    hash: '83913ba2',
+  },
   'images/referral-v4/card-40.svg': {
     module: require('@/assets/images/referral-v4/card-40.svg'),
     hash: '795f910d',
+  },
+  'images/referral-v4/card-bonus-16.svg': {
+    module: require('@/assets/images/referral-v4/card-bonus-16.svg'),
+    hash: 'bfb16c04',
   },
   'images/referral-v4/chevron-16.svg': {
     module: require('@/assets/images/referral-v4/chevron-16.svg'),

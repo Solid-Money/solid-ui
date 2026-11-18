@@ -134,12 +134,18 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  */
 const ETH_YIELD_ICON = getAsset('images/portfolio/eth.svg');
 
+/** The card mark the "How you earn" sheet gives card credit, drawn at the rows' 32pt. */
+const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
+
 /**
  * A spendable asset's 32pt logo. The stablecoins use their token logos (USDT's is drawn 36.7pt
  * with its ring overhanging, as in Figma); a yield share is the yield icon with the dot badge
  * (Figma "so-token / soUSD / badge dot").
  */
 const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+  if (icon === 'cardCredit') {
+    return <Image accessible={false} source={CARD_CREDIT_LOGO} style={styles.tokenLogo} />;
+  }
   if (icon === 'cbbtc' || icon === 'weth' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
     return (
       <Image

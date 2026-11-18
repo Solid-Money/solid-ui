@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
+import { TabSummaryActionButton } from '@/components/TabSummary';
 import { Text } from '@/components/ui/text';
 import { useVaultDepositEntry } from '@/hooks/useVaultDepositEntry';
 import { VaultType } from '@/lib/types';
@@ -28,6 +29,7 @@ interface StartEarningButtonProps {
   label?: string;
   source?: string;
   className?: string;
+  variant?: 'product' | 'tab';
 }
 
 /**
@@ -40,8 +42,15 @@ const StartEarningButton = ({
   label = 'Start earning',
   source = 'savings_start_earning',
   className,
+  variant = 'product',
 }: StartEarningButtonProps) => {
   const { modal, onBeforeOpen } = useVaultDepositEntry(vaultType);
+  const deposit =
+    variant === 'tab' ? (
+      <TabSummaryActionButton label={label} primary className="w-full" />
+    ) : (
+      <DepositTriggerButton label={label} />
+    );
 
   return (
     <View className={cn('px-4', className)}>
@@ -50,7 +59,7 @@ const StartEarningButton = ({
         preserveSelectedVault
         source={source}
         onBeforeOpen={onBeforeOpen}
-        trigger={<DepositTriggerButton label={label} />}
+        trigger={deposit}
       />
     </View>
   );

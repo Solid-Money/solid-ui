@@ -79,6 +79,10 @@ const LifiSwapStatusWatcher = () => {
           receivingTxLink: status.receivingTxLink,
           ...(delivered ? { toAmount: delivered } : {}),
           ...(status.receivingToken ? { toSymbol: status.receivingToken.symbol } : {}),
+          // Only unsettled swaps are polled, so this is stamped once: the
+          // moment the app learned of the outcome, which is what a balance
+          // read is checked against to know it can include the delivery.
+          ...(isLifiSwapSettled(status) ? { settledAt: Date.now() } : {}),
         });
 
         const activityStatus = toActivityStatus(status);

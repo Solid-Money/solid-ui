@@ -2401,7 +2401,7 @@ export interface RewardsUserData {
    * {@link cashbackEur}. Absent on older backends, which is USD.
    */
   cashbackCurrency?: CashbackCurrency;
-  /** This month's euro cashback, all in EUR. Present when `cashbackCurrency` is EUR. */
+  /** Euro cashback and caps, including euro earnings before a switch to USD. */
   cashbackEur?: RewardsCashbackEur;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;
@@ -3436,9 +3436,16 @@ export enum ActivityGroup {
 
 export interface APYs {
   allTime: number;
+  /** The trailing day, annualised. Absent on older analytics APIs. */
+  oneDay?: number;
   sevenDay: number;
   fifteenDay: number;
   thirtyDay: number;
+  /**
+   * When the vault's rate history starts (ISO 8601): about when it was
+   * deployed. Null without history; absent on older analytics APIs.
+   */
+  firstRateAt?: string | null;
 }
 
 export interface TotalAPYResponse {
@@ -3838,11 +3845,31 @@ export interface TransfiPayoutField {
   locked?: boolean;
 }
 
+/** How a cash-out reaches the user: into a bank account, or a mobile wallet. */
+export type TransfiCashoutMethodType = 'bank' | 'mobile_money';
+
+/** A payout method as the currency list shows it. */
+export interface TransfiCashoutMethodSummary {
+  paymentCode: string;
+  name: string;
+  type: TransfiCashoutMethodType;
+}
+
+/** A payout currency with the country it belongs to and how it can be paid. */
+export interface TransfiCashoutCurrency extends TransfiCurrencyOption {
+  /** Country or zone (EUR → Eurozone); absent for a code the server can't name. */
+  country?: string;
+  /** Absent when TransFi wouldn't list them; the method step then loads them. */
+  methods?: TransfiCashoutMethodSummary[];
+}
+
 export interface TransfiCashoutPaymentMethod {
   paymentCode: string;
   paymentName?: string;
   /** 'bank_transfer', 'local_wallet'… */
   paymentType?: string;
+  /** `paymentType` read as bank or mobile money. Absent from an older server. */
+  type?: TransfiCashoutMethodType;
   logo?: string;
   /** Fiat limits as TransFi lists them on the method. */
   minAmount?: number;
@@ -3851,7 +3878,7 @@ export interface TransfiCashoutPaymentMethod {
 }
 
 export interface TransfiCashoutConfig {
-  currencies: TransfiCurrencyOption[];
+  currencies: TransfiCashoutCurrency[];
   defaultCurrency?: string;
   tokenSymbol: string;
   tokenNetwork: string;
@@ -4541,9 +4568,39 @@ export enum TierSubscriptionStatus {
   PAST_DUE = 'past_due',
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
+  /**
+   * Ended early by an upgrade to a higher tier's membership. Never the open
+   * `subscription` — the membership that replaced it is — but a status a
+   * membership can carry.
+   */
+  REPLACED = 'replaced',
 }
 
-/** A tier the user can buy, and what it costs by each route. */
+/**
+ * How the first year of a cash membership is paid.
+ *
+ * `module`: the Safe signs the mandate and the backend takes the first year
+ * through the subscription module. `transfer`: the Safe pays the first year to
+ * the treasury itself, in the batch that signs the mandate — an upgrade from a
+ * running membership, whose period has already had its one module charge.
+ */
+export type TierPaymentMode = 'module' | 'transfer';
+
+/** The membership buying a tier would end. */
+export interface TierReplacedSubscription {
+  tier: RewardsTier;
+  /** When it would otherwise have run to. The time left is not refunded. */
+  currentPeriodEnd: string;
+}
+
+/**
+ * A tier the user can buy, and what it costs by each route.
+ *
+ * The fields after `held` are newer than the rest and optional until every
+ * backend sends them; read them through the resolvers in `lib/tierUpgrade`
+ * (`offerFirstYearFeeUsd`, `offerMandateUsd`, `offerPaymentMode`), which carry
+ * the fallbacks.
+ */
 export interface TierOffer {
   tier: RewardsTier;
   /** FUSE that must be locked to hold this tier. */
@@ -4551,16 +4608,31 @@ export interface TierOffer {
   /** Whether the lock route can be taken right now. */
   lockAvailable: boolean;
   /**
-   * Annual fee in USD, or null when this tier is not sold for cash.
+   * The annual fee in USD — the price the membership renews at — or null when
+   * this tier is not sold for cash.
    *
    * Null rather than 0 so a missing price can never be rendered as "free".
    * `cashAvailable` is the flag to branch on; this is only ever the amount.
+   * During a sale the first year costs `firstYearFeeUsd` instead.
    */
   annualFeeUsd: number | null;
   /** Whether the annual-fee route can be taken right now. */
   cashAvailable: boolean;
   /** Whether the user already holds this tier. */
   held: boolean;
+  /**
+   * What the first year costs right now: the sale price while a sale runs,
+   * otherwise the annual fee. Less than `annualFeeUsd` exactly when a sale is on.
+   */
+  firstYearFeeUsd?: number | null;
+  /** When the sale price stops being offered. Null when there is no sale. */
+  saleEndsAt?: string | null;
+  /** The per-period cap the mandate is signed at — the annual fee, never the sale price. */
+  mandateUsd?: number | null;
+  /** How the first year is paid. Absent on older backends, which only charge through the module. */
+  paymentMode?: TierPaymentMode;
+  /** The lower-tier membership buying this one ends, when there is one. */
+  replacesSubscription?: TierReplacedSubscription | null;
 }
 
 /** The user's locked FUSE position. */
@@ -4639,6 +4711,11 @@ export interface TierMembershipContracts {
   wrappedNativeAddress: string | null;
   /** The USDC the membership is billed in. */
   billingTokenAddress: string | null;
+  /**
+   * Where a `transfer`-mode first year is paid to. Null, or absent on an older
+   * backend, means an upgrade cannot be paid for in cash.
+   */
+  revenueTreasuryAddress?: string | null;
 }
 
 /**

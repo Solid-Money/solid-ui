@@ -82,7 +82,7 @@ interface ReferAllRewardsSheetProps {
   terms: ReferralV4Terms;
   /** Opens one reward's sheet; this one closes first. */
   onOpenReward: (kind: ReferRewardKind) => void;
-  /** Opens the card credit sheet; this one closes first. */
+  /** Opens the Card bonus explainer after this sheet closes. */
   onOpenCardCredit: () => void;
 }
 
@@ -120,7 +120,7 @@ const ReferAllRewardsSheet = ({
       ))}
       <Row
         icon={<ReferIcon asset="images/referral-v4/card-40.svg" size={40} />}
-        title="Card credit"
+        title="Card bonus"
         subtitle="How your bonuses are paid"
         onPress={onOpenCardCredit}
       />

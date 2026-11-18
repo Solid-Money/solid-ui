@@ -46,8 +46,9 @@ export function useTransfiCashoutConfig(enabled = true) {
 
 /**
  * Payout methods for a currency, each carrying the fields it needs. Kept fresh
- * for a minute only: the field rules come straight from TransFi, and a stale
- * rule is a payout refused after the user has already sent.
+ * for a minute only: the field rules come from TransFi (through the server's
+ * ten-minute cache), and a stale rule is a payout refused after the user has
+ * already sent. The server reads them fresh again when the order is opened.
  */
 export function useTransfiCashoutPaymentMethods(currency?: string) {
   return useQuery({

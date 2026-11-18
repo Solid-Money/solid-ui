@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/text';
 import { WalletTokenList } from '@/components/WalletTokenSelector';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { useCashPayment } from '@/hooks/useTierUpgradeFunding';
-import { findOffer } from '@/lib/tierUpgrade';
+import { findOffer, offerFirstYearFeeUsd, offerPaymentMode } from '@/lib/tierUpgrade';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 /**
@@ -22,17 +22,19 @@ const CashTokenSelector = () => {
   const tier = useTierUpgradeStore(state => state.tier);
   const setCashToken = useTierUpgradeStore(state => state.setCashToken);
   const offer = tier ? findOffer(membership, tier) : undefined;
-  const { tokens, token } = useCashPayment({
+  const { tokens, token, coverPct } = useCashPayment({
     membership,
     chain,
-    feeUsd: offer?.annualFeeUsd ?? 0,
+    feeUsd: offerFirstYearFeeUsd(offer) ?? 0,
+    paymentMode: offer ? offerPaymentMode(offer) : undefined,
   });
 
   return (
     <View className="mx-auto w-full max-w-[414px] gap-4">
       <Text className="text-base font-medium opacity-70">
-        Pick what to pay with. Anything outside Fuse is moved to USDC on Fuse for you, and the
-        bridge fees are on us.
+        {`Pick what to pay with. Anything outside Fuse is moved to USDC on Fuse for you${
+          coverPct > 0 ? ', and the bridge fees are on us' : ''
+        }.`}
       </Text>
 
       <WalletTokenList

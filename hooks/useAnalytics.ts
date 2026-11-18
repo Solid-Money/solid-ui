@@ -1,4 +1,5 @@
-import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { focusManager, keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -27,6 +28,7 @@ import {
   getBankTransfers,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
+import { displayApy, newVaultChangesAt } from '@/lib/displayApy';
 import {
   APYs,
   BankTransferActivityItem,
@@ -48,11 +50,8 @@ import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
-const ApyToDays = {
-  sevenDay: 7,
-  fifteenDay: 15,
-  thirtyDay: 30,
-};
+/** setTimeout's longest delay; a longer one fires at once. */
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
  * The analytics key for a vault: the vault itself, or the USD vault when none is
@@ -610,26 +609,46 @@ export const useAPYs = (vault?: VaultType) => {
   });
 };
 
+/**
+ * The APY a vault is shown at: its trailing day while it is under 15 days old,
+ * otherwise the best of its 7, 15 and 30-day windows (see displayApy).
+ */
 export const useMaxAPY = (vault?: VaultType) => {
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
-  const thirtyDay = apys?.thirtyDay ?? 0;
-  const fifteenDay = apys?.fifteenDay ?? 0;
-  const sevenDay = apys?.sevenDay ?? 0;
-
-  const candidates = [
-    { apy: sevenDay, days: ApyToDays.sevenDay },
-    { apy: fifteenDay, days: ApyToDays.fifteenDay },
-    { apy: thirtyDay, days: ApyToDays.thirtyDay },
-  ].filter(e => e.apy > 0);
-
-  const best = candidates.reduce<(typeof candidates)[0] | undefined>(
-    (a, b) => (!a || b.apy > a.apy ? b : a),
-    undefined,
+  const { data: apys, dataUpdatedAt, isLoading: isAPYsLoading } = useAPYs(vault);
+  // Whether the vault counts as new turns on the clock, not the data: re-render when
+  // it changes, which an unchanged poll would not do.
+  const [now, setNow] = useState(() => Date.now());
+  // Polls can return structurally identical data; their update timestamp still
+  // refreshes the device clock. Focus also handles clock corrections while away.
+  useEffect(() => {
+    setNow(Date.now());
+  }, [apys, dataUpdatedAt]);
+  useEffect(
+    () =>
+      focusManager.subscribe(focused => {
+        if (focused) setNow(Date.now());
+      }),
+    [],
   );
+  const changesAt = newVaultChangesAt(apys, now);
+  useEffect(() => {
+    if (changesAt === undefined) return;
+    const refresh = () => {
+      const currentTime = Date.now();
+      if (currentTime < changesAt) {
+        timer = setTimeout(refresh, Math.min(changesAt - currentTime, MAX_TIMEOUT_MS));
+      } else {
+        setNow(currentTime);
+      }
+    };
+    let timer = setTimeout(refresh, Math.min(Math.max(changesAt - Date.now(), 0), MAX_TIMEOUT_MS));
+    return () => clearTimeout(timer);
+  }, [changesAt, now]);
+  const { apy, days } = displayApy(apys, now);
 
   return {
-    maxAPY: best?.apy ?? 0,
-    maxAPYDays: best?.days ?? ApyToDays.thirtyDay,
+    maxAPY: apy,
+    maxAPYDays: days,
     isAPYsLoading,
   };
 };

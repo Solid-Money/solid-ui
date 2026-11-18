@@ -63,6 +63,7 @@ jest.mock('@/lib/mmvkStorage', () => {
     }),
   };
 });
+jest.mock('@/lib/pendingTierUpgrades', () => ({}));
 jest.mock('@/lib/tierLockTransactions', () => ({ buildLockTransactions: () => [] }));
 jest.mock('@/lib/wagmi', () => ({}));
 jest.mock('@/lib/utils', () => ({}));

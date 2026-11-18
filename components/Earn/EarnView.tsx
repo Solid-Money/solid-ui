@@ -2,9 +2,17 @@ import { Fragment, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 
-import { BalanceHeadline } from '@/components/BalanceHeadline';
+import { BalanceAmount } from '@/components/BalanceHeadline';
 import SavingsFundedActions from '@/components/Savings/NewSavings/SavingsFundedActions';
 import StartEarningButton from '@/components/Savings/NewSavings/StartEarningButton';
+import {
+  TAB_SUMMARY_BADGE,
+  TAB_SUMMARY_BADGE_LABEL,
+  TAB_SUMMARY_LABEL,
+  TabSummary,
+  TabSummaryActionSkeleton,
+  TabSummaryHeadline,
+} from '@/components/TabSummary';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { formatTokenAmount } from '@/lib/portfolio';
@@ -12,7 +20,7 @@ import { VaultType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { isEurVault } from '@/lib/vaultCurrency';
 
-import { ApyTag, CheckDot, EarnChip, LockIcon } from './EarnChips';
+import { ApyTag, CheckDot, LockIcon } from './EarnChips';
 import YieldIcon from './YieldIcon';
 import { formatYieldAmount, formatYieldUsd, yieldProductName, yieldVault } from './yieldProducts';
 
@@ -156,85 +164,95 @@ export default function EarnView({
   const isFunded = !isLoading && (total ?? 0) > 0;
 
   return (
-    <View className="mx-auto w-full max-w-[419px] gap-6 px-4 pb-[140px] web:md:max-w-[40rem]">
-      <View className="items-center gap-[6px]">
-        {isLoading || total === undefined ? (
-          <View className="items-center gap-1 pt-2">
-            <Text className="text-base font-medium text-muted-foreground">Total in Earn</Text>
-            <Skeleton className="h-[54px] w-[215px] rounded-xl bg-white/10" />
+    <>
+      <TabSummary
+        headline={
+          <TabSummaryHeadline
+            label={<Text className={TAB_SUMMARY_LABEL}>Total in Earn</Text>}
+            value={
+              isLoading || total === undefined ? (
+                <Skeleton className="h-[54px] w-[215px] rounded-xl bg-white/10" />
+              ) : (
+                <BalanceAmount balance={total} />
+              )
+            }
+            badge={
+              apyLabel === undefined ? (
+                <Skeleton className="h-8 w-[120px] rounded-full bg-white/10" />
+              ) : (
+                <View className={`${TAB_SUMMARY_BADGE} bg-brand/15`}>
+                  <CheckDot />
+                  <Text className={`${TAB_SUMMARY_BADGE_LABEL} text-brand`}>{apyLabel}</Text>
+                </View>
+              )
+            }
+          />
+        }
+        actions={
+          isLoading ? (
+            <TabSummaryActionSkeleton count={2} />
+          ) : isFunded ? (
+            <SavingsFundedActions vaultType={VaultType.USDC} variant="tab" />
+          ) : (
+            <StartEarningButton vaultType={VaultType.USDC} variant="tab" source="earn_start" />
+          )
+        }
+      />
+
+      <View className="mx-auto mt-5 w-full max-w-[419px] gap-6 px-4 pb-[140px] web:md:max-w-[40rem]">
+        <View className="gap-3">
+          <Text className="text-[16px] leading-5 text-white/50">Balances</Text>
+          <View className="flex-row items-center rounded-[20px] bg-[#1C1C1C] py-4">
+            <Stat
+              value={
+                !isFunded
+                  ? formatYieldUsd(0)
+                  : totalEarned === undefined
+                    ? undefined
+                    : formatYieldUsd(totalEarned)
+              }
+              label="Total earned"
+              positive={isFunded && (totalEarned ?? 0) > 0}
+            />
+            <StatDivider />
+            <Stat
+              value={
+                !isFunded
+                  ? formatYieldUsd(0)
+                  : past30 === undefined
+                    ? undefined
+                    : `${past30 > 0 ? '+' : ''}${formatYieldUsd(past30)}`
+              }
+              label="Last 30 days"
+              positive={isFunded && (past30 ?? 0) > 0}
+            />
+            <StatDivider />
+            <Stat value="Daily" label="Interest added" />
           </View>
-        ) : (
-          <BalanceHeadline balance={total} label="Total in Earn" />
-        )}
-        {apyLabel === undefined ? (
-          <Skeleton className="h-7 w-[120px] rounded-full bg-white/10" />
-        ) : (
-          <EarnChip tone="positive" icon={<CheckDot />} label={apyLabel} />
-        )}
-      </View>
-
-      {isLoading ? (
-        <Skeleton className="h-[50px] rounded-full bg-white/10" />
-      ) : isFunded ? (
-        <View className="-mx-4">
-          <SavingsFundedActions vaultType={VaultType.USDC} />
         </View>
-      ) : (
-        <StartEarningButton vaultType={VaultType.USDC} className="px-0" source="earn_start" />
-      )}
 
-      <View className="gap-3">
-        <Text className="text-[16px] leading-5 text-white/50">Balances</Text>
-        <View className="flex-row items-center rounded-[20px] bg-[#1C1C1C] py-4">
-          <Stat
-            value={
-              !isFunded
-                ? formatYieldUsd(0)
-                : totalEarned === undefined
-                  ? undefined
-                  : formatYieldUsd(totalEarned)
-            }
-            label="Total earned"
-            positive={isFunded && (totalEarned ?? 0) > 0}
-          />
-          <StatDivider />
-          <Stat
-            value={
-              !isFunded
-                ? formatYieldUsd(0)
-                : past30 === undefined
-                  ? undefined
-                  : `${past30 > 0 ? '+' : ''}${formatYieldUsd(past30)}`
-            }
-            label="Last 30 days"
-            positive={isFunded && (past30 ?? 0) > 0}
-          />
-          <StatDivider />
-          <Stat value="Daily" label="Interest added" />
+        <View className="gap-3">
+          <Text className="text-[16px] leading-5 text-white/50">Yields</Text>
+          <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+            {products.map((product, index) => (
+              <Fragment key={product.type}>
+                {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
+                <ProductRow
+                  product={product}
+                  isLoading={isLoading}
+                  onPress={() => onOpenProduct(product.type)}
+                />
+              </Fragment>
+            ))}
+          </View>
         </View>
+
+        {boost}
+
+        <Text className="px-4 text-center text-[13px] leading-[18px] text-white/40">
+          APY is after fees and changes with the market. It is not guaranteed.
+        </Text>
       </View>
-
-      <View className="gap-3">
-        <Text className="text-[16px] leading-5 text-white/50">Yields</Text>
-        <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
-          {products.map((product, index) => (
-            <Fragment key={product.type}>
-              {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
-              <ProductRow
-                product={product}
-                isLoading={isLoading}
-                onPress={() => onOpenProduct(product.type)}
-              />
-            </Fragment>
-          ))}
-        </View>
-      </View>
-
-      {boost}
-
-      <Text className="px-4 text-center text-[13px] leading-[18px] text-white/40">
-        APY is after fees and changes with the market. It is not guaranteed.
-      </Text>
-    </View>
+    </>
   );
 }

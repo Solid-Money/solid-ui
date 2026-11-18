@@ -73,7 +73,7 @@ const CardCreditDetailsCard = memo(function CardCreditDetailsCard({
           <View className="flex-row items-center gap-[6px]">
             <CashbackDiamondIcon size={14} />
             <Text className="text-[16px] font-medium text-brand">
-              {isHeld ? 'Card credit (held)' : 'Card credit'}
+              {isHeld ? 'Card bonus (held)' : 'Card bonus'}
             </Text>
           </View>
           <Text className="text-[16px] font-bold text-brand">
@@ -87,12 +87,12 @@ const CardCreditDetailsCard = memo(function CardCreditDetailsCard({
         value={<Text className={VALUE}>{formatUsdCents(credit.from_balance_usd)}</Text>}
       />
       <DetailRow
-        label="Card credit left"
+        label="Card bonus left"
         value={<Text className={VALUE}>{formatUsdCents(credit.remaining_usd)}</Text>}
       />
       {credit.refunded_usd ? (
         <DetailRow
-          label="Returned as credit"
+          label="Returned as card bonus"
           value={
             <Text className={cn(VALUE, 'text-brand')}>+{formatUsdCents(credit.refunded_usd)}</Text>
           }
@@ -112,8 +112,8 @@ const CardCreditDetailsCard = memo(function CardCreditDetailsCard({
 
       <View className="border-t border-white/10 pb-[18px] pl-[24px] pr-[20px] pt-[16px]">
         <Text className="text-[14px] leading-[20px] text-white/80">
-          No cashback on the part paid with card credit. Anything above your credit earns cashback
-          as usual.
+          No cashback on the part paid with the bonus. Anything above your bonus earns cashback as
+          usual.
         </Text>
       </View>
     </View>
