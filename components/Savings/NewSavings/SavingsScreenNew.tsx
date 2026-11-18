@@ -12,6 +12,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
+import { pastThirtyDaysApy } from '@/lib/displayApy';
 import { coinAssetPath, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { isEurVault } from '@/lib/vaultCurrency';
@@ -27,6 +28,7 @@ const VAULT_KEY_BY_TYPE: Record<VaultType, VaultKey> = {
   [VaultType.FUSE]: 'FUSE',
   [VaultType.ETH]: 'ETH',
   [VaultType.EUR]: 'EUR',
+  [VaultType.BTC]: 'BTC',
 };
 
 /**
@@ -116,7 +118,7 @@ export default function SavingsScreenNew() {
       ? undefined
       : interestOverPastDays(
           balanceUsd,
-          apys?.thirtyDay || maxAPY,
+          pastThirtyDaysApy(apys),
           30,
           unreadUsd > 0 ? undefined : interest.interest,
         );
@@ -143,6 +145,7 @@ export default function SavingsScreenNew() {
         isFunded={isFunded}
         balanceUsd={balanceUsd}
         apy={isAPYsLoading || !maxAPY ? undefined : maxAPY}
+        isApyLoading={isAPYsLoading}
         interestUsd={interest.interest}
         isInterestLoading={interest.isLoading}
         past30Usd={past30Usd}
@@ -163,8 +166,14 @@ export default function SavingsScreenNew() {
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
-        // Only soUSD withdraws through the Base queue these are read from.
-        pendingWithdrawals={vaultType === VaultType.USDC ? portfolio.pendingWithdrawals : undefined}
+        // Only soUSD and soETH (on their Base queues) and soBTC (on its Ethereum queue) are read.
+        pendingWithdrawals={
+          vaultType === VaultType.USDC || vaultType === VaultType.ETH || vaultType === VaultType.BTC
+            ? portfolio.pendingWithdrawals.filter(
+                item => item.vault === VAULT_KEY_BY_TYPE[vaultType],
+              )
+            : undefined
+        }
       />
     </PageLayout>
   );

@@ -18,8 +18,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import {
+  BOT_CHECK_FAILED_CODE,
+  BOT_CHECK_FAILED_MESSAGE,
   EMAIL_DOMAIN_NOT_ALLOWED_CODE,
   EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
+  isRateLimitedError,
 } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -258,6 +261,7 @@ export default function SignupEmail() {
 
       const errorMessage = err?.message || err?.toString() || '';
       const isRateLimitError =
+        isRateLimitedError(err) ||
         errorMessage.includes('Max number of OTPs have been initiated') ||
         errorMessage.includes('please wait and try again') ||
         errorMessage.includes('Turnkey error 3');
@@ -265,6 +269,8 @@ export default function SignupEmail() {
       if (err?.code === EMAIL_DOMAIN_NOT_ALLOWED_CODE) {
         // Retrying this address can't succeed; another one can.
         setError(EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE);
+      } else if (err?.code === BOT_CHECK_FAILED_CODE) {
+        setError(BOT_CHECK_FAILED_MESSAGE);
       } else if (isRateLimitError) {
         setRateLimitError(
           'Too many verification codes requested. Please wait a few minutes before trying again.',

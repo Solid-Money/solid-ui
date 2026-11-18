@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardTypeOptions, Pressable, ScrollView, View } from 'react-native';
 import { Check, ChevronDown, Lock } from 'lucide-react-native';
 
@@ -9,7 +9,12 @@ import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTransfiCashoutPaymentMethods } from '@/hooks/useTransfiCashout';
 import { track } from '@/lib/analytics';
-import { validatePayoutDetails, validatePayoutField } from '@/lib/payoutFields';
+import {
+  initialPayoutValues,
+  validatePayoutDetails,
+  validatePayoutField,
+} from '@/lib/payoutFields';
+import { asTransfiError } from '@/lib/transfiErrors';
 import { cn } from '@/lib/utils';
 import { useCashoutStore } from '@/store/useCashoutStore';
 import { useSendStore } from '@/store/useSendStore';
@@ -42,7 +47,13 @@ export const CashoutDetailsForm = () => {
   const setPaymentDetails = useCashoutStore(state => state.setPaymentDetails);
   const serverFieldErrors = useCashoutStore(state => state.fieldErrors);
   const setFieldErrors = useCashoutStore(state => state.setFieldErrors);
-  const { data: methods, isLoading } = useTransfiCashoutPaymentMethods(currency);
+  const {
+    data: methods,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useTransfiCashoutPaymentMethods(currency);
   const method = methods?.find(m => m.paymentCode === paymentCode);
 
   // Only shown once a field has been left, or after a Continue attempt — an
@@ -51,6 +62,19 @@ export const CashoutDetailsForm = () => {
   const [submitted, setSubmitted] = useState(false);
 
   const fields = useMemo(() => method?.fields ?? [], [method]);
+
+  // Start from what the verified profile already says — the holder's name,
+  // their address — so the user only types the account itself. Done here, not
+  // when the method is picked: a currency with one method skips that step.
+  // Anything already typed for this method is kept.
+  const seededFor = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!method || seededFor.current === method.paymentCode) return;
+    seededFor.current = method.paymentCode;
+    if (Object.keys(useCashoutStore.getState().paymentDetails).length) return;
+    const initial = initialPayoutValues(method.fields);
+    if (Object.keys(initial).length) setPaymentDetails(initial);
+  }, [method, setPaymentDetails]);
   const editable = fields.filter(field => !field.locked);
   const locked = fields.filter(field => field.locked);
 
@@ -83,10 +107,51 @@ export const CashoutDetailsForm = () => {
     setModal(SEND_MODAL.OPEN_CASHOUT_AMOUNT);
   };
 
-  if (isLoading || !method) {
+  if (isLoading) {
     return (
       <View className="items-center justify-center py-10">
         <ActivityIndicator size="large" color="#94F27F" />
+      </View>
+    );
+  }
+
+  // A country with one method comes straight here from the list, so this is
+  // where its methods load — and where a failed load has to be said.
+  if (!method) {
+    return (
+      <View className="items-center gap-4 rounded-2xl bg-card px-6 py-10">
+        <View className="items-center gap-2">
+          <Text className="text-center text-base font-semibold">
+            {error ? 'Couldn’t load your payout details' : 'This way to get paid isn’t available'}
+          </Text>
+          <Text className="text-center text-sm text-muted-foreground">
+            {error ? asTransfiError(error).message : 'Pick another way to get paid.'}
+          </Text>
+        </View>
+        {error ? (
+          <Button
+            variant="secondary"
+            className="h-11 rounded-xl px-6"
+            disabled={isFetching}
+            onPress={() => refetch()}
+          >
+            <Text className="text-base font-semibold">
+              {isFetching ? 'Trying again…' : 'Try again'}
+            </Text>
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            className="h-11 rounded-xl px-6"
+            onPress={() =>
+              setModal(
+                methods?.length ? SEND_MODAL.OPEN_CASHOUT_METHOD : SEND_MODAL.OPEN_CASHOUT_CURRENCY,
+              )
+            }
+          >
+            <Text className="text-base font-semibold">Choose another</Text>
+          </Button>
+        )}
       </View>
     );
   }

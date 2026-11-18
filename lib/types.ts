@@ -706,7 +706,24 @@ export interface CardResponse {
   additional_funding_instructions?: AdditionalFundingInstructions[];
 }
 
+/**
+ * The currency a cashback row is earned, capped and paid in: dollars (soUSD on Fuse) or, for a
+ * Wirex cardholder whose main currency is EUR, euros (soEUR on Base). The two are never added
+ * together or converted into each other — every total is per currency.
+ */
+export type CashbackCurrency = 'USD' | 'EUR';
+
+/** Card details' euro cashback figures, all in EUR. Euro rows only. */
+export interface CashbackEurData {
+  monthlySoEurAmount: number;
+  monthlyEurValue: number;
+  monthlyPendingEurValue: number;
+  totalSoEurAmount: number;
+  totalEurValue: number;
+}
+
 export interface CashbackData {
+  /** The USD figures below count USD rows only; euro rows are in {@link eur}. */
   monthlySoUsdAmount: number;
   monthlyUsdValue: number;
   /**
@@ -717,6 +734,10 @@ export interface CashbackData {
   totalSoUsdAmount: number;
   totalUsdValue: number;
   percentage: number;
+  /** The cardholder's cashback currency. Absent on older backends, which is USD. */
+  currency?: CashbackCurrency;
+  /** Present when the cardholder has euro cashback or `currency` is EUR. */
+  eur?: CashbackEurData;
 }
 
 /** Card issuance provider; backend may add to details/status */
@@ -793,7 +814,37 @@ export interface CardActivationFailure {
   occurredAt?: string | null;
 }
 
+/**
+ * Rain sunset: the card a user holds is closing, and — where the new card
+ * partner serves them — they can get their new Solid card now. Present on
+ * `/cards/status` only for a user this affects, and gone once they have moved.
+ *
+ * Copy rule from the design: the app never names Rain. It is "your card" and
+ * "your new Solid card"; the new partner (Wirex) is named once, on the new-card
+ * screen, to explain the new identity check.
+ */
+export interface RainSunsetStatus {
+  /** They still hold the closing card (active, frozen or pending). */
+  hasRainCard: boolean;
+  /** Show the closing notice on Home and the card screen. */
+  notice: boolean;
+  /** The day the closing cards stop working (YYYY-MM-DD), or null if not announced. */
+  closesAt: string | null;
+  /** They can get the new card now. */
+  newCardAvailable: boolean;
+  /**
+   * Their new-card application once started, shaped like a card status so the
+   * Wirex onboarding screens read it unchanged. The top-level status keeps
+   * describing the closing card until the new one exists.
+   */
+  migration?: CardStatusResponse;
+  /** The most balance (USD) the new card is issued over; withdraw anything above it first. */
+  maxLeftoverUsd: number;
+}
+
 export interface CardStatusResponse {
+  /** Rain sunset — see {@link RainSunsetStatus}. */
+  rainSunset?: RainSunsetStatus;
   status?: CardStatus;
   activationBlocked?: boolean;
   activationBlockedReason?: string;
@@ -2100,6 +2151,33 @@ export interface Cashback {
   cashbackPercentage?: number;
   /** Which level set {@link cashbackPercentage}: one transaction, the cardholder, or their tier. */
   cashbackPercentageSource?: 'Transaction' | 'User' | 'Tier';
+  /**
+   * The currency this row is earned, capped and paid in. Absent means USD. On a EUR row
+   * `fiatAmount` is the euro amount the cashback is earned on, and the soUSD fields are unset.
+   */
+  currency?: CashbackCurrency;
+  /** soEUR shares paid on a EUR row (6dp), and the EUR per share at payout. */
+  soEurAmount?: string;
+  soEurRate?: string;
+  /** soEUR the payout transfer actually moved (6dp). */
+  sentSoEurAmount?: string;
+  /** Subscription discount amount in EUR (2dp), on a EUR subscription row. */
+  discountEur?: string;
+  /** The tier's euro monthly cap, frozen at purchase. */
+  monthlyCapEur?: number;
+  /** The EUR counterpart of {@link projectedUsdValue}, for an unpaid EUR row. */
+  projectedEurValue?: number;
+  /**
+   * Chain the payout was sent on: 8453 (Base) for soEUR, and for soUSD the
+   * Base float covered; 122 (Fuse) for soUSD it did not. Absent on soUSD rows
+   * paid before the backend recorded it — all on Fuse — and on unpaid rows.
+   * Matching a payout to its activity is by hash and needs no chain.
+   */
+  payoutChainId?: number;
+  /** Only when the purchase was billed in a non-EUR currency and converted once at accrual. */
+  billedAmount?: string;
+  billedCurrency?: string;
+  billedToEurRate?: number;
   createdAt: string;
 }
 
@@ -2313,6 +2391,14 @@ export interface RewardsUserData {
    * `monthlyCashbackHeadroom`.
    */
   cashbackHeadroomThisMonth?: number;
+  /**
+   * The cardholder's cashback currency: EUR when their Wirex main currency is EUR. The
+   * top-level cashback figures above count USD rows only; a euro cardholder's are in
+   * {@link cashbackEur}. Absent on older backends, which is USD.
+   */
+  cashbackCurrency?: CashbackCurrency;
+  /** Euro cashback and caps, including euro earnings before a switch to USD. */
+  cashbackEur?: RewardsCashbackEur;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;
   /** The user's old Solid Points total prior to conversion. */
@@ -2392,6 +2478,17 @@ export interface RewardsUserData {
    * apply here.
    */
   activeTierTrial?: TierTrial | null;
+}
+
+/** A euro cardholder's month of cashback: the USD fields of the same names, in EUR. */
+export interface RewardsCashbackEur {
+  cashbackThisMonth: number;
+  cashbackPendingThisMonth: number;
+  cashbackLastMonth: number;
+  /** The tier's euro cap. */
+  maxCashbackMonthly: number;
+  cashbackCapThisMonth: number;
+  cashbackHeadroomThisMonth: number;
 }
 
 /** The tiers a trial can grant. Core is the floor, not a gift. */
@@ -2627,6 +2724,8 @@ export interface TierThresholds {
 export interface TierCashbackConfig {
   percentage: number;
   monthlyCap: number;
+  /** The euro cardholder's monthly cap, in EUR. Absent on older backends. */
+  monthlyCapEur?: number;
 }
 
 export interface TierSubscriptionDiscountConfig {
@@ -2641,6 +2740,8 @@ export interface TierSubscriptionDiscountConfig {
    * Optional because a backend from before the per-tier caps does not send it.
    */
   monthlyCap?: number;
+  /** The same cap for a euro cardholder, in EUR. Absent on older backends. */
+  monthlyCapEur?: number;
 }
 
 export interface SubscriptionDiscountCategory {
@@ -2669,6 +2770,8 @@ export interface SubscriptionDiscountConfig {
    * `monthlyCap`. The name is left from an earlier reading.
    */
   eligibleAmountCap: number;
+  /** `eligibleAmountCap` for a euro cardholder, in EUR. Absent on older backends. */
+  eligibleAmountCapEur?: number;
   tier1: TierSubscriptionDiscountConfig;
   tier2: TierSubscriptionDiscountConfig;
   tier3: TierSubscriptionDiscountConfig;
@@ -3196,6 +3299,8 @@ export interface ActivityEvent {
   deleted?: boolean;
   deletedAt?: string;
   failureReason?: string;
+  /** When the backend last wrote this row (ISO). Orders two copies of it. */
+  updatedAt?: string;
 }
 
 export interface ActivityEvents {
@@ -3335,9 +3440,16 @@ export enum ActivityGroup {
 
 export interface APYs {
   allTime: number;
+  /** The trailing day, annualised. Absent on older analytics APIs. */
+  oneDay?: number;
   sevenDay: number;
   fifteenDay: number;
   thirtyDay: number;
+  /**
+   * When the vault's rate history starts (ISO 8601): about when it was
+   * deployed. Null without history; absent on older analytics APIs.
+   */
+  firstRateAt?: string | null;
 }
 
 export interface TotalAPYResponse {
@@ -3346,6 +3458,8 @@ export interface TotalAPYResponse {
   eth: number;
   /** soEURC. 0 until the vault earns (absent or null on older APIs) — all read as "no APY". */
   eur?: number | null;
+  /** soBTC. Absent or null until the analytics API reports it: read as "no APY". */
+  btc?: number | null;
 }
 
 export interface APYsByAsset {
@@ -3354,6 +3468,8 @@ export interface APYsByAsset {
   eth: APYs;
   /** soEURC. Zeroes until the vault earns; absent or null on older APIs. Both read as "no APY". */
   eur?: APYs | null;
+  /** soBTC. Absent or null until the analytics API reports it: read as "no APY". */
+  btc?: APYs | null;
 }
 
 export interface HistoricalAPYPoint {
@@ -3733,11 +3849,31 @@ export interface TransfiPayoutField {
   locked?: boolean;
 }
 
+/** How a cash-out reaches the user: into a bank account, or a mobile wallet. */
+export type TransfiCashoutMethodType = 'bank' | 'mobile_money';
+
+/** A payout method as the currency list shows it. */
+export interface TransfiCashoutMethodSummary {
+  paymentCode: string;
+  name: string;
+  type: TransfiCashoutMethodType;
+}
+
+/** A payout currency with the country it belongs to and how it can be paid. */
+export interface TransfiCashoutCurrency extends TransfiCurrencyOption {
+  /** Country or zone (EUR → Eurozone); absent for a code the server can't name. */
+  country?: string;
+  /** Absent when TransFi wouldn't list them; the method step then loads them. */
+  methods?: TransfiCashoutMethodSummary[];
+}
+
 export interface TransfiCashoutPaymentMethod {
   paymentCode: string;
   paymentName?: string;
   /** 'bank_transfer', 'local_wallet'… */
   paymentType?: string;
+  /** `paymentType` read as bank or mobile money. Absent from an older server. */
+  type?: TransfiCashoutMethodType;
   logo?: string;
   /** Fiat limits as TransFi lists them on the method. */
   minAmount?: number;
@@ -3746,7 +3882,7 @@ export interface TransfiCashoutPaymentMethod {
 }
 
 export interface TransfiCashoutConfig {
-  currencies: TransfiCurrencyOption[];
+  currencies: TransfiCashoutCurrency[];
   defaultCurrency?: string;
   tokenSymbol: string;
   tokenNetwork: string;
@@ -3837,6 +3973,11 @@ export enum VaultType {
   ETH = 'eth',
   /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
   EUR = 'eur',
+  /**
+   * soBTC: WBTC on Ethereum and on Base, one share on Base. Earns and is shown in BTC; its
+   * dollar value is BTC × the BTC price.
+   */
+  BTC = 'btc',
 }
 
 export interface SavingsDataQuality {
@@ -4431,9 +4572,39 @@ export enum TierSubscriptionStatus {
   PAST_DUE = 'past_due',
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
+  /**
+   * Ended early by an upgrade to a higher tier's membership. Never the open
+   * `subscription` — the membership that replaced it is — but a status a
+   * membership can carry.
+   */
+  REPLACED = 'replaced',
 }
 
-/** A tier the user can buy, and what it costs by each route. */
+/**
+ * How the first year of a cash membership is paid.
+ *
+ * `module`: the Safe signs the mandate and the backend takes the first year
+ * through the subscription module. `transfer`: the Safe pays the first year to
+ * the treasury itself, in the batch that signs the mandate — an upgrade from a
+ * running membership, whose period has already had its one module charge.
+ */
+export type TierPaymentMode = 'module' | 'transfer';
+
+/** The membership buying a tier would end. */
+export interface TierReplacedSubscription {
+  tier: RewardsTier;
+  /** When it would otherwise have run to. The time left is not refunded. */
+  currentPeriodEnd: string;
+}
+
+/**
+ * A tier the user can buy, and what it costs by each route.
+ *
+ * The fields after `held` are newer than the rest and optional until every
+ * backend sends them; read them through the resolvers in `lib/tierUpgrade`
+ * (`offerFirstYearFeeUsd`, `offerMandateUsd`, `offerPaymentMode`), which carry
+ * the fallbacks.
+ */
 export interface TierOffer {
   tier: RewardsTier;
   /** FUSE that must be locked to hold this tier. */
@@ -4441,16 +4612,31 @@ export interface TierOffer {
   /** Whether the lock route can be taken right now. */
   lockAvailable: boolean;
   /**
-   * Annual fee in USD, or null when this tier is not sold for cash.
+   * The annual fee in USD — the price the membership renews at — or null when
+   * this tier is not sold for cash.
    *
    * Null rather than 0 so a missing price can never be rendered as "free".
    * `cashAvailable` is the flag to branch on; this is only ever the amount.
+   * During a sale the first year costs `firstYearFeeUsd` instead.
    */
   annualFeeUsd: number | null;
   /** Whether the annual-fee route can be taken right now. */
   cashAvailable: boolean;
   /** Whether the user already holds this tier. */
   held: boolean;
+  /**
+   * What the first year costs right now: the sale price while a sale runs,
+   * otherwise the annual fee. Less than `annualFeeUsd` exactly when a sale is on.
+   */
+  firstYearFeeUsd?: number | null;
+  /** When the sale price stops being offered. Null when there is no sale. */
+  saleEndsAt?: string | null;
+  /** The per-period cap the mandate is signed at — the annual fee, never the sale price. */
+  mandateUsd?: number | null;
+  /** How the first year is paid. Absent on older backends, which only charge through the module. */
+  paymentMode?: TierPaymentMode;
+  /** The lower-tier membership buying this one ends, when there is one. */
+  replacesSubscription?: TierReplacedSubscription | null;
 }
 
 /** The user's locked FUSE position. */
@@ -4529,6 +4715,11 @@ export interface TierMembershipContracts {
   wrappedNativeAddress: string | null;
   /** The USDC the membership is billed in. */
   billingTokenAddress: string | null;
+  /**
+   * Where a `transfer`-mode first year is paid to. Null, or absent on an older
+   * backend, means an upgrade cannot be paid for in cash.
+   */
+  revenueTreasuryAddress?: string | null;
 }
 
 /**

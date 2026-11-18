@@ -63,6 +63,8 @@ jest.mock('@/hooks/useBaseWithdrawRequests', () => ({
     !['soeurc', 'soeur'].includes(activity.symbol?.toLowerCase() ?? '') &&
     activity.status === 'success' &&
     !!activity.hash,
+  // The real key adds the queue; here the map is keyed by hash alone.
+  baseWithdrawRequestKey: (activity: { hash: string }) => activity.hash.toLowerCase(),
   useBaseWithdrawRequests: () => mockBaseRequests,
 }));
 

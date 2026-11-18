@@ -3,6 +3,7 @@ import { fuse } from 'viem/chains';
 
 import { USDC_STARGATE } from '@/constants/addresses';
 import { SWAP_LIST } from '@/constants/swapChains';
+import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType } from '@/lib/types';
 
 export interface SwapSide {
@@ -15,9 +16,9 @@ export interface SwapPreset {
   output?: SwapSide;
 }
 
-/** USD Yield (soUSD, `soUSDC_TOKEN`) on Fuse. Not imported: constants/tokens loads the asset bundle. */
+/** The USD Yield share used by the Fuse swap catalogue. */
 export const USD_YIELD_ON_FUSE: SwapSide = {
-  address: '0x75333830E7014e909535389a6E5b0C02aA62ca27',
+  address: PRODUCTION_VAULT_ADDRESSES.fuse.vault,
   chainId: fuse.id,
 };
 /** USDC on Fuse, the coin the app spends and sends. */

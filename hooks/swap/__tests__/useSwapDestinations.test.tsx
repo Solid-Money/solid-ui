@@ -4,6 +4,7 @@ import { zeroAddress } from 'viem';
 
 import { useSwapDestinations } from '@/hooks/swap/useSwapDestinations';
 import { fetchLifiSwapDestinations } from '@/lib/api/lifi-swap';
+import { FetchTimeoutError } from '@/lib/fetchWithTimeout';
 import { SwapAsset } from '@/lib/types/lifi-swap';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -38,7 +39,7 @@ const settle = () =>
 /** What the hook answers once React Query has the backend's reply. */
 const answerFor = async (from: SwapAsset) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const answers: (ReadonlySet<string> | null)[] = [];
+  const answers: ReturnType<typeof useSwapDestinations>[] = [];
   const Probe = () => {
     answers.push(useSwapDestinations(from));
     return null;
@@ -54,7 +55,7 @@ const answerFor = async (from: SwapAsset) => {
   await settle();
   await act(async () => root.unmount());
   client.clear();
-  return answers.at(-1) ?? null;
+  return { first: answers[0], settled: answers.at(-1) };
 };
 
 beforeEach(() => {
@@ -73,13 +74,17 @@ it('asks the backend what a Fuse coin can become, and keeps to its list', async 
     ],
   } as never);
 
-  const answer = await answerFor(FUSE_USDC);
+  const { first, settled } = await answerFor(FUSE_USDC);
 
   expect(mockFetch).toHaveBeenCalledWith(
     { fromChain: 122, fromToken: FUSE_USDC.address },
     expect.anything(),
   );
-  expect(answer && [...answer]).toEqual([`8453:${BASE_USDC.toLowerCase()}`, `8453:${zeroAddress}`]);
+  expect(first).toBeUndefined();
+  expect(settled && [...settled]).toEqual([
+    `8453:${BASE_USDC.toLowerCase()}`,
+    `8453:${zeroAddress}`,
+  ]);
 });
 
 it('offers the whole list when the backend couldn’t check routes', async () => {
@@ -90,5 +95,12 @@ it('offers the whole list when the backend couldn’t check routes', async () =>
     destinations: [],
   } as never);
 
-  expect(await answerFor(FUSE_USDC)).toBeNull();
+  expect((await answerFor(FUSE_USDC)).settled).toBeNull();
+});
+
+it('settles to the fallback after a timeout without another loading cycle', async () => {
+  mockFetch.mockRejectedValue(new FetchTimeoutError(5000));
+
+  expect(await answerFor(FUSE_USDC)).toEqual({ first: undefined, settled: null });
+  expect(mockFetch).toHaveBeenCalledTimes(1);
 });

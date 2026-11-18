@@ -2,6 +2,7 @@ import {
   aiApiLimitProgress,
   aiApiModelDiscount,
   aiApiModelIsFree,
+  aiApiModelPriceExample,
   aiApiModelTag,
   aiApiSharedTierRate,
   formatAiApiBillingFunds,
@@ -13,6 +14,7 @@ import {
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiLongDate,
+  formatAiApiModelSpeed,
   formatAiApiNotCounted,
   formatAiApiPaidFrom,
   formatAiApiRate,
@@ -65,6 +67,38 @@ describe('formatAiApiTokens', () => {
     [312, '312 tokens'],
   ])('formats %p as %s', (tokens, expected) => {
     expect(formatAiApiTokens(tokens)).toBe(expected);
+  });
+});
+
+describe('formatAiApiModelSpeed', () => {
+  it('shows speed in whole tokens a second and the first token to one decimal', () => {
+    expect(formatAiApiModelSpeed({ tokensPerSecond: 84.6, timeToFirstTokenMs: 1234 })).toBe(
+      '~85 tokens/s · first token in 1.2 s',
+    );
+    expect(formatAiApiModelSpeed({ tokensPerSecond: 1250, timeToFirstTokenMs: 12_340 })).toBe(
+      '~1,250 tokens/s · first token in 12.3 s',
+    );
+  });
+
+  it('shows whichever half was measured', () => {
+    expect(formatAiApiModelSpeed({ tokensPerSecond: 85, timeToFirstTokenMs: null })).toBe(
+      '~85 tokens/s',
+    );
+    expect(formatAiApiModelSpeed({ tokensPerSecond: null, timeToFirstTokenMs: 800 })).toBe(
+      'First token in 0.8 s',
+    );
+  });
+
+  it('never reads a fast first token as 0.0 s', () => {
+    expect(formatAiApiModelSpeed({ timeToFirstTokenMs: 30 })).toBe('First token in 0.1 s');
+  });
+
+  it.each([
+    ['nothing measured', { tokensPerSecond: null, timeToFirstTokenMs: null }],
+    ['an older backend', {}],
+    ['nonsense', { tokensPerSecond: Number.NaN, timeToFirstTokenMs: -5 }],
+  ])('shows nothing for %s', (_label, model) => {
+    expect(formatAiApiModelSpeed(model)).toBeNull();
   });
 });
 
@@ -135,6 +169,7 @@ describe('model prices', () => {
     [0.266, '$0.27'],
     [0.2166, '$0.22'],
     [0.0722, '$0.072'],
+    [0.05, '$0.05'],
     [0.003612, '$0.004'],
     [0.00784, '$0.008'],
     [0.007288, '$0.007'],
@@ -171,6 +206,25 @@ describe('model prices', () => {
     expect(aiApiModelDiscount({ ...opus, officialInputUsdPerMTok: null })).toBeNull();
     expect(aiApiModelDiscount({ ...opus, officialOutputUsdPerMTok: 0 })).toBeNull();
     expect(aiApiModelDiscount({ ...opus, inputUsdPerMTok: 20, outputUsdPerMTok: 80 })).toBeNull();
+  });
+
+  it('prices a million blended tokens before and after cashback without rounding the inputs', () => {
+    const model = {
+      inputUsdPerMTok: 0.38,
+      outputUsdPerMTok: 1.2,
+      cachedInputUsdPerMTok: 0.1,
+      officialInputUsdPerMTok: 4,
+      officialOutputUsdPerMTok: 20,
+    };
+    const example = aiApiModelPriceExample(model, 0.5);
+    expect(example.official).toBe(8);
+    expect(formatAiApiTokenPrice(example.solid)).toBe('$0.59');
+    expect(formatAiApiTokenPrice(example.afterCashback)).toBe('$0.29');
+    expect(example.savingsAfterCashback).toBe(96);
+
+    const noComparison = aiApiModelPriceExample({ ...model, officialOutputUsdPerMTok: null }, 0.5);
+    expect(noComparison.official).toBeNull();
+    expect(noComparison.savingsAfterCashback).toBeNull();
   });
 
   it('tags a model we charge nothing for as free, list price or not', () => {

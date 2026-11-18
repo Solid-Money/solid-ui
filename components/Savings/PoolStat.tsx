@@ -7,6 +7,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useMaxAPY, useTVL } from '@/hooks/useAnalytics';
+import { apyPeriodText } from '@/lib/displayApy';
 import { compactNumberFormat, formatNumber } from '@/lib/utils';
 
 const PoolStat = () => {
@@ -48,7 +49,7 @@ const PoolStat = () => {
             <View className="flex-row items-center gap-1">
               <Text className="text-lg font-medium text-muted-foreground">Pool APY</Text>
               <TooltipPopover
-                text={`Annual Percentage Yield (APY): the projected yearly return on your funds based on the vault's performance over the last ${maxAPYDays} days.`}
+                text={`Annual Percentage Yield (APY): the projected yearly return on your funds based on the vault's performance over the last ${apyPeriodText(maxAPYDays)}.`}
               />
             </View>
             <Text className="text-2xl font-semibold text-brand">

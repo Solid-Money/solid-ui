@@ -15,12 +15,14 @@ import {
 } from '@/lib/tierCashback';
 import {
   type Cashback,
+  type CashbackCurrency,
   type CashbackInfo,
   RewardsTier,
   type RewardsUserData,
   type TierBenefits,
 } from '@/lib/types';
-import { getCashbackUsdValue } from '@/lib/utils/spendingInsights';
+import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
+import { getEarnedCashbackValue } from '@/lib/utils/spendingInsights';
 
 const DAY_MS = 86_400_000;
 
@@ -80,7 +82,10 @@ export interface CashbackBreakdownInput {
   info: CashbackInfo;
   /** The raw row, for the rate and dates `CashbackInfo` does not carry. */
   cashback?: Cashback;
-  /** What the purchase cost in USD, for the upsell figure. */
+  /**
+   * What the purchase cost in USD, for the upsell figure on a USD row. A EUR row
+   * is quoted on its own euro `fiatAmount` instead, so this is not read for one.
+   */
   purchaseUsd: number | null;
   rewardsData?: RewardsUserData;
   tierBenefits?: TierBenefits[];
@@ -89,8 +94,23 @@ export interface CashbackBreakdownInput {
 const isUsableNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
-const formatUsd = (value: number): string =>
-  `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatAmount = (value: number, currency: CashbackCurrency): string =>
+  `${CURRENCY_SYMBOLS[currency]}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * What the purchase cost in the row's currency, for the upsell. A EUR row is
+ * earned on its euro `fiatAmount`; pricing it from the purchase's dollar value
+ * would quote a converted figure next to a euro payout.
+ */
+const resolvePurchaseAmount = (
+  cashback: Cashback | undefined,
+  currency: CashbackCurrency,
+  purchaseUsd: number | null,
+): number | null => {
+  if (currency !== 'EUR') return purchaseUsd;
+  const euros = Math.abs(parseFloat(cashback?.fiatAmount ?? ''));
+  return Number.isFinite(euros) ? euros : null;
+};
 
 /** "A", "A and B", "A, B and C". */
 const joinLabels = (labels: string[]): string =>
@@ -130,25 +150,28 @@ const resolveTiming = (info: CashbackInfo, cashback?: Cashback): CashbackTiming 
   };
 };
 
-/** "Prime would have paid you $4.00 on this purchase, plus 10% on subscriptions." */
+/**
+ * "Prime would have paid you $4.00 on this purchase, plus 10% on subscriptions."
+ * In the row's currency: "€4.00" on a euro purchase.
+ */
 const resolveUpsell = (
   tier: RewardsTier,
-  earned: { usd: number; rate?: number },
-  purchaseUsd: number | null,
+  earned: { value: number; currency: CashbackCurrency; rate?: number },
+  purchaseAmount: number | null,
   tierBenefits: TierBenefits[] | undefined,
 ): CashbackFooter | undefined => {
   const next = NEXT_TIER[tier];
-  if (!next || !purchaseUsd) return undefined;
+  if (!next || !purchaseAmount) return undefined;
 
   const live = tierBenefits?.find(benefits => benefits.tier === next);
   const liveRate = live ? parseFloat(live.cardCashback.title) : undefined;
   const nextRate = resolveTierCashbackRate(next, liveRate, IS_TIER_CASHBACK_HARDCODED);
-  const wouldHavePaid = Math.round(purchaseUsd * nextRate) / 100;
+  const wouldHavePaid = Math.round(purchaseAmount * nextRate) / 100;
 
   // Nothing to sell when the next tier would not have paid more — a cardholder
   // on a custom rate, say, or a purchase too small to show a difference.
   if (earned.rate !== undefined && nextRate <= earned.rate) return undefined;
-  if (wouldHavePaid < 0.01 || wouldHavePaid <= earned.usd + 0.004) return undefined;
+  if (wouldHavePaid < 0.01 || wouldHavePaid <= earned.value + 0.004) return undefined;
 
   const nextSubscriptionRate = tierPresentationContent(next, live).subscriptionRate;
 
@@ -156,7 +179,7 @@ const resolveUpsell = (
     kind: 'upsell',
     segments: [
       { text: `${TIER_LABELS[next]} would have paid you ` },
-      { text: formatUsd(wouldHavePaid), highlight: true },
+      { text: formatAmount(wouldHavePaid, earned.currency), highlight: true },
       {
         text: nextSubscriptionRate
           ? ` on this purchase, plus ${nextSubscriptionRate} on subscriptions. `
@@ -270,10 +293,16 @@ export const buildCashbackBreakdown = ({
 
   let footer: CashbackFooter | undefined;
   if (currentTier && !info.isIneligible) {
-    const earned = { usd: cashback ? getCashbackUsdValue(cashback) : 0, rate };
+    const earned = {
+      ...(cashback
+        ? getEarnedCashbackValue(cashback)
+        : { value: 0, currency: 'USD' as CashbackCurrency }),
+      rate,
+    };
+    const purchaseAmount = resolvePurchaseAmount(cashback, earned.currency, purchaseUsd);
     footer =
       (!isSubscription
-        ? resolveUpsell(currentTier, earned, purchaseUsd, tierBenefits)
+        ? resolveUpsell(currentTier, earned, purchaseAmount, tierBenefits)
         : undefined) ??
       resolveCategories(
         currentTier,

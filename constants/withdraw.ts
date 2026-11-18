@@ -8,6 +8,7 @@ export const SOLID_TOKEN_SYMBOLS = [
   'soeurc',
   // The same share's on-chain symbol on the Base deployments from Oct 15 2026 on.
   'soeur',
+  'sobtc',
 ] as const;
 
 export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
@@ -22,7 +23,7 @@ export function isSolidTokenSymbol(symbol: string | undefined): boolean {
  * independent of the network they sit on. soUSD and fUSDC both belong to the
  * USD vault; soFUSE, soETH and soEURC have their own vaults.
  */
-export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR';
+export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR' | 'BTC';
 
 export interface VaultMeta {
   key: VaultKey;
@@ -36,8 +37,9 @@ export interface VaultMeta {
   destinationNetwork: string;
   /**
    * Whether reaching the destination requires bridging off Fuse first (a 2-step
-   * flow): to Base or Ethereum for soUSD, Ethereum for soETH. soFUSE withdraws
-   * directly on Fuse and soEURC directly on Base, each in a single step.
+   * flow): to Base or Ethereum for soUSD, Ethereum for soETH and soBTC. soFUSE withdraws
+   * directly on Fuse and soEURC directly on Base, each in a single step, and so
+   * do soUSD and soETH already held on Base or Ethereum.
    */
   requiresBridge: boolean;
 }
@@ -75,6 +77,16 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
     destinationNetwork: 'Base',
     requiresBridge: false,
   },
+  // Always WBTC on Ethereum: the shares on Base are bridged there first, then withdrawn
+  // (SoBtcWithdrawForm). Base has no soBTC withdraw queue.
+  BTC: {
+    key: 'BTC',
+    displayName: 'soBTC',
+    iconSymbol: 'soBTC',
+    destinationSymbol: 'WBTC',
+    destinationNetwork: 'Ethereum',
+    requiresBridge: true,
+  },
 };
 
 /** Maps a token symbol to the vault it belongs to (null if not a vault token). */
@@ -86,6 +98,7 @@ export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
   if (s === 'soeurc' || s === 'soeur') return 'EUR';
+  if (s === 'sobtc') return 'BTC';
   return null;
 }
 

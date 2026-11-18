@@ -48,13 +48,13 @@ const mockDeposit = {
   setWalletDeposit: jest.fn(),
 };
 
-const render = (isLocked: boolean, onToggleNetwork = jest.fn()) => {
+const render = (isLocked: boolean, onToggleNetwork = jest.fn(), symbol = 'USDC') => {
   let root: any;
   act(() => {
     root = create(
       <WalletDepositSelectors
         chainId={base.id}
-        symbol="USDC"
+        symbol={symbol}
         isNetworkOpen={false}
         onToggleNetwork={onToggleNetwork}
         isLocked={isLocked}
@@ -83,9 +83,22 @@ describe('WalletDepositSelectors', () => {
     act(() => currency.props.onPress());
     act(() => network.props.onPress());
 
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ isChangingToken: true });
     expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
     expect(onToggleNetwork).toHaveBeenCalled();
     expect(root.root.findAll((node: any) => node.type === 'ChevronDown')).toHaveLength(2);
+  });
+
+  // One of Bitcoin's tokens: its own screen, where the one showing is ticked.
+  it('changes a coin’s token on the coin’s own screen', () => {
+    const [currency] = pills(render(false, jest.fn(), 'cbBTC'));
+    act(() => currency.props.onPress());
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
+      isChangingToken: true,
+      coin: 'bitcoin',
+    });
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_COIN);
   });
 
   // The AI API's "Add funds": only USDC on Base funds its charges, so the pills

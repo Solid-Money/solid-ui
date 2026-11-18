@@ -243,6 +243,18 @@ const BLOCKCHAIN =
  */
 const SPONSORSHIP_LIMIT =
   /sponsorship ?policy\b[^\n]*\breached\b|\b(?:perOp|perUser|global)Maximum(?:Usd|Ops)\b/i;
+/**
+ * The gas sponsor itself saying no: Pimlico's balance is empty, or the
+ * paymaster contract refused or ran out of deposit (viem's paymaster errors).
+ *
+ * A bare mention of "paymaster" is not one of these: viem prints a user
+ * operation's `paymaster` and `paymasterData` fields in every bundler error,
+ * so an operation that simply reverts in simulation names the paymaster too.
+ * Those were all filed as PAYMASTER_REJECTED (Nov 2026: 130 of 134 were
+ * EntryPoint simulation failures, not the sponsor).
+ */
+const GAS_SPONSOR_REFUSED =
+  /insufficient pimlico balance|rejected by Paymaster|Paymaster deposit for the User Operation is too low|The Paymaster contract has not been deployed|validatePaymasterUserOp` function on the Paymaster reverted|Paymaster for User Operation expired/i;
 
 interface Classification {
   kind: ErrorKind;
@@ -297,12 +309,19 @@ export const classifyError = (n: NormalizedError): Classification => {
     if (SPONSORSHIP_LIMIT.test(haystack)) {
       return { kind: 'blockchain', code: 'SPONSORSHIP_LIMIT', nothingSent: true };
     }
-    if (/paymaster|pm_(?:get|sponsor)/i.test(haystack)) {
+    // AA30–AA34 are the paymaster's own EntryPoint codes.
+    if (GAS_SPONSOR_REFUSED.test(haystack) || aa?.startsWith('AA3')) {
       return { kind: 'blockchain', code: 'PAYMASTER_REJECTED', nothingSent: true };
     }
     if (aa) return { kind: 'blockchain', code: `USEROP_${aa}`, nothingSent: true };
     if (/simulat/i.test(haystack)) {
       return { kind: 'blockchain', code: 'SIMULATION_REVERTED', nothingSent: true };
+    }
+    // Anything else from the paymaster RPC, e.g. `pm_getPaymasterData` refusing
+    // its params. Checked after the simulation cases above, which name the
+    // paymaster only because the request carries one.
+    if (/paymaster|pm_(?:get|sponsor)/i.test(haystack)) {
+      return { kind: 'blockchain', code: 'PAYMASTER_REJECTED', nothingSent: true };
     }
     if (/execution reverted/i.test(haystack)) {
       return { kind: 'blockchain', code: 'EXECUTION_REVERTED', nothingSent: true };

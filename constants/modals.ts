@@ -45,6 +45,15 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_token',
     number: 1.95,
   },
+  /**
+   * A coin's tokens ("Bitcoin": BTC, WBTC, cbBTC) — which of them the deposit
+   * address is for, reached from the coin's row in "Select token" and from the
+   * address screen's currency pill.
+   */
+  OPEN_DEPOSIT_COIN: {
+    name: 'open_deposit_coin',
+    number: 1.96,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,

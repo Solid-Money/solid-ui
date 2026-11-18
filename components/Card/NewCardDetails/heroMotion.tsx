@@ -80,6 +80,12 @@ export const HERO_ENTER = {
   back: { delay: 180, fade: 280, transform: 300, scale: 0.88 },
   /** Figma 21903:896 — the "Solid card" title. */
   title: { delay: 180, fade: 280, transform: 300, translateY: 10 },
+  /**
+   * The card-closing notice (Figma "Rain closing / Card notice"), right under the
+   * card art. Not in the motion frame either, so it takes the step just before the
+   * action row it sits above.
+   */
+  closingNotice: { delay: 260, fade: 320, transform: 360, translateY: 22 },
   /** Figma 21903:903 — the Add funds / Freeze / Settings row. */
   actions: { delay: 300, fade: 320, transform: 360, translateY: 24 },
   /**

@@ -18,6 +18,8 @@ const SOUSD = '0x75333830E7014e909535389a6E5b0C02aA62ca27';
 const SOEUR = '0x4f4B212aF8B5020399dde325e1Bc5B33b53DB70B';
 const CBBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
 const SOL = '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82';
+const BASE_SOUSD = '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31';
+const BASE_SOETH = '0x9b0e0EFA48C00eBEeA845AeA197F0bB71529D235';
 const BASE_MODULE = '0x47A5e832E1178726dd13AdD762774A704878AD98';
 /** A position with no debt, as the module reports its health factor. */
 const NO_DEBT_HF = 2n ** 256n - 1n;
@@ -329,6 +331,46 @@ describe('combineCreditFigures', () => {
       });
 
       expect(figures.collateral.map(row => row.label)).toEqual(['Solana', 'EUR Yield']);
+    });
+
+    it('lists soUSD on Base and soETH only when held, soUSD named for Base, soETH as ETH Yield', () => {
+      const unheld = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: BASE_SOUSD, symbol: 'soUSD', amount: 0n }),
+            asset({ chainId: 8453, token: BASE_SOETH, symbol: 'soETH', amount: 0n }),
+          ],
+        }),
+      });
+      expect(unheld.collateral).toEqual([]);
+
+      const held = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({
+              chainId: 8453,
+              token: BASE_SOUSD,
+              symbol: 'soUSD',
+              amount: 1n,
+              valueUsd: 20_000_000n,
+            }),
+            asset({
+              chainId: 8453,
+              token: BASE_SOETH,
+              symbol: 'soETH',
+              amount: 1n,
+              valueUsd: 2_100_000_000n,
+              ltvWad: 600_000_000_000_000_000n,
+            }),
+          ],
+        }),
+      });
+      expect(held.collateral.map(row => [row.label, row.icon, row.value, row.ltv])).toEqual([
+        ['USD Yield on Base', 'usd', '$20.00', 'LTV 90%'],
+        ['ETH Yield', 'eth', '$2,100.00', 'LTV 60%'],
+      ]);
     });
   });
 });

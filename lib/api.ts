@@ -14,10 +14,12 @@ import {
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
+import { getBotProtectionHeaders } from '@/lib/botProtection';
 import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { TIER_MEMBERSHIP_PAYMENT_MODES } from '@/lib/tierUpgrade';
 import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import {
@@ -207,6 +209,8 @@ import {
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
+
+import type { UserFeePromotionsResponse } from '@/lib/utils/feePromotion';
 
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
@@ -2397,6 +2401,7 @@ export const getSubOrgIdByUsername = async (username: string) => {
     headers: {
       'Content-Type': 'application/json',
       ...getPlatformHeaders(),
+      ...(await getBotProtectionHeaders()),
     },
     credentials: 'include',
     body: JSON.stringify({
@@ -2687,18 +2692,24 @@ export const claimYieldBoost = async (): Promise<YieldBoostClaimResult> => {
  * One request rather than three: the upgrade screen prices an offer against a
  * balance, and fetching those apart is how a screen ends up showing one from a
  * moment the other no longer belongs to.
+ *
+ * Asks for the payment modes this build can complete beyond the module charge
+ * every build supports — see `TIER_MEMBERSHIP_PAYMENT_MODES`.
  */
 export const fetchTierMembership = async (): Promise<TierMembershipState> => {
   const jwt = getJWTToken();
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership?paymentModes=${TIER_MEMBERSHIP_PAYMENT_MODES}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
     },
-    credentials: 'include',
-  });
+  );
   if (!response.ok) throw response;
   return response.json();
 };
@@ -2765,6 +2776,36 @@ export const confirmTierSubscription = async (body: {
   return response.json();
 };
 
+/**
+ * Report that a `transfer`-mode upgrade landed: the first year paid to the
+ * treasury and the new mandate signed, in one transaction.
+ *
+ * Ends the membership it replaces and starts the new one from now. There is
+ * no `funding` here — an upgrade has no bridge-fee cover, so the transfer in
+ * that transaction is the whole payment.
+ */
+export const upgradeTierSubscription = async (body: {
+  tier: RewardsTier;
+  transactionHash: string;
+}): Promise<TierMembershipState> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/subscription/upgrade`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 /** Stop a membership renewing. The tier runs to the end of the paid period. */
 export const cancelTierSubscription = async (body: {
   reason?: string;
@@ -2810,9 +2851,14 @@ export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };
 
-export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
+/**
+ * The tier comparison. `currency: 'EUR'` asks for the monthly caps in euros, at the tiers' euro
+ * caps — what a euro cardholder's cashback is capped at.
+ */
+export const fetchTierBenefits = async (currency?: MainCurrency): Promise<TierBenefits[]> => {
+  const query = currency === 'EUR' ? '?currency=EUR' : '';
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits${query}`,
     {
       method: 'GET',
       headers: {
@@ -2845,6 +2891,30 @@ export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
     },
     credentials: 'include',
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The fee promotions running now that would save this user something, with
+ * how many free fees they have left under each — e.g. their next SEPA deposits
+ * to the euro account being free. Empty when nothing is running, and for a
+ * user whose plan already pays nothing on the promoted fee.
+ */
+export const fetchFeePromotions = async (): Promise<UserFeePromotionsResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/promotions`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };
@@ -3190,6 +3260,7 @@ export const initGenericOtp = async (
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
@@ -3775,6 +3846,7 @@ export const initSignupOtp = async (email: string) => {
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
       body: JSON.stringify({ email }),
     },
@@ -3904,6 +3976,7 @@ export const emailExists = async (email: string): Promise<boolean> => {
       method: 'HEAD',
       headers: {
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
     },
   );
@@ -5144,6 +5217,9 @@ export const fetchHistoricalAPY = async (
     case VaultType.EUR:
       params.set('vault', VaultType.EUR);
       break;
+    case VaultType.BTC:
+      params.set('vault', VaultType.BTC);
+      break;
     default:
   }
   const response = await axios.get<HistoricalAPYPoint[]>(
@@ -5162,6 +5238,7 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
       username,
       targetPublicKey,
     },
+    { headers: await getBotProtectionHeaders() },
   );
   return response.data;
 };
@@ -5195,6 +5272,7 @@ export const initRecoveryOtp = async (
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
+        ...(await getBotProtectionHeaders()),
       },
       body: JSON.stringify({
         identifier: trimmed,

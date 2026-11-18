@@ -8,28 +8,34 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 const mockOpenCashback = jest.fn();
+const mockSheetProps = jest.fn();
+const USD_REWARDS = {
+  cashbackRate: 4,
+  cashbackThisMonth: 2.5,
+  cashbackPendingThisMonth: 5.1,
+  maxCashbackMonthly: 100,
+};
+let mockRewards: Record<string, unknown> = USD_REWARDS;
+let mockCardCashback: Record<string, unknown> = { totalUsdValue: 25 };
 
 jest.mock('@/hooks/useRewards', () => ({
-  useRewardsUserData: () => ({
-    data: {
-      cashbackRate: 4,
-      cashbackThisMonth: 2.5,
-      cashbackPendingThisMonth: 5.1,
-      maxCashbackMonthly: 100,
-    },
-  }),
+  useRewardsUserData: () => ({ data: mockRewards }),
 }));
 jest.mock('@/hooks/useCardDetails', () => ({
-  useCardDetails: () => ({ data: { cashback: { totalUsdValue: 25 } } }),
+  useCardDetails: () => ({ data: { cashback: mockCardCashback } }),
 }));
+jest.mock('@/components/ui/skeleton', () => 'Skeleton');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/lib/utils', () => ({
-  formatBalanceUSD: (value: number) => `$${value.toFixed(2)}`,
+  formatBalance: (value: number, symbol: string) => `${symbol}${value.toFixed(2)}`,
 }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/components/Rewards/NewRewards/CashbackDetailsSheet', () => {
   const React = jest.requireActual('react');
-  return ({ trigger }: any) => React.cloneElement(trigger, { onPress: mockOpenCashback });
+  return ({ trigger, ...props }: any) => {
+    mockSheetProps(props);
+    return React.cloneElement(trigger, { onPress: mockOpenCashback });
+  };
 });
 
 const render = (override: Partial<SpendModeFigures> = {}) => {
@@ -55,6 +61,8 @@ const texts = (tree: any) =>
 
 afterEach(() => {
   useCardPaneStore.getState().close();
+  mockRewards = USD_REWARDS;
+  mockCardCashback = { totalUsdValue: 25 };
   jest.clearAllMocks();
 });
 
@@ -63,6 +71,87 @@ test('shows spendable cash and earned plus pending cashback', () => {
   expect(texts(tree)).toEqual(
     expect.arrayContaining(['Cash mode', '$1,120.00', '4% Cashback', '+$7.60']),
   );
+  act(() => tree.unmount());
+});
+
+test('hands the cashback sheet dollar figures for a dollar cardholder', () => {
+  const tree = render();
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      currency: 'USD',
+      monthlyCashbackLabel: '$7.60',
+      maxCashbackMonthly: 100,
+      allTimeCashback: [{ value: 25, currency: 'USD' }],
+    }),
+  );
+  act(() => tree.unmount());
+});
+
+test("shows a euro cardholder's cashback in euros, never added to dollars", () => {
+  mockRewards = {
+    ...USD_REWARDS,
+    cashbackCurrency: 'EUR',
+    cashbackEur: {
+      cashbackThisMonth: 1.2,
+      cashbackPendingThisMonth: 0.8,
+      cashbackLastMonth: 0,
+      maxCashbackMonthly: 50,
+      cashbackCapThisMonth: 50,
+      cashbackHeadroomThisMonth: 48,
+    },
+  };
+  mockCardCashback = { totalUsdValue: 25, currency: 'EUR', eur: { totalEurValue: 9 } };
+
+  const tree = render();
+  expect(texts(tree)).toContain('+€2.00 + $7.60');
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      currency: 'EUR',
+      monthlyCashbackLabel: '€2.00 + $7.60',
+      maxCashbackMonthly: 50,
+      tierMonthlyCap: 50,
+      allTimeCashback: [
+        { value: 9, currency: 'EUR' },
+        { value: 25, currency: 'USD' },
+      ],
+    }),
+  );
+  act(() => tree.unmount());
+});
+
+test.each([
+  [3, '$3.00'],
+  [0, '€0.00'],
+] as const)(
+  'shows %s pending dollars on a euro card with no euro earnings as %s',
+  (pendingUsd, expected) => {
+    mockRewards = {
+      ...USD_REWARDS,
+      cashbackCurrency: 'EUR',
+      cashbackThisMonth: 0,
+      cashbackPendingThisMonth: pendingUsd,
+      cashbackEur: { cashbackThisMonth: 0, cashbackPendingThisMonth: 0, maxCashbackMonthly: 100 },
+    };
+    const tree = render();
+    expect(texts(tree)).toContain(`+${expected}`);
+    expect(mockSheetProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        monthlyCashbackLabel: expected,
+        allTimeCashback: [{ value: 25, currency: 'USD' }],
+      }),
+    );
+    act(() => tree.unmount());
+  },
+);
+
+test('lists dollars first after a switch from euros to dollars', () => {
+  mockRewards = {
+    ...USD_REWARDS,
+    cashbackCurrency: 'USD',
+    cashbackEur: { cashbackThisMonth: 1, cashbackPendingThisMonth: 3 },
+  };
+  const tree = render();
+  expect(texts(tree)).toContain('+$7.60 + €4.00');
   act(() => tree.unmount());
 });
 
@@ -107,9 +196,10 @@ test('keeps the balance visible when mode switching is unavailable', () => {
   act(() => tree.unmount());
 });
 
-test('does not report an unresolved spendable balance as zero', () => {
+test('shows a skeleton while the spendable balance loads', () => {
   const tree = render({ isLoading: true, cashBalance: '$0.00' });
-  expect(texts(tree)).toContain('—');
+  expect(tree.root.findAllByType('Skeleton')).toHaveLength(1);
+  expect(texts(tree)).toContain('Available to spend');
   expect(texts(tree)).not.toContain('$0.00');
   act(() => tree.unmount());
 });

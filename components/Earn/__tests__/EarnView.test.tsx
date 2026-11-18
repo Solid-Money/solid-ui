@@ -9,14 +9,14 @@ jest.mock('@/components/ui/skeleton', () => 'Skeleton');
 jest.mock('@/components/Earn/YieldIcon', () => 'YieldIcon');
 jest.mock('@/components/Savings/NewSavings/SavingsFundedActions', () => 'FundedActions');
 jest.mock('@/components/Savings/NewSavings/StartEarningButton', () => 'StartEarning');
+jest.mock('@/lib/wagmi', () => ({}));
 jest.mock('@/components/BalanceHeadline', () => ({
-  BalanceHeadline: ({ balance, label }: any) =>
-    jest.requireActual('react').createElement('Text', null, `${label} $${balance.toFixed(2)}`),
+  BalanceAmount: ({ balance }: { balance: number }) =>
+    jest.requireActual('react').createElement('Text', null, `$${balance.toFixed(2)}`),
 }));
 jest.mock('@/components/Earn/EarnChips', () => {
   const { createElement } = jest.requireActual('react');
   return {
-    EarnChip: ({ label }: { label: string }) => createElement('Text', null, label),
     ApyTag: ({ apy, emptyLabel }: { apy?: number; emptyLabel?: string }) =>
       apy
         ? createElement('Text', null, `${apy.toFixed(1)}% APY`)
@@ -79,7 +79,7 @@ afterEach(() => {
 it('shows what is in Earn, what it earned and each product (5d)', () => {
   render();
   const text = textContent();
-  expect(text).toContain('Total in Earn $2990.00');
+  expect(text).toContain('Total in Earn | $2990.00');
   expect(text).toContain('4.5% avg APY');
   expect(text).toContain('$104.20');
   expect(text).toContain('+$10.95');
@@ -106,7 +106,7 @@ it('invites a first deposit when nothing is in Earn (5e)', () => {
     products: empty,
   });
   const text = textContent();
-  expect(text).toContain('Total in Earn $0.00');
+  expect(text).toContain('Total in Earn | $0.00');
   expect(text).toContain('Up to 7.5% APY');
   expect(text).not.toContain('+$');
   expect(text).toContain('7.5% APY');
@@ -137,7 +137,7 @@ it('shows EUR Yield in euros at 0% APY', () => {
     ],
   });
   const text = textContent();
-  expect(text).toContain('Total in Earn $2990.00');
+  expect(text).toContain('Total in Earn | $2990.00');
   expect(text).toContain('€1,500.00');
   expect(text).toContain('1,500.00 soEURC');
   expect(text).toContain('0.0% APY');

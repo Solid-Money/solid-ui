@@ -60,7 +60,7 @@ export const SPEND_MODE_COPY: Record<SpendMode, SpendModeCopy> = {
     label: 'Credit',
     caption: 'Spend without selling your assets',
     // No "USD yield only" notice any more: the panel lists the assets that back the line —
-    // soUSD on Fuse, and soEUR on Base once euro spending is enabled.
+    // soUSD on Fuse, and soUSD, soETH, soEUR and the crypto on Base once Base spending is enabled.
     panels: ['credit'],
   },
   smart: {

@@ -8,8 +8,9 @@ import { Faq, VaultType } from '@/lib/types';
  * didn't receive 1 soUSD per USDC. Each vault answers for itself here instead.
  *
  * Copy is product-owned (Monday 12943830277) and reproduced verbatim — edit it
- * there, not here. The EUR vault's copy is the exception: it was written with the
- * vault's launch and is not on that board yet.
+ * there, not here. The exceptions are the EUR vault's copy, written with the
+ * vault's launch, and the soETH card answer, rewritten when soETH became
+ * spendable on Base: neither is on that board yet.
  */
 const VAULT_FAQS: Record<VaultType, Faq[]> = {
   [VaultType.USDC]: [
@@ -58,7 +59,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Can I use soETH with the card?',
       answer:
-        'Not directly today. Card spending is powered by your USD balance. You can withdraw ETH and swap to USDC in-app whenever you want to spend it.',
+        'Yes, on Base. Once Base spending is on, your card can spend soETH held on Base, and in Credit mode you can borrow against it without selling. soETH you deposit on Base is ready to use there. soETH you hold on Fuse or Ethereum is not spendable by the card.',
     },
   ],
   [VaultType.FUSE]: [
@@ -109,6 +110,39 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
       question: 'How fast can I withdraw?',
       answer:
         'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',
+    },
+  ],
+  // TODO(soBTC): product to review and move this copy to the Monday board above.
+  [VaultType.BTC]: [
+    {
+      question: 'What is soBTC?',
+      answer:
+        'Your yield-bearing bitcoin. Deposit WBTC on Ethereum or on Base and receive soBTC on Base. It grows in BTC terms as yield accrues, so you keep your bitcoin exposure.',
+    },
+    {
+      question: 'Is WBTC on Base the same as WBTC on Ethereum?',
+      answer:
+        'Yes. WBTC on Base is the same BitGo WBTC, carried to Base over LayerZero. soBTC counts 1 WBTC on either network as 1 BTC, so both earn the same rate and mint the same amount of soBTC.',
+    },
+    {
+      question: 'Who backs WBTC?',
+      answer:
+        'WBTC is bitcoin held by a custodian, BitGo. Each token represents 1 BTC of custodied bitcoin, but its market price can fall below 1 BTC. soBTC carries both the custodian risk and this market-price risk.',
+    },
+    {
+      question: 'Does BTC Yield count toward my yield boost?',
+      answer:
+        "Yes. On Prime and Ultra, your BTC Yield balance counts toward your tier's yield boost together with your other yields, at its value in dollars, up to your tier's limit. The boost is paid in soFUSE, and you claim it from Earn.",
+    },
+    {
+      question: 'How do I withdraw?',
+      answer:
+        'Withdrawals are paid in WBTC on Ethereum, in two steps: your soBTC moves from Base to Ethereum first, for a small fee in ETH on Base, then the withdrawal goes through a queue and usually finishes within about 3 days.',
+    },
+    {
+      question: 'Why can I withdraw less than I hold right now?',
+      answer:
+        'Withdrawals are paid from the WBTC BTC Yield holds on Ethereum. While part of it is out earning or still on Base, you can withdraw up to what it holds right now. The rest is still yours: withdraw it later.',
     },
   ],
 };

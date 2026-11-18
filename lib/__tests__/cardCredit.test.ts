@@ -54,8 +54,8 @@ describe('card credit pill', () => {
   });
 
   it('labels the amount', () => {
-    expect(cardCreditPillLabel(10)).toBe('$10 card credit');
-    expect(cardCreditPillLabel(9.4)).toBe('$9.40 card credit');
+    expect(cardCreditPillLabel(10)).toBe('$10 card bonus');
+    expect(cardCreditPillLabel(9.4)).toBe('$9.40 card bonus');
   });
 });
 

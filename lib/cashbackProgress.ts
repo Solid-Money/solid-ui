@@ -1,4 +1,4 @@
-import type { RewardsUserData } from '@/lib/types';
+import type { CashbackCurrency, CashbackData, RewardsUserData } from '@/lib/types';
 
 /**
  * How the cashback surfaces present a month's earnings.
@@ -89,6 +89,94 @@ export const monthlyCashbackHeadroom = (
  */
 export const isMonthlyCashbackCapReached = (headroom: number): boolean =>
   toPositive(headroom) < 0.01;
+
+/**
+ * This month's cashback and caps in one currency — the cardholder's — which is
+ * what every helper above measures. Same field names as the rewards data, so
+ * `monthlyCashbackCap` and `monthlyCashbackHeadroom` take it as they are.
+ */
+export type CashbackMonth = MonthlyCapFields &
+  Pick<RewardsUserData, 'cashbackThisMonth' | 'cashbackPendingThisMonth'> & {
+    currency: CashbackCurrency;
+  };
+
+/**
+ * The month figures to show: a euro cardholder's from `cashbackEur`, in EUR —
+ * euro caps, euro headroom, euro earnings — and everyone else's from the
+ * top-level USD fields, exactly as before. Never a mix: a figure and the cap it
+ * is measured against are always in the same currency.
+ *
+ * A euro cardholder whose euro block is missing falls back to the USD fields
+ * and says so through `currency`, rather than printing dollar figures with €.
+ */
+export const resolveCashbackMonth = (
+  rewards: RewardsUserData | undefined,
+): CashbackMonth | undefined => {
+  if (!rewards) return undefined;
+  if (rewards.cashbackCurrency === 'EUR' && rewards.cashbackEur) {
+    return { ...rewards.cashbackEur, currency: 'EUR' };
+  }
+  return {
+    currency: 'USD',
+    cashbackThisMonth: rewards.cashbackThisMonth,
+    cashbackPendingThisMonth: rewards.cashbackPendingThisMonth,
+    maxCashbackMonthly: rewards.maxCashbackMonthly,
+    cashbackCapThisMonth: rewards.cashbackCapThisMonth,
+    cashbackHeadroomThisMonth: rewards.cashbackHeadroomThisMonth,
+  };
+};
+
+/** An amount and the currency it is in. */
+export interface CashbackFigure {
+  value: number;
+  currency: CashbackCurrency;
+}
+
+/**
+ * Per-currency amounts as figures to print side by side ("€12.40 + $150.00"),
+ * the cardholder's own currency first. They are never added together.
+ *
+ * When both amounts are zero, show a single zero in the cardholder's currency.
+ */
+export const cashbackFiguresByCurrency = (
+  amounts: Partial<Record<CashbackCurrency, number>>,
+  currency: CashbackCurrency,
+): CashbackFigure[] => {
+  const other: CashbackCurrency = currency === 'EUR' ? 'USD' : 'EUR';
+  const ownFigure = { value: toPositive(amounts[currency]), currency };
+  const otherFigure: CashbackFigure = { value: toPositive(amounts[other]), currency: other };
+  if (otherFigure.value === 0) return [ownFigure];
+  if (ownFigure.value === 0) return [otherFigure];
+  return [ownFigure, otherFigure];
+};
+
+/**
+ * Lifetime cashback paid in each currency.
+ *
+ * Each is the card details' paid total, floored at this month's settled figure
+ * in the same currency (the details can lag the rewards data). This month's
+ * escrowed part is deliberately not floored in: all-time counts what has been
+ * paid. A dollar cardholder with no euro cashback reads exactly as before.
+ */
+export const resolveAllTimeCashback = (
+  rewards: RewardsUserData | undefined,
+  cardCashback: CashbackData | undefined,
+): CashbackFigure[] => {
+  const currency = resolveCashbackMonth(rewards)?.currency ?? 'USD';
+  return cashbackFiguresByCurrency(
+    {
+      USD: Math.max(
+        toPositive(cardCashback?.totalUsdValue),
+        toPositive(rewards?.cashbackThisMonth),
+      ),
+      EUR: Math.max(
+        toPositive(cardCashback?.eur?.totalEurValue),
+        toPositive(rewards?.cashbackEur?.cashbackThisMonth),
+      ),
+    },
+    currency,
+  );
+};
 
 /** A non-finite or negative amount contributes nothing rather than NaN. */
 const toPositive = (value: number | undefined): number =>

@@ -78,6 +78,13 @@ type Path = {
   CARD_3DS: Href;
   CARD_MAIN_CURRENCY: Href;
   CARD_ACTIVATE: Href;
+  /**
+   * Rain sunset: a Rain cardholder's move to their new (Wirex) card — the
+   * "Get your new Solid card" screen, then the Wirex verification and issuance.
+   */
+  CARD_NEW_CARD: Href;
+  /** Rain sunset: withdraw the whole balance on a closing card to the wallet. */
+  CARD_CLOSING_WITHDRAW: Href;
   CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
   SETTINGS: Href;
@@ -157,6 +164,8 @@ export const path: Path = {
   CARD_3DS: '/card/3ds' as Href,
   CARD_MAIN_CURRENCY: '/card/main-currency' as Href,
   CARD_ACTIVATE: '/card/activate',
+  CARD_NEW_CARD: '/card/new-card' as Href,
+  CARD_CLOSING_WITHDRAW: '/card/closing-withdraw' as Href,
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
   EARN: '/earn',
   SETTINGS: '/settings',

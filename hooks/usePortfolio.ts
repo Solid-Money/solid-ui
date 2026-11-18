@@ -5,6 +5,7 @@ import { fuse, mainnet } from 'viem/chains';
 
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { usePendingBaseWithdrawals } from '@/hooks/useBaseWithdrawRequests';
+import { useBtcPriceQuery } from '@/hooks/useBtcPriceUsd';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
@@ -75,6 +76,7 @@ export function usePortfolio() {
   const fuseApy = useMaxAPY(VaultType.FUSE);
   const ethApy = useMaxAPY(VaultType.ETH);
   const eurApy = useMaxAPY(VaultType.EUR);
+  const btcApy = useMaxAPY(VaultType.BTC);
   const custody = usePortfolioCustody({
     userId: user?.userId,
     safeAddress: user?.safeAddress as Address | undefined,
@@ -99,6 +101,7 @@ export function usePortfolio() {
     'ethPriceUsd',
     (exactSavings?.[VaultType.ETH] ?? 0) > 0,
   );
+  const btcPrice = useBtcPriceQuery((exactSavings?.[VaultType.BTC] ?? 0) > 0);
   const holdsEurYield = (savings.eurValue ?? 0) > 0;
   // Only for the "≈ $" line beside soEURC's euro value; it never enters a dollar total.
   const eurcPrice = useQuery({
@@ -127,6 +130,7 @@ export function usePortfolio() {
       [VaultType.USDC]: usdApy,
       [VaultType.FUSE]: fuseApy,
       [VaultType.ETH]: ethApy,
+      [VaultType.BTC]: btcApy,
     };
 
     // Each vault: savings on its own networks + shares bridged elsewhere + shares escrowed as
@@ -156,7 +160,9 @@ export function usePortfolio() {
           ? Number(ethPrice.data)
           : vault.type === VaultType.FUSE
             ? Number(fusePrice.data)
-            : 1;
+            : vault.type === VaultType.BTC
+              ? Number(btcPrice.data)
+              : 1;
       const valueUsd = parts.total;
       return {
         vault,
@@ -266,12 +272,14 @@ export function usePortfolio() {
     fuseApy,
     ethApy,
     eurApy,
+    btcApy,
     savings.eurValue,
     savings.eurShares,
     eurcPrice.data,
     lockedFuse,
     fusePrice.data,
     ethPrice.data,
+    btcPrice.data,
     hasCardBalance,
     cardHasOwnBalance,
     cardDetails.data,

@@ -11,11 +11,18 @@ import {
   FUNDING_PRICE_BUFFER,
   fundingNeedUsd,
   fundingSendAmount,
+  fundingSendUsd,
   latestUpgradeFunding,
+  resolveCashPayment,
+  UNCOVERED_FUNDING_HEADROOM,
 } from '@/lib/tierUpgradeFunding';
 import { TokenBalance, TokenType } from '@/lib/types';
 
 import type { TrackedLifiSwap } from '@/store/lifiSwapStore';
+
+// Reached through the card's asset table (soBTC), and never called here. The
+// real module loads wagmi's ESM build, which this jest setup cannot parse.
+jest.mock('@/lib/wagmi', () => ({ publicClient: jest.fn() }));
 
 const BILLING = '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9';
 const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -193,6 +200,7 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 197.4,
         coverUsd: 0,
+        coverPct: 1,
       }),
     ).toBe(false);
     expect(
@@ -202,6 +210,7 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 197.4,
         coverUsd: 1.6,
+        coverPct: 1,
       }),
     ).toBe(true);
   });
@@ -214,6 +223,7 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 50,
         coverUsd: 0,
+        coverPct: 1,
       }),
     ).toBe(true);
     expect(
@@ -223,8 +233,42 @@ describe('canPayCashWith', () => {
         feeUsd: 199,
         fuseUsdc: 50,
         coverUsd: 0,
+        coverPct: 1,
       }),
     ).toBe(false);
+  });
+});
+
+describe('canPayCashWith, with nothing to cover the bridge', () => {
+  /**
+   * A `transfer` upgrade sends the shortfall and its headroom: $19 short is
+   * $19.38 sent. A holding between the two would be quoted capped at the
+   * balance and land short, so it is not offered as able to pay.
+   */
+  it('wants the amount sent, not just the shortfall', () => {
+    const pay = (dollars: string) =>
+      canPayCashWith({
+        token: row({ balance: parseUnits(dollars, 6).toString() }),
+        billingTokenAddress: BILLING,
+        feeUsd: 799,
+        fuseUsdc: 780,
+        coverUsd: 0,
+        coverPct: 0,
+      });
+    expect(pay('19.10')).toBe(false);
+    expect(pay('19.38')).toBe(true);
+  });
+
+  it('opens on a holding only when it covers the amount sent', () => {
+    const token = defaultCashToken({
+      rows: [usdcOnFuse(780), row({ balance: parseUnits('19.10', 6).toString() })],
+      billingTokenAddress: BILLING,
+      feeUsd: 799,
+      fuseUsdc: 780,
+      funding: { state: 'none' },
+      coverPct: 0,
+    });
+    expect(token?.chainId).toBe(fuse.id);
   });
 });
 
@@ -242,6 +286,7 @@ describe('defaultCashToken', () => {
       feeUsd: 199,
       fuseUsdc: 0,
       funding: { state: 'none' },
+      coverPct: 1,
     });
     expect(token?.chainId).toBe(mainnet.id);
   });
@@ -253,6 +298,7 @@ describe('defaultCashToken', () => {
       feeUsd: 199,
       fuseUsdc: 205,
       funding: { state: 'none' },
+      coverPct: 1,
     });
     expect(token?.chainId).toBe(fuse.id);
   });
@@ -264,6 +310,7 @@ describe('defaultCashToken', () => {
       feeUsd: 199,
       fuseUsdc: 0,
       funding: { state: 'pending', swap: swap({}) },
+      coverPct: 1,
     });
     expect(token?.chainId).toBe(fuse.id);
   });
@@ -335,5 +382,191 @@ describe('fundingNeedUsd', () => {
   it('is what Fuse is still missing, never negative', () => {
     expect(fundingNeedUsd(199, 50)).toBe(149);
     expect(fundingNeedUsd(199, 250)).toBe(0);
+  });
+});
+
+describe('resolveCashPayment', () => {
+  const baseUsdc = row({});
+  const BASE_KEY = { chainId: base.id, address: BASE_USDC };
+  const arrived = {
+    state: 'arrived' as const,
+    swap: swap({ status: 'DONE', substatus: 'COMPLETED', settledAt: 1_500 }),
+  };
+
+  /** Ultra by transfer: $799 now, and nothing covers what a bridge takes. */
+  const resolve = (overrides: Partial<Parameters<typeof resolveCashPayment>[0]> = {}) => {
+    const fuseUsdc = overrides.fuseUsdc ?? 0;
+    return resolveCashPayment({
+      tokens: [usdcOnFuse(fuseUsdc), baseUsdc],
+      chosen: null,
+      billingTokenAddress: BILLING,
+      feeUsd: 799,
+      fuseUsdc,
+      coverPct: 0,
+      funding: { state: 'none' },
+      balancesLoaded: true,
+      // After `arrived` settled: the balance in hand can include it.
+      usdcReadAt: 2_000,
+      paymentMode: 'transfer',
+      awaitingConfirm: false,
+      ...overrides,
+    });
+  };
+
+  /**
+   * A bridged payment for a transfer upgrade landed $19 short. Nothing will
+   * cover it, so waiting gets nowhere: the rest has to be sent, and only the
+   * rest.
+   */
+  describe('a bridged payment that left a transfer upgrade short', () => {
+    it('lets the rest be sent from another chain, sized to what is missing', () => {
+      const payment = resolve({ fuseUsdc: 780, funding: arrived, chosen: BASE_KEY });
+
+      expect(payment.arrivedShortUsd).toBeCloseTo(19, 6);
+      expect(payment.token?.chainId).toBe(base.id);
+      expect(payment.payingFromFuse).toBe(false);
+      expect(payment.needUsd).toBeCloseTo(19, 6);
+      expect(payment.sendUsd).toBeCloseTo(19 * (1 + UNCOVERED_FUNDING_HEADROOM), 6);
+      // The token can pay the rest; the USDC on Fuse cannot pay the fee yet.
+      expect(payment.affordable).toBe(true);
+      expect(payment.fuseCoversFee).toBe(false);
+    });
+
+    it('opens on a holding that can send the rest', () => {
+      expect(resolve({ fuseUsdc: 780, funding: arrived }).token?.chainId).toBe(base.id);
+    });
+
+    it('keeps USDC on Fuse once the rest has landed', () => {
+      const payment = resolve({ fuseUsdc: 800, funding: arrived, chosen: BASE_KEY });
+
+      expect(payment.arrivedShortUsd).toBe(0);
+      expect(payment.token?.chainId).toBe(fuse.id);
+      expect(payment.affordable).toBe(true);
+      expect(payment.fuseCoversFee).toBe(true);
+    });
+
+    /**
+     * The bridge has landed, and the balance in hand is from a read asked for
+     * before the app knew — it can have come back after, and still not have the
+     * USDC in it. Read off that, the whole $799 looks missing, and a second
+     * $814.98 bridge would be offered for USDC that is already there.
+     */
+    describe('before a balance read asked for after it landed', () => {
+      it('keeps the arrived payment standing in, and offers nothing to send', () => {
+        const payment = resolve({
+          fuseUsdc: 0,
+          funding: arrived,
+          chosen: BASE_KEY,
+          usdcReadAt: 1_400,
+        });
+
+        expect(payment.checkingArrivedBalance).toBe(true);
+        expect(payment.arrivedShortUsd).toBe(0);
+        // The Base pick is not honoured, so there is no quote to open.
+        expect(payment.token?.chainId).toBe(fuse.id);
+        expect(payment.payingFromFuse).toBe(true);
+        expect(payment.affordable).toBe(false);
+      });
+
+      it('does not open on another chain either', () => {
+        expect(resolve({ fuseUsdc: 0, funding: arrived, usdcReadAt: 1_400 }).token?.chainId).toBe(
+          fuse.id,
+        );
+      });
+
+      it('waits while there is no balance at all', () => {
+        const payment = resolve({
+          fuseUsdc: 0,
+          funding: arrived,
+          balancesLoaded: false,
+          usdcReadAt: undefined,
+        });
+
+        expect(payment.checkingArrivedBalance).toBe(true);
+        expect(payment.arrivedShortUsd).toBe(0);
+      });
+
+      it('says how short it is once a read asked for after it comes back', () => {
+        const payment = resolve({ fuseUsdc: 780, funding: arrived, usdcReadAt: 1_501 });
+
+        expect(payment.checkingArrivedBalance).toBe(false);
+        expect(payment.arrivedShortUsd).toBeCloseTo(19, 6);
+      });
+
+      /** Settled before `settledAt` was kept, so before any read this session took. */
+      it('takes any read for a payment settled with no time on it', () => {
+        const payment = resolve({
+          fuseUsdc: 780,
+          funding: { state: 'arrived', swap: swap({ status: 'DONE', substatus: 'COMPLETED' }) },
+          usdcReadAt: 1,
+        });
+
+        expect(payment.checkingArrivedBalance).toBe(false);
+        expect(payment.arrivedShortUsd).toBeCloseTo(19, 6);
+      });
+
+      it('has nothing to wait for with no payment arrived', () => {
+        expect(resolve({ usdcReadAt: undefined }).checkingArrivedBalance).toBe(false);
+      });
+    });
+
+    /** A module subscription's arrived payment is still judged with its cover. */
+    it('changes nothing for a module subscription', () => {
+      const payment = resolve({
+        fuseUsdc: 780,
+        funding: arrived,
+        chosen: BASE_KEY,
+        paymentMode: 'module',
+        coverPct: 5,
+      });
+
+      expect(payment.arrivedShortUsd).toBe(0);
+      expect(payment.token?.chainId).toBe(fuse.id);
+    });
+  });
+
+  /**
+   * An upgrade paid by transfer and not yet confirmed has already taken the
+   * USDC. The gap on Fuse is that payment: nothing more is to be sent for it.
+   */
+  describe('while an earlier payment awaits confirmation', () => {
+    it('does not read the gap as a shortfall to send', () => {
+      const payment = resolve({
+        fuseUsdc: 0,
+        funding: arrived,
+        chosen: BASE_KEY,
+        awaitingConfirm: true,
+      });
+
+      expect(payment.arrivedShortUsd).toBe(0);
+      expect(payment.token?.chainId).toBe(fuse.id);
+      expect(payment.payingFromFuse).toBe(true);
+      expect(payment.affordable).toBe(false);
+    });
+
+    it('stays on USDC on Fuse with no bridged payment either', () => {
+      expect(resolve({ chosen: BASE_KEY, awaitingConfirm: true }).token?.chainId).toBe(fuse.id);
+      expect(resolve({ chosen: BASE_KEY, awaitingConfirm: false }).token?.chainId).toBe(base.id);
+    });
+  });
+});
+
+describe('fundingSendUsd', () => {
+  /** The cover absorbs what the bridge takes, so the shortfall is what is sent. */
+  it('sends the shortfall when the bridge is covered', () => {
+    expect(fundingSendUsd(149, 5)).toBe(149);
+  });
+
+  /**
+   * A transfer upgrade has no cover: the fee has to arrive in full, and a
+   * payment sized to the shortfall lands a bridge fee short of it every time.
+   */
+  it('sends headroom when nothing covers the bridge', () => {
+    expect(fundingSendUsd(799, 0)).toBeCloseTo(799 * (1 + UNCOVERED_FUNDING_HEADROOM), 6);
+    expect(fundingSendUsd(799, 0)).toBeGreaterThan(799);
+  });
+
+  it('sends nothing for nothing missing', () => {
+    expect(fundingSendUsd(0, 0)).toBe(0);
   });
 });

@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { protocolsImages } from '@/constants/protocols';
 import { VAULTS } from '@/constants/vaults';
 import { useAPYs, useVaultBreakdown } from '@/hooks/useAnalytics';
+import { newVaultApy } from '@/lib/displayApy';
 import { Minus } from '@/lib/icons/Minus';
 import { Plus } from '@/lib/icons/Plus';
 import { VaultBreakdown, VaultType } from '@/lib/types';
@@ -189,8 +190,12 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
   const { data: strategies = [], isLoading: isBreakdownLoading } = useVaultBreakdown(
     vault.name.toLowerCase(),
   );
+  // A vault in its first weeks shows its trailing day: its 7 days still reach back to
+  // before it earned (see displayApy).
+  const oneDayApy = newVaultApy(apys);
+  const apyTitle = oneDayApy !== undefined ? '1D APY' : '7D APY';
   // Two decimals like the rows: one decimal rounds EUR's 0.04% down to "0%".
-  const sevenDayApyLabel = formatPercent(apys?.sevenDay ?? 0);
+  const apyLabel = formatPercent(oneDayApy ?? apys?.sevenDay ?? 0);
   const selectedStrategy = strategies[selectedStrategyIndex] ?? strategies[0];
   const visibleStrategies = isExpanded ? strategies : strategies.slice(0, COLLAPSED_STRATEGY_COUNT);
   const hasHiddenStrategies = strategies.length > COLLAPSED_STRATEGY_COUNT;
@@ -231,14 +236,14 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
 
           <View className="absolute items-center">
             <Text className="text-[12px] font-normal leading-[15px] text-white/50">
-              {selectedStrategy ? 'Allocation' : '7D APY'}
+              {selectedStrategy ? 'Allocation' : apyTitle}
             </Text>
             {isBreakdownLoading || (!selectedStrategy && isApyLoading) ? (
               <Skeleton className="mt-[7px] h-10 w-[110px] rounded-md bg-white/10" />
             ) : (
               <>
                 <Text className="mt-0.5 text-[32px] font-semibold leading-[35px] text-white">
-                  {selectedStrategy ? formatPercent(selectedStrategy.allocation) : sevenDayApyLabel}
+                  {selectedStrategy ? formatPercent(selectedStrategy.allocation) : apyLabel}
                 </Text>
                 {selectedStrategy && (
                   <>

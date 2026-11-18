@@ -16,7 +16,7 @@ const NOTHING_TO_MANAGE: Benefit = {
 };
 
 /**
- * Only what is true of each product: soUSD backs the card, soETH and soFUSE do not.
+ * Only what is true of each product: soUSD and soETH back the card (soETH on Base), soFUSE does not.
  */
 const BENEFITS: Record<VaultType, Benefit[]> = {
   [VaultType.USDC]: [
@@ -42,12 +42,18 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
       body: 'soETH tracks ETH, so you keep your exposure and earn on top of it.',
     },
     {
+      key: 'spend',
+      icon: CreditCard,
+      title: 'Spend or borrow against it',
+      // Qualified: a Safe without Base spending turned on can't spend Base assets yet.
+      body: 'With Base spending on, soETH on Base backs your Solid card: spend it, or borrow against it without selling.',
+    },
+    {
       key: 'withdraw',
       icon: ArrowUp,
       title: 'Withdraw anytime',
       body: 'Move it back to your wallet whenever you need it.',
     },
-    NOTHING_TO_MANAGE,
   ],
   [VaultType.FUSE]: [
     {
@@ -81,6 +87,26 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
       body: 'Withdrawals go through a queue and take up to about 3 days.',
     },
     NOTHING_TO_MANAGE,
+  ],
+  [VaultType.BTC]: [
+    {
+      key: 'exposure',
+      icon: TrendingUp,
+      title: 'Earns in BTC',
+      body: 'soBTC tracks bitcoin, so you keep your exposure and earn more BTC on top of it.',
+    },
+    {
+      key: 'either',
+      icon: RefreshCw,
+      title: 'WBTC on Ethereum or Base',
+      body: 'Deposit WBTC on Ethereum or on Base. Both count 1:1 and earn the same rate.',
+    },
+    {
+      key: 'withdraw',
+      icon: ArrowUp,
+      title: 'Withdraw WBTC on Ethereum',
+      body: 'Withdrawals are paid in WBTC on Ethereum, up to what the vault there holds at the time.',
+    },
   ],
 };
 

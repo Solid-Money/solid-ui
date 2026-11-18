@@ -54,7 +54,7 @@ export type WalletDepositTokenConfig = {
  * - Deposit it into a vault from the wallet (see `depositConfig` in
  *   `constants/vaults`): USDC and USDT into soUSD on every bridge chain, ETH and
  *   WETH into soETH on Ethereum, FUSE and WFUSE into soFUSE on Fuse, EURC into
- *   soEUR on Base.
+ *   soEUR on Base, WBTC into soBTC on Base.
  *
  * A Wirex cardholder's USDC, USDT and EURC go to a minted address instead, which
  * the pipeline delivers to their Safe on Fuse (EURC: on Base).
@@ -62,9 +62,8 @@ export type WalletDepositTokenConfig = {
  * rhino.fi takes these into the wallet from the other chains it has a route
  * from, and always pays the Safe on Base: USDC, USDT (as USDC), EURC and ETH
  * (as WETH, through our wallet deposit address on Base), each of use there. A
- * row on Base itself is our own (see `getWalletOwnAddress`). BTC sent on Bitcoin
- * arrives as WBTC in the Safe on Base; WBTC is retired from this list, but kept
- * visible (see `RETIRED_DEPOSIT_CONTRACTS`), so it shows once it lands.
+ * row on Base itself is our own (see `getWalletOwnAddress`). BTC sent on Bitcoin,
+ * and WBTC sent on Ethereum or BNB Chain, arrive as WBTC in the Safe on Base.
  *
  * Add a token or chain here only if it is one of the two. ETH anywhere but
  * Ethereum is neither (the Base cash module takes WETH, not ETH), nor is WETH off
@@ -143,24 +142,33 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, base.id],
   },
   {
-    symbol: 'FUSE',
-    name: 'Fuse',
-    group: 'crypto',
-    icon: 'images/fuse-4x.png',
-    contracts: {
-      [fuse.id]: NATIVE_COIN,
-    },
-    releasedOn: [fuse.id],
-  },
-  {
     // Native BTC, sent on Bitcoin itself. No contract on any chain the list has a
-    // row for, so it is offered under "More networks" alone, once rhino.fi takes
-    // it there: its Bitcoin address pays WBTC to the Safe on Base.
+    // row for, so it is offered on rhino.fi's networks alone (Bitcoin), to
+    // everyone, once rhino.fi takes it there: its Bitcoin address pays WBTC to
+    // the Safe on Base.
     symbol: 'BTC',
     name: 'Bitcoin',
     group: 'crypto',
     icon: 'images/btc.png',
     contracts: {},
+  },
+  {
+    // WBTC into the Safe on Base, for soBTC: its Base vault takes this WBTC
+    // (BitGo's LayerZero WBTC, the same contract on BNB Chain), and the card
+    // cannot spend it. Sent on Ethereum or BNB Chain, rhino.fi pays it to the
+    // Safe on Base as WBTC; sent on Base, it goes to the Safe directly. rhino.fi
+    // takes it on no other chain the list has a row for. Offered to everyone.
+    symbol: 'WBTC',
+    name: 'Wrapped Bitcoin',
+    group: 'crypto',
+    icon: 'images/wbtc.png',
+    aliases: ['Bitcoin', 'BTC'],
+    contracts: {
+      [mainnet.id]: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      [base.id]: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
+      [bsc.id]: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
+    },
+    releasedOn: [mainnet.id, base.id, bsc.id],
   },
   {
     symbol: 'cbBTC',
@@ -171,6 +179,16 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     contracts: {
       [base.id]: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
     },
+  },
+  {
+    symbol: 'FUSE',
+    name: 'Fuse',
+    group: 'crypto',
+    icon: 'images/fuse-4x.png',
+    contracts: {
+      [fuse.id]: NATIVE_COIN,
+    },
+    releasedOn: [fuse.id],
   },
   {
     symbol: 'cbZEC',
@@ -203,7 +221,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     },
   },
   {
-    // soETH takes it on Ethereum; the Base cash module spends it on Base.
+    // soETH takes it on Ethereum and Base; the Base cash module spends it on Base.
     symbol: 'WETH',
     name: 'Wrapped Ether',
     group: 'crypto',
@@ -223,6 +241,49 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [fuse.id]: WRAPPED_FUSE,
     },
     releasedOn: [fuse.id],
+  },
+];
+
+/**
+ * A coin that comes as more than one token: Bitcoin as BTC, WBTC and cbBTC.
+ * "Select token" lists it once, under its own name, and opens onto its tokens.
+ */
+export type WalletDepositCoinConfig = {
+  key: string;
+  /** The row's title, and the title of the screen it opens. */
+  name: string;
+  group: WalletDepositTokenGroup;
+  icon: AssetPath;
+  /** Its tokens in `WALLET_DEPOSIT_TOKENS`, in the order its screen lists them. */
+  symbols: string[];
+};
+
+/**
+ * The coins "Select token" folds into one row each, where it lists the first
+ * of their tokens. Each is one coin to the person sending it, whichever token
+ * they hold, so a list of three Bitcoins read as three things to choose from.
+ */
+export const WALLET_DEPOSIT_COINS: WalletDepositCoinConfig[] = [
+  {
+    key: 'ether',
+    name: 'Ether',
+    group: 'crypto',
+    icon: 'images/eth.png',
+    symbols: ['ETH', 'WETH'],
+  },
+  {
+    key: 'bitcoin',
+    name: 'Bitcoin',
+    group: 'crypto',
+    icon: 'images/btc.png',
+    symbols: ['BTC', 'WBTC', 'cbBTC'],
+  },
+  {
+    key: 'fuse',
+    name: 'Fuse',
+    group: 'crypto',
+    icon: 'images/fuse-4x.png',
+    symbols: ['FUSE', 'WFUSE'],
   },
 ];
 
@@ -250,7 +311,6 @@ const RETIRED_DEPOSIT_CONTRACTS: Record<number, string[]> = {
   [mainnet.id]: [
     '0x45804880De22913dAFE09f4980848ECE6EcbAf78', // PAXG
     '0x4833e7f4f0460f4B72A3a5879A6C9841bCC5B58B', // SLVx
-    '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // WBTC
     '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC
     '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // UNI
     '0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4', // NEAR
@@ -268,7 +328,6 @@ const RETIRED_DEPOSIT_CONTRACTS: Record<number, string[]> = {
     '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619', // WETH
   ],
   [base.id]: [
-    '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC
     '0xc3De830EA07524a0761646a6a4e4be0e114a3C83', // UNI
     '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', // ENA
   ],
@@ -295,7 +354,6 @@ const RETIRED_DEPOSIT_CONTRACTS: Record<number, string[]> = {
   ],
   [bsc.id]: [
     '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', // Binance-Peg ETH
-    '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC
     '0x1Ba42e5193dfA8B03D15dd1B86a3113bbBEF8Eeb', // ZEC
     '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', // UNI
     '0x1Fa4a73a3F0133f0025378af00236f3aBDEE5D63', // NEAR

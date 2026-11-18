@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 
 import SwapAssetPicker from '@/components/Swap/flow/SwapAssetPicker';
 import SwapFormScreen from '@/components/Swap/flow/SwapFormScreen';
 import { SwapOnItsWayScreen, SwapSwappedScreen } from '@/components/Swap/flow/SwapOutcomeScreens';
 import SwapReviewScreen from '@/components/Swap/flow/SwapReviewScreen';
+import { preloadSwapPickerLogos } from '@/components/Swap/SwapAssetLogo';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import { SWAP_MODAL } from '@/constants/modals';
+import { useSwapDestinations } from '@/hooks/swap/useSwapDestinations';
 import { SwapFlowProvider, useSwapFlow } from '@/hooks/swap/useSwapFlow';
-import { useSwapState } from '@/store/swapStore';
 
 /** The modal states the new flow draws, in the order a swap goes through them. */
 export const SWAP_FLOW_STATES: readonly string[] = [
@@ -23,10 +24,15 @@ export const SWAP_FLOW_STATES: readonly string[] = [
 ];
 
 const SwapFlowStep = ({ name }: { name: string }) => {
-  const { isLegacyPair } = useSwapFlow();
+  const { fromAsset, isLegacyPair } = useSwapFlow();
+  useEffect(preloadSwapPickerLogos, []);
+  const isGetPicker = name === SWAP_MODAL.OPEN_GET_PICKER.name;
+  // Start checking on the form so You get can open with a settled list.
+  const reachable = useSwapDestinations(!isLegacyPair || isGetPicker ? fromAsset : undefined);
 
-  if (name === SWAP_MODAL.OPEN_PAY_PICKER.name) return <SwapAssetPicker side="pay" />;
-  if (name === SWAP_MODAL.OPEN_GET_PICKER.name) return <SwapAssetPicker side="get" />;
+  if (name === SWAP_MODAL.OPEN_PAY_PICKER.name) return <SwapAssetPicker key="pay" side="pay" />;
+  if (isGetPicker)
+    return <SwapAssetPicker key="get" side="get" fromAsset={fromAsset} reachable={reachable} />;
   if (name === SWAP_MODAL.OPEN_REVIEW.name) {
     // Confirm swap slides up over the form, which stays behind it.
     return (
@@ -58,9 +64,7 @@ const SwapFlowStep = ({ name }: { name: string }) => {
  * up to the signature, so the price on the form is the one the review shows;
  * the outcome screens read the receipt and need none.
  */
-const SwapFlow = () => {
-  const name = useSwapState(state => state.currentModal.name);
-
+const SwapFlow = ({ name }: { name: string }) => {
   if (name === SWAP_MODAL.OPEN_SWAPPED.name) return <SwapSwappedScreen />;
   if (name === SWAP_MODAL.OPEN_ON_ITS_WAY.name) return <SwapOnItsWayScreen />;
   return (

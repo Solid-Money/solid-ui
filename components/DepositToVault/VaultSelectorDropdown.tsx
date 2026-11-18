@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import YieldIcon from '@/components/Earn/YieldIcon';
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
@@ -16,13 +17,24 @@ import { useSavingStore } from '@/store/useSavingStore';
 
 // The product, not its token: USD / ETH / FUSE Yield's mark without the share's live dot,
 // as on Home.
-const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
+const PRODUCT_ICONS: Partial<Record<VaultType, AssetPath>> = {
   [VaultType.USDC]: 'images/usd-yield-4x.png',
   [VaultType.ETH]: 'images/eth-yield-4x.png',
   [VaultType.FUSE]: 'images/fuse-yield-4x.png',
   [VaultType.EUR]: 'images/eur-yield-4x.png',
 };
-const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
+
+// BTC Yield has no PNG mark: it draws the same icon as on Earn.
+const VaultIcon = ({ vault, size }: { vault: Vault; size: number }) =>
+  vault.type === VaultType.BTC ? (
+    <YieldIcon vaultType={VaultType.BTC} size={size} />
+  ) : (
+    <Image
+      source={getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon)}
+      style={{ width: size, height: size }}
+      contentFit="contain"
+    />
+  );
 
 const VaultSelectorDropdown = () => {
   const { vault: selectedVault } = useVaultDepositConfig();
@@ -92,11 +104,7 @@ const VaultSelectorDropdown = () => {
           onPress={toggleDropdown}
         >
           <View className="flex-row items-center gap-3">
-            <Image
-              source={getVaultIcon(selectedVault)}
-              style={{ width: 28, height: 28 }}
-              contentFit="contain"
-            />
+            <VaultIcon vault={selectedVault} size={28} />
             <Text className="text-base">{selectedVault.vaultName}</Text>
           </View>
           <Animated.View style={animatedChevronStyle}>
@@ -159,11 +167,7 @@ const VaultSelectorDropdown = () => {
                     style={{ opacity: isComingSoon ? 0.5 : 1 }}
                   >
                     <View className="flex-row items-center gap-3">
-                      <Image
-                        source={getVaultIcon(vault)}
-                        style={{ width: 24, height: 24 }}
-                        contentFit="contain"
-                      />
+                      <VaultIcon vault={vault} size={24} />
                       <Text className="text-base">{vault.vaultName}</Text>
                       {isComingSoon && (
                         <Text className="text-xs text-muted-foreground">(Coming soon)</Text>

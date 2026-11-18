@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
 
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { createDeposit } from '@/lib/api';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { buildDepositApprovals } from '@/lib/deposit/allowance';
+import {
+  buildSoEthBaseDepositCalls,
+  getSoEthMinimumMint,
+  isSoEthBaseConfigured,
+  readSoEthBaseDepositRate,
+} from '@/lib/deposit/soEthBase';
 import {
   captureDepositError,
   depositBreadcrumb,
@@ -39,6 +45,9 @@ const WETH_ABI = [
     type: 'function',
   },
 ] as const;
+
+/** What executeTransactions throws for a Base deposit that reverted on chain, and only then. */
+const BASE_DEPOSIT_REVERTED = 'Deposit failed';
 
 const useDepositFromSolidEth = (
   tokenAddress: Address,
@@ -76,10 +85,10 @@ const useDepositFromSolidEth = (
     },
   });
 
-  // Native ETH balance
+  // Native ETH balance, on the chain the deposit is made from (Ethereum or Base).
   const { data: nativeBalanceData, refetch: refetchNativeBalance } = useBalance({
     address: safeAddress as `0x${string}` | undefined,
-    chainId: mainnet.id,
+    chainId: srcChainId,
     query: {
       enabled: !!safeAddress && !!srcChainId && isNativeEth,
     },
@@ -100,10 +109,148 @@ const useDepositFromSolidEth = (
     return clientTxId;
   };
 
+  // In wei: as numbers, 0.0099999999999999999 rounds up to a 0.01 minimum.
+  const meetsMinimum = (amount: string) => {
+    try {
+      return parseUnits(amount, 18) >= parseUnits(minimumAmount, 18);
+    } catch {
+      return false;
+    }
+  };
+
+  /**
+   * ETH or WETH on Base: the Safe deposits into the Base soETH teller itself, in one user
+   * operation, and the shares mint straight to it, as for soEURC. Nothing goes through the
+   * backend, so the deposit is complete once the operation lands.
+   */
+  const depositOnBase = async (amount: string) => {
+    const isSponsor = meetsMinimum(amount);
+    const ctx: DepositContext = {
+      user,
+      amount,
+      chainId: base.id,
+      chainName: 'base',
+      depositType: 'solid_wallet',
+      depositMethod: 'eth_solid_base',
+      depositDestination: 'savings',
+      isSponsor,
+      operation: 'deposit_from_solid_eth',
+    };
+
+    let trackingId: string | undefined;
+    let cancelled = false;
+    let sentUserOpHash: string | undefined;
+
+    try {
+      trackDepositInitiated(ctx);
+
+      if (!safeAddress) throw new Error('Solid wallet (Safe) address not found');
+      if (!isSoEthBaseConfigured) throw new Error('ETH deposits on Base are not available yet');
+      if (!isSponsor) throw new Error(`Minimum deposit amount is ${minimumAmount} ETH`);
+
+      const amountWei = parseUnits(amount, 18);
+      if (amountWei <= 0n || balance === undefined || amountWei > balance) {
+        throw new Error(`Insufficient ${token} balance`);
+      }
+
+      setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
+      setError(null);
+      depositBreadcrumb('Starting ETH deposit on Base from Solid wallet', {
+        amount,
+        safeAddress,
+        token,
+        isNativeEth,
+      });
+
+      // Quote the shares at the teller's current rate and refuse to mint far fewer.
+      const rate = await readSoEthBaseDepositRate();
+      const transactions = buildSoEthBaseDepositCalls(
+        amountWei,
+        getSoEthMinimumMint(amountWei, rate),
+        isNativeEth,
+      );
+
+      trackingId = await createActivity({
+        title: `Deposit ${token}`,
+        amount,
+        symbol: token,
+        chainId: base.id,
+        fromAddress: safeAddress,
+        toAddress: ADDRESSES.base.soEthVault,
+        type: TransactionType.DEPOSIT,
+      });
+
+      const smartAccountClient = await safeAA(base, user!.suborgId, user!.signWith);
+      const result = await executeTransactions(
+        smartAccountClient,
+        transactions,
+        BASE_DEPOSIT_REVERTED,
+        base,
+        userOpHash => {
+          sentUserOpHash = userOpHash;
+          updateActivity(trackingId!, { userOpHash });
+        },
+      );
+
+      if (result === USER_CANCELLED_TRANSACTION) {
+        cancelled = true;
+        updateActivity(trackingId, { status: TransactionStatus.CANCELLED });
+        throw new Error('User cancelled transaction');
+      }
+
+      const txHash =
+        result &&
+        typeof result === 'object' &&
+        result.transaction?.status === 'success' &&
+        'transactionHash' in result
+          ? (result as { transactionHash: `0x${string}` }).transactionHash
+          : undefined;
+      if (!txHash) throw new Error('ETH deposit on Base has not been confirmed yet');
+
+      // The teller minted in the same transaction: the deposit is complete.
+      updateActivity(trackingId, {
+        status: TransactionStatus.SUCCESS,
+        hash: txHash,
+        url: `${base.blockExplorers.default.url}/tx/${txHash}`,
+      });
+      setHash(txHash);
+      updateUser({ ...user!, isDeposited: true });
+      setDepositStatus({ status: Status.SUCCESS });
+      trackDepositCompleted(ctx, { transactionHash: txHash });
+
+      return trackingId;
+    } catch (error: any) {
+      console.error(error);
+      // Sent, and only the confirmation could not be read (a timeout, a lost connection): the
+      // deposit has most likely landed. Not a failure, or the user deposits again. The activity
+      // keeps its user operation hash and stays processing; the form shows it as submitted.
+      // executeTransactions throws BASE_DEPOSIT_REVERTED only for a confirmed revert.
+      if (trackingId && sentUserOpHash && error?.message !== BASE_DEPOSIT_REVERTED) {
+        captureDepositError(error, { ...ctx, depositStatus });
+        setDepositStatus({ status: Status.SUCCESS, message: 'Deposit sent, confirming' });
+        return trackingId;
+      }
+      const errMsg = captureDepositError(error, { ...ctx, depositStatus });
+      if (trackingId && !cancelled) {
+        updateActivity(trackingId, {
+          status: TransactionStatus.FAILED,
+          metadata: {
+            error: error?.message || 'Unknown error',
+            failedAt: new Date().toISOString(),
+          },
+        });
+      }
+      setDepositStatus({ status: Status.ERROR });
+      setError(errMsg);
+      throw error;
+    }
+  };
+
   const deposit = async (amount: string) => {
     if (!token || !srcChainId) return undefined;
+    if (srcChainId === base.id) return depositOnBase(amount);
 
-    const isSponsor = Number(amount) >= Number(minimumAmount);
+    const isSponsor = meetsMinimum(amount);
     const ctx: DepositContext = {
       user,
       amount,

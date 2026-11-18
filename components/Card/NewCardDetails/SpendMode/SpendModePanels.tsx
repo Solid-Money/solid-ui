@@ -127,6 +127,15 @@ const YIELD_GLYPH = {
   eur: COLLATERAL_ICON.eur,
 } as const;
 const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
+/**
+ * soETH's mark: the ETH Yield icon the portfolio draws, which is the ETH glyph already in the
+ * same 10% white circle the soUSD and soEUR glyphs sit in here. Figma has no spend-mode glyph for
+ * it, so the whole icon is drawn at the circle's size rather than a glyph inside one.
+ */
+const ETH_YIELD_ICON = getAsset('images/portfolio/eth.svg');
+
+/** The card mark the "How you earn" sheet gives card credit, drawn at the rows' 32pt. */
+const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
 
 /**
  * A spendable asset's 32pt logo. The stablecoins use their token logos (USDT's is drawn 36.7pt
@@ -134,6 +143,9 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  * (Figma "so-token / soUSD / badge dot").
  */
 const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+  if (icon === 'cardCredit') {
+    return <Image accessible={false} source={CARD_CREDIT_LOGO} style={styles.tokenLogo} />;
+  }
   if (icon === 'cbbtc' || icon === 'weth' || icon === 'sol' || icon === 'aave' || icon === 'zec') {
     return (
       <Image
@@ -160,6 +172,15 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
     );
   }
 
+  if (icon === 'soeth') {
+    return (
+      <View accessible={false} style={styles.tokenLogo}>
+        <Image source={ETH_YIELD_ICON} style={styles.ethYieldIcon} />
+        <Image source={BADGE_DOT} style={styles.badgeDot} />
+      </View>
+    );
+  }
+
   const glyph = icon === 'sousd' ? YIELD_GLYPH.usd : YIELD_GLYPH.eur;
   return (
     <View accessible={false} style={styles.tokenLogo}>
@@ -176,6 +197,9 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
  * logo for the crypto Figma has not drawn a glyph for.
  */
 const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
+  if (icon === 'eth') {
+    return <Image accessible={false} source={ETH_YIELD_ICON} style={styles.collateralEthIcon} />;
+  }
   if (icon === 'usd' || icon === 'eur' || icon === 'cbbtc') {
     return (
       <View accessible={false} style={styles.collateralIcon}>
@@ -232,7 +256,8 @@ interface BalancePanelProps {
 
 /**
  * "Your balance" with the Add funds pill, over the assets it is made of (Figma 29120:9486): USDC,
- * USDT and soUSD on Fuse, and EURC on Base once euro spending is enabled, each with its own value.
+ * USDT and soUSD on Fuse, and what the Base module spends (soUSD, soETH, soEUR, EURC, the stables
+ * and the crypto) once Base spending is enabled, each with its own value.
  * A euro asset reads in euros with its dollar value under it.
  */
 export const SpendModeBalancePanel = ({
@@ -417,8 +442,8 @@ const RISK_CHIP = {
 /**
  * The Credit panel (Figma 30394:14715): the borrowed block with its health chip over the assets
  * that back it, each with its own LTV, on every instance the card borrows on — soUSD on Fuse and,
- * once euro spending is enabled, soEUR and the crypto collateral (cbBTC, WETH, SOL, AAVE, cbZEC)
- * on Base — and "View Credit details" at the foot. A euro asset reads in euros with its dollar
+ * once Base spending is enabled, soUSD, soETH, soEUR and the crypto collateral (cbBTC, WETH, SOL,
+ * AAVE, cbZEC) on Base — and "View Credit details" at the foot. A euro asset reads in euros with its dollar
  * value under it, because the line it backs is in dollars.
  */
 export const SpendModeCreditPanel = ({
@@ -571,6 +596,8 @@ const styles = StyleSheet.create({
     width: 31.976,
   },
   badgeDot: { height: 14, left: 20, position: 'absolute', top: 20, width: 14 },
+  // The ETH Yield icon carries its own circle, at the yield icon's size and offset.
+  ethYieldIcon: { height: 31.373, marginTop: 0.31, width: 31.976 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -647,6 +674,8 @@ const styles = StyleSheet.create({
     width: 32,
   },
   collateralLogo: { borderRadius: 16, height: 32, width: 32 },
+  // soETH: the ETH Yield icon carries its own circle, at the collateral circle's size.
+  collateralEthIcon: { height: 31.396, width: 32 },
   collateralLabel: { flex: 1, gap: 2 },
   collateralValue: { alignItems: 'flex-end', gap: 4 },
 

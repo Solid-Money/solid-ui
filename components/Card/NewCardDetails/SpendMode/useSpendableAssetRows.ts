@@ -1,21 +1,29 @@
 import { useMemo } from 'react';
 import { formatUnits } from 'viem';
+import { base } from 'viem/chains';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
+import { useCardCredit } from '@/hooks/useCardCredit';
 import { useCardSpendableAssets } from '@/hooks/useCardSpendableBalance';
 import { useMainCurrency } from '@/hooks/useMainCurrency';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
-import { TokenBalance } from '@/lib/types';
+import { showsCardCreditPill } from '@/lib/cardCredit';
+import { CardCreditSummary, TokenBalance } from '@/lib/types';
 import { matchesAsset, soEurUsdPerShare } from '@/lib/utils/cardSpendable';
 
-/** Which logo a "Spendable assets" row draws. The last five are the crypto Base can sell. */
+/**
+ * Which logo a "Spendable assets" row draws: card credit, then the stables, the yield shares
+ * (soUSD, soEUR, soETH) and, last, the five crypto Base can sell.
+ */
 export type SpendableAssetIcon =
+  | 'cardCredit'
   | 'usdc'
   | 'usdt'
   | 'sousd'
   | 'eurc'
   | 'soeur'
+  | 'soeth'
   | 'cbbtc'
   | 'weth'
   | 'sol'
@@ -28,7 +36,7 @@ export interface SpendableAssetRow {
   icon: SpendableAssetIcon;
   /** "USDC", "soUSD", "EURC". */
   name: string;
-  /** "USD Yield", "Euro purchases"; absent on a plain stablecoin. */
+  /** "USD Yield", "ETH Yield", "Euro purchases"; absent on a plain stablecoin. */
   subtitle?: string;
   /** "$100.00", or "€74.20" for a euro asset. */
   value: string;
@@ -38,7 +46,7 @@ export interface SpendableAssetRow {
   usd: number;
   /**
    * Whether it is a dollar asset — USDC, USDT and soUSD on either chain — rather than a euro one
-   * or crypto, which a dollar purchase reaches only once the dollars are spent.
+   * or crypto (soETH included), which a dollar purchase reaches only once the dollars are spent.
    */
   isDollar: boolean;
 }
@@ -47,7 +55,7 @@ export interface SpendableAssetBreakdown {
   rows: SpendableAssetRow[];
   /** "Your balance": every row, euro assets included at their dollar value. */
   totalUsd: number;
-  /** What a dollar purchase can draw on: the Fuse set alone, which is what Cash spends. */
+  /** What a dollar purchase can draw on: the dollar rows (USDC, USDT, soUSD on Fuse and on Base). */
   dollarUsd: number;
 }
 
@@ -75,6 +83,7 @@ const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {
   soUSD: 'sousd',
   EURC: 'eurc',
   soEUR: 'soeur',
+  soETH: 'soeth',
   cbBTC: 'cbbtc',
   WETH: 'weth',
   SOL: 'sol',
@@ -128,6 +137,9 @@ export const buildSpendableAssetRows = (
     const usdOf = (token: TokenBalance) => units(token) * (token.quoteRate ?? 0);
 
     switch (icon) {
+      // Not a token: its row comes from `cardCreditAssetRow`.
+      case 'cardCredit':
+        return [];
       case 'usdc':
       case 'usdt': {
         const usd = matching.reduce((sum, token) => sum + usdOf(token), 0);
@@ -140,7 +152,8 @@ export const buildSpendableAssetRows = (
             key,
             icon,
             name: 'soUSD',
-            subtitle: 'USD Yield',
+            // soUSD can be held on Fuse and on Base at once, as two rows: name the Base one.
+            subtitle: asset.chainIds?.includes(base.id) ? 'USD Yield on Base' : 'USD Yield',
             value: money(usd, 'USD'),
             detail: `${amount.toFixed(2)} soUSD`,
             usd,
@@ -182,6 +195,22 @@ export const buildSpendableAssetRows = (
           },
         ];
       }
+      case 'soeth': {
+        // Priced like any soETH: its accountant rate times ETH, in `quoteRate`.
+        const usd = matching.reduce((sum, token) => sum + usdOf(token), 0);
+        return [
+          {
+            key,
+            icon,
+            name: 'soETH',
+            subtitle: 'ETH Yield',
+            value: money(usd, 'USD'),
+            detail: `${coinAmount(amount)} soETH`,
+            usd,
+            isDollar: false,
+          },
+        ];
+      }
       case 'soeur': {
         const eur = soEurRate ? amount * soEurRate : undefined;
         const usd = soEurUsd ? amount * soEurUsd : 0;
@@ -208,17 +237,53 @@ export const buildSpendableAssetRows = (
   };
 };
 
-/** {@link buildSpendableAssetRows} for the signed-in cardholder. */
+/**
+ * Card credit's row: what is left of it, "Used first", since every purchase draws on it before
+ * any asset below. Only while it can be spent — the Home pill's rule, so a user without an active
+ * card is not told it pays for anything.
+ *
+ * Listed, never added: card credit is a balance of its own, so it is in neither "Your balance"
+ * nor the dollars a purchase can draw on.
+ */
+export const cardCreditAssetRow = (
+  credit: CardCreditSummary | null | undefined,
+): SpendableAssetRow | null =>
+  credit && showsCardCreditPill(credit)
+    ? {
+        key: 'card-credit',
+        icon: 'cardCredit',
+        name: 'Card bonus',
+        subtitle: 'Used first',
+        value: money(credit.availableUsd, 'USD'),
+        usd: 0,
+        isDollar: false,
+      }
+    : null;
+
+/** The breakdown with card credit's row on top, the totals untouched. */
+export const withCardCreditRow = (
+  breakdown: SpendableAssetBreakdown,
+  credit: CardCreditSummary | null | undefined,
+): SpendableAssetBreakdown => {
+  const row = cardCreditAssetRow(credit);
+  return row ? { ...breakdown, rows: [row, ...breakdown.rows] } : breakdown;
+};
+
+/** {@link buildSpendableAssetRows} for the signed-in cardholder, with their card credit on top. */
 export const useSpendableAssetRows = (): SpendableAssetBreakdown => {
   const { tokens } = useBalances();
   const assets = useCardSpendableAssets();
   const holdsSoEur = assets.some(asset => asset.symbol === 'soEUR');
   const { data: soEurRate } = useVaultExchangeRate('EUR', holdsSoEur);
   const { usdPerEur } = useMainCurrency();
+  // The query the Home pill already keeps warm, so the row is there when the sheet opens rather
+  // than growing the panel under the cardholder's thumb.
+  const { data: cardCredit } = useCardCredit();
 
   return useMemo(
-    () => buildSpendableAssetRows(tokens, assets, soEurRate, usdPerEur),
-    [tokens, assets, soEurRate, usdPerEur],
+    () =>
+      withCardCreditRow(buildSpendableAssetRows(tokens, assets, soEurRate, usdPerEur), cardCredit),
+    [tokens, assets, soEurRate, usdPerEur, cardCredit],
   );
 };
 

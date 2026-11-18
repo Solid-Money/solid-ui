@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, TextStyle, View } from 'react-native';
 
+import { TAB_SUMMARY_BADGE, TAB_SUMMARY_BADGE_LABEL } from '@/components/TabSummary';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
@@ -9,11 +10,6 @@ import { TierTrial } from '@/lib/types';
 
 import { trialRemainingLabel } from './tierTrialCopy';
 
-const PILL_STYLE: TextStyle = {
-  fontFamily: 'MonaSans_500Medium',
-  fontSize: 13,
-  lineHeight: 16,
-};
 const TITLE_STYLE: TextStyle = {
   fontFamily: 'MonaSans_600SemiBold',
   fontSize: 22,
@@ -57,7 +53,7 @@ const formatExpiry = (expiresAt: string | null): string | null => {
 };
 
 /**
- * The trial countdown under the tier name on the rewards screen, and the
+ * The trial countdown on the rewards screen, and the
  * explanation behind it (Figma 25481:2752).
  *
  * The pill answers "how long have I got"; tapping it answers "and then what",
@@ -81,9 +77,9 @@ const TierTrialPill = ({ trial }: { trial?: TierTrial | null }) => {
         accessibilityLabel={`${tierName} trial, ${trialRemainingLabel(trial)}. Tap for details.`}
         onPress={() => setIsOpen(true)}
         hitSlop={8}
-        className="self-center rounded-full bg-brand/15 px-3 py-1 transition-opacity active:opacity-70"
+        className={`${TAB_SUMMARY_BADGE} bg-brand/15 transition-opacity active:opacity-70`}
       >
-        <Text className="text-brand" style={PILL_STYLE}>
+        <Text className={`${TAB_SUMMARY_BADGE_LABEL} text-brand`}>
           {tierName} trial · {trialRemainingLabel(trial)}
         </Text>
       </Pressable>

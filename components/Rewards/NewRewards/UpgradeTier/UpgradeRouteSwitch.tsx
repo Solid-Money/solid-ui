@@ -17,16 +17,17 @@ interface UpgradeRouteSwitchProps {
  * How the tier is being paid for.
  *
  * Renders whatever routes are actually on offer, which is why it takes a list
- * rather than a boolean: Prime is sold both ways and shows two segments, Ultra
- * is soFUSE-only and shows one full-width segment. A disabled second segment
- * would advertise a way to buy Ultra that does not exist.
+ * rather than a boolean. Prime and Ultra are both sold for a lock or an annual
+ * fee and show two segments; a tier the backend sells only one way right now —
+ * Ultra to a build that has not opted into paying an upgrade by transfer, or
+ * cash switched off — shows none, rather than a disabled second segment
+ * advertising a way to buy it that does not exist.
  *
- * Draws nothing at all for a single route on a tier that has no alternative —
- * a switch with one option is a label, and the row above it already says what
- * this is.
+ * Draws nothing at all for a single route — a switch with one option is a
+ * label, and the card under it already says which route this is.
  */
 const UpgradeRouteSwitch = ({ routes, selected, onSelect }: UpgradeRouteSwitchProps) => {
-  if (routes.length === 0) return null;
+  if (routes.length < 2) return null;
 
   return (
     <View className="h-[50px] flex-row items-center rounded-full bg-[#1C1C1C] p-1">

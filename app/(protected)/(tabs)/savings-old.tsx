@@ -37,6 +37,7 @@ import { useTotalVaultBalance, useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
+import { apyPeriodText } from '@/lib/displayApy';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 import { useSavingStore } from '@/store/useSavingStore';
@@ -284,7 +285,7 @@ export default function SavingsOld() {
                 <View className="yield-box p-6 md:p-7">
                   <View className="flex-row items-center gap-2 pb-1">
                     <Text className="text-[1rem] text-primary/70 md:text-lg">Current Yield</Text>
-                    <TooltipPopover text={`Last ${maxAPYDays} days yield of the vault`} />
+                    <TooltipPopover text={`Last ${apyPeriodText(maxAPYDays)} yield of the vault`} />
                   </View>
                   <View className="flex-row items-center gap-2">
                     <Text className="text-2xl font-semibold text-brand">
@@ -475,7 +476,7 @@ export default function SavingsOld() {
                 <View className="yield-box p-6 md:p-7">
                   <View className="flex-row items-center gap-2 pb-1">
                     <Text className="text-[1rem] text-primary/70 md:text-lg">Current Yield</Text>
-                    <TooltipPopover text={`Last ${maxAPYDays} days yield of the vault`} />
+                    <TooltipPopover text={`Last ${apyPeriodText(maxAPYDays)} yield of the vault`} />
                   </View>
                   <View className="flex-row items-center gap-2">
                     <Text className="text-2xl font-semibold text-brand">

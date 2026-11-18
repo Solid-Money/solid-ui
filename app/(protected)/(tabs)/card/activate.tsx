@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 
 import {
   ActivateCardHeader,
@@ -23,7 +23,9 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { useActivateCard } from '@/hooks/useActivateCard';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
+import { routesToNewCard } from '@/lib/utils/rainSunset';
 
 export default function ActivateMobile() {
   const router = useRouter();
@@ -49,6 +51,14 @@ export default function ActivateMobile() {
     activatingCard,
     handleGoBack,
   } = useActivateCard();
+  const { data: cardStatus } = useCardStatus();
+
+  // Rain sunset: a Rain application that can no longer become a card, where the
+  // new card is available. Checked before anything else renders so the Rain
+  // issuance steps (whose last step now refuses) never show.
+  if (routesToNewCard(cardStatus)) {
+    return <Redirect href={path.CARD_NEW_CARD} />;
+  }
 
   if (isCardStatusLoading || isCheckingCountry || isResolvingWirexFlow) {
     return (

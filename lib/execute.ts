@@ -14,6 +14,13 @@ import { askToPayNetworkFee } from '@/store/useNetworkFeeStore';
 
 export const USER_CANCELLED_TRANSACTION = Symbol('USER_CANCELLED_TRANSACTION');
 
+/**
+ * The UserOperation was mined and its calls reverted (EntryPoint success flag false, or the bundle
+ * transaction failed): a confirmed failure. Any other error thrown after the UserOperation hash is
+ * known, such as a receipt wait that timed out, leaves the outcome unknown.
+ */
+export class UserOperationRevertedError extends Error {}
+
 /** The bundler refusing an unsponsored operation the account can't prefund. */
 const PREFUND_SHORTFALL = /\bAA21\b|didn'?t pay prefund|insufficient (?:funds|balance)/i;
 
@@ -159,16 +166,32 @@ export const executeTransactions = async (
   transactions: any[],
   errorMessage: string,
   chain: Chain,
-  onUserOpHash?: (userOpHash: `0x${string}`) => void,
+  /**
+   * Called the moment the bundler accepts the operation, before any waiting,
+   * with its hash and the EntryPoint nonce it was sent with — the nonce is
+   * what says, later, whether an operation with no receipt can still land.
+   */
+  onUserOpHash?: (userOpHash: `0x${string}`, nonce: bigint) => void,
   onBeforeBroadcast?: () => Promise<void>,
+  /**
+   * The EntryPoint nonce to send with, instead of the account's next one read
+   * here: one the caller has already put on record, so that what it recorded
+   * is what is sent — or that of an operation sent with it and never
+   * included, to replace it. Sent with the same nonce, only one of the two can
+   * ever be included. A bundler still holding the earlier one may turn this
+   * one away, and then nothing is sent.
+   */
+  presetNonce?: bigint,
 ): Promise<TransactionResult> => {
   let userOpHash: `0x${string}` | undefined;
 
   try {
-    const nonce = await getAccountNonce(publicClient(chain.id), {
-      address: smartAccountClient.account?.address as `0x`,
-      entryPointAddress: entryPoint07Address,
-    });
+    const nonce =
+      presetNonce ??
+      (await getAccountNonce(publicClient(chain.id), {
+        address: smartAccountClient.account?.address as `0x`,
+        entryPointAddress: entryPoint07Address,
+      }));
 
     // Add breadcrumb for transaction attempt
     Sentry.addBreadcrumb({
@@ -207,7 +230,7 @@ export const executeTransactions = async (
 
     // Call the callback immediately with userOpHash (before waiting for receipt)
     if (onUserOpHash && userOpHash) {
-      onUserOpHash(userOpHash);
+      onUserOpHash(userOpHash, nonce);
     }
 
     // Add breadcrumb with userOpHash
@@ -234,7 +257,7 @@ export const executeTransactions = async (
     // Trusting the bundle alone made a reverted approval look like a completed
     // one, and the caller went on to ask the backend to pull unapproved funds.
     if (!receipt.success) {
-      const error = new Error(errorMessage);
+      const error = new UserOperationRevertedError(errorMessage);
       Sentry.captureException(error, {
         tags: {
           type: 'user_operation_reverted',
@@ -258,7 +281,7 @@ export const executeTransactions = async (
     });
 
     if (transaction.status !== 'success') {
-      const error = new Error(errorMessage);
+      const error = new UserOperationRevertedError(errorMessage);
       Sentry.captureException(error, {
         tags: {
           type: 'transaction_failed',

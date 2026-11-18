@@ -16,7 +16,11 @@ import { useActivityStore } from '@/store/useActivityStore';
 import { useActivityActions } from './useActivityActions';
 import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
-import { isBaseWithdrawRequest, useBaseWithdrawRequests } from './useBaseWithdrawRequests';
+import {
+  baseWithdrawRequestKey,
+  isBaseWithdrawRequest,
+  useBaseWithdrawRequests,
+} from './useBaseWithdrawRequests';
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -236,7 +240,7 @@ export function useActivity() {
     );
     userEvents = userEvents.map(activity => {
       if (!isBaseWithdrawRequest(activity)) return activity;
-      const request = baseWithdrawRequests[activity.hash.toLowerCase()];
+      const request = baseWithdrawRequests[baseWithdrawRequestKey(activity)];
       if (!request) return { ...activity, status: TransactionStatus.PROCESSING };
       const withRequestId = { ...activity, requestId: request.requestId };
       if (request.status === 'pending') {
@@ -271,14 +275,19 @@ export function useActivity() {
       }
 
       const vault = getVaultKey(activity.symbol);
+      // soBTC has no subgraph. Its requests on the Ethereum queue (WBTC) are read on-chain above;
+      // anything else stays processing rather than being looked up in the USD vault's
+      // withdrawals, where it never appears.
       const vaultWithdraws =
-        vault === 'EUR'
-          ? eurWithdraws
-          : vault === 'ETH'
-            ? ethWithdraws
-            : vault === 'FUSE'
-              ? fuseWithdraws
-              : withdraws;
+        vault === 'BTC'
+          ? undefined
+          : vault === 'EUR'
+            ? eurWithdraws
+            : vault === 'ETH'
+              ? ethWithdraws
+              : vault === 'FUSE'
+                ? fuseWithdraws
+                : withdraws;
 
       // Subgraph data not yet available — show PROCESSING (on-chain tx succeeded,
       // waiting for solver fulfillment) instead of PENDING which implies the

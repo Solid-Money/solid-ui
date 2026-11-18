@@ -37,6 +37,8 @@ import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAcco
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
+import { getWalletDepositCoinName } from '@/components/DepositOption/WalletDepositAddress/constants';
+import WalletDepositCoinTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositCoinTokens';
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
@@ -131,6 +133,10 @@ const useDepositOption = ({
   // A flow that opened the address to fund the Safe itself (the AI API) starts
   // on the address, so there is no step before it to go back to.
   const isSafeFunding = useDepositStore(state => !!state.walletDeposit.toSafe);
+  // The coin whose tokens its own screen lists, which titles it ("Bitcoin").
+  const depositCoinName = useDepositStore(state =>
+    getWalletDepositCoinName(state.walletDeposit.coin),
+  );
   // External-wallet connection is mirrored into the store by the desktop-only
   // ThirdwebConnectionBridge; on mobile it stays disconnected (thirdweb is
   // desktop-only). Reading from the store avoids calling thirdweb hooks here,
@@ -204,6 +210,7 @@ const useDepositOption = ({
   const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
   const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
   const isDepositToken = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN.name;
+  const isDepositCoin = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_COIN.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -463,6 +470,10 @@ const useDepositOption = ({
       return <WalletDepositTokens />;
     }
 
+    if (isDepositCoin) {
+      return <WalletDepositCoinTokens />;
+    }
+
     return <DepositTypeSelection onClose={() => handleOpenChange(false)} />;
   };
 
@@ -510,6 +521,7 @@ const useDepositOption = ({
     if (isDepositCrypto) return 'deposit-crypto-options';
     if (isDepositCash) return 'deposit-cash-options';
     if (isDepositToken) return 'deposit-token';
+    if (isDepositCoin) return 'deposit-coin';
     return 'deposit-type-selection';
   };
 
@@ -562,6 +574,7 @@ const useDepositOption = ({
     if (isDepositCrypto) return 'Receive crypto';
     if (isDepositCash) return 'Deposit with cash';
     if (isDepositToken) return 'Select token';
+    if (isDepositCoin) return depositCoinName ?? 'Select token';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
@@ -582,6 +595,7 @@ const useDepositOption = ({
       isDepositCrypto ||
       isDepositCash ||
       isDepositToken ||
+      isDepositCoin ||
       isDepositUsdMethod ||
       isPublicAddress
     ) {
@@ -665,6 +679,7 @@ const useDepositOption = ({
       !isDepositCrypto &&
       !isDepositCash &&
       !isDepositToken &&
+      !isDepositCoin &&
       !isDepositUsdMethod &&
       !isPublicAddress
     ) {
@@ -826,9 +841,9 @@ const useDepositOption = ({
         is_first_deposit: !user?.isDeposited,
       });
 
-      setModal(DEPOSIT_MODAL.CLOSE);
+      const { onDismiss } = useDepositStore.getState();
       resetDepositFlow();
-      clearSessionStartTime();
+      onDismiss?.();
     }
   };
 
@@ -917,14 +932,21 @@ const useDepositOption = ({
       resetDepositFlow();
       clearSessionStartTime();
     } else if (isPublicAddress) {
-      // Reached through the token list from the crypto branch, and directly from
-      // the savings flow's own external-wallet list — each step back to where it
-      // came from.
+      // Reached through the token list from the crypto branch, or through a
+      // coin's screen from there, and directly from the savings flow's own
+      // external-wallet list — each step back to where it came from.
       setModal(
         previousModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name
           ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
-          : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
+          : previousModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_COIN.name
+            ? DEPOSIT_MODAL.OPEN_DEPOSIT_COIN
+            : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
       );
+    } else if (isDepositCoin) {
+      // Up to the list of coins, whichever way it was reached: from the address's
+      // pill, that is where another coin is chosen. `isChangingToken` stays, so
+      // back from there still returns to the address.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
     } else if (isDepositToken) {
       const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
       setWalletDeposit({ isChangingToken: false });
@@ -1061,6 +1083,7 @@ const useDepositOption = ({
     isDepositCrypto ||
     isDepositCash ||
     isDepositToken ||
+    isDepositCoin ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
     isDepositDirectly ||
@@ -1087,7 +1110,8 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
-    compactHeader: isDepositCrypto || isDepositCash || isDepositToken || isPublicAddress,
+    compactHeader:
+      isDepositCrypto || isDepositCash || isDepositToken || isDepositCoin || isPublicAddress,
     // Short enough to sit at the bottom of a phone screen rather than take it
     // over; desktop shows it as the usual centred modal either way.
     mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),
