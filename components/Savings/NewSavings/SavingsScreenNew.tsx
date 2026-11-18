@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Href, router, useLocalSearchParams } from 'expo-router';
 
-import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { interestOverPastDays } from '@/components/Earn/earnPortfolio';
 import PageLayout from '@/components/PageLayout';
+import { path } from '@/constants/path';
 import { VaultKey } from '@/constants/withdraw';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -43,7 +43,6 @@ export default function SavingsScreenNew() {
   const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
   const vaultType = isVaultType(vaultParam) ? vaultParam : VaultType.USDC;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isCreditOpen, setIsCreditOpen] = useState(false);
 
   const portfolio = usePortfolio();
   const {
@@ -134,7 +133,6 @@ export default function SavingsScreenNew() {
             isOpen={isHelpOpen}
             onClose={() => setIsHelpOpen(false)}
           />
-          <BorrowPositionSheet isOpen={isCreditOpen} onOpenChange={setIsCreditOpen} />
         </>
       }
     >
@@ -165,7 +163,9 @@ export default function SavingsScreenNew() {
         onOpenWallet={
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
-        onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
+        onOpenCredit={
+          portfolio.creditDetailsAvailable ? () => router.push(path.CARD_CREDIT) : undefined
+        }
         // Only soUSD and soETH (on their Base queues) and soBTC (on its Ethereum queue) are read.
         pendingWithdrawals={
           vaultType === VaultType.USDC || vaultType === VaultType.ETH || vaultType === VaultType.BTC

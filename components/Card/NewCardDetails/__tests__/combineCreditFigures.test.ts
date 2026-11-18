@@ -32,6 +32,16 @@ const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset
   valueUsd: 0n,
   priceUsable: true,
   ltvWad: 900_000_000_000_000_000n,
+  escrowed: 0n,
+  loose: 0n,
+  decimals: 18,
+  priceUsd: 1_000_000n,
+  priceInBand: true,
+  escrowedValueUsd: 0n,
+  ltWad: 950_000_000_000_000_000n,
+  liquidationBonusBps: 500,
+  countsTowardPower: true,
+  repayFeeBps: 0,
   ...overrides,
 });
 
@@ -45,6 +55,17 @@ const instance = (overrides: Partial<CreditInstancePosition>): CreditInstancePos
   creditHeadroomUsd: 0n,
   borrowApyPerSecond: RATE,
   collateral: [],
+  unhealthySince: 0,
+  forcedDebtUsd: 0n,
+  pendingUnlock: null,
+  liquidationsPaused: false,
+  params: {
+    liquidationGracePeriod: 86_400,
+    graceFloorHfWad: 950_000_000_000_000_000n,
+    closeFactorBps: 5_000,
+    minPositionUsd: 25_000_000n,
+    collateralWithdrawDelay: 300,
+  },
   ...overrides,
 });
 
@@ -246,7 +267,7 @@ describe('combineCreditFigures', () => {
     it('rates each loan by its own health factor', () => {
       const figures = combineCreditFigures(fusePosition, RATE, {
         fuse: null,
-        base: baseLoan({ healthFactorWad: 1_010_000_000_000_000_000n }),
+        base: baseLoan({ healthFactorWad: 990_000_000_000_000_000n }),
       });
 
       expect(figures.positions.map(position => position.risk)).toEqual(['none', 'at-risk']);

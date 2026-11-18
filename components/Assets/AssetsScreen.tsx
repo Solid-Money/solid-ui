@@ -8,7 +8,6 @@ import AssetRow, { assetAmountLabel } from '@/components/Assets/AssetRow';
 import PortfolioIcon, { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
 import WithdrawingRow from '@/components/Assets/WithdrawingRow';
 import { BalanceHeadline } from '@/components/BalanceHeadline';
-import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import YieldIcon from '@/components/Earn/YieldIcon';
 import { openYieldProduct, yieldVault } from '@/components/Earn/yieldProducts';
@@ -86,7 +85,7 @@ export function AssetsOverview({
     stable: false,
     crypto: false,
   });
-  const [borrowOpen, setBorrowOpen] = useState(false);
+  const openCredit = () => router.push(path.CARD_CREDIT);
   const holdings = (assets: PortfolioAsset[], kind: HoldingKind): HoldingList => {
     const { visible, small } = splitSmallBalances(assets);
     return { all: assets, shown: expanded[kind] ? assets : visible, small };
@@ -109,20 +108,20 @@ export function AssetsOverview({
   const goBack = () => (router.canGoBack() ? router.back() : router.replace(path.HOME));
 
   const openCash = (asset: PortfolioAsset) => {
-    // An escrow-only holding has no wallet coin page yet; its position sheet owns it.
+    // An escrow-only holding has no wallet coin page yet; the Credit page owns it.
     const token = asset.tokens[0];
     if (!asset.heldInWallet) {
-      setBorrowOpen(true);
+      openCredit();
       return;
     }
     router.push(coinAssetPath(token) as Href);
   };
   const openEarn = (asset: EarnAsset) => {
     // The share token's coin page carries APY, networks, Send and history; it links back
-    // to Earn for withdrawals. Escrow-only shares belong to the position sheet.
+    // to Earn for withdrawals. Escrow-only shares belong to the Credit page.
     const token = asset.walletTokens[0];
     if (token) router.push(coinAssetPath(token) as Href);
-    else if (asset.backsCredit) setBorrowOpen(true);
+    else if (asset.backsCredit) openCredit();
     else router.push({ pathname: '/savings', params: { vault: asset.vault.type } } as Href);
   };
   const renderHoldings = (list: HoldingList, kind: HoldingKind) =>
@@ -184,7 +183,6 @@ export function AssetsOverview({
       showsVerticalScrollIndicator={false}
       onRefresh={Platform.OS === 'web' ? undefined : refetchAll}
       refreshing={isRefreshing}
-      additionalContent={<BorrowPositionSheet isOpen={borrowOpen} onOpenChange={setBorrowOpen} />}
     >
       <View className="mx-auto w-full max-w-[419px] gap-[24px] px-[16px] pb-[140px] pt-[24px] web:md:max-w-[40rem]">
         <View className="h-[50px] flex-row items-center justify-between px-[2px]">
@@ -370,7 +368,7 @@ export function AssetsOverview({
                         : `${figures.borrowApy} APY · ${figures.availableToBorrow.replace(/\.00$/, '')} left to spend`
                   }
                   detail={portfolio.creditDetailsAvailable ? 'Repay' : undefined}
-                  onPress={portfolio.creditDetailsAvailable ? () => setBorrowOpen(true) : undefined}
+                  onPress={portfolio.creditDetailsAvailable ? openCredit : undefined}
                 />
               </Group>
             )}

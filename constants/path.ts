@@ -77,6 +77,8 @@ type Path = {
    */
   CARD_3DS: Href;
   CARD_MAIN_CURRENCY: Href;
+  /** The credit page: each loan, what backs it, how close it is to a sale, and the ways out. */
+  CARD_CREDIT: Href;
   CARD_ACTIVATE: Href;
   /**
    * Rain sunset: a Rain cardholder's move to their new (Wirex) card — the
@@ -163,6 +165,7 @@ export const path: Path = {
   CARD_PENDING: '/card/pending' as Href,
   CARD_3DS: '/card/3ds' as Href,
   CARD_MAIN_CURRENCY: '/card/main-currency' as Href,
+  CARD_CREDIT: '/card/credit' as Href,
   CARD_ACTIVATE: '/card/activate',
   CARD_NEW_CARD: '/card/new-card' as Href,
   CARD_CLOSING_WITHDRAW: '/card/closing-withdraw' as Href,

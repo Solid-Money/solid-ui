@@ -24,6 +24,11 @@ export const ERROR_ACTIONS = {
     money: true,
   },
   card_repay: { title: 'Couldn’t repay your card', label: 'Card repayment', money: true },
+  card_unlock: {
+    title: 'Couldn’t unlock your collateral',
+    label: 'Collateral unlock',
+    money: true,
+  },
   credit_line: { title: 'Couldn’t update your credit line', label: 'Credit line', money: true },
   deposit: { title: 'Couldn’t complete your deposit', label: 'Deposit', money: true },
   savings_deposit: { title: 'Couldn’t add to your savings', label: 'Savings deposit', money: true },

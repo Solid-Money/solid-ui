@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Platform } from 'react-native';
+import { router } from 'expo-router';
 
-import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
 import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCustomer } from '@/hooks/useCustomer';
@@ -38,7 +39,6 @@ const SpendModeModals = ({
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isCollateralHelpOpen, setIsCollateralHelpOpen] = useState(false);
   const [isFundOpen, setIsFundOpen] = useState(false);
-  const [isCreditDetailsOpen, setIsCreditDetailsOpen] = useState(false);
   const { data: cardDetails } = useCardDetails();
   const { data: customer } = useCustomer();
   const { provider } = useCardProvider();
@@ -86,11 +86,11 @@ const SpendModeModals = ({
     setIsFundOpen(true);
   }, [closeSpendMode]);
   const openCreditDetails = useCallback(() => {
-    // Handed over like funding: the borrow position has its own Repay steps and keyboard, and
-    // stacked over the selector it would leave two sheets to back out of.
+    // Handed over like funding: the Credit page has its own steps and sheets, and the selector
+    // left open behind it would be one more thing to back out of.
     setIsCollateralHelpOpen(false);
     closeSpendMode();
-    setIsCreditDetailsOpen(true);
+    router.push(path.CARD_CREDIT);
   }, [closeSpendMode]);
 
   return (
@@ -110,7 +110,6 @@ const SpendModeModals = ({
         onOpenChange={setIsCollateralHelpOpen}
       />
       <WirexCardFundModal isOpen={isFundOpen} onOpenChange={setIsFundOpen} />
-      <BorrowPositionSheet isOpen={isCreditDetailsOpen} onOpenChange={setIsCreditDetailsOpen} />
     </>
   );
 };

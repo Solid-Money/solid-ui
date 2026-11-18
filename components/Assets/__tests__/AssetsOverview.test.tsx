@@ -18,10 +18,6 @@ jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () =
   useSpendModeFigures: jest.fn(),
 }));
 jest.mock(
-  '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet',
-  () => 'BorrowPositionSheet',
-);
-jest.mock(
   '@/components/PageLayout',
   () =>
     function MockPageLayout({ children, additionalContent }: any) {
@@ -89,12 +85,12 @@ it('renders the reconciled total and keeps small assets collapsed initially', ()
   expect(textContent()).toContain('SMALL1');
   expect(textContent()).toContain('$3218.40');
 });
-it('opens the existing coin detail for a wallet holding and the position sheet for repayment', () => {
+it('opens the existing coin detail for a wallet holding and the Credit page for repayment', () => {
   render();
   press('View USDC');
   expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/coins\/1-/));
   press('View Borrowed');
-  expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
+  expect(router.push).toHaveBeenLastCalledWith('/card/credit');
 });
 it('names the share token on Earn rows and opens its coin page', () => {
   render();
@@ -151,11 +147,11 @@ it('keeps the balance visible and marks APY unavailable instead of inventing a r
   expect(textContent()).not.toContain('0.0% APY');
   expect(textContent()).toContain('$3218.40');
 });
-it('opens the position sheet for escrow-only shares and Earn when no share is in the wallet', () => {
+it('opens the Credit page for escrow-only shares and Earn when no share is in the wallet', () => {
   render();
   press('View soUSD');
-  expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
-  expect(router.push).not.toHaveBeenCalled();
+  expect(router.push).toHaveBeenCalledTimes(1);
+  expect(router.push).toHaveBeenLastCalledWith('/card/credit');
   render({
     earnAssets: portfolioFixture.earnAssets.map(asset => ({
       ...asset,

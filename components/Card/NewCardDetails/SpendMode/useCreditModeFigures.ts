@@ -79,7 +79,7 @@ export interface CreditModeFigures extends BorrowedSummaryFigures {
  * What each collateral token is, as the app names it: the savings product for Solid's shares,
  * the asset's own name for the crypto Base takes.
  */
-const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> = {
+export const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> = {
   soUSD: { label: 'USD Yield', icon: 'usd' },
   soEUR: { label: 'EUR Yield', icon: 'eur' },
   soETH: { label: 'ETH Yield', icon: 'eth' },
@@ -90,7 +90,21 @@ const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> 
   cbZEC: { label: 'Zcash', icon: 'zec' },
 };
 
-const isBase = (asset: CreditCollateralAsset): boolean => asset.chainId === base.id;
+const isBase = (asset: Pick<CreditCollateralAsset, 'chainId'>): boolean =>
+  asset.chainId === base.id;
+
+/**
+ * What the app calls a collateral token: the savings product for Solid's shares, the asset's own
+ * name for the crypto. soUSD backs a line on Fuse and on Base, so the Base one says so.
+ */
+export const collateralName = (asset: Pick<CreditCollateralAsset, 'symbol' | 'chainId'>): string =>
+  asset.symbol === 'soUSD' && isBase(asset)
+    ? 'USD Yield on Base'
+    : (COLLATERAL_LABEL[asset.symbol]?.label ?? (asset.symbol || 'Collateral'));
+
+/** Its mark, as the collateral rows draw it. */
+export const collateralIcon = (symbol: string): CollateralIcon =>
+  COLLATERAL_LABEL[symbol]?.icon ?? (symbol === 'soEUR' ? 'eur' : 'usd');
 
 /** Solid's yield shares: listed even at zero, since they are what the line is built on. */
 const YIELD_SYMBOLS: readonly string[] = ['soUSD', 'soEUR'];
@@ -159,11 +173,7 @@ const collateralRow = (asset: CreditCollateralAsset): CollateralRowFigures => {
   const isEuro = asset.valueEur !== undefined;
   return {
     key: `${asset.chainId}:${asset.token}`,
-    // soUSD backs a line on Fuse and on Base: name the Base one, which can sit beside it.
-    label:
-      asset.symbol === 'soUSD' && isBase(asset)
-        ? 'USD Yield on Base'
-        : (named?.label ?? (asset.symbol || 'Collateral')),
+    label: collateralName(asset),
     icon: named?.icon ?? (isEuro ? 'eur' : 'usd'),
     value: isEuro ? formatMoney(asset.valueEur!, 'EUR') : formatMoney(asset.valueUsd, 'USD'),
     usdEquivalent: isEuro ? `≈ ${formatMoney(asset.valueUsd, 'USD')}` : undefined,

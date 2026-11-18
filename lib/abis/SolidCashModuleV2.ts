@@ -776,4 +776,266 @@ export const SolidCashModuleV2_ABI = [
     ],
     stateMutability: 'view',
   },
+  {
+    type: 'function',
+    name: 'unhealthySince',
+    inputs: [
+      {
+        name: 'safe',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint64',
+        internalType: 'uint64',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'forcedDebtUsd',
+    inputs: [
+      {
+        name: 'safe',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'liquidationsPaused',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+        internalType: 'bool',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getPendingWithdrawal',
+    inputs: [
+      {
+        name: 'safe',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        internalType: 'struct PendingWithdrawal',
+        components: [
+          {
+            name: 'token',
+            type: 'address',
+            internalType: 'address',
+          },
+          {
+            name: 'readyAt',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'amount',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'requestCollateralWithdrawal',
+    inputs: [
+      {
+        name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelCollateralWithdrawal',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'processCollateralWithdrawal',
+    inputs: [
+      {
+        name: 'safe',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'collateralRepayFeeBps',
+    inputs: [
+      {
+        name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint16',
+        internalType: 'uint16',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getTokenConfig',
+    inputs: [
+      {
+        name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        internalType: 'struct TokenConfig',
+        components: [
+          {
+            name: 'spendable',
+            type: 'bool',
+            internalType: 'bool',
+          },
+          {
+            name: 'collateral',
+            type: 'bool',
+            internalType: 'bool',
+          },
+          {
+            name: 'tokenDecimals',
+            type: 'uint8',
+            internalType: 'uint8',
+          },
+          {
+            name: 'haircutBps',
+            type: 'uint16',
+            internalType: 'uint16',
+          },
+          {
+            name: 'liquidationBonusBps',
+            type: 'uint16',
+            internalType: 'uint16',
+          },
+          {
+            name: 'ltv',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'liquidationThreshold',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'maxStalenessSeconds',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'minPriceUsd',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'maxPriceUsd',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'ceilingGrowthPerSec',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+          {
+            name: 'ceilingAnchor',
+            type: 'uint64',
+            internalType: 'uint64',
+          },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'Liquidated',
+    inputs: [
+      {
+        name: 'safe',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'liquidator',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'collateralToken',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'repaidUsd',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
+      {
+        name: 'collateralSeized',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
+    ],
+    anonymous: false,
+  },
 ] as const;

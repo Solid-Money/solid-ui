@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextStyle, View } from 'react-native';
 import Animated, {
   Easing,
@@ -81,6 +81,13 @@ interface RepaySheetContentProps {
    * modal's compact size, and drops the side inset.
    */
   presentation?: CardSheetPresentation;
+  /**
+   * The source to open on, by id (`collateral:0x…` for "Pay down with Bitcoin"). Falls back to
+   * the most useful source when it is not offered.
+   */
+  preferredSourceId?: string;
+  /** Open with MAX filled in: "Repay in full". */
+  startAtMax?: boolean;
 }
 
 /**
@@ -108,6 +115,8 @@ const RepaySheetContent = ({
   onDismiss,
   topPadding,
   presentation = 'sheet',
+  preferredSourceId,
+  startAtMax = false,
 }: RepaySheetContentProps) => {
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -117,14 +126,15 @@ const RepaySheetContent = ({
   const sources = useMemo(() => state?.sources ?? [], [state]);
   const source = sources.find(candidate => candidate.id === sourceId) ?? null;
 
-  // The most useful source until the cardholder picks one, and again if the one they picked
-  // disappears from a refreshed read.
+  // The source asked for, else the most useful one, until the cardholder picks; and again if
+  // the one they picked disappears from a refreshed read.
   useEffect(() => {
     if (sources.length === 0) return;
     if (!sourceId || !sources.some(candidate => candidate.id === sourceId)) {
-      setSourceId(sources[0].id);
+      const preferred = sources.find(candidate => candidate.id === preferredSourceId);
+      setSourceId((preferred ?? sources[0]).id);
     }
-  }, [sources, sourceId]);
+  }, [sources, sourceId, preferredSourceId]);
 
   const debtUsd = state?.debtUsd ?? 0n;
   const amountUsd = parseUsdAmountText(text);
@@ -161,6 +171,14 @@ const RepaySheetContent = ({
     },
     [debtUsd, error, onClearError],
   );
+
+  // "Repay in full": MAX once, on the first source shown, then the cardholder's to change.
+  const hasStartedAtMax = useRef(false);
+  useEffect(() => {
+    if (!startAtMax || hasStartedAtMax.current || !source || !state) return;
+    hasStartedAtMax.current = true;
+    fillMax(source);
+  }, [fillMax, source, startAtMax, state]);
 
   const handleSelect = useCallback(
     (next: RepaySource) => {

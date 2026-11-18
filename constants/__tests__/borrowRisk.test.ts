@@ -17,13 +17,14 @@ describe('borrowRisk', () => {
     expect(borrowRisk(hf(value), DEBT)).toBe('none');
   });
 
-  it('warns "Getting close" within about 5% of liquidation', () => {
+  it('warns "Getting close" within about 5% of liquidation, down to the line', () => {
     expect(borrowRisk(hf(1.049), DEBT)).toBe('caution');
-    expect(borrowRisk(hf(1.02), DEBT)).toBe('caution');
+    expect(borrowRisk(hf(1.019), DEBT)).toBe('caution');
+    expect(borrowRisk(hf(1.0), DEBT)).toBe('caution');
   });
 
-  it('warns "At risk" within about 2% of liquidation, and below it', () => {
-    expect(borrowRisk(hf(1.019), DEBT)).toBe('at-risk');
+  it('says "At risk" only under 1.0, where part of the loan can be sold', () => {
+    expect(borrowRisk(hf(0.999), DEBT)).toBe('at-risk');
     expect(borrowRisk(hf(0.97), DEBT)).toBe('at-risk');
   });
 
