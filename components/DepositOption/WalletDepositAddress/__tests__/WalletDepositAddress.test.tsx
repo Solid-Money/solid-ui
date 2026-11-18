@@ -529,6 +529,47 @@ describe('WalletDepositAddress for ETH through rhino.fi', () => {
   });
 });
 
+describe('WalletDepositAddress once rhino.fi has paid the Safe', () => {
+  const mainButton = () =>
+    root.root.findAllByType('Button').find((node: any) => node.props.variant === 'brand');
+  const reportComplete = (complete: boolean) =>
+    act(() => {
+      root.root.findByType('RhinoDepositStatus').props.onCompleteChange(complete);
+    });
+
+  beforeEach(() => {
+    mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDC' };
+  });
+
+  it('offers to copy the address until the deposit is complete', () => {
+    render();
+
+    expect(texts()).toContain('Copy address');
+    expect(texts()).not.toContain('Close');
+  });
+
+  it('turns the button into Close, which leaves for the activity feed', () => {
+    render();
+    reportComplete(true);
+
+    expect(texts()).toContain('Close');
+    expect(texts()).not.toContain('Copy address');
+    act(() => {
+      mainButton().props.onPress();
+    });
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.CLOSE);
+    expect(mockRouter.push).toHaveBeenCalledWith('/activity');
+  });
+
+  it('goes back to copying when the status says it is no longer complete', () => {
+    render();
+    reportComplete(true);
+    reportComplete(false);
+
+    expect(texts()).toContain('Copy address');
+  });
+});
+
 /**
  * USDT is rhino.fi's off Base, paid to the Safe on Base as USDC; sent on Base,
  * our own pipeline keeps it, and the address is the Safe.

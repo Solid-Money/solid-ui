@@ -661,6 +661,15 @@ export const isRhinoPayoutFinal = (
 ): boolean => deposit.destinationType === 'WALLET' && deposit.receiveSymbol !== 'ETH';
 
 /**
+ * Whether the deposit is done for good: rhino.fi has paid out, and its payout is
+ * the end of it (see `isRhinoPayoutFinal`). The address screen says "Deposit
+ * complete" then, and offers to close rather than to copy the address again.
+ */
+export const isRhinoDepositComplete = (
+  deposit: Pick<RhinoDeposit, 'status' | 'destinationType' | 'receiveSymbol'>,
+): boolean => deposit.status === 'EXECUTED' && isRhinoPayoutFinal(deposit);
+
+/**
  * How a deposit seen by rhino.fi is shown on the address screen. It covers
  * rhino.fi's leg: once the payout is executed, the regular deposit pipeline and
  * the activity feed take over, except for a payout into the Safe, which
@@ -686,7 +695,7 @@ export const getRhinoDepositStatusView = (
         body: 'This is taking longer than usual.',
       };
     case 'EXECUTED':
-      return isRhinoPayoutFinal(deposit)
+      return isRhinoDepositComplete(deposit)
         ? {
             tone: 'success',
             title: 'Deposit complete',
