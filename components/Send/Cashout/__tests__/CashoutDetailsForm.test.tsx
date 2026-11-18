@@ -152,4 +152,59 @@ describe('CashoutDetailsForm', () => {
     expect(texts(root)).not.toContain('Couldn’t load your payout details');
     expect(button(root, 'Continue')).toBeDefined();
   });
+
+  describe('starting from the verified profile', () => {
+    // What a one-method country (EUR → SEPA) reaches straight from the list:
+    // the holder is locked, the address comes pre-filled, the IBAN is typed.
+    const SEPA: TransfiCashoutPaymentMethod = {
+      paymentCode: 'sepa',
+      paymentType: 'bank_transfer',
+      type: 'bank',
+      fields: [
+        {
+          key: 'accountHolderName',
+          label: 'Account holder',
+          type: 'text',
+          required: true,
+          value: 'Ada Obi',
+          locked: true,
+        },
+        {
+          key: 'address',
+          label: 'Address',
+          type: 'text',
+          required: true,
+          value: '1 Rue de Rivoli',
+        },
+        { key: 'iban', label: 'IBAN', type: 'text', required: true },
+      ],
+    };
+
+    beforeEach(() => {
+      useCashoutStore.setState({ currency: 'EUR', paymentCode: 'sepa' });
+    });
+
+    it('fills an empty form with the profile’s values', () => {
+      query({ data: [SEPA] });
+      render();
+
+      expect(useCashoutStore.getState().paymentDetails).toEqual({
+        accountHolderName: 'Ada Obi',
+        address: '1 Rue de Rivoli',
+      });
+    });
+
+    it('keeps what was already typed when the form opens again', () => {
+      const typed = { address: '2 Avenue Foch', iban: 'FR7630006000011234567890189' };
+      useCashoutStore.setState({ paymentDetails: typed });
+      query({ data: [SEPA] });
+
+      render();
+      expect(useCashoutStore.getState().paymentDetails).toEqual(typed);
+
+      act(() => mounted.unmount());
+      render();
+      expect(useCashoutStore.getState().paymentDetails).toEqual(typed);
+    });
+  });
 });
