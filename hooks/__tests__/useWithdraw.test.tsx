@@ -52,11 +52,22 @@ jest.mock('@/hooks/useUser', () => ({
 }));
 jest.mock('@/hooks/useVault', () => ({ VAULT: 'vault' }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+const mockReadShares = jest.fn();
+jest.mock('@/lib/wagmi', () => ({
+  publicClient: () => ({ readContract: mockReadShares }),
+}));
 jest.mock('@/lib/soUsdWithdraw', () => ({
+  withdrawShortfallCopy: (amount: bigint, shares: bigint, chainName: string) =>
+    amount > shares ? `Only ${shares} soUSD is on ${chainName}.` : undefined,
   SOUSD_WITHDRAW_CHAINS: {
-    1: { chain: { id: 1 }, vault: '0xvault', boringQueue: '0xqueue', usdc: '0xusdc' },
+    1: {
+      chain: { id: 1, name: 'Ethereum' },
+      vault: '0xvault',
+      boringQueue: '0xqueue',
+      usdc: '0xusdc',
+    },
     8453: {
-      chain: { id: 8453 },
+      chain: { id: 8453, name: 'Base' },
       vault: '0xbasevault',
       boringQueue: '0xbasequeue',
       usdc: '0xbaseusdc',
@@ -95,6 +106,7 @@ beforeEach(() => {
   chainId = 1;
   jest.clearAllMocks();
   execute.mockResolvedValue({ transaction: receipt });
+  mockReadShares.mockResolvedValue(BigInt(999_999_999_999));
 });
 afterEach(() => act(() => root?.unmount()));
 
@@ -143,6 +155,36 @@ it('approves and queues on the Base vault when withdrawing on Base', async () =>
     await hook.withdraw('100');
   });
   const [, transactions, , chain] = execute.mock.calls[0];
-  expect(chain).toEqual({ id: 8453 });
+  expect(chain).toEqual({ id: 8453, name: 'Base' });
   expect(transactions.map((tx: { to: string }) => tx.to)).toEqual(['0xbasevault', '0xbasequeue']);
+});
+
+it('stops before signing when fewer shares arrived than step 2 asks for', async () => {
+  // Step 1's bridge fee comes out of the shares: 1 soUSD sent, 0.7 arrived.
+  chainId = 8453;
+  mockReadShares.mockResolvedValueOnce(BigInt(700_000));
+  mount();
+  await act(async () => {
+    await expect(hook.withdraw('1')).rejects.toThrow('Only 700000 soUSD is on Base.');
+  });
+  // The form shows the hook's error: it keeps the amount that is there.
+  expect(hook.error).toBe('Only 700000 soUSD is on Base.');
+  expect(mockReadShares).toHaveBeenCalledWith(
+    expect.objectContaining({
+      address: '0xbasevault',
+      functionName: 'balanceOf',
+      args: ['0xsafe'],
+    }),
+  );
+  expect(execute).not.toHaveBeenCalled();
+});
+
+it('goes ahead when the share balance cannot be read', async () => {
+  chainId = 8453;
+  mockReadShares.mockRejectedValueOnce(new Error('RPC down'));
+  mount();
+  await act(async () => {
+    await hook.withdraw('1');
+  });
+  expect(execute).toHaveBeenCalledTimes(1);
 });
