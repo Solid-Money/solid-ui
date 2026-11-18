@@ -21,6 +21,7 @@ const mockSafeAddress = '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed';
 const mockReplace = jest.fn();
 const mockStampGetWhoami = jest.fn();
 const mockLogin = jest.fn();
+const mockFetchIsDeposited = jest.fn();
 const mockQueryClient = { clear: jest.fn() };
 
 jest.mock('@sentry/react-native', () => ({
@@ -91,7 +92,9 @@ jest.mock('@/lib/analytics', () => ({
 jest.mock('@/lib/intercom', () => ({
   useIntercom: () => ({ boot: jest.fn(), shutdown: jest.fn() }),
 }));
-jest.mock('@/hooks/useAnalytics', () => ({ fetchIsDeposited: jest.fn(async () => 0) }));
+jest.mock('@/hooks/useAnalytics', () => ({
+  fetchIsDeposited: (...args: unknown[]) => mockFetchIsDeposited(...args),
+}));
 jest.mock('@/store/usePointsStore', () => ({
   usePointsStore: {
     getState: () => ({ reset: jest.fn(), fetchPoints: jest.fn(async () => undefined) }),
@@ -174,6 +177,7 @@ describe('login saves a missing Safe address', () => {
     mockFetch = jest.fn();
     global.fetch = mockFetch as unknown as typeof fetch;
     respondToSave(201);
+    mockFetchIsDeposited.mockResolvedValue(0);
   });
 
   afterEach(() => {
@@ -256,6 +260,31 @@ describe('login saves a missing Safe address', () => {
 
     expect(useUserStore.getState().safeAddressSynced['user-1']).toBeUndefined();
     expect(mockReplace).toHaveBeenCalledWith(path.HOME);
+  });
+
+  it('keeps the refreshed tokens when the account turns out to have deposits', async () => {
+    // A 401 on the link, then a refresh that rotates the tokens: the balance
+    // check that follows must not write the login's copy, and its retired
+    // refresh token, back over them.
+    const refreshed = { accessToken: 'access-refreshed', refreshToken: 'refresh-refreshed' };
+    let saves = 0;
+    mockFetch.mockImplementation(async (url: string) => {
+      if (String(url).endsWith('/auths/refresh-token')) {
+        return { ok: true, status: 200, json: async () => ({ tokens: refreshed }) };
+      }
+      saves += 1;
+      return saves === 1
+        ? { ok: false, status: 401, json: async () => ({}) }
+        : { ok: true, status: 201, json: async () => ({ success: true }) };
+    });
+    mockFetchIsDeposited.mockResolvedValue(1);
+
+    await logIn();
+
+    const stored = useUserStore.getState().users.find(u => u.userId === 'user-1');
+    expect(stored?.tokens).toEqual(refreshed);
+    expect(stored?.isDeposited).toBe(true);
+    expect(useUserStore.getState().safeAddressSynced['user-1']).toBe(true);
   });
 
   it('sends nothing when the account already has one', async () => {

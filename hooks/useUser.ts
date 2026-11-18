@@ -287,8 +287,14 @@ const useUser = (): UseUserReturn => {
         const depositCount = await fetchIsDeposited(queryClient, user.safeAddress);
         const isDeposited = depositCount > 0;
         if (isDeposited) {
+          // Onto the stored row, not `user`: a session refresh since the caller
+          // took its copy rotates the tokens in the store, and writing the copy
+          // back would restore the retired refresh token, which the next
+          // refresh then presents and the server answers by revoking the
+          // session.
+          const stored = useUserStore.getState().users.find(u => u.userId === user.userId);
           updateUser({
-            ...user,
+            ...(stored ?? user),
             isDeposited: true,
           });
         }
