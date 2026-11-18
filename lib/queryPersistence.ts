@@ -31,8 +31,11 @@ import type {
  * Bump when the data a persisted query returns changes shape in a way the
  * screens reading it can't handle, so older cached copies are dropped instead
  * of rendered.
+ *
+ * 2: `tierMembership` is fetched with `?paymentModes=transfer` and its offers
+ * carry the first-year price and payment mode.
  */
-export const QUERY_CACHE_VERSION = 1;
+export const QUERY_CACHE_VERSION = 2;
 
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // Polled queries succeed every few seconds; batch their writes.

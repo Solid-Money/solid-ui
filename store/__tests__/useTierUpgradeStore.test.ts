@@ -32,9 +32,11 @@ it('opens with no tier at all, for a caller that does not know one', () => {
 });
 
 /**
- * A route is only offered because a particular tier sells it. Ultra is
- * soFUSE-only, so a "Cash" tab carried over from Prime would be a payment
- * method the review step cannot complete.
+ * A route is only offered because a particular tier sells it. Prime and Ultra
+ * are each sold for cash or a lock only when their own offer says so — Ultra
+ * stays lock-only for a build that has not opted into transfer upgrades — so a
+ * "Cash" tab carried over from Prime could be a payment method the review step
+ * cannot complete. The upgrade step settles the route again from the offer.
  */
 it('drops the payment route when a different tier is opened', () => {
   store.getState().open(RewardsTier.PRIME);

@@ -8,24 +8,20 @@ import { LIFI_QUOTE_REFRESH_MS } from '@/hooks/swap/useLifiSwapInfo';
 import { useBalances } from '@/hooks/useBalances';
 import useUser from '@/hooks/useUser';
 import { fetchLifiSwapQuote, LifiSwapApiError } from '@/lib/api/lifi-swap';
-import { covers } from '@/lib/tierUpgrade';
 import {
-  arrivedFundingCoverUsd,
   billingTokenRow,
-  canPayCashWith,
   cashFundingTokens,
   cashTokenKey,
-  defaultCashToken,
-  fundingNeedUsd,
   fundingSendAmount,
-  isBillingToken,
   latestUpgradeFunding,
+  resolveCashPayment,
   type UpgradeFunding,
 } from '@/lib/tierUpgradeFunding';
-import { TierMembershipState, TokenBalance, TokenType } from '@/lib/types';
+import { TierMembershipState, TierPaymentMode, TokenBalance, TokenType } from '@/lib/types';
 import { LifiSwapQuote } from '@/lib/types/lifi-swap';
 import { withRefreshToken } from '@/lib/utils';
 import { useLifiSwapStore } from '@/store/lifiSwapStore';
+import { useHasPendingTierUpgrade } from '@/store/usePendingTierUpgradeStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import type { TierUpgradeChainState } from '@/hooks/useTierMembership';
@@ -88,81 +84,86 @@ export const useCashFundingTokens = ({
  * one (see `defaultCashToken`). `payingFromFuse` is the one-signature path:
  * USDC already on Fuse, including USDC an earlier bridged payment brought in.
  * Anything else is swapped to Fuse first.
+ *
+ * `feeUsd` is what the first year costs now — `offerFirstYearFeeUsd` — since
+ * that is the amount the balance has to cover. A `transfer` upgrade has no
+ * bridge-fee cover: the Safe pays the whole fee itself, so nothing a bridge
+ * took can be absorbed, and the payment is judged with the cover at zero.
+ *
+ * `awaitingConfirm` is a `transfer` upgrade already paid and not yet
+ * confirmed. Its USDC has left the Safe, so the balance can no longer vouch
+ * for it; a step lets the user press on anyway, and asks `useSubscribeToTier`
+ * only to confirm that payment (`confirmPendingOnly`), never to make another.
+ *
+ * A bridged payment that has landed is only measured against a balance read
+ * asked for after it did (`checkingArrivedBalance`), so no step reads the
+ * USDC it brought as still missing and offers to send it again.
  */
 export const useCashPayment = ({
   membership,
   chain,
   feeUsd,
+  paymentMode = 'module',
 }: {
   membership: TierMembershipState | undefined;
   chain: TierUpgradeChainState | undefined;
   feeUsd: number;
+  paymentMode?: TierPaymentMode;
 }) => {
+  const { user } = useUser();
   const funding = useUpgradeFunding();
   const chosen = useTierUpgradeStore(state => state.cashToken);
+  const hasPendingUpgrade = useHasPendingTierUpgrade(user?.userId);
   const billingTokenAddress = membership?.contracts.billingTokenAddress ?? undefined;
   const { tokens, isLoading } = useCashFundingTokens({
     billingTokenAddress,
     usdcRaw: chain?.usdc,
   });
   const fuseUsdc = chain?.usdcAmount ?? 0;
-  const coverPct = membership?.bridgeFeeCoverPct ?? 0;
+  const coverPct = paymentMode === 'transfer' ? 0 : (membership?.bridgeFeeCoverPct ?? 0);
+  // Only an upgrade paid by transfer leaves the Safe before it is confirmed.
+  const awaitingConfirm = paymentMode === 'transfer' && hasPendingUpgrade;
+  const balancesLoaded = chain !== undefined;
+  const usdcReadAt = chain?.readStartedAt;
 
-  return useMemo(() => {
-    const coverUsd = arrivedFundingCoverUsd({ funding, feeUsd, fuseUsdc, coverPct });
-    const needUsd = fundingNeedUsd(feeUsd, fuseUsdc);
-    const chosenKey = chosen ? `${chosen.chainId}:${chosen.address.toLowerCase()}` : undefined;
-    // A token on another chain is only honoured while Fuse is actually short:
-    // with the fee already there, there is nothing to bridge, and the charge
-    // is taken from USDC on Fuse whatever the row says.
-    // Nor while a bridged payment is on its way or has landed: it is paid from
-    // Fuse now, and honouring the token that started it would quote a second
-    // bridge for what the cover already absorbs, and judge readiness on that
-    // token's balance instead of on the USDC actually sitting on Fuse.
-    const fundingInHand = funding.state === 'pending' || funding.state === 'arrived';
-    const picked = chosenKey
-      ? tokens.find(
-          token =>
-            cashTokenKey(token) === chosenKey &&
-            ((needUsd > 0 && !fundingInHand) ||
-              !billingTokenAddress ||
-              isBillingToken(token, billingTokenAddress)),
-        )
-      : undefined;
-    // Until the Fuse balance has been read, the default stays on USDC on Fuse:
-    // picking a token on another chain off a balance of zero that is merely
-    // still loading would flip the row from Base to Fuse a moment later.
-    const token =
-      picked ??
-      (billingTokenAddress
-        ? chain
-          ? defaultCashToken({ rows: tokens, billingTokenAddress, feeUsd, fuseUsdc, funding })
-          : tokens[0]
-        : undefined);
-    const payingFromFuse =
-      !token || !billingTokenAddress || isBillingToken(token, billingTokenAddress);
-
-    const affordable =
-      token && billingTokenAddress
-        ? canPayCashWith({ token, billingTokenAddress, feeUsd, fuseUsdc, coverUsd })
-        : feeUsd > 0 && covers(fuseUsdc, feeUsd);
-
-    return {
+  return useMemo(
+    () => ({
       tokens,
-      token,
-      payingFromFuse,
-      /** What is still missing on Fuse — what a bridged payment sends. */
-      needUsd,
-      /** What an arrived bridged payment earns off the first charge. */
-      coverUsd,
+      ...resolveCashPayment({
+        tokens,
+        chosen,
+        billingTokenAddress,
+        feeUsd,
+        fuseUsdc,
+        coverPct,
+        funding,
+        balancesLoaded,
+        usdcReadAt,
+        paymentMode,
+        awaitingConfirm,
+      }),
       coverPct,
       funding,
       fuseUsdc,
-      affordable,
       billingTokenAddress,
       isLoading,
-    };
-  }, [tokens, isLoading, chosen, billingTokenAddress, feeUsd, fuseUsdc, coverPct, funding, chain]);
+      awaitingConfirm,
+    }),
+    [
+      tokens,
+      isLoading,
+      chosen,
+      billingTokenAddress,
+      feeUsd,
+      fuseUsdc,
+      coverPct,
+      funding,
+      balancesLoaded,
+      usdcReadAt,
+      paymentMode,
+      awaitingConfirm,
+    ],
+  );
 };
 
 export type CashPayment = ReturnType<typeof useCashPayment>;
