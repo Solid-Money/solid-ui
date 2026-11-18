@@ -80,6 +80,19 @@ describe('vault FAQs', () => {
     expect(copy).toContain('soFUSE');
   });
 
+  // Bitcoin savings earn the tier's yield boost like the other yields, valued in dollars
+  // against the same cap and paid in soFUSE — never in BTC.
+  it('tells BTC savers their balance counts toward the yield boost, paid in soFUSE', () => {
+    const copy = getVaultFaqs(VaultType.BTC)
+      .map(faq => `${faq.question} ${faq.answer}`)
+      .join(' ');
+
+    expect(copy).toMatch(/yield boost/i);
+    expect(copy).toContain('Prime and Ultra');
+    expect(copy).toContain('soFUSE');
+    expect(copy).toMatch(/value in dollars/);
+  });
+
   it('falls back to the USDC vault for a type that is not a vault', () => {
     expect(getVaultFaqs('doge' as VaultType)).toBe(VAULT_FAQS[VaultType.USDC]);
   });
