@@ -14,9 +14,9 @@ import { useContactNames } from '@/hooks/useContactNames';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
+import { formatBtcRowAmount } from '@/lib/btcAmount';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { BTC_DISPLAY_DECIMALS } from '@/lib/soBtc';
-import { formatDecimalAmount } from '@/lib/support/formatAmount';
 import {
   TransactionCategory,
   TransactionDirection,
@@ -30,17 +30,12 @@ import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPrese
 
 /**
  * The row's amount. BTC amounts are fractions of a coin, so two places would round them to 0:
- * they show six, cut from the decimal string rather than through a float, and an amount above
- * zero that still cuts to 0 reads "< 0.000001".
+ * they show up to six, cut in bigint units rather than through a float (see formatBtcRowAmount).
  */
-const formatRowAmount = (amount: string, symbol?: string) => {
-  if (!/btc/i.test(symbol ?? '')) return formatNumber(Number(amount), 2);
-  const shown = formatDecimalAmount(amount, BTC_DISPLAY_DECIMALS);
-  if (/^-?0$/.test(shown) && /[1-9]/.test(amount)) {
-    return `< 0.${'1'.padStart(BTC_DISPLAY_DECIMALS, '0')}`;
-  }
-  return shown;
-};
+const formatRowAmount = (amount: string, symbol?: string) =>
+  /btc/i.test(symbol ?? '')
+    ? formatBtcRowAmount(amount, BTC_DISPLAY_DECIMALS)
+    : formatNumber(Number(amount), 2);
 
 type TransactionClassNames = {
   container?: string;
