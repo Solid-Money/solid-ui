@@ -254,6 +254,7 @@ const AiApiBenefitCard = ({
       <View
         style={styles.artwork}
         pointerEvents="none"
+        aria-hidden
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
