@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
+import { BALANCE_VALUE_STYLE, BalanceAmount } from '@/components/BalanceHeadline';
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
@@ -23,9 +24,14 @@ import HomeSpendCashbackTiles from '@/components/Home/NewHome/HomeSpendCashbackT
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { holdsFundsAnywhere } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
-import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
 import PageLayout from '@/components/PageLayout';
 import TierTrialSlot from '@/components/Rewards/NewRewards/TierTrialSlot';
+import {
+  TAB_SUMMARY_LABEL,
+  TabSummary,
+  TabSummaryActionSkeleton,
+  TabSummaryHeadline,
+} from '@/components/TabSummary';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { resolveDigitalWallet } from '@/constants/digital-wallet';
@@ -310,54 +316,65 @@ export default function HomeScreenNew() {
         {/* Rain sunset: the card-closing banner, in the same slot (Figma "1 · Home ·
             Card closing banner"). Nothing for anyone it does not affect. */}
         <RainClosingHomeBanner className="px-4" />
-        {isBalanceSectionLoading ? (
-          // Mirror the loaded wrappers and their heights so the wallet card does
-          // not jump when the headline and actions replace these.
-          <View className="gap-5">
-            <View className="items-center gap-1 pt-2">
-              <Skeleton className="h-6 w-28 rounded-md" />
-              <Skeleton className="h-[54px] w-48 rounded-xl" />
-            </View>
-            <View className="flex-row items-center gap-3 px-4">
-              <Skeleton className="h-14 flex-1 rounded-full" />
-              <Skeleton className="h-14 flex-1 rounded-full" />
-              <Skeleton className="h-14 flex-1 rounded-full" />
-            </View>
-          </View>
-        ) : displayTotal === undefined ? (
-          <View className="items-center gap-3">
-            <Text className="text-[16px] text-white/70">Balance</Text>
-            <Text className="text-[45px] font-semibold">—</Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Retry balances"
-              onPress={() => void refetchAll()}
-            >
-              <Text className="text-[14px] text-[#94F27F]">Balances unavailable · Retry</Text>
-            </TouchableOpacity>
-            <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
-          </View>
-        ) : (
-          <View className="gap-5">
+        <TabSummary
+          headline={
             <HeroExit spec={HERO_EXIT.balance}>
-              <WalletBalanceHeadline balance={displayTotal} symbol={displaySymbol} />
-              {/* Beside the balance, never in it: card credit can only be spent
-                  with the card, so it stays out of `totalBalance`. */}
-              <HomeBalancePills
-                dailyYield={
-                  portfolio.dailyYield === undefined
-                    ? undefined
-                    : toDisplayAmount(portfolio.dailyYield)
+              <TabSummaryHeadline
+                label={
+                  isBalanceSectionLoading ? (
+                    <Skeleton className="h-6 w-28 rounded-md" />
+                  ) : (
+                    <Text className={TAB_SUMMARY_LABEL}>Balance</Text>
+                  )
                 }
-                yieldSymbol={displaySymbol}
-                canHaveCardCredit={showWirexTiles}
+                value={
+                  isBalanceSectionLoading ? (
+                    <Skeleton className="h-[54px] w-48 rounded-xl" />
+                  ) : displayTotal === undefined ? (
+                    <Text className="font-semibold" style={BALANCE_VALUE_STYLE}>
+                      —
+                    </Text>
+                  ) : (
+                    <BalanceAmount balance={displayTotal} symbol={displaySymbol} />
+                  )
+                }
+                badge={
+                  isBalanceSectionLoading ? null : displayTotal === undefined ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry balances"
+                      onPress={() => void refetchAll()}
+                    >
+                      <Text className="text-sm text-brand">Balances unavailable · Retry</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <HomeBalancePills
+                      dailyYield={
+                        portfolio.dailyYield === undefined
+                          ? undefined
+                          : toDisplayAmount(portfolio.dailyYield)
+                      }
+                      yieldSymbol={displaySymbol}
+                      canHaveCardCredit={showWirexTiles}
+                    />
+                  )
+                }
               />
-              {portfolio.isError && (
+            </HeroExit>
+          }
+          actions={
+            <HeroExit spec={HERO_EXIT.actions}>
+              {isBalanceSectionLoading ? (
+                <TabSummaryActionSkeleton count={3} />
+              ) : (
+                <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
+              )}
+              {!isBalanceSectionLoading && displayTotal !== undefined && portfolio.isError && (
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel="Retry balances"
                   onPress={() => void refetchAll()}
-                  className="items-center pt-1"
+                  className="items-center px-4 pt-2"
                 >
                   <Text className="text-[13px] text-white/50">
                     Some balances unavailable · <Text className="text-[#94F27F]">Retry</Text>
@@ -365,11 +382,8 @@ export default function HomeScreenNew() {
                 </TouchableOpacity>
               )}
             </HeroExit>
-            <HeroExit spec={HERO_EXIT.actions}>
-              <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
-            </HeroExit>
-          </View>
-        )}
+          }
+        />
 
         {/* HomeWalletCard brings its own px-4 and bleeds back out by the shadow the
             PNG bakes into each side, so the visible card lines up with the sections

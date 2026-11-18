@@ -8,6 +8,7 @@ import { getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
 import { formatAiApiBillingFunds, formatAiApiLimit, formatAiApiRate } from './aiApiFormat';
+import AiApiIntroDisclosure from './AiApiIntroDisclosure';
 import { ANTSEED_DOCS_URL } from './aiApiLinks';
 import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiIntroChevron } from './AiApiPrimitives';
 
@@ -205,24 +206,28 @@ export const AiApiIntroFaq = ({
         {questions.map(({ question, answer, hasSetupLink }, index) => {
           const isOpen = index === expanded;
           return (
-            <View key={question} className={cn(index > 0 && 'border-t border-white/[0.07]')}>
+            <View
+              key={question}
+              className={cn('pb-2', index > 0 && 'border-t border-white/[0.07]')}
+            >
               <Pressable
                 accessibilityRole="button"
                 aria-expanded={isOpen}
-                onPress={() => setExpanded(isOpen ? null : index)}
-                className="flex-row items-center gap-3 py-3.5 active:opacity-70"
+                onPress={() => setExpanded(current => (current === index ? null : index))}
+                hitSlop={{ bottom: 8 }}
+                className="flex-row items-center gap-3 pb-1.5 pt-3.5"
               >
                 <Text className="flex-1 text-[15px] font-medium leading-[21px] text-white">
                   {question}
                 </Text>
                 <AiApiIntroChevron expanded={isOpen} />
               </Pressable>
-              {isOpen ? (
-                <View className="-mt-2 gap-2 pb-3.5 pr-[30px]">
+              <AiApiIntroDisclosure expanded={isOpen}>
+                <View className="gap-2 pb-1.5 pr-[30px]">
                   <Text className="text-[14px] leading-5 text-white/60">{answer}</Text>
                   {hasSetupLink ? <SetupLink onPress={onOpenSetup} /> : null}
                 </View>
-              ) : null}
+              </AiApiIntroDisclosure>
             </View>
           );
         })}

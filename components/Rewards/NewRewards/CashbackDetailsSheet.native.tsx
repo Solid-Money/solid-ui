@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -15,7 +15,6 @@ const CashbackDetailsSheet = ({
 }: CashbackDetailsSheetProps) => {
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ['76%'], []);
   const [animationSession, setAnimationSession] = useState(0);
 
   const present = useCallback(() => {
@@ -46,8 +45,8 @@ const CashbackDetailsSheet = ({
       {React.cloneElement(trigger, { onPress: present })}
       <BottomSheetModal
         ref={sheetRef}
-        snapPoints={snapPoints}
-        enableDynamicSizing={false}
+        enableDynamicSizing
+        topInset={insets.top}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
         backgroundStyle={{
@@ -62,10 +61,7 @@ const CashbackDetailsSheet = ({
           height: 5,
         }}
       >
-        <BottomSheetScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 7 }}
-        >
+        <BottomSheetScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 7 }}>
           <CashbackDetailsContent
             {...cashbackData}
             animationSession={animationSession}

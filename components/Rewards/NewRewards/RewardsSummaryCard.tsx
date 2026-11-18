@@ -11,7 +11,6 @@ import Svg, {
 
 import { Text } from '@/components/ui/text';
 import { formatBalance } from '@/lib/utils';
-import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
 
@@ -75,8 +74,6 @@ const RewardsGradient = () => (
 );
 
 interface RewardsSummaryCardProps {
-  /** This month's cashback, settled and escrowed together, in `cashbackDetails.currency`. */
-  cashback: number;
   referrals: number;
   cashbackDetails: CashbackDetailsData;
   onGetMoreCashback: () => void;
@@ -99,17 +96,15 @@ const RewardsIcon = () => (
 
 interface SummaryStatProps {
   label: string;
-  value: number;
-  /** "$" unless the figure is in another currency (a euro cardholder's cashback). */
-  symbol?: string;
+  value: string;
   onPress?: () => void;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value, symbol = '$', onPress }: SummaryStatProps) => (
+const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
   <Pressable
     accessibilityRole={onPress ? 'button' : undefined}
-    accessibilityLabel={`${label}. ${formatBalance(value, symbol)}`}
+    accessibilityLabel={`${label}. ${value}`}
     disabled={!onPress}
     onPress={onPress}
     className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
@@ -122,23 +117,19 @@ const SummaryStat = ({ label, value, symbol = '$', onPress }: SummaryStatProps) 
       {label}
     </Text>
     <Text
-      className="text-[26px] text-white"
+      className="text-center text-[26px] text-white"
       // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
       style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
     >
-      {formatBalance(value, symbol)}
+      {value}
     </Text>
   </Pressable>
 );
 
 /**
  * "Rewards" summary card: Cashback and Referrals split into two columns.
- *
- * The cashback figure counts this month's settled and escrowed cashback as one
- * number — see `monthlyCashbackTotal`, which the caller applies.
  */
 const RewardsSummaryCard = ({
-  cashback,
   referrals,
   cashbackDetails,
   onGetMoreCashback,
@@ -160,18 +151,16 @@ const RewardsSummaryCard = ({
 
       <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
-          trigger={
-            <SummaryStat
-              label="Cashback"
-              value={cashback}
-              symbol={CURRENCY_SYMBOLS[cashbackDetails.currency ?? 'USD']}
-            />
-          }
+          trigger={<SummaryStat label="Cashback" value={cashbackDetails.monthlyCashbackLabel} />}
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />
         <View className="w-px bg-white/10" />
-        <SummaryStat label="Referrals" value={referrals} onPress={onReferralsPress} />
+        <SummaryStat
+          label="Referrals"
+          value={formatBalance(referrals)}
+          onPress={onReferralsPress}
+        />
       </View>
 
       <View className="absolute left-0 right-0 top-16 h-px bg-white/10" />

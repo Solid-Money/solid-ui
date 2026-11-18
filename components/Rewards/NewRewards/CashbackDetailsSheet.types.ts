@@ -4,14 +4,9 @@ import type { ReactElement } from 'react';
 
 export interface CashbackDetailsData {
   cashbackRate: number;
-  /**
-   * The currency every figure below is in — the cardholder's cashback currency
-   * (see `resolveCashbackMonth`). Absent is USD.
-   */
+  /** Current cashback currency for the rate description and monthly cap. */
   currency?: CashbackCurrency;
-  cashbackThisMonth: number;
-  /** Earned this month but still escrowed; absent hides the pending row. */
-  cashbackPendingThisMonth?: number;
+  monthlyCashbackLabel: string;
   /** What this month's purchases are paid up to — see `monthlyCashbackCap`. */
   maxCashbackMonthly: number;
   /**
@@ -20,12 +15,7 @@ export interface CashbackDetailsData {
    * (purchases made during a trial that has since ended keep its cap).
    */
   tierMonthlyCap?: number;
-  allTimeCashback: number;
-  /**
-   * Lifetime cashback in the other currency, when there is any: printed beside
-   * `allTimeCashback`, never added to it — see `resolveAllTimeCashback`.
-   */
-  allTimeCashbackOther?: CashbackFigure;
+  allTimeCashback: CashbackFigure[];
 }
 
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {

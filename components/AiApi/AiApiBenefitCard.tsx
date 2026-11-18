@@ -199,9 +199,6 @@ const FloatingLogos = ({ id, scale }: { id: string; scale: number }) => {
         styles.logos,
         scale < 1 ? { transform: [{ scale }], transformOrigin: 'right center' } : null,
       ]}
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
     >
       <LogosGlow id={`${id}-glow`} progress={progress} />
       {FLOATING_LOGOS.map(logo => (
@@ -213,7 +210,7 @@ const FloatingLogos = ({ id, scale }: { id: string; scale: number }) => {
 
 /** The card's faint green wash, centred under the logos. */
 const CardGlow = ({ id }: { id: string }) => (
-  <View style={styles.cardGlow} pointerEvents="none">
+  <View style={styles.cardGlow}>
     <Svg width="100%" height="100%" preserveAspectRatio="none">
       <Defs>
         <RadialGradient id={id} cx="50%" cy="50%" rx="50%" ry="50%">
@@ -254,8 +251,15 @@ const AiApiBenefitCard = ({
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
       className="min-h-[88px] justify-center overflow-hidden rounded-twice border border-white/5 bg-card px-[18px] py-5 transition-all active:scale-95 active:opacity-80"
     >
-      <CardGlow id={`${id}-card`} />
-      <FloatingLogos id={id} scale={logosScale(width)} />
+      <View
+        style={styles.artwork}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <CardGlow id={`${id}-card`} />
+        <FloatingLogos id={id} scale={logosScale(width)} />
+      </View>
       <View className="max-w-[200px] gap-0.5">
         <View className="flex-row items-center gap-2">
           <Text className="text-[16px] font-medium text-white">{rate} cashback</Text>
@@ -268,19 +272,20 @@ const AiApiBenefitCard = ({
 };
 
 const styles = StyleSheet.create({
+  // Center the artwork across the whole card, including the copy's padding.
+  artwork: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
   cardGlow: {
     position: 'absolute',
-    top: '50%',
-    marginTop: -CARD_GLOW.ry,
     right: CARD_GLOW.right - CARD_GLOW.rx,
     width: CARD_GLOW.rx * 2,
     height: CARD_GLOW.ry * 2,
   },
   logos: {
-    position: 'absolute',
-    right: LOGOS_FRAME.right,
-    top: '50%',
-    marginTop: -LOGOS_FRAME.height / 2,
+    marginRight: LOGOS_FRAME.right,
     width: LOGOS_FRAME.width,
     height: LOGOS_FRAME.height,
   },

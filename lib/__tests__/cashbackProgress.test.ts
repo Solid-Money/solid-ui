@@ -174,25 +174,32 @@ describe('cashbackFiguresByCurrency', () => {
     ]);
   });
 
-  it('always lists the own currency, and the other only when there is some', () => {
+  it('keeps one zero in the preferred currency when both totals are zero', () => {
     expect(cashbackFiguresByCurrency({ USD: 0, EUR: 0 }, 'EUR')).toEqual([
       { value: 0, currency: 'EUR' },
     ]);
     expect(cashbackFiguresByCurrency({ USD: 25 }, 'USD')).toEqual([{ value: 25, currency: 'USD' }]);
   });
+
+  it.each([
+    ['EUR', 'USD'],
+    ['USD', 'EUR'],
+  ] as const)('omits a zero %s total and keeps even a sub-cent %s total', (own, other) => {
+    expect(cashbackFiguresByCurrency({ [own]: 0, [other]: 0.001 }, own)).toEqual([
+      { value: 0.001, currency: other },
+    ]);
+  });
 });
 
 describe('resolveAllTimeCashback', () => {
   it('gives a dollar cardholder the figure they always had, and nothing beside it', () => {
-    expect(resolveAllTimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))).toEqual({
-      allTimeCashback: 25,
-      allTimeCashbackOther: undefined,
-    });
+    expect(resolveAllTimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 25 }))).toEqual([
+      { currency: 'USD', value: 25 },
+    ]);
     // Floored at this month's settled figure while the details lag behind.
-    expect(resolveAllTimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 3 }))).toEqual({
-      allTimeCashback: 8,
-      allTimeCashbackOther: undefined,
-    });
+    expect(resolveAllTimeCashback(rewardsFor({}), cardCashback({ totalUsdValue: 3 }))).toEqual([
+      { currency: 'USD', value: 8 },
+    ]);
   });
 
   it('gives a euro cardholder their euro lifetime, with any dollar lifetime beside it', () => {
@@ -212,10 +219,10 @@ describe('resolveAllTimeCashback', () => {
     );
 
     // €12.40 (this month's settled euros beat the lagging €9.20) and $150 — not €162.40.
-    expect(result).toEqual({
-      allTimeCashback: 12.4,
-      allTimeCashbackOther: { value: 150, currency: 'USD' },
-    });
+    expect(result).toEqual([
+      { value: 12.4, currency: 'EUR' },
+      { value: 150, currency: 'USD' },
+    ]);
   });
 
   it('leaves the dollar side out for a euro cardholder who never earned in dollars', () => {
@@ -224,6 +231,6 @@ describe('resolveAllTimeCashback', () => {
         rewardsFor({ cashbackCurrency: 'EUR', cashbackEur: eurMonth, cashbackThisMonth: 0 }),
         cardCashback({ currency: 'EUR' }),
       ),
-    ).toEqual({ allTimeCashback: 12.4, allTimeCashbackOther: undefined });
+    ).toEqual([{ value: 12.4, currency: 'EUR' }]);
   });
 });
