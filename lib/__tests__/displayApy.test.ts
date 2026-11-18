@@ -26,7 +26,16 @@ const matureVault: APYs = {
 describe('isNewVault', () => {
   it('is new for the first 15 days of its rate history', () => {
     expect(isNewVault(youngVault, NOW)).toBe(true);
+    expect(isNewVault({ ...youngVault, firstRateAt: '2026-11-18T12:00:00Z' }, NOW)).toBe(true);
     expect(isNewVault({ ...youngVault, firstRateAt: '2026-11-03T12:00:01Z' }, NOW)).toBe(true);
+  });
+
+  it('is not new when its start is ahead of the device clock', () => {
+    expect(isNewVault({ ...youngVault, firstRateAt: '2026-11-18T13:00:00Z' }, NOW)).toBe(false);
+    expect(displayApy({ ...youngVault, firstRateAt: '2027-01-01T00:00:00Z' }, NOW)).toEqual({
+      apy: 0.63,
+      days: 7,
+    });
   });
 
   it('is not new from day 15 on', () => {

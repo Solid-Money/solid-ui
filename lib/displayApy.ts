@@ -21,13 +21,16 @@ type Now = Date | number;
 
 /**
  * Whether the vault's rate history began under NEW_VAULT_DAYS ago. An analytics
- * API that doesn't say when (`firstRateAt` absent or null) reads as not new.
+ * API that doesn't say when (`firstRateAt` absent or null) reads as not new, and
+ * so does a start ahead of this device's clock: a clock that far behind would
+ * otherwise make every vault look new.
  */
 export const isNewVault = (apys: APYs | undefined, now: Now = Date.now()) => {
   if (!apys?.firstRateAt) return false;
   const startedAt = Date.parse(apys.firstRateAt);
   if (Number.isNaN(startedAt)) return false;
-  return Number(now) - startedAt < NEW_VAULT_DAYS * DAY_MS;
+  const age = Number(now) - startedAt;
+  return age >= 0 && age < NEW_VAULT_DAYS * DAY_MS;
 };
 
 /**
