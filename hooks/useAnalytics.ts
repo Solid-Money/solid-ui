@@ -27,6 +27,7 @@ import {
   getBankTransfers,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
+import { displayApy } from '@/lib/displayApy';
 import {
   APYs,
   BankTransferActivityItem,
@@ -48,11 +49,6 @@ import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
-const ApyToDays = {
-  sevenDay: 7,
-  fifteenDay: 15,
-  thirtyDay: 30,
-};
 
 /**
  * The analytics key for a vault: the vault itself, or the USD vault when none is
@@ -610,26 +606,17 @@ export const useAPYs = (vault?: VaultType) => {
   });
 };
 
+/**
+ * The APY a vault is shown at: its trailing day while it is under 15 days old,
+ * otherwise the best of its 7, 15 and 30-day windows (see displayApy).
+ */
 export const useMaxAPY = (vault?: VaultType) => {
   const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
-  const thirtyDay = apys?.thirtyDay ?? 0;
-  const fifteenDay = apys?.fifteenDay ?? 0;
-  const sevenDay = apys?.sevenDay ?? 0;
-
-  const candidates = [
-    { apy: sevenDay, days: ApyToDays.sevenDay },
-    { apy: fifteenDay, days: ApyToDays.fifteenDay },
-    { apy: thirtyDay, days: ApyToDays.thirtyDay },
-  ].filter(e => e.apy > 0);
-
-  const best = candidates.reduce<(typeof candidates)[0] | undefined>(
-    (a, b) => (!a || b.apy > a.apy ? b : a),
-    undefined,
-  );
+  const { apy, days } = displayApy(apys);
 
   return {
-    maxAPY: best?.apy ?? 0,
-    maxAPYDays: best?.days ?? ApyToDays.thirtyDay,
+    maxAPY: apy,
+    maxAPYDays: days,
     isAPYsLoading,
   };
 };
