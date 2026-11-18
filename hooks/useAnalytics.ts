@@ -1,3 +1,4 @@
+import { useEffect, useReducer } from 'react';
 import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
@@ -27,7 +28,7 @@ import {
   getBankTransfers,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { displayApy } from '@/lib/displayApy';
+import { displayApy, newVaultChangesAt } from '@/lib/displayApy';
 import {
   APYs,
   BankTransferActivityItem,
@@ -49,6 +50,8 @@ import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
+/** setTimeout's longest delay; a longer one fires at once. */
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
  * The analytics key for a vault: the vault itself, or the USD vault when none is
@@ -612,6 +615,18 @@ export const useAPYs = (vault?: VaultType) => {
  */
 export const useMaxAPY = (vault?: VaultType) => {
   const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
+  // Whether the vault counts as new turns on the clock, not the data: re-render when
+  // it changes, which an unchanged poll would not do.
+  const [, rerender] = useReducer((count: number) => count + 1, 0);
+  const changesAt = newVaultChangesAt(apys);
+  useEffect(() => {
+    if (changesAt === undefined) return;
+    const timer = setTimeout(
+      rerender,
+      Math.min(Math.max(changesAt - Date.now(), 0), MAX_TIMEOUT_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [changesAt]);
   const { apy, days } = displayApy(apys);
 
   return {

@@ -1,4 +1,11 @@
-import { apyPeriodText, displayApy, isNewVault, newVaultApy } from '@/lib/displayApy';
+import {
+  apyPeriodText,
+  displayApy,
+  formatApyPercent,
+  isNewVault,
+  newVaultApy,
+  newVaultChangesAt,
+} from '@/lib/displayApy';
 
 import type { APYs } from '@/lib/types';
 
@@ -90,9 +97,49 @@ describe('displayApy', () => {
   });
 });
 
+describe('newVaultChangesAt', () => {
+  it('is the end of the first 15 days while the vault is new', () => {
+    expect(newVaultChangesAt(youngVault, NOW)).toBe(Date.parse('2026-11-28T09:00:00Z'));
+  });
+
+  it('is the start while that is still ahead of the device clock', () => {
+    expect(newVaultChangesAt({ ...youngVault, firstRateAt: '2026-11-18T13:00:00Z' }, NOW)).toBe(
+      Date.parse('2026-11-18T13:00:00Z'),
+    );
+  });
+
+  it('is undefined once it never changes, or without a start', () => {
+    expect(newVaultChangesAt(matureVault, NOW)).toBeUndefined();
+    expect(newVaultChangesAt({ ...youngVault, firstRateAt: '2026-11-03T12:00:00Z' }, NOW)).toBe(
+      undefined,
+    );
+    expect(newVaultChangesAt({ ...youngVault, firstRateAt: null }, NOW)).toBeUndefined();
+    expect(newVaultChangesAt({ ...youngVault, firstRateAt: 'not a date' }, NOW)).toBeUndefined();
+    expect(newVaultChangesAt(undefined, NOW)).toBeUndefined();
+  });
+});
+
 describe('apyPeriodText', () => {
   it('reads a day as 24 hours and anything longer in days', () => {
     expect(apyPeriodText(1)).toBe('24 hours');
     expect(apyPeriodText(15)).toBe('15 days');
+  });
+});
+
+describe('formatApyPercent', () => {
+  it('shows one decimal', () => {
+    expect(formatApyPercent(5.94)).toBe('5.9%');
+    expect(formatApyPercent(0.63)).toBe('0.6%');
+    expect(formatApyPercent(0.05)).toBe('0.1%');
+  });
+
+  it('never shows a positive rate as 0.0%', () => {
+    expect(formatApyPercent(0.04)).toBe('0.04%');
+    expect(formatApyPercent(0.005)).toBe('0.01%');
+    expect(formatApyPercent(0.004)).toBe('<0.01%');
+  });
+
+  it('still shows a true 0 as 0.0%', () => {
+    expect(formatApyPercent(0)).toBe('0.0%');
   });
 });

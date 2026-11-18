@@ -34,6 +34,23 @@ export const isNewVault = (apys: APYs | undefined, now: Now = Date.now()) => {
 };
 
 /**
+ * When `isNewVault` next changes for this vault, as a timestamp: its start while
+ * that is still ahead of the clock, else the end of its first NEW_VAULT_DAYS.
+ * Undefined once it never will, or when the API doesn't say when it started.
+ */
+export const newVaultChangesAt = (
+  apys: APYs | undefined,
+  now: Now = Date.now(),
+): number | undefined => {
+  if (!apys?.firstRateAt) return undefined;
+  const startedAt = Date.parse(apys.firstRateAt);
+  if (Number.isNaN(startedAt)) return undefined;
+  if (Number(now) < startedAt) return startedAt;
+  const endsAt = startedAt + NEW_VAULT_DAYS * DAY_MS;
+  return Number(now) < endsAt ? endsAt : undefined;
+};
+
+/**
  * A new vault's trailing-day APY, when there is a positive one. Undefined for
  * any other vault, and for a new one whose last day earned nothing.
  */
@@ -70,3 +87,14 @@ export const displayApy = (
 
 /** The span an APY covers, for copy like "over the last …": "24 hours" or "7 days". */
 export const apyPeriodText = (days: number) => (days === 1 ? '24 hours' : `${days} days`);
+
+/**
+ * An APY as a percentage, to one decimal. A positive rate one decimal would
+ * round to "0.0%" gets two, or "<0.01%" below that, so it never reads as
+ * nothing; a true 0 is still "0.0%".
+ */
+export const formatApyPercent = (apy: number) => {
+  if (apy > 0 && apy < 0.005) return '<0.01%';
+  if (apy > 0 && apy < 0.05) return `${apy.toFixed(2)}%`;
+  return `${apy.toFixed(1)}%`;
+};
