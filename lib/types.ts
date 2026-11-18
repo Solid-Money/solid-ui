@@ -3420,9 +3420,16 @@ export enum ActivityGroup {
 
 export interface APYs {
   allTime: number;
+  /** The trailing day, annualised. Absent on older analytics APIs. */
+  oneDay?: number;
   sevenDay: number;
   fifteenDay: number;
   thirtyDay: number;
+  /**
+   * When the vault's rate history starts (ISO 8601): about when it was
+   * deployed. Null without history; absent on older analytics APIs.
+   */
+  firstRateAt?: string | null;
 }
 
 export interface TotalAPYResponse {

@@ -9,6 +9,7 @@ import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
+import { pastThirtyDaysApy } from '@/lib/displayApy';
 import { sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 
@@ -40,11 +41,12 @@ export default function EarnScreen() {
     [VaultType.FUSE]: useMaxAPY(VaultType.FUSE),
     [VaultType.BTC]: useMaxAPY(VaultType.BTC),
   };
-  const thirtyDay = {
-    [VaultType.USDC]: useAPYs(VaultType.USDC).data?.thirtyDay,
-    [VaultType.ETH]: useAPYs(VaultType.ETH).data?.thirtyDay,
-    [VaultType.FUSE]: useAPYs(VaultType.FUSE).data?.thirtyDay,
-    [VaultType.BTC]: useAPYs(VaultType.BTC).data?.thirtyDay,
+  // The rate each product's last 30 days are read from: never a new vault's trailing day.
+  const pastApy = {
+    [VaultType.USDC]: pastThirtyDaysApy(useAPYs(VaultType.USDC).data),
+    [VaultType.ETH]: pastThirtyDaysApy(useAPYs(VaultType.ETH).data),
+    [VaultType.FUSE]: pastThirtyDaysApy(useAPYs(VaultType.FUSE).data),
+    [VaultType.BTC]: pastThirtyDaysApy(useAPYs(VaultType.BTC).data),
   };
   const interest = {
     [VaultType.USDC]: useVaultInterestEarned(VaultType.USDC),
@@ -121,7 +123,7 @@ export default function EarnScreen() {
             sum +
             interestOverPastDays(
               holding.valueUsd ?? 0,
-              thirtyDay[holding.type] || rates[holding.type].maxAPY,
+              pastApy[holding.type],
               30,
               holding.unreadUsd > 0 ? undefined : interest[holding.type].interestUsd,
             ),
@@ -129,7 +131,7 @@ export default function EarnScreen() {
         ) +
         interestOverPastDays(
           lockedFuse === undefined ? 0 : (portfolio.lockedTotal ?? 0),
-          thirtyDay[VaultType.FUSE] || rates[VaultType.FUSE].maxAPY,
+          pastApy[VaultType.FUSE],
         );
 
   return (

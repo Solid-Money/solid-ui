@@ -12,6 +12,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
+import { pastThirtyDaysApy } from '@/lib/displayApy';
 import { coinAssetPath, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { isEurVault } from '@/lib/vaultCurrency';
@@ -117,7 +118,7 @@ export default function SavingsScreenNew() {
       ? undefined
       : interestOverPastDays(
           balanceUsd,
-          apys?.thirtyDay || maxAPY,
+          pastThirtyDaysApy(apys),
           30,
           unreadUsd > 0 ? undefined : interest.interest,
         );
