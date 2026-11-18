@@ -60,17 +60,10 @@ export const newVaultApy = (apys: APYs | undefined, now: Now = Date.now()) => {
 };
 
 /**
- * The APY a vault is shown at, and the days it covers. A new vault's trailing
- * day; otherwise the best of the 7, 15 and 30-day windows (30 days, at 0%,
- * when none is positive).
+ * The best of the 7, 15 and 30-day windows, and the days it covers (30 days, at
+ * 0%, when none is positive). Never the trailing day.
  */
-export const displayApy = (
-  apys: APYs | undefined,
-  now: Now = Date.now(),
-): { apy: number; days: number } => {
-  const oneDay = newVaultApy(apys, now);
-  if (oneDay !== undefined) return { apy: oneDay, days: APY_WINDOW_DAYS.oneDay };
-
+export const bestWindowApy = (apys: APYs | undefined): { apy: number; days: number } => {
   const best = [
     { apy: apys?.sevenDay ?? 0, days: APY_WINDOW_DAYS.sevenDay },
     { apy: apys?.fifteenDay ?? 0, days: APY_WINDOW_DAYS.fifteenDay },
@@ -84,6 +77,27 @@ export const displayApy = (
 
   return best ?? { apy: 0, days: APY_WINDOW_DAYS.thirtyDay };
 };
+
+/**
+ * The APY a vault is shown at, and the days it covers: a new vault's trailing
+ * day, otherwise its best window (see bestWindowApy).
+ */
+export const displayApy = (
+  apys: APYs | undefined,
+  now: Now = Date.now(),
+): { apy: number; days: number } => {
+  const oneDay = newVaultApy(apys, now);
+  return oneDay !== undefined ? { apy: oneDay, days: APY_WINDOW_DAYS.oneDay } : bestWindowApy(apys);
+};
+
+/**
+ * The APY the last 30 days' interest is read from (see interestOverPastDays):
+ * the 30-day window, or the best window while it has none. Never a new vault's
+ * trailing day, so the headline leaving it at day 15 doesn't change what was
+ * earned.
+ */
+export const pastThirtyDaysApy = (apys: APYs | undefined) =>
+  apys?.thirtyDay || bestWindowApy(apys).apy;
 
 /** The span an APY covers, for copy like "over the last …": "24 hours" or "7 days". */
 export const apyPeriodText = (days: number) => (days === 1 ? '24 hours' : `${days} days`);

@@ -1,10 +1,12 @@
 import {
   apyPeriodText,
+  bestWindowApy,
   displayApy,
   formatApyPercent,
   isNewVault,
   newVaultApy,
   newVaultChangesAt,
+  pastThirtyDaysApy,
 } from '@/lib/displayApy';
 
 import type { APYs } from '@/lib/types';
@@ -94,6 +96,34 @@ describe('displayApy', () => {
     expect(
       displayApy({ allTime: 0, sevenDay: 0, fifteenDay: -1, thirtyDay: 0, firstRateAt: null }, NOW),
     ).toEqual({ apy: 0, days: 30 });
+  });
+});
+
+describe('bestWindowApy', () => {
+  it("is the best window, never a new vault's trailing day", () => {
+    expect(bestWindowApy(youngVault)).toEqual({ apy: 0.63, days: 7 });
+    expect(bestWindowApy(matureVault)).toEqual({ apy: 5.94, days: 30 });
+  });
+
+  it('is 0% over 30 days with no positive window', () => {
+    expect(bestWindowApy(undefined)).toEqual({ apy: 0, days: 30 });
+  });
+});
+
+describe('pastThirtyDaysApy', () => {
+  it('is the 30-day window when there is one', () => {
+    expect(pastThirtyDaysApy(matureVault)).toBe(5.94);
+    expect(pastThirtyDaysApy(youngVault)).toBe(0.15);
+  });
+
+  it("is the best window, not the trailing day, while a new vault's 30 days are 0", () => {
+    const noThirtyDay = { ...youngVault, oneDay: 8, sevenDay: 4, thirtyDay: 0 };
+    expect(displayApy(noThirtyDay, NOW)).toEqual({ apy: 8, days: 1 });
+    expect(pastThirtyDaysApy(noThirtyDay)).toBe(4);
+  });
+
+  it('is 0 with no rates', () => {
+    expect(pastThirtyDaysApy(undefined)).toBe(0);
   });
 });
 

@@ -12,6 +12,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
+import { pastThirtyDaysApy } from '@/lib/displayApy';
 import { coinAssetPath, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { isEurVault } from '@/lib/vaultCurrency';
@@ -52,7 +53,7 @@ export default function SavingsScreenNew() {
     isEurLoading,
   } = useTotalSavingsUSD();
   const { vaults: walletVaults, isLoading: isWalletVaultsLoading } = useSavingsVaults();
-  const { maxAPY, maxAPYDays, isAPYsLoading } = useMaxAPY(vaultType);
+  const { maxAPY, isAPYsLoading } = useMaxAPY(vaultType);
   const { data: apys } = useAPYs(vaultType);
   const interest = useVaultInterestEarned(vaultType);
   const walletVault = walletVaults.find(item => item.key === VAULT_KEY_BY_TYPE[vaultType]);
@@ -117,7 +118,7 @@ export default function SavingsScreenNew() {
       ? undefined
       : interestOverPastDays(
           balanceUsd,
-          apys?.thirtyDay || (maxAPYDays === 1 ? 0 : maxAPY),
+          pastThirtyDaysApy(apys),
           30,
           unreadUsd > 0 ? undefined : interest.interest,
         );
