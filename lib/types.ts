@@ -3655,15 +3655,53 @@ export type ProvisioningStepInput = {
 };
 
 export interface WhatsNewStep {
+  /** The slide's image, or its video's poster. */
   imageUrl: string;
+  /** A short line over the title, e.g. "Spend your crypto". */
+  eyebrow?: string;
+  /** A few seconds of muted loop, played in place of the image. */
+  videoUrl?: string;
+  videoDurationSec?: number;
   title: string;
   text: string;
   buttonLabel?: string;
   buttonLink?: string;
 }
 
+/**
+ * `carousel` is the step popup (image, title, text, button per step). `single`
+ * is one image or one short video with no card around it. Popups saved before
+ * `format` existed have none and are carousels.
+ */
+export type WhatsNewFormat = 'carousel' | 'single';
+
+/** How a single shows on a phone. From `md` up it is always a popup. */
+export type WhatsNewPresentation = 'popup' | 'drawer';
+
+export interface WhatsNewMedia {
+  type: 'image' | 'video';
+  url: string;
+  /** Intrinsic pixel size, so the media is laid out before it loads. */
+  width: number;
+  height: number;
+  /** Read out by screen readers. */
+  alt: string;
+  /** Video only: shown until the first frame, and instead of a video that can't play. */
+  posterUrl?: string;
+  durationSec?: number;
+  /** Video only: whether to offer the sound button. */
+  hasAudio?: boolean;
+}
+
 export interface WhatsNew {
   _id: string;
+  /** Admin label, sent with the analytics events. */
+  name?: string;
+  format?: WhatsNewFormat;
+  presentation?: WhatsNewPresentation;
+  media?: WhatsNewMedia;
+  /** Opened when the media is tapped: `/path` in the app, `https://` in the browser. */
+  link?: string;
   steps: WhatsNewStep[];
   isActive: boolean;
   showOnLoad: boolean;
