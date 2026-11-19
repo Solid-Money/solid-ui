@@ -284,6 +284,10 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
     const index = placedWidthRef.current === null ? startIndex : activeIndex;
     pagerRef.current?.scrollTo({ x: index * layout.pageWidth, animated: false });
     placedWidthRef.current = layout.pageWidth;
+    // A swipe under way when the screen rotated may still deliver snapshots
+    // from before the rotation, so it stops counting here. It counts again
+    // from its momentum, which starts after this and ends where it rests.
+    isSwipingRef.current = false;
   }, [activeIndex, layout.pageWidth, startIndex]);
 
   // The nearest page to an offset the user scrolled to becomes the slide.

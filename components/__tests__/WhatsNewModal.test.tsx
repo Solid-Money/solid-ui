@@ -152,6 +152,38 @@ describe('WhatsNewModal pager', () => {
     act(() => modal.renderer.unmount());
   });
 
+  it('ignores old offsets from a swipe the screen rotated during, then follows where it rests', () => {
+    const modal = render(1);
+    modal.layOut();
+    const oldWidth = pageWidth();
+    const at = (x: number) => ({ nativeEvent: { contentOffset: { x, y: 0 } } });
+    const pager = () =>
+      modal.renderer.root.find((node: any) => node.props.horizontal === true).props;
+
+    act(() => pager().onScrollBeginDrag());
+    // Narrower: the old offsets read at the new width would name the last slide.
+    mockWindow.width = 300;
+    act(() => {
+      modal.renderer.update(
+        <WhatsNewModal whatsNew={CAROUSEL} isOpen onClose={jest.fn()} initialStep={1} />,
+      );
+    });
+    modal.layOut();
+    expect(mockScrollTo).toHaveBeenLastCalledWith({ x: pageWidth(), animated: false });
+    expect(Math.round((2 * oldWidth) / pageWidth())).toBeGreaterThanOrEqual(2);
+
+    // Snapshots from before the rotation, delivered after the placement.
+    act(() => pager().onScroll(at(2 * oldWidth)));
+    act(() => pager().onScrollEndDrag(at(2 * oldWidth)));
+    expect(modal.primaryLabel()).toBe('Next');
+
+    // The swipe's momentum, after the placement, settles on the last slide.
+    act(() => pager().onMomentumScrollBegin());
+    act(() => pager().onMomentumScrollEnd(at(2 * pageWidth())));
+    expect(modal.primaryLabel()).toBe('Done');
+    act(() => modal.renderer.unmount());
+  });
+
   it('follows every scroll on web, where the offset is read live', () => {
     mockPlatform.OS = 'web';
     const modal = render(0);
