@@ -161,12 +161,17 @@ export const VideoLayer = ({
 
   useEffect(() => {
     if (!watchedSecondsRef) return;
-    watchedSecondsRef.current = () => {
+    const read = () => {
       const running = playingSinceRef.current ? Date.now() - playingSinceRef.current : 0;
       return Math.round((watchedMsRef.current + running) / 100) / 10;
     };
+    watchedSecondsRef.current = read;
     return () => {
-      watchedSecondsRef.current = null;
+      // The close can be reported after this unmounts (the web drawer reports
+      // once its sheet has slid away, and the sheet drops its content first),
+      // so the final count stays readable, frozen at the moment it stopped.
+      const final = read();
+      watchedSecondsRef.current = () => final;
     };
   }, [watchedSecondsRef]);
 

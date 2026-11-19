@@ -40,6 +40,8 @@ const MEDIA_RADIUS = 16;
 /** Same backdrop as the single image or video. */
 const BACKDROP = 'rgba(0, 0, 0, 0.7)';
 const MEDIA_CORNERS = { borderRadius: MEDIA_RADIUS };
+/** The card never comes closer than this to the top of the screen (and, from `md` up, the bottom). */
+const CARD_SCREEN_MARGIN = 24;
 
 interface WhatsNewModalProps {
   whatsNew: WhatsNew;
@@ -204,9 +206,12 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   const pagerRef = useRef<ScrollView>(null);
   const startIndex = Math.max(0, Math.min(initialStep, steps.length - 1));
   const [activeIndex, setActiveIndex] = useState(startIndex);
-  // Until the pager has been placed on the linked slide, its scroll events
-  // must not move the slide back to the first.
-  const positionedRef = useRef(startIndex === 0);
+  // The page width the pager was last placed at, null until the first time.
+  // Until it is placed at the current width, its scroll events are ignored:
+  // before the first placement they would move a linked slide back to the
+  // first, and after a resize they carry the old width's offset, which read
+  // at the new width names a neighbouring slide.
+  const placedWidthRef = useRef<number | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const closedRef = useRef(false);
 
@@ -268,16 +273,16 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   // or a window resize it keeps the slide the user was on.
   const placePager = useCallback(() => {
     if (!layout.pageWidth) return;
-    const index = positionedRef.current ? activeIndex : startIndex;
+    const index = placedWidthRef.current === null ? startIndex : activeIndex;
     pagerRef.current?.scrollTo({ x: index * layout.pageWidth, animated: false });
-    positionedRef.current = true;
+    placedWidthRef.current = layout.pageWidth;
   }, [activeIndex, layout.pageWidth, startIndex]);
 
   // Follows a swipe. Web doesn't always send momentum-end after a manual
   // scroll, so the nearest page is taken on every scroll event.
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!layout.pageWidth || !positionedRef.current) return;
+      if (!layout.pageWidth || placedWidthRef.current !== layout.pageWidth) return;
       const index = Math.round(event.nativeEvent.contentOffset.x / layout.pageWidth);
       const bounded = Math.max(0, Math.min(index, steps.length - 1));
       setActiveIndex(current => (current === bounded ? current : bounded));
@@ -296,6 +301,13 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   };
 
   const primaryLabel = cta?.label ?? (isLast ? 'Done' : 'Next');
+  // The media is capped to the screen, but an admin's title and text are not:
+  // on a short screen the card stops at the screen's edge and its body scrolls,
+  // so the button (and on a phone the close X, which stays above) is reachable.
+  const bottomGap = Math.max(insets.bottom, 16);
+  const cardMaxHeight = isWide
+    ? screenHeight - CARD_SCREEN_MARGIN * 2
+    : screenHeight - insets.top - CARD_SCREEN_MARGIN - bottomGap;
   const entering = isWide
     ? FadeIn.duration(150)
     : FadeInDown.springify().stiffness(300).damping(12).mass(0.8);
@@ -330,9 +342,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
       <View
         style={[
           styles.root,
-          isWide
-            ? styles.centered
-            : { justifyContent: 'flex-end', paddingBottom: Math.max(insets.bottom, 16) },
+          isWide ? styles.centered : { justifyContent: 'flex-end', paddingBottom: bottomGap },
         ]}
       >
         <Pressable
@@ -349,6 +359,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
             styles.card,
             {
               width: layout.cardWidth,
+              maxHeight: Math.max(cardMaxHeight, 0),
               padding: layout.padding,
               paddingTop: isWide ? layout.padding : 16,
               paddingBottom: isWide ? 33 : 21,
@@ -362,85 +373,92 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
             </View>
           )}
 
-          <View>
-            <ScrollView
-              ref={pagerRef}
-              horizontal
-              pagingEnabled
-              bounces={false}
-              overScrollMode="never"
-              showsHorizontalScrollIndicator={false}
-              scrollEnabled={steps.length > 1}
-              onScroll={handleScroll}
-              onMomentumScrollEnd={handleScroll}
-              scrollEventThrottle={16}
-              style={{ width: layout.pageWidth }}
-              // Opens on the linked slide without first drawing slide 1.
-              contentOffset={{ x: startIndex * layout.pageWidth, y: 0 }}
-              onContentSizeChange={placePager}
-            >
-              {steps.map((item, index) => (
-                <Slide
-                  key={`${index}-${item.imageUrl}`}
-                  step={item}
-                  width={layout.pageWidth}
-                  mediaHeight={layout.mediaHeight}
-                  textInset={layout.textInset}
-                  isWide={isWide}
-                  isActive={isOpen && !isClosing && index === activeIndex}
-                />
-              ))}
-            </ScrollView>
-
-            {isWide ? <View style={styles.wideClose}>{closeButton}</View> : null}
-          </View>
-
-          {isWide ? (
-            <View
-              className="mt-8 flex-row items-center justify-between"
-              style={{ paddingHorizontal: layout.textInset }}
-            >
-              {steps.length > 1 ? (
-                <View className="flex-row items-center gap-3.5">
-                  <ArrowButton
-                    direction="previous"
-                    disabled={activeIndex === 0}
-                    onPress={() => goTo(activeIndex - 1)}
-                  />
-                  <Dots count={steps.length} activeIndex={activeIndex} />
-                  <ArrowButton
-                    direction="next"
-                    disabled={isLast}
-                    onPress={() => goTo(activeIndex + 1)}
-                  />
-                </View>
-              ) : (
-                <View />
-              )}
-              <Button
-                variant="brand"
-                onPress={handlePrimary}
-                className="h-12 rounded-full px-7"
-                accessibilityLabel={primaryLabel}
+          <ScrollView
+            style={styles.cardBody}
+            bounces={false}
+            overScrollMode="never"
+            showsVerticalScrollIndicator={false}
+          >
+            <View>
+              <ScrollView
+                ref={pagerRef}
+                horizontal
+                pagingEnabled
+                bounces={false}
+                overScrollMode="never"
+                showsHorizontalScrollIndicator={false}
+                scrollEnabled={steps.length > 1}
+                onScroll={handleScroll}
+                onMomentumScrollEnd={handleScroll}
+                scrollEventThrottle={16}
+                style={{ width: layout.pageWidth }}
+                // Opens on the linked slide without first drawing slide 1.
+                contentOffset={{ x: startIndex * layout.pageWidth, y: 0 }}
+                onContentSizeChange={placePager}
               >
-                <Text className="text-[17px] font-semibold text-black">{primaryLabel}</Text>
-              </Button>
+                {steps.map((item, index) => (
+                  <Slide
+                    key={`${index}-${item.imageUrl}`}
+                    step={item}
+                    width={layout.pageWidth}
+                    mediaHeight={layout.mediaHeight}
+                    textInset={layout.textInset}
+                    isWide={isWide}
+                    isActive={isOpen && !isClosing && index === activeIndex}
+                  />
+                ))}
+              </ScrollView>
+
+              {isWide ? <View style={styles.wideClose}>{closeButton}</View> : null}
             </View>
-          ) : (
-            <>
-              <View className="mt-6 items-center">
-                <Dots count={steps.length} activeIndex={activeIndex} />
-              </View>
-              <Button
-                variant="brand"
-                onPress={handlePrimary}
-                className="mt-6 h-[52px] w-full rounded-full"
-                accessibilityLabel={primaryLabel}
+
+            {isWide ? (
+              <View
+                className="mt-8 flex-row items-center justify-between"
+                style={{ paddingHorizontal: layout.textInset }}
               >
-                <Text className="text-[17px] font-semibold text-black">{primaryLabel}</Text>
-              </Button>
-            </>
-          )}
+                {steps.length > 1 ? (
+                  <View className="flex-row items-center gap-3.5">
+                    <ArrowButton
+                      direction="previous"
+                      disabled={activeIndex === 0}
+                      onPress={() => goTo(activeIndex - 1)}
+                    />
+                    <Dots count={steps.length} activeIndex={activeIndex} />
+                    <ArrowButton
+                      direction="next"
+                      disabled={isLast}
+                      onPress={() => goTo(activeIndex + 1)}
+                    />
+                  </View>
+                ) : (
+                  <View />
+                )}
+                <Button
+                  variant="brand"
+                  onPress={handlePrimary}
+                  className="h-12 rounded-full px-7"
+                  accessibilityLabel={primaryLabel}
+                >
+                  <Text className="text-[17px] font-semibold text-black">{primaryLabel}</Text>
+                </Button>
+              </View>
+            ) : (
+              <>
+                <View className="mt-6 items-center">
+                  <Dots count={steps.length} activeIndex={activeIndex} />
+                </View>
+                <Button
+                  variant="brand"
+                  onPress={handlePrimary}
+                  className="mt-6 h-[52px] w-full rounded-full"
+                  accessibilityLabel={primaryLabel}
+                >
+                  <Text className="text-[17px] font-semibold text-black">{primaryLabel}</Text>
+                </Button>
+              </>
+            )}
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
@@ -462,6 +480,8 @@ const styles = StyleSheet.create({
     borderRadius: MEDIA_RADIUS,
     overflow: 'hidden',
   },
+  // Shrinks to fit the card's height cap, and scrolls only when it has to.
+  cardBody: { flexGrow: 0, flexShrink: 1 },
   // Over the media's top-right corner, 16pt in.
   wideClose: { position: 'absolute', top: 16, right: 16 },
 });

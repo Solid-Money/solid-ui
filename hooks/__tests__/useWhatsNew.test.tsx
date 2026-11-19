@@ -255,7 +255,12 @@ describe('useWhatsNew opening a linked page', () => {
     const renderer = await render();
     await request(ID, 1);
 
-    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    // Dropped, so the auto-open can't show it once the ask is cleared either.
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: null,
+      isVisible: false,
+      request: null,
+    });
     act(() => renderer.unmount());
   });
 

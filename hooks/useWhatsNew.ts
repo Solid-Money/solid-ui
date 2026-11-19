@@ -153,6 +153,8 @@ export const useWhatsNew = (autoShowOnHome = false) => {
 
     const answer = async () => {
       let latest = useWhatsNewStore.getState().whatsNew;
+      // Whether `latest` is the server's answer rather than this session's copy.
+      let isFromServer = false;
       // Asked of the server even when the stored copy is the linked one: that
       // copy is as old as the session, and an admin may have since replaced or
       // switched it off. Offline it is all there is, and a refetch would wait
@@ -165,7 +167,10 @@ export const useWhatsNew = (autoShowOnHome = false) => {
           const result = await Promise.race([refetch(), offline]);
           // A failed refresh keeps the last data beside its error, so only a
           // successful one is the server's answer, "nothing active" included.
-          if (result !== OFFLINE && result.isSuccess) latest = result.data;
+          if (result !== OFFLINE && result.isSuccess) {
+            latest = result.data;
+            isFromServer = true;
+          }
         } catch (error) {
           console.error("Failed to fetch What's New for a link:", error);
         } finally {
@@ -174,9 +179,16 @@ export const useWhatsNew = (autoShowOnHome = false) => {
       }
       if (cancelled) return;
 
-      clearRequest();
       // Nothing active, or a format this build can't draw: Home stays as it is.
-      if (!latest?.isActive || !canShowWhatsNew(latest)) return;
+      if (!latest?.isActive || !canShowWhatsNew(latest)) {
+        // The server said so, so the stored copy goes too. Otherwise the
+        // auto-open, free again once the ask is cleared, would show the
+        // announcement the server no longer offers.
+        if (isFromServer) setWhatsNew(null);
+        clearRequest();
+        return;
+      }
+      clearRequest();
 
       setWhatsNew(latest);
       setInitialStep(

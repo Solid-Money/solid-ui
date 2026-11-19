@@ -58,7 +58,10 @@ export const openWhatsNewLink = (link?: string) => {
   if (!target) return;
 
   if (target.startsWith('http://') || target.startsWith('https://')) {
-    void Linking.openURL(target);
+    // A failed open (no browser, a blocked URL) is not worth an unhandled rejection.
+    Linking.openURL(target).catch(error =>
+      console.warn("Could not open the What's New link:", error),
+    );
   } else {
     router.push(target as any);
   }
