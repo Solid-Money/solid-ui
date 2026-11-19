@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import Toast from 'react-native-toast-message';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   type Address,
@@ -36,7 +37,7 @@ import {
   valueOf,
   WAD,
 } from '@/lib/creditRisk';
-import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
+import { getUserErrorMessage, sanitizeTechnicalMessage, showErrorToast } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { isReceiptTimeout } from '@/lib/pendingTierLocks';
 import { useUserStore } from '@/store/useUserStore';
@@ -99,6 +100,20 @@ export class UnlockPendingError extends UnlockUserError {
     this.name = 'UnlockPendingError';
   }
 }
+
+/**
+ * How a step that did not complete is told: a pending one as news, not an error; our own
+ * refusals in their own words; anything else through the shared error toast.
+ */
+export const showUnlockOutcome = (error: unknown) => {
+  if (error instanceof UnlockPendingError) {
+    Toast.show({ type: 'info', text1: error.message });
+  } else if (error instanceof UnlockUserError || error instanceof UnlockBlockedError) {
+    Toast.show({ type: 'error', text1: error.message });
+  } else {
+    void showErrorToast(error, { action: 'card_unlock' });
+  }
+};
 
 /** `CollateralWithdrawn`, which the module emits with the amount a release actually moved. */
 const COLLATERAL_WITHDRAWN_ABI = [

@@ -33,14 +33,13 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import {
   isSamePendingUnlock,
+  showUnlockOutcome,
   UnlockBlockedError,
-  UnlockUserError,
   useCollateralUnlock,
 } from '@/hooks/useCollateralUnlock';
 import { SALE_LOOKBACK_SECONDS } from '@/hooks/useLoanSales';
 import { track } from '@/lib/analytics';
 import { valueOf } from '@/lib/creditRisk';
-import { showErrorToast } from '@/lib/errors';
 
 import type { LoanModel } from '@/lib/creditRisk';
 import type { Address } from 'viem';
@@ -105,17 +104,11 @@ const CreditDetailsScreen = () => {
   );
 
   /** A refusal written for the cardholder is shown as it is; anything else is translated. */
-  const showUnlockError = (error: unknown) => {
-    if (error instanceof UnlockUserError || error instanceof UnlockBlockedError) {
-      Toast.show({ type: 'error', text1: error.message });
-    } else void showErrorToast(error, { action: 'card_unlock' });
-  };
-
   const cancelUnlock = async (loan: LoanModel) => {
     const done = await unlocks[loan.chainId]
       .cancel(loan.pendingUnlock ?? undefined)
       .catch(error => {
-        showUnlockError(error);
+        showUnlockOutcome(error);
         return null;
       });
     if (done)
@@ -132,7 +125,7 @@ const CreditDetailsScreen = () => {
       .catch(error => {
         // A refusal for want of cover is shown in the card itself, with what to do next.
         if (!(error instanceof UnlockBlockedError && error.reason === 'needs-more-cover')) {
-          showUnlockError(error);
+          showUnlockOutcome(error);
         }
         return null;
       });
@@ -157,7 +150,8 @@ const CreditDetailsScreen = () => {
     const done = await unlocks[loan.chainId]
       .withdrawAll(loan.assets.map(asset => asset.token))
       .catch(error => {
-        void showErrorToast(error, { action: 'card_unlock' });
+        // A pending outcome is news, not a failure; everything else on the usual error path.
+        showUnlockOutcome(error);
         return null;
       });
     if (done)

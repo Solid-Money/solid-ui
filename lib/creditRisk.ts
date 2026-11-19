@@ -633,8 +633,11 @@ export const quoteUnlock = ({
     if (repayUsd > 0n && source.kind === 'collateral') {
       const sized = sizeCollateralRepay(source.asset, repayUsd);
       sourceRemovedUnits = sized.units;
-      // Short of the full principal and fee, the module would credit less than asked.
-      if (sized.capped) reason = `Not enough ${source.asset.symbol} locked in this loan.`;
+      // Only a shortfall in what is credited matters: the cap can still credit the whole figure
+      // (the fee's own ceiling can put the need a unit past what is locked).
+      if (sized.creditedUsd < repayUsd) {
+        reason = `Not enough ${source.asset.symbol} locked in this loan.`;
+      }
     }
     const debtAfterUsd = loan.debtUsd - repayUsd;
     const collateral = position.collateral.map(entry => {
