@@ -1,7 +1,7 @@
 import { Linking, Platform } from 'react-native';
 import { router } from 'expo-router';
 
-import type { WhatsNew, WhatsNewMedia, WhatsNewPresentation } from '@/lib/types';
+import type { WhatsNew, WhatsNewMedia, WhatsNewPresentation, WhatsNewStep } from '@/lib/types';
 
 /** A What's New popup that is one image or one video. */
 export type SingleWhatsNew = WhatsNew & {
@@ -105,12 +105,52 @@ export const whatsNewEventBase = (whatsNew: WhatsNew) => ({
 /** `whats_new_viewed` properties. */
 export const whatsNewViewedProps = (whatsNew: WhatsNew, presentation: WhatsNewPresentation) => {
   const single = isSingleWhatsNew(whatsNew) ? whatsNew : null;
+  const carouselHasVideo = !single && whatsNew.steps.some(step => !!step.videoUrl?.trim());
   return {
     ...whatsNewEventBase(whatsNew),
     format: single ? 'single' : 'carousel',
     presentation,
-    media_type: single ? single.media.type : 'image',
+    media_type: single ? single.media.type : carouselHasVideo ? 'video' : 'image',
     steps: single ? undefined : whatsNew.steps.length,
     platform: Platform.OS,
   };
+};
+
+/**
+ * Carousel card layout, from Jayant's design (T-68):
+ * - phone: a card 16pt from each side, anchored to the bottom; 17pt padding;
+ *   media 5:4.
+ * - from `md` up: a centred 640-wide card; 26pt padding; media 16:9; text and
+ *   buttons another 16pt in.
+ * The media gives up height on short screens so the card always fits.
+ */
+export const CAROUSEL_CARD_MAX_WIDTH = 640;
+const CAROUSEL_SIDE_MARGIN = 16;
+
+export interface CarouselLayout {
+  cardWidth: number;
+  padding: number;
+  /** Width of one slide, the pager's width. */
+  pageWidth: number;
+  mediaHeight: number;
+  /** Extra inset for the text and the bottom row, on top of `padding`. */
+  textInset: number;
+}
+
+export const carouselLayout = (screen: Size, isWide: boolean): CarouselLayout => {
+  const cardWidth = isWide
+    ? Math.min(CAROUSEL_CARD_MAX_WIDTH, screen.width - CAROUSEL_SIDE_MARGIN * 2)
+    : screen.width - CAROUSEL_SIDE_MARGIN * 2;
+  const padding = isWide ? 26 : 17;
+  const pageWidth = Math.max(cardWidth - padding * 2, 0);
+  const ratio = isWide ? 9 / 16 : 4 / 5;
+  const mediaHeight = Math.min(pageWidth * ratio, screen.height * (isWide ? 0.42 : 0.36));
+  return { cardWidth, padding, pageWidth, mediaHeight, textInset: isWide ? 16 : 0 };
+};
+
+/** A slide's own button, if it has a label and a link. */
+export const slideCta = (step: WhatsNewStep): { label: string; link: string } | null => {
+  const label = step.buttonLabel?.trim();
+  const link = step.buttonLink?.trim();
+  return label && link ? { label, link } : null;
 };

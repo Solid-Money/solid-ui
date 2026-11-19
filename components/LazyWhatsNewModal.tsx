@@ -5,9 +5,9 @@ import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { WhatsNew } from '@/lib/types';
 import { isSingleWhatsNew, singleLeadImageUrl } from '@/lib/whatsNew';
 
-// Lazy load WhatsNewModal - this component imports react-native-reanimated-carousel
-// which is a heavy library. Since WhatsNewModal is only shown conditionally for
-// authenticated users, we defer its bundle to improve FCP for all routes.
+// Lazy load the carousel. It is only shown to signed-in users with something
+// new to see, so its bundle (and expo-video's) stays off every route's
+// critical path.
 const WhatsNewModal = lazyWithRetry(() => import('./WhatsNewModal'));
 // The single image or video has its own bundle, so showing one never loads the carousel.
 const WhatsNewSingle = lazyWithRetry(() => import('./WhatsNew/WhatsNewSingle'));
@@ -28,10 +28,9 @@ interface LazyWhatsNewModalProps {
 /**
  * Lazy-loaded wrapper for both What's New formats.
  *
- * PERFORMANCE: WhatsNewModal imports react-native-reanimated-carousel which adds
- * significant bundle weight. Since this modal is only shown for authenticated users
- * and only when there's new content, lazy-loading it removes this bundle from the
- * critical rendering path for ALL routes, improving FCP across the app.
+ * PERFORMANCE: both formats are only shown to signed-in users with new content,
+ * so lazy-loading them keeps their bundles (and expo-video) off the critical
+ * rendering path for ALL routes, improving FCP across the app.
  *
  * No visible fallback is needed: the modal stays hidden while its images are
  * prefetched and while the lazy bundle is loading.

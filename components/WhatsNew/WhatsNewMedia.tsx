@@ -74,6 +74,11 @@ interface VideoLayerProps {
   tapTarget: ReactNode;
   /** The frame's corners, repeated on the video itself (see below). */
   cornerStyle: ViewStyle;
+  /**
+   * `contain` (default) keeps a single's media whole. A carousel slide fills a
+   * fixed frame, so it uses `cover`.
+   */
+  contentFit?: 'contain' | 'cover';
   onSoundOn?: () => void;
   watchedSecondsRef?: WatchedSecondsReader;
 }
@@ -84,12 +89,13 @@ interface VideoLayerProps {
  * errors or hasn't started within 5 seconds, and with Reduce Motion on until
  * the play button is tapped. Pauses whenever the app leaves the foreground.
  */
-const VideoLayer = ({
+export const VideoLayer = ({
   media,
   isActive,
   bottomInset,
   tapTarget,
   cornerStyle,
+  contentFit = 'contain',
   onSoundOn,
   watchedSecondsRef,
 }: VideoLayerProps) => {
@@ -184,8 +190,10 @@ const VideoLayer = ({
           player={player}
           // The frame clips its corners, but a browser draws <video> on its own
           // layer and can leave a 1px edge outside that clip; round it too.
-          style={[StyleSheet.absoluteFill, cornerStyle]}
-          contentFit="contain"
+          // A <video> ignores top/bottom for its height, so it is sized
+          // explicitly or it keeps its own aspect at the top of the frame.
+          style={[StyleSheet.absoluteFill, styles.fill, cornerStyle]}
+          contentFit={contentFit}
           nativeControls={false}
           playsInline
           allowsVideoFrameAnalysis={false}
@@ -201,7 +209,7 @@ const VideoLayer = ({
         <Image
           source={{ uri: media.posterUrl }}
           style={StyleSheet.absoluteFill}
-          contentFit="contain"
+          contentFit={contentFit}
           cachePolicy="memory-disk"
           pointerEvents="none"
           accessible={false}
@@ -333,6 +341,7 @@ const WhatsNewMedia = ({
 
 const styles = StyleSheet.create({
   clip: { overflow: 'hidden', backgroundColor: '#000000' },
+  fill: { width: '100%', height: '100%' },
   hitArea: {
     position: 'absolute',
     width: HIT_SIZE,
