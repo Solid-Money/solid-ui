@@ -26,9 +26,9 @@ import type { ReactNode } from 'react';
 
 /**
  * Figma 29120:9486, which grows a row per spendable asset held: 23 above the header, the 50pt
- * header, 16 below the last row; the divider (27) and the "Spendable assets" title (34) only when
- * there is a row to title. A row is 48pt, or 56 with a second line. Fixed per row, so the sheet can
- * reserve room for the panel before it renders.
+ * header, 16 below the last row; the divider (27) and the "Spends in this order" title (34) when
+ * there is a row to title or an "Edit order" to offer. A row is 48pt, or 56 with a second line.
+ * Fixed per row, so the sheet can reserve room for the panel before it renders.
  *
  * With Base's stables and crypto beside Fuse's, a Safe can hold a dozen of these, and a panel
  * that grew a row each pushed the sheet off the screen. The list stops growing at four and a half
@@ -44,11 +44,20 @@ const assetListContentHeight = (rows: readonly Pick<SpendableAssetRow, 'subtitle
   rows.reduce((sum, row) => sum + assetRowHeight(row), 0);
 const assetListHeight = (rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[]) =>
   Math.min(assetListContentHeight(rows), MAX_ASSET_LIST_HEIGHT);
+/**
+ * Whether the balance panel draws its "Spends in this order" title: over its rows, or with none
+ * listed while "Edit order" is offered — every balance left out of the order still has to be
+ * reachable from here to bring one back.
+ */
+export const balancePanelHasTitle = (rowCount: number, canEditOrder: boolean) =>
+  rowCount > 0 || canEditOrder;
 export const balancePanelHeight = (
   rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[],
+  hasTitle = rows.length > 0,
 ) =>
   BALANCE_HEADER_HEIGHT +
-  (rows.length ? BALANCE_ASSETS_TITLE_HEIGHT + assetListHeight(rows) : 0) +
+  (hasTitle ? BALANCE_ASSETS_TITLE_HEIGHT : 0) +
+  (rows.length ? assetListHeight(rows) : 0) +
   BALANCE_PANEL_BOTTOM;
 /** Figma 25961:3504. Fixed, so the sheet can reserve room for any stack of these. */
 export const BORROWED_PANEL_HEIGHT = 126;
@@ -58,7 +67,8 @@ export const BORROWED_PANEL_HEIGHT = 126;
  * divider take 120, the collateral title 18 + 20 + 8 above the rows, and 12 is left below them.
  * Under all of it, a divider and the 52pt "View Credit details" row. Fixed per row count, so the
  * sheet can still reserve room for the panel before it renders. Past three and a half rows the
- * list scrolls, as the balance panel's does.
+ * list scrolls, as the balance panel's does. With no row but an "Edit order" to offer, the title
+ * stands alone: 18 above it, 20 below.
  */
 const CREDIT_BORROWED_HEIGHT = 119;
 const CREDIT_PANEL_BASE_HEIGHT = CREDIT_BORROWED_HEIGHT + 1 + 18 + 28 + 12;
@@ -67,8 +77,18 @@ const MAX_COLLATERAL_LIST_HEIGHT = 3.5 * COLLATERAL_ROW_HEIGHT;
 const CREDIT_DETAILS_LINK_HEIGHT = 52;
 const collateralListHeight = (collateralRows: number) =>
   Math.min(COLLATERAL_ROW_HEIGHT * collateralRows, MAX_COLLATERAL_LIST_HEIGHT);
-export const creditPanelHeight = (collateralRows: number) =>
-  (collateralRows > 0
+/**
+ * Whether the Credit panel draws its collateral block: over its rows, or with none listed while
+ * the card locks in an order and "Edit order" is offered, so the Collateral order screen (which
+ * lists $0 collateral too) stays reachable.
+ */
+export const creditPanelHasCollateral = (
+  rowCount: number,
+  locksInOrder: boolean,
+  canEditOrder: boolean,
+) => rowCount > 0 || (locksInOrder && canEditOrder);
+export const creditPanelHeight = (collateralRows: number, hasCollateral = collateralRows > 0) =>
+  (hasCollateral
     ? CREDIT_PANEL_BASE_HEIGHT + collateralListHeight(collateralRows)
     : BORROWED_PANEL_HEIGHT) +
   1 +
@@ -134,6 +154,15 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  */
 const ETH_YIELD_ICON = getAsset('images/portfolio/eth.svg');
 
+/**
+ * soBTC and WBTC, by the marks `getTokenIcon` already gives them: soBTC has no share mark of its
+ * own yet, so it draws the BTC coin with the yield badge dot; WBTC draws its own.
+ */
+const BTC_TOKEN_LOGO = {
+  sobtc: getAsset('images/btc.png'),
+  wbtc: getAsset('images/wbtc.png'),
+} as const;
+
 /** The card mark the "How you earn" sheet gives card credit, drawn at the rows' 32pt. */
 const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
 
@@ -142,7 +171,7 @@ const CARD_CREDIT_LOGO = getAsset('images/referral-v4/card-40.svg');
  * with its ring overhanging, as in Figma); a yield share is the yield icon with the dot badge
  * (Figma "so-token / soUSD / badge dot").
  */
-const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+export const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
   if (icon === 'cardCredit') {
     return <Image accessible={false} source={CARD_CREDIT_LOGO} style={styles.tokenLogo} />;
   }
@@ -153,6 +182,17 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
         source={COLLATERAL_TOKEN_LOGO[icon]}
         style={styles.collateralLogo}
       />
+    );
+  }
+  if (icon === 'wbtc') {
+    return <Image accessible={false} source={BTC_TOKEN_LOGO.wbtc} style={styles.collateralLogo} />;
+  }
+  if (icon === 'sobtc') {
+    return (
+      <View accessible={false} style={styles.tokenLogo}>
+        <Image source={BTC_TOKEN_LOGO.sobtc} style={styles.btcYieldIcon} />
+        <Image source={BADGE_DOT} style={styles.badgeDot} />
+      </View>
     );
   }
   if (icon === 'usdc' || icon === 'eurc') {
@@ -194,9 +234,13 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
 
 /**
  * A collateral row's mark: the yield glyphs and Bitcoin's in their tinted circle, or a token's own
- * logo for the crypto Figma has not drawn a glyph for.
+ * logo for the crypto Figma has not drawn a glyph for. soBTC and WBTC take the coins
+ * `getTokenIcon` gives them, round at 32 like the other token logos.
  */
 export const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
+  if (icon === 'sobtc' || icon === 'wbtc') {
+    return <Image accessible={false} source={BTC_TOKEN_LOGO[icon]} style={styles.collateralLogo} />;
+  }
   if (icon === 'eth') {
     return <Image accessible={false} source={ETH_YIELD_ICON} style={styles.collateralEthIcon} />;
   }
@@ -250,8 +294,10 @@ interface BalancePanelProps {
    * nothing behind it, and a button that ignores the tap reads as broken.
    */
   onAddFunds?: () => void;
-  /** The "?" beside "Spendable assets". */
+  /** The "?" beside "Spends in this order". */
   onHelpPress?: () => void;
+  /** "Edit order": opens the Spend order screen. Without one the pill is not drawn. */
+  onEditOrder?: () => void;
 }
 
 /**
@@ -265,82 +311,104 @@ export const SpendModeBalancePanel = ({
   rows,
   onAddFunds,
   onHelpPress,
-}: BalancePanelProps) => (
-  <View style={[styles.panel, styles.balancePanel, { height: balancePanelHeight(rows) }]}>
-    <View style={styles.balanceHeader}>
-      <View style={styles.balanceText}>
-        <Text className="text-[16px] font-normal leading-[16px] text-white/70">Your balance</Text>
-        <Text className="text-[24px] font-medium leading-[24px] text-white">{balance}</Text>
+  onEditOrder,
+}: BalancePanelProps) => {
+  const hasTitle = balancePanelHasTitle(rows.length, !!onEditOrder);
+  return (
+    <View
+      style={[styles.panel, styles.balancePanel, { height: balancePanelHeight(rows, hasTitle) }]}
+    >
+      <View style={styles.balanceHeader}>
+        <View style={styles.balanceText}>
+          <Text className="text-[16px] font-normal leading-[16px] text-white/70">Your balance</Text>
+          <Text className="text-[24px] font-medium leading-[24px] text-white">{balance}</Text>
+        </View>
+        {onAddFunds ? (
+          <Pressable
+            accessibilityLabel="Add funds"
+            accessibilityRole="button"
+            className="transition-all active:scale-95 active:opacity-80"
+            onPress={onAddFunds}
+            style={styles.addFunds}
+          >
+            <Text className="text-[16px] font-semibold text-black">Add funds</Text>
+          </Pressable>
+        ) : null}
       </View>
-      {onAddFunds ? (
-        <Pressable
-          accessibilityLabel="Add funds"
-          accessibilityRole="button"
-          className="transition-all active:scale-95 active:opacity-80"
-          onPress={onAddFunds}
-          style={styles.addFunds}
-        >
-          <Text className="text-[16px] font-semibold text-black">Add funds</Text>
-        </Pressable>
+      {hasTitle ? (
+        <>
+          <View style={styles.balanceDivider}>
+            <View style={styles.balanceDividerLine} />
+          </View>
+          <View style={styles.assetsTitle}>
+            <Text className="text-[18px] font-medium leading-[18px] text-white">
+              {onEditOrder ? 'Spends in this order' : 'Spendable assets'}
+            </Text>
+            {onHelpPress ? (
+              <Pressable
+                accessibilityLabel={
+                  onEditOrder ? 'How spend order works' : 'How spendable assets work'
+                }
+                accessibilityRole="button"
+                className="active:opacity-80"
+                hitSlop={12}
+                onPress={onHelpPress}
+              >
+                <HelpBadge />
+              </Pressable>
+            ) : (
+              <HelpBadge />
+            )}
+            {onEditOrder ? (
+              <Pressable
+                accessibilityLabel="Edit spend order"
+                accessibilityRole="button"
+                className="transition-all active:scale-95 active:opacity-80"
+                hitSlop={8}
+                onPress={onEditOrder}
+                style={styles.editOrder}
+              >
+                <Text className="text-[14px] font-semibold text-white">Edit order</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {rows.length ? (
+            <PanelList
+              height={assetListHeight(rows)}
+              overflows={assetListContentHeight(rows) > MAX_ASSET_LIST_HEIGHT}
+            >
+              {rows.map(row => (
+                <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
+                  <AssetLogo icon={row.icon} />
+                  <View style={styles.assetLeft}>
+                    <Text className="text-[16px] font-medium leading-[20px] text-white">
+                      {row.name}
+                    </Text>
+                    {row.subtitle ? (
+                      <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+                        {row.subtitle}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.assetRight}>
+                    <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                      {row.value}
+                    </Text>
+                    {row.detail ? (
+                      <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                        {row.detail}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+            </PanelList>
+          ) : null}
+        </>
       ) : null}
     </View>
-    {rows.length ? (
-      <>
-        <View style={styles.balanceDivider}>
-          <View style={styles.balanceDividerLine} />
-        </View>
-        <View style={styles.assetsTitle}>
-          <Text className="text-[18px] font-medium leading-[18px] text-white">
-            Spendable assets
-          </Text>
-          {onHelpPress ? (
-            <Pressable
-              accessibilityLabel="How spendable assets work"
-              accessibilityRole="button"
-              className="active:opacity-80"
-              hitSlop={12}
-              onPress={onHelpPress}
-            >
-              <HelpBadge />
-            </Pressable>
-          ) : (
-            <HelpBadge />
-          )}
-        </View>
-        <PanelList
-          height={assetListHeight(rows)}
-          overflows={assetListContentHeight(rows) > MAX_ASSET_LIST_HEIGHT}
-        >
-          {rows.map(row => (
-            <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
-              <AssetLogo icon={row.icon} />
-              <View style={styles.assetLeft}>
-                <Text className="text-[16px] font-medium leading-[20px] text-white">
-                  {row.name}
-                </Text>
-                {row.subtitle ? (
-                  <Text className="text-[14px] font-normal leading-[18px] text-white/50">
-                    {row.subtitle}
-                  </Text>
-                ) : null}
-              </View>
-              <View style={styles.assetRight}>
-                <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                  {row.value}
-                </Text>
-                {row.detail ? (
-                  <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                    {row.detail}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          ))}
-        </PanelList>
-      </>
-    ) : null}
-  </View>
-);
+  );
+};
 
 /**
  * "Borrowed / $0.80 / $246.5 … at 5.57% APY" over the drawn-down track — the
@@ -414,7 +482,18 @@ export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
 );
 
 interface CreditPanelProps extends BorrowedSummaryFigures {
+  /** The listed rows, in the order the card locks them. */
   collateral: CreditModeFigures['collateral'];
+  /**
+   * The card can lock two or more kinds of collateral, so the order they lock in is worth naming:
+   * the title reads "Locks in this order" and "Edit order" can be offered.
+   */
+  locksInOrder?: boolean;
+  /**
+   * "Edit order": opens the Collateral order screen. Drawn only with {@link locksInOrder}, and
+   * not drawn without one.
+   */
+  onEditOrder?: () => void;
   /** The closest any loan is to liquidation, for the chip beside "Borrowed". */
   risk: CreditModeFigures['risk'];
   /** Whether anything is borrowed: with nothing, there is no health to report. */
@@ -449,105 +528,127 @@ const RISK_CHIP = {
  */
 export const SpendModeCreditPanel = ({
   collateral,
+  locksInOrder = false,
+  onEditOrder,
   risk,
   hasDebt,
   onHelpPress,
   onViewDetails,
   ...borrowed
-}: CreditPanelProps) => (
-  <View style={[styles.panel, { height: creditPanelHeight(collateral.length) }]}>
-    {/* Without a row to list — a Safe the lens cannot read yet, or one on v1 — the borrowed
-        block stands alone, as before, rather than a collateral title over nothing. */}
-    <View
-      style={[
-        styles.creditBorrowed,
-        { height: collateral.length ? CREDIT_BORROWED_HEIGHT : BORROWED_PANEL_HEIGHT },
-      ]}
-    >
-      <BorrowedSummary {...borrowed} />
-    </View>
-    {collateral.length ? <View style={styles.divider} /> : null}
-    {collateral.length ? (
-      <View style={styles.collateral}>
-        <View style={styles.collateralTitle}>
-          <View style={styles.collateralTitleLeft}>
-            <Text className="text-[18px] font-medium leading-[18px] text-white">
-              Collateral assets
-            </Text>
-            {onHelpPress ? (
-              <Pressable
-                accessibilityLabel="How collateral works"
-                accessibilityRole="button"
-                className="active:opacity-80"
-                hitSlop={12}
-                onPress={onHelpPress}
-              >
+}: CreditPanelProps) => {
+  const hasCollateral = creditPanelHasCollateral(collateral.length, locksInOrder, !!onEditOrder);
+  return (
+    <View style={[styles.panel, { height: creditPanelHeight(collateral.length, hasCollateral) }]}>
+      {/* Without a row to list or an order to edit — a Safe the lens cannot read yet, or one on
+        v1 — the borrowed block stands alone, as before, rather than a collateral title over
+        nothing. */}
+      <View
+        style={[
+          styles.creditBorrowed,
+          { height: hasCollateral ? CREDIT_BORROWED_HEIGHT : BORROWED_PANEL_HEIGHT },
+        ]}
+      >
+        <BorrowedSummary {...borrowed} />
+      </View>
+      {hasCollateral ? <View style={styles.divider} /> : null}
+      {hasCollateral ? (
+        <View style={styles.collateral}>
+          <View style={styles.collateralTitle}>
+            <View style={styles.collateralTitleLeft}>
+              <Text className="text-[18px] font-medium leading-[18px] text-white">
+                {locksInOrder ? 'Locks in this order' : 'Collateral assets'}
+              </Text>
+              {onHelpPress ? (
+                <Pressable
+                  accessibilityLabel="How collateral works"
+                  accessibilityRole="button"
+                  className="active:opacity-80"
+                  hitSlop={12}
+                  onPress={onHelpPress}
+                >
+                  <HelpBadge />
+                </Pressable>
+              ) : (
                 <HelpBadge />
-              </Pressable>
-            ) : (
-              <HelpBadge />
-            )}
+              )}
+            </View>
+            {locksInOrder ? (
+              onEditOrder ? (
+                <Pressable
+                  accessibilityLabel="Edit collateral order"
+                  accessibilityRole="button"
+                  className="transition-all active:scale-95 active:opacity-80"
+                  hitSlop={8}
+                  onPress={onEditOrder}
+                  style={[styles.editOrder, styles.editCollateralOrder]}
+                >
+                  <Text className="text-[14px] font-semibold text-white">Edit order</Text>
+                </Pressable>
+              ) : null
+            ) : collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
+              // With nothing to order (Fuse locks soUSD alone), the line it had before. True of
+              // the yield shares only: Bitcoin locked as collateral earns nothing.
+              <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
+                Keeps earning
+              </Text>
+            ) : null}
           </View>
-          {/* True of the yield shares only: Bitcoin locked as collateral earns nothing. */}
-          {collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
-            <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
-              Keeps earning
-            </Text>
+          {collateral.length ? (
+            <PanelList
+              height={collateralListHeight(collateral.length)}
+              overflows={COLLATERAL_ROW_HEIGHT * collateral.length > MAX_COLLATERAL_LIST_HEIGHT}
+            >
+              {collateral.map(row => (
+                <View key={row.key} style={styles.collateralRow}>
+                  <CollateralLogo icon={row.icon} />
+                  {/* Figma 30396:14672: the label over the token's own LTV, inside the 58pt row. */}
+                  <View style={styles.collateralLabel}>
+                    <Text className="text-[16px] font-medium leading-[20px] text-white">
+                      {row.label}
+                    </Text>
+                    {row.ltv ? (
+                      <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+                        {row.ltv}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.collateralValue}>
+                    <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                      {row.value}
+                    </Text>
+                    {row.usdEquivalent ? (
+                      <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                        {row.usdEquivalent}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+            </PanelList>
           ) : null}
         </View>
-        <PanelList
-          height={collateralListHeight(collateral.length)}
-          overflows={COLLATERAL_ROW_HEIGHT * collateral.length > MAX_COLLATERAL_LIST_HEIGHT}
-        >
-          {collateral.map(row => (
-            <View key={row.key} style={styles.collateralRow}>
-              <CollateralLogo icon={row.icon} />
-              {/* Figma 30396:14672: the label over the token's own LTV, inside the 58pt row. */}
-              <View style={styles.collateralLabel}>
-                <Text className="text-[16px] font-medium leading-[20px] text-white">
-                  {row.label}
-                </Text>
-                {row.ltv ? (
-                  <Text className="text-[14px] font-normal leading-[18px] text-white/50">
-                    {row.ltv}
-                  </Text>
-                ) : null}
-              </View>
-              <View style={styles.collateralValue}>
-                <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                  {row.value}
-                </Text>
-                {row.usdEquivalent ? (
-                  <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                    {row.usdEquivalent}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          ))}
-        </PanelList>
-      </View>
-    ) : null}
-    <View style={styles.divider} />
-    <Pressable
-      accessibilityLabel="View Credit details"
-      accessibilityRole="button"
-      className="active:opacity-80"
-      onPress={onViewDetails}
-      style={styles.detailsLink}
-    >
-      <Text className="text-[16px] font-medium text-[#94F27F]">View Credit details</Text>
-      <Image accessible={false} source={CREDIT_DETAILS_CHEVRON} style={styles.detailsChevron} />
-    </Pressable>
-    {hasDebt ? (
-      <View style={[styles.riskChip, { backgroundColor: RISK_CHIP[risk].background }]}>
-        <Text className={`text-[14px] font-medium ${RISK_CHIP[risk].text}`}>
-          {RISK_CHIP[risk].label}
-        </Text>
-      </View>
-    ) : null}
-  </View>
-);
+      ) : null}
+      <View style={styles.divider} />
+      <Pressable
+        accessibilityLabel="View Credit details"
+        accessibilityRole="button"
+        className="active:opacity-80"
+        onPress={onViewDetails}
+        style={styles.detailsLink}
+      >
+        <Text className="text-[16px] font-medium text-[#94F27F]">View Credit details</Text>
+        <Image accessible={false} source={CREDIT_DETAILS_CHEVRON} style={styles.detailsChevron} />
+      </Pressable>
+      {hasDebt ? (
+        <View style={[styles.riskChip, { backgroundColor: RISK_CHIP[risk].background }]}>
+          <Text className={`text-[14px] font-medium ${RISK_CHIP[risk].text}`}>
+            {RISK_CHIP[risk].label}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   panel: { backgroundColor: '#2B2B2B', borderRadius: 20, overflow: 'hidden' },
@@ -579,6 +680,19 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingTop: 6,
   },
+  // Figma 30973:15374: the pill sits on the title row's right edge, 1 down from its top —
+  // taller than the row's padded content, so placed rather than laid out.
+  editOrder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    position: 'absolute',
+    right: 0,
+    top: 1,
+  },
+  // The same pill on the Credit panel's 20pt title row: centred on it, so 5 above its top.
+  editCollateralOrder: { top: -5 },
   assetRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   assetLeft: { flex: 1, gap: 2 },
   assetRight: { alignItems: 'flex-end', gap: 2 },
@@ -599,6 +713,8 @@ const styles = StyleSheet.create({
   badgeDot: { height: 14, left: 20, position: 'absolute', top: 20, width: 14 },
   // The ETH Yield icon carries its own circle, at the yield icon's size and offset.
   ethYieldIcon: { height: 31.373, marginTop: 0.31, width: 31.976 },
+  // soBTC: the BTC coin, round, at the same size and offset.
+  btcYieldIcon: { borderRadius: 15.7, height: 31.373, marginTop: 0.31, width: 31.976 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',

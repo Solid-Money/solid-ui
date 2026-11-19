@@ -61,6 +61,8 @@ import {
   CardAccessResponse,
   CardBalanceResponseDto,
   CardCollateralAvailableDto,
+  CardCollateralOrder,
+  CardCollateralOrderPreviewResponse,
   CardCreditHistoryResponse,
   CardCreditSummary,
   CardDepositBonusConfig,
@@ -74,6 +76,8 @@ import {
   CardSpendDeploymentConfirmRequest,
   CardSpendDeploymentsResponse,
   CardSpendModeAccessResponse,
+  CardSpendOrder,
+  CardSpendOrderPreviewResponse,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
@@ -207,6 +211,7 @@ import {
   YieldBoostSummary,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
+import { requireOrderArrays, requirePreviewLines } from './utils/orderPreview';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
@@ -4676,6 +4681,189 @@ export const setCardMainCurrency = async (
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+/**
+ * The Wirex card's saved spend order: one database read on the backend, no chain call, so it is
+ * cheap enough to back every Spendable figure.
+ */
+export const getCardSpendOrder = async (): Promise<CardSpendOrder> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-order`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return requireOrderArrays<CardSpendOrder>(
+    await response.json(),
+    ['spendOrder', 'spendExcluded'],
+    'spend order',
+  );
+};
+
+/**
+ * Saves the order the card spends balances in and the ones it never uses. No transaction: it
+ * takes effect on the next payment. The default order with nothing excluded clears it.
+ */
+export const setCardSpendOrder = async (body: {
+  order: string[];
+  excluded: string[];
+}): Promise<CardSpendOrder> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) throw response;
+
+  return requireOrderArrays<CardSpendOrder>(
+    await response.json(),
+    ['spendOrder', 'spendExcluded'],
+    'spend order',
+  );
+};
+
+/**
+ * How a purchase would be paid under a (possibly unsaved) spend order, from the backend's own
+ * selection. `amount` is in `currency` for USD and EUR, and in dollars for any other currency.
+ */
+export const getCardSpendOrderPreview = async (params: {
+  amount: number;
+  currency: string;
+  order?: string[];
+  excluded?: string[];
+}): Promise<CardSpendOrderPreviewResponse> => {
+  const jwt = getJWTToken();
+  const query = new URLSearchParams({
+    amount: String(params.amount),
+    currency: params.currency,
+  });
+  if (params.order) query.set('order', params.order.join(','));
+  if (params.excluded) query.set('excluded', params.excluded.join(','));
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-order/preview?${query.toString()}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return requirePreviewLines<CardSpendOrderPreviewResponse>(await response.json(), 'spend order');
+};
+
+/**
+ * The order the Wirex card locks collateral in when it borrows: one database read on the backend,
+ * no chain call. The full list always comes back, the default when none was saved.
+ */
+export const getCardCollateralOrder = async (): Promise<CardCollateralOrder> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/collateral-order`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return requireOrderArrays<CardCollateralOrder>(
+    await response.json(),
+    ['collateralOrder', 'defaultCollateralOrder'],
+    'collateral order',
+  );
+};
+
+/**
+ * Saves the order the card locks collateral in. Reorder only: every key stays in it. No
+ * transaction: it governs the next purchase's new locks, and collateral already locked stays
+ * locked. Saving the default order clears it.
+ */
+export const setCardCollateralOrder = async (body: {
+  order: string[];
+}): Promise<CardCollateralOrder> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/collateral-order`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return requireOrderArrays<CardCollateralOrder>(
+    await response.json(),
+    ['collateralOrder', 'defaultCollateralOrder'],
+    'collateral order',
+  );
+};
+
+/**
+ * What a purchase would newly lock under a (possibly unsaved) collateral order, simulated by the
+ * backend. `amount` is in `currency` for USD and EUR, and in dollars for any other currency.
+ */
+export const getCardCollateralOrderPreview = async (params: {
+  amount: number;
+  currency: string;
+  order?: string[];
+}): Promise<CardCollateralOrderPreviewResponse> => {
+  const jwt = getJWTToken();
+  const query = new URLSearchParams({
+    amount: String(params.amount),
+    currency: params.currency,
+  });
+  if (params.order) query.set('order', params.order.join(','));
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/collateral-order/preview?${query.toString()}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return requirePreviewLines<CardCollateralOrderPreviewResponse>(
+    await response.json(),
+    'collateral order',
+  );
 };
 
 /**

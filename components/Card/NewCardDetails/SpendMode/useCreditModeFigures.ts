@@ -20,7 +20,14 @@ import {
   type CardBorrowPosition,
   useCardSpendRegistration,
 } from '@/hooks/useCardSpendRegistration';
+import { useCollateralOrder } from '@/hooks/useCollateralOrder';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
+import {
+  type CollateralAssetKey,
+  collateralAssetKeyOf,
+  DEFAULT_COLLATERAL_ORDER,
+  sortByCollateralOrder,
+} from '@/lib/utils/collateralOrder';
 
 import type { BorrowedSummaryFigures } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 
@@ -28,7 +35,17 @@ import type { BorrowedSummaryFigures } from '@/components/Card/NewCardDetails/Sp
  * A collateral row's mark: the yield glyphs for Solid's own shares, the token's logo for the
  * crypto Base takes as collateral.
  */
-export type CollateralIcon = 'usd' | 'eur' | 'eth' | 'cbbtc' | 'weth' | 'sol' | 'aave' | 'zec';
+export type CollateralIcon =
+  | 'usd'
+  | 'eur'
+  | 'eth'
+  | 'cbbtc'
+  | 'sobtc'
+  | 'wbtc'
+  | 'weth'
+  | 'sol'
+  | 'aave'
+  | 'zec';
 
 /** One "Collateral assets" row (Figma 29123:9528, 29123:9541). */
 export interface CollateralRowFigures {
@@ -57,7 +74,13 @@ export interface BorrowPositionFigures extends BorrowedSummaryFigures {
 export interface CreditModeFigures extends BorrowedSummaryFigures {
   /** What is left to borrow across every instance — the figure under the Credit segment. */
   availableToBorrow: string;
+  /** The rows that are listed, in the cardholder's collateral order. */
   collateral: CollateralRowFigures[];
+  /**
+   * Every collateral the card can lock on any instance, held or not, in the cardholder's
+   * collateral order. With fewer than two there is nothing to order, so no "Edit order".
+   */
+  collateralKeys: CollateralAssetKey[];
   /** Debt on any instance. */
   hasDebt: boolean;
   /**
@@ -79,11 +102,13 @@ export interface CreditModeFigures extends BorrowedSummaryFigures {
  * What each collateral token is, as the app names it: the savings product for Solid's shares,
  * the asset's own name for the crypto Base takes.
  */
-export const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralIcon }> = {
+export const COLLATERAL_LABEL: Readonly<Record<string, { label: string; icon: CollateralIcon }>> = {
   soUSD: { label: 'USD Yield', icon: 'usd' },
   soEUR: { label: 'EUR Yield', icon: 'eur' },
   soETH: { label: 'ETH Yield', icon: 'eth' },
   cbBTC: { label: 'Bitcoin', icon: 'cbbtc' },
+  soBTC: { label: 'BTC Yield', icon: 'sobtc' },
+  WBTC: { label: 'Wrapped Bitcoin', icon: 'wbtc' },
   WETH: { label: 'Ethereum', icon: 'weth' },
   SOL: { label: 'Solana', icon: 'sol' },
   AAVE: { label: 'Aave', icon: 'aave' },
@@ -203,6 +228,8 @@ export const combineCreditFigures = (
   positions: CardCreditPositions | undefined,
   /** Formats a 6-decimal USD figure; the main currency's formatter on screen. */
   format: (amount: bigint) => string = formatUsd,
+  /** The cardholder's collateral order, which the rows are listed in. */
+  collateralOrder: readonly CollateralAssetKey[] = DEFAULT_COLLATERAL_ORDER,
 ): CreditModeFigures => {
   const instances = [
     {
@@ -231,6 +258,11 @@ export const combineCreditFigures = (
     }));
   const line = instances.reduce((sum, instance) => sum + instance.creditLineUsd, 0n);
   const headroom = instances.reduce((sum, instance) => sum + instance.creditHeadroomUsd, 0n);
+  const accepted = [...(positions?.fuse?.collateral ?? []), ...(positions?.base?.collateral ?? [])];
+  const keyOf = (asset: CreditCollateralAsset) => collateralAssetKeyOf(asset.symbol);
+  const lockable = new Set(
+    accepted.map(keyOf).filter((key): key is CollateralAssetKey => key !== undefined),
+  );
 
   return {
     borrowed: format(debt),
@@ -238,9 +270,12 @@ export const combineCreditFigures = (
     borrowApy: formatApy(borrowApyPercent(combinedBorrowRate(instances))),
     borrowedProgress: borrowedProgress(debt, line),
     availableToBorrow: format(headroom),
-    collateral: [...(positions?.fuse?.collateral ?? []), ...(positions?.base?.collateral ?? [])]
-      .filter(listsCollateral)
-      .map(collateralRow),
+    // In the order the card locks them. soUSD on Fuse and on Base share one key, and keep Fuse
+    // first between them.
+    collateral: sortByCollateralOrder(accepted.filter(listsCollateral), keyOf, collateralOrder).map(
+      collateralRow,
+    ),
+    collateralKeys: sortByCollateralOrder([...lockable], key => key, collateralOrder),
     hasDebt: debt > 0n,
     hasLine: line > 0n,
     risk: worstRisk(loans.map(loan => loan.risk)),
@@ -256,10 +291,18 @@ export const useCreditModeFigures = ({ enabled }: { enabled: boolean }): CreditM
   const { position, borrowApyPerSecond } = useCardSpendRegistration();
   const { data: positions } = useCardCreditPositions({ enabled });
   const { formatMicroUsd } = useCardDisplayCurrency();
+  const { order: collateralOrder } = useCollateralOrder();
 
   return useMemo(
-    () => combineCreditFigures(position, borrowApyPerSecond, positions, formatMicroUsd),
-    [position, borrowApyPerSecond, positions, formatMicroUsd],
+    () =>
+      combineCreditFigures(
+        position,
+        borrowApyPerSecond,
+        positions,
+        formatMicroUsd,
+        collateralOrder,
+      ),
+    [position, borrowApyPerSecond, positions, formatMicroUsd, collateralOrder],
   );
 };
 

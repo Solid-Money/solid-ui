@@ -8,13 +8,18 @@ import {
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { baseSpendableAssets, CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
+import { SOBTC_ADDRESSES, WBTC_BASE } from '@/lib/soBtc';
 import { CardCreditSummary, TokenBalance, TokenType } from '@/lib/types';
 
 jest.mock('@/hooks/useBalances', () => ({ useBalances: jest.fn() }));
-jest.mock('@/hooks/useCardSpendableBalance', () => ({ useCardSpendableAssets: jest.fn() }));
+jest.mock('@/hooks/useCardSpendableBalance', () => ({
+  useAllCardSpendableAssets: jest.fn(),
+  useCardSpendableAssets: jest.fn(),
+}));
 jest.mock('@/hooks/useVaultExchangeRate', () => ({ useVaultExchangeRate: jest.fn() }));
 jest.mock('@/hooks/useMainCurrency', () => ({ useMainCurrency: jest.fn() }));
 jest.mock('@/hooks/useCardCredit', () => ({ useCardCredit: jest.fn() }));
+jest.mock('@/hooks/useSpendOrder', () => ({ useSpendOrder: jest.fn() }));
 // A test build has no Base soUSD or soETH vault configured; give it production's, as a
 // production build names them.
 jest.mock('@/lib/config', () => {
@@ -90,6 +95,18 @@ describe('buildSpendableAssetRows', () => {
     // EURC is held but euro spending is off, so it is not spendable and not counted.
     expect(totalUsd).toBeCloseTo(160, 1);
     expect(dollarUsd).toBeCloseTo(160, 1);
+  });
+
+  it('lists rows in the cardholder’s spend order', () => {
+    const { rows } = buildSpendableAssetRows(
+      HOLDINGS,
+      CARD_SPENDABLE_ASSETS,
+      undefined,
+      undefined,
+      ['USD_YIELD', 'USDT', 'USDC'],
+    );
+
+    expect(rows.map(row => row.name)).toEqual(['soUSD', 'USDT', 'USDC']);
   });
 
   it('adds EURC in euros, at its dollar value in the balance but not in what Cash spends', () => {
@@ -269,6 +286,42 @@ describe('buildSpendableAssetRows', () => {
       expect(dollarUsd).toBeCloseTo(10.885, 4);
       expect(totalUsd).toBeCloseTo(1060.885, 4);
     });
+
+    // Nov 18: both were dropped from the panel for want of an icon while the backend spent them.
+    it('lists Base soBTC as BTC Yield and Base WBTC as Wrapped Bitcoin, in dollars', () => {
+      const { rows, dollarUsd, totalUsd } = buildSpendableAssetRows(
+        [
+          token({
+            contractTickerSymbol: 'WBTC',
+            contractAddress: WBTC_BASE,
+            balance: '310000',
+            contractDecimals: 8,
+            quoteRate: 100_000,
+            chainId: base.id,
+          }),
+          token({
+            contractTickerSymbol: 'soBTC',
+            contractAddress: SOBTC_ADDRESSES.base.vault,
+            balance: '1000000',
+            contractDecimals: 8,
+            quoteRate: 90_000,
+            chainId: base.id,
+          }),
+        ],
+        baseSpendableAssets([WBTC_BASE, SOBTC_ADDRESSES.base.vault]),
+        undefined,
+      );
+
+      // In the default spend order: BTC Yield, then Wrapped Bitcoin.
+      expect(
+        rows.map(row => [row.icon, row.spendKey, row.name, row.subtitle, row.value, row.detail]),
+      ).toEqual([
+        ['sobtc', 'BTC_YIELD', 'soBTC', 'BTC Yield', '$900.00', '0.01 soBTC'],
+        ['wbtc', 'WBTC', 'WBTC', 'Wrapped Bitcoin', '$310.00', '0.0031 WBTC'],
+      ]);
+      expect(dollarUsd).toBe(0);
+      expect(totalUsd).toBeCloseTo(1210, 4);
+    });
   });
 
   /** Eli, Nov 4: card credit heads the list, since every purchase uses it first. */
@@ -291,6 +344,7 @@ describe('buildSpendableAssetRows', () => {
         subtitle: 'Used first',
         value: '$12.50',
         usd: 0,
+        amount: 0,
         isDollar: false,
       });
     });

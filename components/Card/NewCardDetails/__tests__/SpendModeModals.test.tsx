@@ -51,6 +51,9 @@ jest.mock('@/components/Card/WirexCardFundModal', () => ({
   __esModule: true,
   default: 'WirexCardFundModal',
 }));
+// "Edit order" is cohort-gated through these reads; the selector tests here don't need them live.
+jest.mock('@/hooks/useSpendOrder', () => ({ useSpendOrder: () => ({ canEdit: true }) }));
+jest.mock('@/hooks/useCollateralOrder', () => ({ useCollateralOrder: () => ({ canEdit: true }) }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/Card/NewCardDetails/icons', () => ({ InlineChevronIcon: 'Chevron' }));
 

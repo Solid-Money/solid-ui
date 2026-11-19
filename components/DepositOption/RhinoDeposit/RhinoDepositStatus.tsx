@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { Check } from 'lucide-react-native';
 
@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useRhinoDeposits } from '@/hooks/useRhinoDeposits';
-import { getRhinoDepositStatusView } from '@/lib/rhinoDeposit';
+import { getRhinoDepositStatusView, isRhinoDepositComplete } from '@/lib/rhinoDeposit';
 
 import type { RhinoDepositAssetsResponse, RhinoDestinationType } from '@/lib/types';
 
@@ -22,6 +22,12 @@ type RhinoDepositStatusProps = {
   addressType?: string;
   /** The destination the address is for: only its deposits show. */
   destinationType: RhinoDestinationType;
+  /**
+   * Told whether the deposit shown is complete (see `isRhinoDepositComplete`),
+   * whenever that changes, and `false` once this leaves the screen — so the host
+   * can swap its own button for one that closes.
+   */
+  onCompleteChange?: (complete: boolean) => void;
 };
 
 /**
@@ -63,6 +69,7 @@ const RhinoDepositStatus = ({
   chainName,
   addressType,
   destinationType,
+  onCompleteChange,
 }: RhinoDepositStatusProps) => {
   const { deposit } = useRhinoDeposits({
     enabled,
@@ -71,6 +78,12 @@ const RhinoDepositStatus = ({
     destinationType,
   });
   const { assets } = useOfferedRhinoDepositAssets();
+
+  const isComplete = enabled && !!depositAddress && !!deposit && isRhinoDepositComplete(deposit);
+  useEffect(() => {
+    onCompleteChange?.(isComplete);
+    return () => onCompleteChange?.(false);
+  }, [isComplete, onCompleteChange]);
 
   if (!enabled || !depositAddress) return null;
 

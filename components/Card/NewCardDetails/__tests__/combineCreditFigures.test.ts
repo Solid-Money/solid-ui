@@ -2,6 +2,7 @@ import {
   combineCreditFigures,
   formatLtv,
 } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import { formatUsd } from '@/constants/cardSpendModule';
 
 import type {
   CardCreditPositions,
@@ -12,6 +13,7 @@ import type {
 jest.mock('@/hooks/useCardCreditPositions', () => ({ useCardCreditPositions: jest.fn() }));
 jest.mock('@/hooks/useCardSpendRegistration', () => ({ useCardSpendRegistration: jest.fn() }));
 jest.mock('@/hooks/useMainCurrency', () => ({ useCardDisplayCurrency: jest.fn() }));
+jest.mock('@/hooks/useCollateralOrder', () => ({ useCollateralOrder: jest.fn() }));
 
 const RATE = 1_243_680_656n;
 const SOUSD = '0x75333830E7014e909535389a6E5b0C02aA62ca27';
@@ -132,6 +134,7 @@ describe('combineCreditFigures', () => {
           ltv: 'LTV 90%',
         },
       ],
+      collateralKeys: ['USD_YIELD'],
       hasDebt: true,
       hasLine: true,
       risk: 'none',
@@ -351,7 +354,8 @@ describe('combineCreditFigures', () => {
         }),
       });
 
-      expect(figures.collateral.map(row => row.label)).toEqual(['Solana', 'EUR Yield']);
+      // In the configured lock order: EUR Yield before Solana.
+      expect(figures.collateral.map(row => row.label)).toEqual(['EUR Yield', 'Solana']);
     });
 
     it('lists soUSD on Base and soETH only when held, soUSD named for Base, soETH as ETH Yield', () => {
@@ -391,6 +395,85 @@ describe('combineCreditFigures', () => {
       expect(held.collateral.map(row => [row.label, row.icon, row.value, row.ltv])).toEqual([
         ['USD Yield on Base', 'usd', '$20.00', 'LTV 90%'],
         ['ETH Yield', 'eth', '$2,100.00', 'LTV 60%'],
+      ]);
+    });
+  });
+  describe('the collateral order', () => {
+    const BASE_SOBTC = '0x49d88bd2b250d57fc2c14a16a3420fb149078d00';
+    const BASE_WBTC = '0x0555e30da8f98308edb960aa94c0db47230d2b9c';
+    const held = (token: string, symbol: string) =>
+      asset({ chainId: 8453, token: token as `0x${string}`, symbol, amount: 1n, valueUsd: 1n });
+
+    it('lists the rows in the cardholder’s order, Fuse’s soUSD before Base’s', () => {
+      const figures = combineCreditFigures(
+        noFuseDebt,
+        RATE,
+        {
+          fuse: instance({ collateral: [asset({ amount: 1n, valueUsd: 1n })] }),
+          base: baseLoan({
+            collateral: [
+              held(BASE_SOUSD, 'soUSD'),
+              held(CBBTC, 'cbBTC'),
+              held(SOL, 'SOL'),
+              held(SOEUR, 'soEUR'),
+            ],
+          }),
+        },
+        formatUsd,
+        ['SOL', 'BTC', 'USD_YIELD', 'EUR_YIELD'],
+      );
+
+      expect(figures.collateral.map(row => row.label)).toEqual([
+        'Solana',
+        'Bitcoin',
+        'USD Yield',
+        'USD Yield on Base',
+        'EUR Yield',
+      ]);
+    });
+
+    it('names every collateral the card can lock, held or not, in that order', () => {
+      const figures = combineCreditFigures(
+        noFuseDebt,
+        RATE,
+        {
+          fuse: instance({ collateral: [asset({})] }),
+          base: baseLoan({
+            collateral: [
+              asset({ chainId: 8453, token: BASE_SOUSD, symbol: 'soUSD' }),
+              asset({ chainId: 8453, token: CBBTC, symbol: 'cbBTC' }),
+              asset({ chainId: 8453, token: BASE_SOBTC, symbol: 'soBTC' }),
+              asset({ chainId: 8453, token: BASE_WBTC, symbol: 'WBTC' }),
+            ],
+          }),
+        },
+        formatUsd,
+        ['WBTC', 'BTC_YIELD'],
+      );
+
+      expect(figures.collateralKeys).toEqual(['WBTC', 'BTC_YIELD', 'USD_YIELD', 'BTC']);
+    });
+
+    it('has one key for a Fuse-only card, so there is nothing to order', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, {
+        fuse: instance({ collateral: [asset({})] }),
+        base: null,
+      });
+
+      expect(figures.collateralKeys).toEqual(['USD_YIELD']);
+    });
+
+    it('names soBTC and WBTC when held', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [held(BASE_SOBTC, 'soBTC'), held(BASE_WBTC, 'WBTC')],
+        }),
+      });
+
+      expect(figures.collateral.map(row => [row.label, row.icon])).toEqual([
+        ['BTC Yield', 'sobtc'],
+        ['Wrapped Bitcoin', 'wbtc'],
       ]);
     });
   });

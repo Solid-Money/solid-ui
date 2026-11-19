@@ -40,6 +40,16 @@ const FILTERS: { value: CashoutFilter; label: string }[] = [
   { value: 'mobile_money', label: CASHOUT_METHOD_TYPE_LABEL.mobile_money },
 ];
 
+/**
+ * A filter label's colour, kept out of its classes. On the web a Text's classes
+ * pile up across renders instead of being replaced, so after picking another
+ * filter and coming back, "All" carried both `text-black` and `text-white` and
+ * came out white on its white pill. A plain object stays an inline style, which
+ * wins on the web as the `style` prop does on native (see AiApiSetupGuide).
+ */
+const FILTER_LABEL = { color: '#ffffff' };
+const ACTIVE_FILTER_LABEL = { color: '#000000' };
+
 const Tag = ({ label }: { label: string }) => (
   <View className="rounded-md bg-white/10 px-2 py-1">
     <Text className="text-[13px] font-medium leading-4 text-white/80" numberOfLines={1}>
@@ -269,7 +279,8 @@ export const CashoutCurrencySelector = () => {
                   onPress={() => setFilter(option.value)}
                 >
                   <Text
-                    className={cn('text-sm font-medium', isActive ? 'text-black' : 'text-white')}
+                    className="text-sm font-medium"
+                    style={isActive ? ACTIVE_FILTER_LABEL : FILTER_LABEL}
                   >
                     {option.label}
                   </Text>
