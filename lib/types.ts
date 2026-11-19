@@ -1758,6 +1758,12 @@ export enum TransactionType {
    */
   WIREX_BANK_DEPOSIT = 'wirex_bank_deposit',
   WIREX_BANK_PAYOUT = 'wirex_bank_payout',
+  /**
+   * An Apple Pay / Google Pay top-up through Wirex's checkout: the card is
+   * charged by Wirex, and the backend pays the same amount of USDC or EURC into
+   * the Safe on Base. Inbound, like a Wirex bank deposit.
+   */
+  WIREX_WALLET_TOPUP = 'wirex_wallet_topup',
   CARD_TRANSACTION = 'card_transaction',
   CARD_WITHDRAWAL = 'card_withdrawal',
   MERCURYO_TRANSACTION = 'mercuryo_transaction',

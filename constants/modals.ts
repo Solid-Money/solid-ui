@@ -229,6 +229,25 @@ export const DEPOSIT_MODAL = {
     name: 'open_orchestra_error',
     number: 32,
   },
+  /**
+   * Apple Pay / Google Pay top-up through Wirex's hosted checkout: how much, the
+   * summary with Wirex's Pay button under it, then where the top-up is. Entered
+   * from the first "Deposit with" row, and run embedded by the Wirex card's
+   * funding options. Numbered after every other step so entering it always
+   * animates forward.
+   */
+  OPEN_WALLET_TOPUP_AMOUNT: {
+    name: 'open_wallet_topup_amount',
+    number: 33,
+  },
+  OPEN_WALLET_TOPUP_REVIEW: {
+    name: 'open_wallet_topup_review',
+    number: 34,
+  },
+  OPEN_WALLET_TOPUP_STATUS: {
+    name: 'open_wallet_topup_status',
+    number: 35,
+  },
 };
 
 export const SEND_MODAL = {

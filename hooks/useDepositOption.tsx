@@ -50,6 +50,9 @@ import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScree
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { WalletTopUpAmount } from '@/components/WalletTopUp/WalletTopUpAmount';
+import { WalletTopUpReview } from '@/components/WalletTopUp/WalletTopUpReview';
+import { WalletTopUpStatus } from '@/components/WalletTopUp/WalletTopUpStatus';
 import { WirexBankAccountPane } from '@/components/WirexBankAccount/WirexBankAccountPane';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
@@ -68,9 +71,16 @@ import {
   getVaultDepositConfig,
 } from '@/lib/vaults';
 import { getDepositTokenBackTarget } from '@/lib/walletDepositFlow';
+import {
+  canGoBackFromWalletTopUp,
+  getWalletTopUpBackTarget,
+  getWalletTopUpTitle,
+  isWalletTopUpModal,
+} from '@/lib/walletTopUp';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 import { useSavingStore } from '@/store/useSavingStore';
+import { useWalletTopUpStore } from '@/store/useWalletTopUpStore';
 
 import useResponsiveModal from './useResponsiveModal';
 
@@ -187,6 +197,12 @@ const useDepositOption = ({
   const isOrchestraInvoice = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE.name;
   const isOrchestraStatus = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_STATUS.name;
   const isOrchestraError = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR.name;
+  // Apple Pay / Google Pay through Wirex: amount, review with the checkout, status.
+  const isWalletTopUp = isWalletTopUpModal(currentModal);
+  const isWalletTopUpAmount = currentModal.name === DEPOSIT_MODAL.OPEN_WALLET_TOPUP_AMOUNT.name;
+  const isWalletTopUpReview = currentModal.name === DEPOSIT_MODAL.OPEN_WALLET_TOPUP_REVIEW.name;
+  const isWalletTopUpStatus = currentModal.name === DEPOSIT_MODAL.OPEN_WALLET_TOPUP_STATUS.name;
+  const walletTopUpMethod = useWalletTopUpStore(state => state.method);
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
@@ -388,6 +404,18 @@ const useDepositOption = ({
       return <OrchestraErrorScreen />;
     }
 
+    if (isWalletTopUpAmount) {
+      return <WalletTopUpAmount />;
+    }
+
+    if (isWalletTopUpReview) {
+      return <WalletTopUpReview />;
+    }
+
+    if (isWalletTopUpStatus) {
+      return <WalletTopUpStatus />;
+    }
+
     if (isPublicAddress) {
       return <WalletDepositAddress />;
     }
@@ -505,6 +533,9 @@ const useDepositOption = ({
     if (isOrchestraInvoice) return 'orchestra-invoice';
     if (isOrchestraStatus) return 'orchestra-status';
     if (isOrchestraError) return 'orchestra-error';
+    if (isWalletTopUpAmount) return 'wallet-topup-amount';
+    if (isWalletTopUpReview) return 'wallet-topup-review';
+    if (isWalletTopUpStatus) return 'wallet-topup-status';
     if (isPublicAddress) return 'public-address';
     if (isSavingsFund) return 'savings-fund-options';
     if (isSavingsFundNetworks) return 'savings-fund-networks';
@@ -559,6 +590,9 @@ const useDepositOption = ({
     if (isOrchestraStatus) return 'Deposit status';
     // Same reasoning as the TransFi error screen above.
     if (isOrchestraError) return undefined;
+    // The wallet's name on the amount step, "Review" over the checkout; the
+    // status step carries its own headline.
+    if (isWalletTopUp) return getWalletTopUpTitle(currentModal, walletTopUpMethod);
     if (isPublicAddress) return 'Deposit address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
@@ -620,7 +654,8 @@ const useDepositOption = ({
       isOrchestraAmount ||
       isOrchestraInvoice ||
       isOrchestraStatus ||
-      isOrchestraError
+      isOrchestraError ||
+      isWalletTopUp
     ) {
       return 'w-[470px] max-h-[90vh]';
     }
@@ -715,6 +750,11 @@ const useDepositOption = ({
     // Credit card method
     if (modalName === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name) {
       return 'credit_card';
+    }
+
+    // Apple Pay / Google Pay through Wirex
+    if (isWalletTopUpModal(modal)) {
+      return 'wallet_topup';
     }
 
     // Bank transfer method
@@ -843,6 +883,8 @@ const useDepositOption = ({
 
       const { onDismiss } = useDepositStore.getState();
       resetDepositFlow();
+      // Drops a quote's checkout token along with everything else of the top-up.
+      useWalletTopUpStore.getState().reset();
       onDismiss?.();
     }
   };
@@ -917,6 +959,21 @@ const useDepositOption = ({
       // The invoice is already allocated, but going back only abandons it — the
       // amount screen mints a new order rather than reusing this one.
       setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
+    } else if (isWalletTopUp) {
+      const target = getWalletTopUpBackTarget(currentModal);
+      if (target === 'entry') {
+        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      } else if (target === 'close') {
+        // The card may already be charged; the activity feed follows it from here.
+        useWalletTopUpStore.getState().reset();
+        setModal(DEPOSIT_MODAL.CLOSE);
+        resetDepositFlow();
+        clearSessionStartTime();
+      } else {
+        // Back to the amount: this quote and its checkout token are done with.
+        useWalletTopUpStore.getState().clearQuote();
+        setModal(target);
+      }
     } else if (isOrchestraStatus || isOrchestraError) {
       // An invoice may already be paid, and the failure is what sent them to the
       // error screen — neither has a step worth returning to.
@@ -1090,7 +1147,8 @@ const useDepositOption = ({
     isDepositDirectlyAddress ||
     isDepositDirectlyTokens ||
     isTokenSelector ||
-    isVirtualAccountApply;
+    isVirtualAccountApply ||
+    (isWalletTopUp && canGoBackFromWalletTopUp(currentModal));
 
   const needsWalletProvider =
     isWalletConnector || isNetworks || (isFormAndAddress && !depositFromSolid) || isTokenSelector;

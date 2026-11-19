@@ -26,10 +26,19 @@ import {
 } from '@/components/Card/CardFund/localCurrencies';
 import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import NeedHelp from '@/components/NeedHelp';
+import WalletTopUpIcon from '@/components/WalletTopUp/WalletTopUpIcon';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
+import { getWalletTopUpRowCopy } from '@/lib/walletTopUp';
 
-const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
+import type { WalletTopUpMethod } from '@/lib/types/wallet-topup';
+
+const TOKEN_ICON_SIZE = 36;
+const TOKEN_ICON_STYLE = {
+  width: TOKEN_ICON_SIZE,
+  height: TOKEN_ICON_SIZE,
+  borderRadius: TOKEN_ICON_SIZE / 2,
+};
 
 type CardFundOptionsProps = {
   /**
@@ -69,6 +78,12 @@ type CardFundOptionsProps = {
    * opt in individually, as they do for the local-currency rows.
    */
   onBuyCryptoPress?: () => void;
+  /**
+   * The Apple Pay / Google Pay top-up row, first on the screen. Pass it only once
+   * `useCanWalletTopUp` says to show it; like the local currencies, it also needs
+   * its section on (`walletTopUp`), which only Wirex has.
+   */
+  walletTopUp?: { method: WalletTopUpMethod; needsCard: boolean; onPress: () => void };
   isExternalWalletLoading?: boolean;
   /**
    * Which groups this issuer offers. Defaults to the full Rain set, so the
@@ -93,6 +108,7 @@ const CardFundOptions = ({
   isCreditCardAvailable = false,
   onLocalCurrencyPress,
   onBuyCryptoPress,
+  walletTopUp,
   isExternalWalletLoading,
   sections = RAIN_CARD_FUND_SECTIONS,
   moveFromSolidCopy = CARD_FUND_MOVE_COPY.rain,
@@ -109,9 +125,24 @@ const CardFundOptions = ({
   // Only what rhino.fi takes to the card from somewhere.
   const rhino = useOfferedRhinoDepositAssets();
   const cryptoRows = sections.crypto ? getCardFundCryptoRows(rhino) : [];
+  const walletTopUpRow = sections.walletTopUp ? walletTopUp : undefined;
+  const walletTopUpCopy = walletTopUpRow
+    ? getWalletTopUpRowCopy(walletTopUpRow.method, walletTopUpRow.needsCard)
+    : undefined;
 
   return (
     <View className="gap-y-8">
+      {walletTopUpRow && walletTopUpCopy ? (
+        <CardFundGroup>
+          <CardFundRow
+            icon={<WalletTopUpIcon method={walletTopUpRow.method} size={TOKEN_ICON_SIZE} />}
+            title={walletTopUpCopy.title}
+            subtitle={walletTopUpCopy.subtitle}
+            onPress={walletTopUpRow.onPress}
+          />
+        </CardFundGroup>
+      ) : null}
+
       {sections.stablecoins ? (
         <CardFundGroup
           label="Stablecoins"

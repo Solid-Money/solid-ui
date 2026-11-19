@@ -312,9 +312,18 @@ export type CardFundSections = {
   moveFromSolid: boolean;
   /** "Deposit from an external wallet". */
   externalWallet: boolean;
+  /**
+   * Apple Pay / Google Pay through Wirex's checkout, which pays USDC or EURC into
+   * the Safe on Base. Still only shown where the host passes the row — for a user
+   * the backend offers it to, on a device that can pay (see `useCanWalletTopUp`).
+   */
+  walletTopUp: boolean;
 };
 
-/** Rain cards offer every funding method. */
+/**
+ * Rain cards offer every funding method but the wallet top-up: it lands in the
+ * Safe, which a Rain card does not spend from.
+ */
 export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
   stablecoins: true,
   crypto: true,
@@ -322,6 +331,7 @@ export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
   localCurrencies: true,
   moveFromSolid: true,
   externalWallet: true,
+  walletTopUp: false,
 };
 
 /**
@@ -354,6 +364,9 @@ export const WIREX_CARD_FUND_SECTIONS: CardFundSections = {
   localCurrencies: true,
   moveFromSolid: true,
   externalWallet: false,
+  // The Safe on Base is what a Wirex card spends from, so a top-up there is
+  // spendable as it lands.
+  walletTopUp: true,
 };
 
 /**

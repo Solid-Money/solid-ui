@@ -24,10 +24,13 @@ import {
 } from '@/components/Card/CardFund/WirexMoveFromWallet';
 import RhinoDepositAddress from '@/components/DepositOption/RhinoDeposit/RhinoDepositAddress';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
+import { WalletTopUpFlowContent } from '@/components/WalletTopUp/WalletTopUpFlow';
+import WalletTopUpProbe from '@/components/WalletTopUp/WalletTopUpProbe';
 import { USDC_STARGATE } from '@/constants/addresses';
-import { SWAP_MODAL } from '@/constants/modals';
+import { DEPOSIT_MODAL, SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
+import { useWalletTopUpEntry } from '@/hooks/useCanWalletTopUp';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
@@ -42,8 +45,14 @@ import { CardProvider, DepositModal } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
 import { MovableHolding, SwappableHolding } from '@/lib/utils/cardFundMove';
+import {
+  canGoBackFromWalletTopUp,
+  getWalletTopUpBackTarget,
+  getWalletTopUpTitle,
+} from '@/lib/walletTopUp';
 import { useSwapState } from '@/store/swapStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
+import { useWalletTopUpStore } from '@/store/useWalletTopUpStore';
 
 type Step = 'options' | 'networks' | 'address' | 'moveHoldings' | 'moveAmount';
 
@@ -107,6 +116,10 @@ export interface WirexCardFundModalProps {
  * the backend delivers the bought USDC to the card deposit address and the
  * direct-deposit pipeline carries it to the Safe.
  *
+ * Above everything, where the backend and the device allow it, Apple Pay or
+ * Google Pay through Wirex: it pays USDC or EURC into the Safe on Base, and runs
+ * the deposit modal's own top-up steps embedded here, as the buy-crypto ones are.
+ *
  * What differs is only how much of the options screen is offered:
  * `WIREX_CARD_FUND_SECTIONS` leaves everything else off until the matching
  * backend leg exists. That is why this is a separate component rather than a
@@ -134,6 +147,9 @@ export default function WirexCardFundModal({
     previous: CLOSE_STATE,
   });
   const [buyCryptoModal, setBuyCryptoModal] = useState<DepositModal | null>(null);
+  // The Apple Pay / Google Pay top-up steps, embedded like the buy-crypto ones.
+  const [walletTopUpModal, setWalletTopUpModal] = useState<DepositModal | null>(null);
+  const walletTopUpMethod = useWalletTopUpStore(state => state.method);
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
@@ -162,12 +178,13 @@ export default function WirexCardFundModal({
   });
 
   const baseModal = MODAL_STATES[stepState.current];
-  const currentModal = buyCryptoModal ?? baseModal;
+  const currentModal = buyCryptoModal ?? walletTopUpModal ?? baseModal;
   const currentModalRef = useRef<ModalState>(currentModal);
   currentModalRef.current = currentModal;
 
   const goToStep = useCallback((nextStep: Step) => {
     setBuyCryptoModal(null);
+    setWalletTopUpModal(null);
     setStepState({ current: nextStep, previous: currentModalRef.current });
   }, []);
 
@@ -178,6 +195,9 @@ export default function WirexCardFundModal({
       if (!open) {
         setStepState({ current: 'options', previous: CLOSE_STATE });
         setBuyCryptoModal(null);
+        setWalletTopUpModal(null);
+        // Drops a quote's checkout token along with everything else of the top-up.
+        useWalletTopUpStore.getState().reset();
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
         setRhinoSelection(undefined);
@@ -204,6 +224,28 @@ export default function WirexCardFundModal({
     [goToStep, handleOpenChange],
   );
   const { handleBuyCryptoPress } = useBuyCryptoEntry(navigateBuyCrypto);
+
+  // The top-up steps navigate with deposit-modal states; closing leaves this modal.
+  const navigateWalletTopUp = useCallback(
+    (nextModal: DepositModal) => {
+      if (nextModal.name === DEPOSIT_MODAL.CLOSE.name) {
+        handleOpenChange(false);
+        return;
+      }
+      setStepState(prev => ({ ...prev, previous: currentModalRef.current }));
+      setWalletTopUpModal(nextModal);
+    },
+    [handleOpenChange],
+  );
+  const openWalletTopUp = useCallback(
+    () => navigateWalletTopUp(DEPOSIT_MODAL.OPEN_WALLET_TOPUP_AMOUNT),
+    [navigateWalletTopUp],
+  );
+  const walletTopUp = useWalletTopUpEntry(
+    'card_fund',
+    openWalletTopUp,
+    isOpen && stepState.current === 'options' && !buyCryptoModal && !walletTopUpModal,
+  );
 
   const handleTokenPress = useCallback(
     (symbol: string) => {
@@ -345,11 +387,31 @@ export default function WirexCardFundModal({
       }
       return;
     }
+    if (walletTopUpModal) {
+      const target = getWalletTopUpBackTarget(walletTopUpModal);
+      if (target === 'entry') {
+        goToStep('options');
+      } else if (target === 'close') {
+        handleOpenChange(false);
+      } else {
+        // Back to the amount: this quote and its checkout token are done with.
+        useWalletTopUpStore.getState().clearQuote();
+        navigateWalletTopUp(target);
+      }
+      return;
+    }
     setStepState(prev => ({
       current: BACK_STEP[prev.current] ?? 'options',
       previous: MODAL_STATES[prev.current],
     }));
-  }, [buyCryptoModal, goToStep, navigateBuyCrypto]);
+  }, [
+    buyCryptoModal,
+    goToStep,
+    handleOpenChange,
+    navigateBuyCrypto,
+    navigateWalletTopUp,
+    walletTopUpModal,
+  ]);
 
   // The only entry point is already Wirex-only, but this is the chokepoint they
   // all pass through: a Rain cardholder must never be sent down this flow, whose
@@ -359,10 +421,13 @@ export default function WirexCardFundModal({
   const { current: step, previous: previousModal } = stepState;
   const canGoBack = buyCryptoModal
     ? getBuyCryptoBackTarget(buyCryptoModal) !== null
-    : step !== 'options';
+    : walletTopUpModal
+      ? canGoBackFromWalletTopUp(walletTopUpModal)
+      : step !== 'options';
 
   const title = (() => {
     if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
+    if (walletTopUpModal) return getWalletTopUpTitle(walletTopUpModal, walletTopUpMethod);
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
     if (step === 'moveHoldings') return CARD_FUND_MOVE_COPY.wirex.title;
@@ -371,7 +436,7 @@ export default function WirexCardFundModal({
   })();
 
   const titleIcon =
-    !buyCryptoModal && (step === 'networks' || step === 'address') ? (
+    !buyCryptoModal && !walletTopUpModal && (step === 'networks' || step === 'address') ? (
       <Image
         source={getCardFundTokenIcon(selectedToken)}
         style={TITLE_ICON_STYLE}
@@ -383,16 +448,24 @@ export default function WirexCardFundModal({
     if (buyCryptoModal) {
       return <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />;
     }
+    if (walletTopUpModal) {
+      return <WalletTopUpFlowContent modal={walletTopUpModal} navigate={navigateWalletTopUp} />;
+    }
     if (step === 'options') {
       return (
-        <CardFundOptions
-          onTokenPress={handleTokenPress}
-          tokens={WIREX_CARD_FUND_TOKENS}
-          onLocalCurrencyPress={handleLocalCurrencyPress}
-          onMoveFromSavingsPress={handleMoveFromWalletPress}
-          sections={WIREX_CARD_FUND_SECTIONS}
-          moveFromSolidCopy={CARD_FUND_MOVE_COPY.wirex}
-        />
+        <>
+          {/* Renders nothing; on native it is what tells the row whether this phone can pay. */}
+          <WalletTopUpProbe />
+          <CardFundOptions
+            onTokenPress={handleTokenPress}
+            tokens={WIREX_CARD_FUND_TOKENS}
+            onLocalCurrencyPress={handleLocalCurrencyPress}
+            onMoveFromSavingsPress={handleMoveFromWalletPress}
+            walletTopUp={walletTopUp.visible ? walletTopUp : undefined}
+            sections={WIREX_CARD_FUND_SECTIONS}
+            moveFromSolidCopy={CARD_FUND_MOVE_COPY.wirex}
+          />
+        </>
       );
     }
 
@@ -500,7 +573,7 @@ export default function WirexCardFundModal({
       onBackPress={handleBack}
       shouldAnimate={previousModal.name !== 'close'}
       isForward={currentModal.number > previousModal.number}
-      contentKey={buyCryptoModal?.name ?? step}
+      contentKey={buyCryptoModal?.name ?? walletTopUpModal?.name ?? step}
     >
       {content}
     </ResponsiveModal>

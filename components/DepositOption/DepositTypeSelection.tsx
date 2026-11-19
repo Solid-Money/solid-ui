@@ -3,13 +3,17 @@ import { View } from 'react-native';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import WalletTopUpIcon from '@/components/WalletTopUp/WalletTopUpIcon';
+import WalletTopUpProbe from '@/components/WalletTopUp/WalletTopUpProbe';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useWalletTopUpEntry } from '@/hooks/useCanWalletTopUp';
 import { useDimension } from '@/hooks/useDimension';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getCryptoDepositEntry } from '@/lib/walletDepositFlow';
+import { getWalletTopUpRowCopy } from '@/lib/walletTopUp';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -23,6 +27,9 @@ const DEPOSIT_CRYPTO_CLUSTER_ICONS = [
   getAsset('images/eth.png'),
 ];
 
+/** The size of the icon-cluster circles on the other rows. */
+const WALLET_TOPUP_ICON_SIZE = 28;
+
 type DepositTypeSelectionProps = {
   /** Dismisses the whole deposit flow — the drawer's own "Close" button. */
   onClose: () => void;
@@ -31,7 +38,8 @@ type DepositTypeSelectionProps = {
 /**
  * "Deposit with" — the first step of the wallet deposit flow. The upgrade
  * Top up entry also offers Buy FUSE, while ordinary deposits keep the two
- * funding methods: crypto or cash.
+ * funding methods: crypto or cash. Above them, for a user the backend offers it
+ * to on a device that can pay, Apple Pay or Google Pay through Wirex.
  */
 const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
   const { isDesktop, isScreenMedium } = useDimension();
@@ -40,6 +48,10 @@ const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
   const upgradeTopUp = useDepositStore(state => state.upgradeTopUp);
   const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
   const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
+  const walletTopUp = useWalletTopUpEntry('deposit', () =>
+    setModal(DEPOSIT_MODAL.OPEN_WALLET_TOPUP_AMOUNT),
+  );
+  const walletTopUpCopy = getWalletTopUpRowCopy(walletTopUp.method, walletTopUp.needsCard);
 
   const handleCryptoPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'crypto' });
@@ -77,7 +89,18 @@ const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
         <Text className="text-center text-xl font-semibold text-white">Deposit with</Text>
       </View>
 
+      {/* Renders nothing; on native it is what tells the row whether this phone can pay. */}
+      <WalletTopUpProbe />
+
       <CardFundGroup>
+        {walletTopUp.visible ? (
+          <DepositMethodRow
+            icon={<WalletTopUpIcon method={walletTopUp.method} size={WALLET_TOPUP_ICON_SIZE} />}
+            title={walletTopUpCopy.title}
+            subtitle={walletTopUpCopy.subtitle}
+            onPress={walletTopUp.onPress}
+          />
+        ) : null}
         <DepositMethodRow
           icon={<DepositIconCluster icons={DEPOSIT_CRYPTO_CLUSTER_ICONS} />}
           title="Crypto"
