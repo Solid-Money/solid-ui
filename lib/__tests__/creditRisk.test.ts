@@ -175,6 +175,19 @@ describe('buildLoan — several volatile assets', () => {
     expect(loan.penaltyBps).toEqual({ min: 500, max: 750 });
   });
 
+  it('says when the crypto cannot put the loan at risk even falling to nothing', () => {
+    // $120 of steady cover against $100 owed; the crypto adds $30 more.
+    const covered = buildLoan(
+      position(100, [
+        asset('soUSD', 126.32, 0.9, 0.95),
+        asset('cbBTC', 25, 0.6, 0.7),
+        asset('SOL', 21.67, 0.5, 0.6),
+      ]),
+      NOW,
+    );
+    expect(covered.risk).toEqual({ kind: 'multi', togetherDrop: null });
+  });
+
   it('suggests no pay-down while the loan is comfortably healthy', () => {
     expect(loan.payDown).toBeNull();
   });
@@ -234,6 +247,24 @@ describe('buildLoan — when a sale can happen', () => {
     expect(loan.payDown?.amountUsd).toBe(usd(195));
     expect(loan.payDown?.reachesTarget).toBe(true);
   });
+
+  it('prefers an asset that can reach Healthy over a smaller one with a lower threshold', () => {
+    // $1 at 60% cannot lift a $480 loan; $600 at 80% can, with $160 rounded up.
+    const loan = buildLoan(
+      position(480, [asset('SOL', 1, 0.5, 0.6), asset('WETH', 600, 0.7, 0.8)], {
+        unhealthySince: NOW - 60,
+      }),
+      NOW,
+    );
+    expect(loan.payDown?.asset.symbol).toBe('WETH');
+    expect(loan.payDown?.reachesTarget).toBe(true);
+  });
+
+  it('gives no no-wait price to a loan carrying a forced charge', () => {
+    const loan = buildLoan(atRisk({ unhealthySince: NOW - 60, forcedDebtUsd: usd(50) }), NOW);
+    expect(loan.risk.kind).toBe('single');
+    if (loan.risk.kind === 'single') expect(loan.risk.noWaitPriceUsd).toBeNull();
+  });
 });
 
 describe('unlocking while the loan stays open', () => {
@@ -265,6 +296,7 @@ describe('unlocking while the loan stays open', () => {
     expect(quote.debtAfterUsd).toBe(usd(815));
     expect(quote.requiresFullRepay).toBe(false);
     expect(quote.after.status).toBe('healthy');
+    expect(quote.after.risk.kind).toBe('multi');
     if (quote.after.risk.kind === 'multi')
       expect(quote.after.risk.togetherDrop).toBeCloseTo(0.1613, 3);
   });

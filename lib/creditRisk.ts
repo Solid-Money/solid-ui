@@ -109,7 +109,11 @@ export type LoanRisk =
       noWaitPriceUsd: bigint | null;
     }
   /** Several volatile assets: how far they can all fall together. */
-  | { kind: 'multi'; togetherDrop: number }
+  /**
+   * How far they can all fall together, 0–1. Null when even all of them falling to nothing would
+   * leave the loan covered: the steady assets hold it up on their own.
+   */
+  | { kind: 'multi'; togetherDrop: number | null }
   /** Some locked asset has no usable price, so nothing can be worked out — or sold. */
   | { kind: 'unpriced' };
 
@@ -318,11 +322,16 @@ const assemble = (
         sellPriceUsd !== null && asset.priceUsd > 0n
           ? Math.max(0, 1 - ratio(sellPriceUsd, asset.priceUsd))
           : null,
-      noWaitPriceUsd: priceAt(floorCover),
+      // A loan carrying a forced charge always gets the full wait, so it has no such price.
+      noWaitPriceUsd: position.forcedDebtUsd > 0n ? null : priceAt(floorCover),
     };
   } else {
     const volatileCover = volatile.reduce((sum, asset) => sum + asset.coverUsd, 0n);
-    risk = { kind: 'multi', togetherDrop: Math.max(0, ratio(max(buffer, 0n), volatileCover)) };
+    risk = {
+      kind: 'multi',
+      togetherDrop:
+        volatileCover > max(buffer, 0n) ? Math.max(0, ratio(max(buffer, 0n), volatileCover)) : null,
+    };
   }
 
   // --- when a sale could happen ---
@@ -418,40 +427,50 @@ export const suggestPayDown = (
   loan: Pick<LoanModel, 'assets' | 'debtUsd' | 'coverUsd'>,
 ): PayDownSuggestion | null => {
   if (loan.debtUsd === 0n) return null;
-  const candidates = loan.assets.filter(
-    asset => asset.priceUsable && asset.priceInBand && asset.escrowedValueUsd > 0n,
-  );
-  if (candidates.length === 0) return null;
-
-  const asset = [...candidates].sort((a, b) =>
-    a.ltWad === b.ltWad
-      ? a.escrowedValueUsd > b.escrowedValueUsd
-        ? -1
-        : 1
-      : a.ltWad < b.ltWad
-        ? -1
-        : 1,
-  )[0];
-
   const target = PAY_DOWN_TARGET_HF_WAD;
-  const effectiveLt = (asset.ltWad * (BPS + BigInt(asset.repayFeeBps))) / BPS;
   const shortfall = (target * loan.debtUsd) / WAD - loan.coverUsd;
   if (shortfall <= 0n) return null;
-  if (target <= effectiveLt) return null;
 
-  const exact = (shortfall * WAD) / (target - effectiveLt);
-  // What the asset can actually retire, its fee included.
-  const affordable = (asset.escrowedValueUsd * BPS) / (BPS + BigInt(asset.repayFeeBps));
-  const amountUsd = min(min(roundUpToStep(exact), affordable), loan.debtUsd);
-  if (amountUsd <= 0n) return null;
+  // Sized per asset, then compared on what each can actually reach: a tiny balance at the lowest
+  // threshold is no use if a larger one gets the loan back to Healthy.
+  const options = loan.assets
+    .filter(asset => asset.priceUsable && asset.priceInBand && asset.escrowedValueUsd > 0n)
+    .flatMap((asset): PayDownSuggestion[] => {
+      const effectiveLt = (asset.ltWad * (BPS + BigInt(asset.repayFeeBps))) / BPS;
+      if (target <= effectiveLt) return [];
+      const exact = (shortfall * WAD) / (target - effectiveLt);
+      // What the asset can actually retire, its fee included.
+      const affordable = (asset.escrowedValueUsd * BPS) / (BPS + BigInt(asset.repayFeeBps));
+      const amountUsd = min(min(roundUpToStep(exact), affordable), loan.debtUsd);
+      if (amountUsd <= 0n) return [];
+      const hfAfterWad = healthAfterPayDown(loan, asset, amountUsd);
+      return [
+        {
+          asset,
+          amountUsd,
+          hfAfterWad,
+          reachesTarget: hfAfterWad === null || hfAfterWad >= target,
+        },
+      ];
+    });
+  if (options.length === 0) return null;
 
-  const hfAfterWad = healthAfterPayDown(loan, asset, amountUsd);
-  return {
-    asset,
-    amountUsd,
-    hfAfterWad,
-    reachesTarget: hfAfterWad === null || hfAfterWad >= target,
-  };
+  const reaching = options.filter(option => option.reachesTarget);
+  if (reaching.length) {
+    // Among those that get there, the lowest threshold: the most lift and the most risk shed.
+    return reaching.sort((a, b) =>
+      a.asset.ltWad === b.asset.ltWad
+        ? a.asset.escrowedValueUsd > b.asset.escrowedValueUsd
+          ? -1
+          : 1
+        : a.asset.ltWad < b.asset.ltWad
+          ? -1
+          : 1,
+    )[0];
+  }
+  // None gets there: the one that gets closest.
+  const healthOf = (option: PayDownSuggestion) => option.hfAfterWad ?? NO_DEBT_HF;
+  return options.sort((a, b) => (healthOf(a) > healthOf(b) ? -1 : 1))[0];
 };
 
 /** What can be unlocked from `asset` with nothing repaid, in token units and value. */
@@ -583,6 +602,11 @@ export const quoteUnlock = ({
     undefined,
     nowSeconds,
   );
+  // The release check the module runs: whole-unit rounding of a collateral repayment can take a
+  // hair more power than it frees, so the projected loan is checked rather than assumed.
+  if (!unavailableReason && !requiresFullRepay && debtAfterUsd > after.powerUsd) {
+    unavailableReason = 'This would leave the loan short of cover. Try a smaller amount.';
+  }
 
   return {
     asset,

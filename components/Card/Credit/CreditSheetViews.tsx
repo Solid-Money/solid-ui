@@ -211,7 +211,7 @@ export const BreakdownView = ({
   onPayDown: (token: Address) => void;
   onRepay: () => void;
 }) => {
-  const together = loan.risk.kind === 'multi' ? loan.risk.togetherDrop : null;
+  const together = loan.risk.kind === 'multi' ? loan.risk.togetherDrop : undefined;
   const payDown = loan.payDown;
 
   return (
@@ -219,7 +219,14 @@ export const BreakdownView = ({
       <Text className="-mt-2 text-center text-[14px] leading-[20px] text-white/65">
         {`${format(loan.debtUsd)} borrowed · ${backedByLine(loan, format).replace('Backed by', 'backed by')}`}
       </Text>
-      {together !== null ? (
+      {together === null ? (
+        <Note>
+          <Text className="text-[14px] leading-[20px] text-white/80">
+            Your Yield assets cover this loan on their own, so a fall in your crypto can’t put it at
+            risk.
+          </Text>
+        </Note>
+      ) : together !== undefined ? (
         <Note>
           <Text className="text-[14px] leading-[20px] text-white/80">
             {'Your crypto can fall '}
@@ -563,12 +570,13 @@ const impactRow = (before: LoanModel, after: LoanModel, format: Format): ReactNo
     );
   }
   if (before.risk.kind === 'multi') {
-    const afterDrop = after.risk.kind === 'multi' ? formatFraction(after.risk.togetherDrop) : '—';
+    const drop = (value: number | null) => (value === null ? 'any amount' : formatFraction(value));
+    const afterDrop = after.risk.kind === 'multi' ? drop(after.risk.togetherDrop) : '—';
     return (
       <KeyValue
         label="Crypto can fall together"
         tone="warn"
-        value={`${formatFraction(before.risk.togetherDrop)} → ${afterDrop}`}
+        value={`${drop(before.risk.togetherDrop)} → ${afterDrop}`}
       />
     );
   }

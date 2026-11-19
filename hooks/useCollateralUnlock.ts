@@ -8,6 +8,8 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import {
   type CreditInstancePosition,
   creditInstanceQuery,
+  type PendingCollateralUnlock,
+  readCreditInstance,
   useCreditInstanceAddresses,
 } from '@/hooks/useCardCreditPositions';
 import {
@@ -80,6 +82,23 @@ const describeFailure = (failure: Error): string | null =>
 
 const sameToken = (a: Address, b: Address) => a.toLowerCase() === b.toLowerCase();
 
+/** Refuses when the unlock waiting on the loan is not the one the cardholder is looking at. */
+const requireSamePending = (
+  pending: PendingCollateralUnlock,
+  expected: PendingCollateralUnlock | undefined,
+) => {
+  if (
+    expected &&
+    (!sameToken(pending.token, expected.token) ||
+      pending.amount !== expected.amount ||
+      pending.readyAt !== expected.readyAt)
+  ) {
+    throw new UnlockUserError(
+      'The unlock waiting on this loan has changed. Check it and try again.',
+    );
+  }
+};
+
 /**
  * Unlocking part of a locked asset while the loan stays open, on one instance.
  *
@@ -111,10 +130,13 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
     if (!safe || !moduleAddress || !instance?.lensAddress) {
       throw new UnlockUserError('Your wallet is still setting up. Please try again shortly.');
     }
-    const position = await queryClient.fetchQuery({
-      ...creditInstanceQuery(chainId, moduleAddress, instance.lensAddress, safe, true),
-      staleTime: 0,
-    });
+    // Read directly rather than through the cache: `fetchQuery` would hand back a poll that was
+    // already in flight before the press. The answer then replaces the cached one.
+    const position = await readCreditInstance(chainId, moduleAddress, instance.lensAddress, safe);
+    queryClient.setQueryData(
+      creditInstanceQuery(chainId, moduleAddress, instance.lensAddress, safe, true).queryKey,
+      position,
+    );
     if (!position) throw new UnlockUserError('Could not read your loan. Please try again.');
     return position;
   }, [chainId, instance?.lensAddress, moduleAddress, queryClient, safe]);
@@ -155,6 +177,12 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
         const locked = loan.assets.find(candidate => sameToken(candidate.token, repayToken));
         if (!locked) throw new UnlockUserError('That asset is no longer locked in this loan.');
         source = { kind: 'collateral', asset: locked };
+        // Repaying from it divides by its price, which the module refuses outside its band.
+        if (!locked.priceInBand) {
+          throw new UnlockUserError(
+            'That asset’s price is unavailable right now, so it can’t repay this loan.',
+          );
+        }
       }
 
       const quote = quoteUnlock({
@@ -169,6 +197,11 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
         throw new UnlockUserError('Getting this back now means repaying the whole loan.');
       }
       if (quote.unavailableReason) throw new UnlockUserError(quote.unavailableReason);
+      if (quote.amount === 0n || quote.amount !== request.amount) {
+        throw new UnlockUserError(
+          'Less of this is locked now than when you chose the amount. Check it and try again.',
+        );
+      }
       if (quote.repayUsd > request.confirmedRepayUsd) {
         throw new UnlockUserError(
           `Prices moved: this now needs ${formatUsd(quote.repayUsd)} repaid first. Check it and try again.`,
@@ -291,9 +324,16 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (expected: PendingCollateralUnlock | undefined) => {
       if (!moduleAddress)
         throw new UnlockUserError('Your wallet is still setting up. Please try again shortly.');
+      // The module cancels whatever is pending and takes no id, so check it is still the one on
+      // screen. This narrows the window to the time between the read and the operation landing.
+      const position = await freshPosition();
+      if (!position.pendingUnlock) {
+        throw new UnlockUserError('There’s no unlock waiting on this loan anymore.');
+      }
+      requireSamePending(position.pendingUnlock, expected);
       const result = await send(
         [
           {
@@ -318,6 +358,7 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
     },
     onError: (mutationError: Error) => {
       setError(describeFailure(mutationError));
+      if (mutationError instanceof UnlockUserError) refresh();
       track(TRACKING_EVENTS.CARD_CREDIT_UNLOCK_FAILED, {
         chain_id: chainId,
         step: 'cancel',
@@ -327,12 +368,15 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
   });
 
   const finishMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (expected: PendingCollateralUnlock | undefined) => {
       const position = await freshPosition();
       const pending = position.pendingUnlock;
       if (!pending) {
         throw new UnlockBlockedError('nothing-pending', 'There’s no unlock waiting on this loan.');
       }
+      // `processCollateralWithdrawal` releases whatever is pending; refuse if it is not the one on
+      // screen, so the cardholder never signs for an unlock they have not seen.
+      requireSamePending(pending, expected);
       if (Math.floor(Date.now() / 1000) < pending.readyAt) {
         throw new UnlockBlockedError('not-ready', 'This unlock isn’t ready yet.');
       }
@@ -378,8 +422,17 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       if (result) refresh();
     },
     onError: (mutationError: Error) => {
-      if (!(mutationError instanceof UnlockBlockedError)) {
+      // A loan that needs more cover is explained inline, with its own recovery; every other
+      // refusal is said, and the pending state re-read so the screen stops offering it.
+      if (
+        !(
+          mutationError instanceof UnlockBlockedError && mutationError.reason === 'needs-more-cover'
+        )
+      ) {
         setError(describeFailure(mutationError));
+      }
+      if (mutationError instanceof UnlockBlockedError || mutationError instanceof UnlockUserError) {
+        refresh();
       }
       track(TRACKING_EVENTS.CARD_CREDIT_UNLOCK_FAILED, {
         chain_id: chainId,
@@ -442,14 +495,21 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
     },
     [chainId, requestMutation],
   );
-  const cancel = useCallback(() => {
-    setError(null);
-    return cancelMutation.mutateAsync();
-  }, [cancelMutation]);
-  const finish = useCallback(() => {
-    setError(null);
-    return finishMutation.mutateAsync();
-  }, [finishMutation]);
+  /** Both take the pending unlock on screen, and refuse if a different one is waiting. */
+  const cancel = useCallback(
+    (expected?: PendingCollateralUnlock) => {
+      setError(null);
+      return cancelMutation.mutateAsync(expected);
+    },
+    [cancelMutation],
+  );
+  const finish = useCallback(
+    (expected?: PendingCollateralUnlock) => {
+      setError(null);
+      return finishMutation.mutateAsync(expected);
+    },
+    [finishMutation],
+  );
 
   const withdrawAll = useCallback(
     (tokens: readonly Address[]) => {

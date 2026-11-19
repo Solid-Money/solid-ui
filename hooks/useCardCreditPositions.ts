@@ -200,7 +200,7 @@ const throwUnansweredFailure = (
  * `credit.perCollateral` (escrowed) both cover every token; which of them count as collateral
  * comes from the module's own token config.
  */
-const readCreditInstance = async (
+export const readCreditInstance = async (
   chainId: number,
   moduleAddress: Address,
   lensAddress: Address,
@@ -208,6 +208,8 @@ const readCreditInstance = async (
 ): Promise<CreditInstancePosition | null> => {
   const client = publicClient(chainId);
   const module = { address: moduleAddress, abi: SolidCashModuleV2_ABI } as const;
+  // One block for both multicalls, so balances and health never pair with a later block's prices.
+  const blockNumber = await client.getBlockNumber();
 
   const [
     pairedModule,
@@ -222,6 +224,7 @@ const readCreditInstance = async (
     liquidationsPaused,
   ] = await client.multicall({
     allowFailure: true,
+    blockNumber,
     contracts: [
       { address: lensAddress, abi: LENS_MODULE_ABI, functionName: 'v2' },
       {
@@ -274,6 +277,7 @@ const readCreditInstance = async (
 
   const details = await client.multicall({
     allowFailure: true,
+    blockNumber,
     contracts: tokens.flatMap(token => [
       { ...module, functionName: 'getTokenConfig', args: [token] } as const,
       { address: token, abi: erc20Abi, functionName: 'symbol' } as const,
@@ -322,7 +326,8 @@ const readCreditInstance = async (
     const priced = read<readonly [bigint, boolean, boolean]>(index, 2);
     const priceUsable = priced ? priced[1] && priced[0] > 0n : entry.priceUsable;
     const priceUsd = priceUsable ? (priced ? priced[0] : entry.priceUsd) : 0n;
-    const priceInBand = priced ? priced[2] && priceUsable : priceUsable;
+    // Only the module knows its band; without its answer the price is treated as out of it.
+    const priceInBand = priced ? priced[2] && priceUsable : false;
     const paused = read<boolean>(index, 3) ?? false;
     const valueUsd = priceUsable ? valueAt(amount, priceUsd, decimals) : 0n;
 
@@ -491,6 +496,7 @@ export const useCardCreditPositions = ({
 
   const {
     isLive: readsBase,
+    isLoading: isBaseGateLoading,
     moduleAddress: baseModule,
     lensAddress: baseLens,
   } = useBaseCreditInstance();
@@ -530,10 +536,17 @@ export const useCardCreditPositions = ({
     fuse: fuseQuery,
     base: baseQuery,
     /** Some instance this cardholder borrows on has not answered its first read yet. */
-    isLoading: (readsFuse && fuseQuery.isLoading) || (readsBase && baseQuery.isLoading),
+    // Base's gate counts too: until it answers, a Base-only borrower would read as owing nothing.
+    isLoading:
+      (readsFuse && fuseQuery.isLoading) || isBaseGateLoading || (readsBase && baseQuery.isLoading),
     /** Some instance's read failed, so a loan there may be missing from `data`. */
     isError: (readsFuse && fuseQuery.isError) || (readsBase && baseQuery.isError),
-    refetch: () => Promise.all([fuseQuery.refetch(), baseQuery.refetch()]),
+    // Only queries that can run: a manual refetch ignores `enabled` and would read without a lens.
+    refetch: () =>
+      Promise.all([
+        readsFuse && safeAddress ? fuseQuery.refetch() : undefined,
+        readsBase && safeAddress && baseModule && baseLens ? baseQuery.refetch() : undefined,
+      ]),
   };
 };
 

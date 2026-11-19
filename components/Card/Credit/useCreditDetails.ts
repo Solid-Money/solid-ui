@@ -174,7 +174,9 @@ export const useCreditDetails = (): CreditDetails => {
         borrowApyPerSecond: position.borrowApyPerSecond,
       })),
     );
-    const monthly = (Number(totalDebtUsd) / 1_000_000) * (borrowApyPercent(rate) / 100 / 12);
+    // The quoted APY to a millionth of a percent, then a month of it on the debt, all in bigint.
+    const apyMicroPercent = BigInt(Math.round(borrowApyPercent(rate) * 1_000_000));
+    const monthly = (totalDebtUsd * apyMicroPercent) / (100n * 1_000_000n * 12n);
 
     return {
       isLoading,
@@ -189,7 +191,7 @@ export const useCreditDetails = (): CreditDetails => {
       creditLimit: figures.creditLimit,
       borrowedProgress: figures.borrowedProgress,
       borrowApy: formatApy(borrowApyPercent(rate)),
-      monthlyInterest: formatMicroUsd(BigInt(Math.round(monthly * 1_000_000))),
+      monthlyInterest: formatMicroUsd(monthly),
       collateral: instances
         .flatMap(position => position.collateral)
         .filter(listsAsset)

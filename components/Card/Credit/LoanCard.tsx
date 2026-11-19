@@ -1,4 +1,5 @@
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { ChevronRight, Clock3, TriangleAlert } from 'lucide-react-native';
 
 import {
@@ -103,6 +104,11 @@ export const riskSentence = (loan: LoanModel, format: (usd: bigint) => string): 
     ];
   }
   if (risk.kind === 'multi') {
+    if (risk.togetherDrop === null) {
+      return [
+        'Your Yield assets cover this loan on their own, so a fall in your crypto can’t put it at risk.',
+      ];
+    }
     return [
       'Your crypto can fall ',
       { bold: formatFraction(risk.togetherDrop) },
@@ -454,7 +460,7 @@ const PendingUnlock = ({
     return (
       <Note tone="warn">
         <Text className="text-[14px] font-semibold text-white">{`Couldn’t unlock ${name} yet`}</Text>
-        <Text className="text-[14px] leading-[20px] text-white/80">{`${finishBlocked} Your repayment went through.`}</Text>
+        <Text className="text-[14px] leading-[20px] text-white/80">{finishBlocked}</Text>
         <ButtonRow>
           <PillButton
             label="Try again"
@@ -541,7 +547,15 @@ const SaleNotice = ({
       {link ? (
         <Pressable
           accessibilityRole="link"
-          onPress={() => void Linking.openURL(link)}
+          onPress={() =>
+            Linking.openURL(link).catch(() =>
+              Toast.show({
+                type: 'error',
+                text1: 'Couldn’t open the transaction',
+                text2: 'Please try again.',
+              }),
+            )
+          }
           style={styles.inlineLink}
           hitSlop={8}
         >

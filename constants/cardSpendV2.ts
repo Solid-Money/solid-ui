@@ -1,5 +1,6 @@
 import { USDC_STARGATE } from '@/constants/addresses';
 import { ADDRESSES, EXPO_PUBLIC_CARD_SPEND_V2 } from '@/lib/config';
+import { statusOf } from '@/lib/creditRisk';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import type { Address } from 'viem';
@@ -169,13 +170,9 @@ export const healthFactorToNumber = (wad: bigint): number | null => {
 export type BorrowRisk = 'none' | 'caution' | 'at-risk';
 
 export const borrowRisk = (healthFactorWad: bigint, debtUsd: bigint): BorrowRisk => {
-  if (debtUsd === 0n) return 'none';
-
-  const hf = healthFactorToNumber(healthFactorWad);
-  if (hf === null) return 'none';
-  if (hf < 1) return 'at-risk';
-  if (hf < 1.05) return 'caution';
-  return 'none';
+  // One classifier for both surfaces; this only maps its names onto the chip's.
+  const status = statusOf(healthFactorWad, debtUsd);
+  return status === 'healthy' ? 'none' : status;
 };
 
 /**

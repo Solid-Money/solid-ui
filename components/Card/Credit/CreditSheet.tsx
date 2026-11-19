@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -87,12 +87,26 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
   const back = useCallback(() => onStackChange(stack.slice(0, -1)), [onStackChange, stack]);
   const close = useCallback(() => onStackChange([]), [onStackChange]);
 
+  // Each opening is a session. A signature that lands after its sheet was dismissed — and maybe
+  // a new action opened — must not close what the cardholder is looking at now.
+  const session = useRef(0);
+  useEffect(() => {
+    if (isOpen) session.current += 1;
+  }, [isOpen]);
+  const closeIfStill = useCallback(
+    (started: number) => {
+      if (session.current === started) close();
+    },
+    [close],
+  );
+
   const submitUnlock = useCallback(
     async (
       chainId: number,
       token: Address,
       { quote, source }: { quote: UnlockQuote; source: UnlockSource | null },
     ) => {
+      const started = session.current;
       const result = await unlocks[chainId]
         .request({
           token,
@@ -117,9 +131,9 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
         text2: `Ready to finish in about ${minutes} minutes.`,
         props: link ? { link, linkText: eclipseAddress(result.transactionHash) } : undefined,
       });
-      close();
+      closeIfStill(started);
     },
-    [close, details.positions, unlocks],
+    [closeIfStill, details.positions, unlocks],
   );
 
   const render = (topPadding: number, presentation: CardSheetPresentation) => {
@@ -134,8 +148,9 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
           isError={repay.isError}
           onRetry={repay.onRetry}
           onRepay={async request => {
+            const started = session.current;
             const repaid = await repay.onRepay(request);
-            if (repaid) close();
+            if (repaid) closeIfStill(started);
             return repaid;
           }}
           isRepaying={repay.isRepaying}
@@ -209,6 +224,7 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
             onRepay={() => push({ view: 'repay', chainId: route.chainId })}
             onUnlockAll={async () => {
               if (!loan || !unlock) return;
+              const started = session.current;
               const done = await unlock
                 .withdrawAll(loan.assets.map(asset => asset.token))
                 .catch(() => null);
@@ -218,7 +234,7 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
                   text1: 'Unlocked',
                   text2: 'Everything locked is back in your wallet.',
                 });
-                close();
+                closeIfStill(started);
               }
             }}
             isUnlockingAll={Boolean(unlock?.isWithdrawingAll)}

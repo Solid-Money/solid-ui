@@ -131,10 +131,17 @@ const RepaySheetContent = ({
   useEffect(() => {
     if (sources.length === 0) return;
     if (!sourceId || !sources.some(candidate => candidate.id === sourceId)) {
+      // "Repay in full" opens on a source that can actually cover all of it.
+      const covering = startAtMax
+        ? sources.find(
+            candidate =>
+              candidate.unavailableReason === null && candidate.valueUsd >= (state?.debtUsd ?? 0n),
+          )
+        : undefined;
       const preferred = sources.find(candidate => candidate.id === preferredSourceId);
-      setSourceId((preferred ?? sources[0]).id);
+      setSourceId((covering ?? preferred ?? sources[0]).id);
     }
-  }, [sources, sourceId, preferredSourceId]);
+  }, [sources, sourceId, preferredSourceId, startAtMax, state?.debtUsd]);
 
   const debtUsd = state?.debtUsd ?? 0n;
   const amountUsd = parseUsdAmountText(text);
@@ -172,13 +179,20 @@ const RepaySheetContent = ({
     [debtUsd, error, onClearError],
   );
 
-  // "Repay in full": MAX once, on the first source shown, then the cardholder's to change.
+  // "Repay in full": MAX once, on a source that covers the whole debt, then the cardholder's to
+  // change. With no such source, nothing is filled: a source's MAX would be a partial repayment
+  // presented as a full one.
+  const canRepayInFull =
+    !startAtMax ||
+    sources.some(
+      candidate => candidate.unavailableReason === null && candidate.valueUsd >= debtUsd,
+    );
   const hasStartedAtMax = useRef(false);
   useEffect(() => {
-    if (!startAtMax || hasStartedAtMax.current || !source || !state) return;
+    if (!startAtMax || hasStartedAtMax.current || !source || !state || !canRepayInFull) return;
     hasStartedAtMax.current = true;
     fillMax(source);
-  }, [fillMax, source, startAtMax, state]);
+  }, [canRepayInFull, fillMax, source, startAtMax, state]);
 
   const handleSelect = useCallback(
     (next: RepaySource) => {
@@ -199,7 +213,13 @@ const RepaySheetContent = ({
     void onRepay({ sourceId: source.id, amountUsd: isMax ? null : amountUsd, isMax });
   }, [amountUsd, canSubmit, isMax, onRepay, source]);
 
-  const note = describeQuote(quote, source, error);
+  const note =
+    !canRepayInFull && !text && !error
+      ? {
+          text: `Nothing in your wallet or collateral covers the whole ${formatUsd(debtUsd)} on its own. You can repay part of it.`,
+          isError: true,
+        }
+      : describeQuote(quote, source, error);
   const tokenEstimate = source
     ? repayTokenEstimate({ source, quote, debtUsd, amountUsd, isMax })
     : null;

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  BackHandler,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
+import { router, useFocusEffect } from 'expo-router';
 import { ChevronRight, CircleCheck, Percent, TriangleAlert } from 'lucide-react-native';
 import { base, fuse } from 'viem/chains';
 
@@ -95,11 +103,20 @@ const CreditDetailsScreen = () => {
     [open],
   );
 
-  const cancelUnlock = async (chainId: number) => {
-    const done = await unlocks[chainId].cancel().catch(error => {
-      void showErrorToast(error, { action: 'card_unlock' });
-      return null;
-    });
+  /** A refusal written for the cardholder is shown as it is; anything else is translated. */
+  const showUnlockError = (error: unknown) => {
+    if (error instanceof UnlockUserError || error instanceof UnlockBlockedError) {
+      Toast.show({ type: 'error', text1: error.message });
+    } else void showErrorToast(error, { action: 'card_unlock' });
+  };
+
+  const cancelUnlock = async (loan: LoanModel) => {
+    const done = await unlocks[loan.chainId]
+      .cancel(loan.pendingUnlock ?? undefined)
+      .catch(error => {
+        showUnlockError(error);
+        return null;
+      });
     if (done)
       Toast.show({
         type: 'success',
@@ -109,22 +126,25 @@ const CreditDetailsScreen = () => {
   };
 
   const finishUnlock = async (loan: LoanModel) => {
-    const pending = loan.pendingUnlock;
-    const done = await unlocks[loan.chainId].finish().catch(error => {
-      // A refusal for want of cover is shown in the card itself, with what to do next.
-      if (!(error instanceof UnlockBlockedError)) {
-        if (error instanceof UnlockUserError) Toast.show({ type: 'error', text1: error.message });
-        else void showErrorToast(error, { action: 'card_unlock' });
-      }
-      return null;
-    });
-    if (done && pending) {
-      const asset = pending.asset;
+    const done = await unlocks[loan.chainId]
+      .finish(loan.pendingUnlock ?? undefined)
+      .catch(error => {
+        // A refusal for want of cover is shown in the card itself, with what to do next.
+        if (!(error instanceof UnlockBlockedError && error.reason === 'needs-more-cover')) {
+          showUnlockError(error);
+        }
+        return null;
+      });
+    if (done) {
+      // What was actually released, as the fresh read before signing saw it.
+      const asset = loan.assets.find(
+        candidate => candidate.token.toLowerCase() === done.token.toLowerCase(),
+      );
       Toast.show({
         type: 'success',
         text1: asset ? `${assetName(asset)} unlocked` : 'Unlocked',
         text2: asset
-          ? `${formatTokenUnits(pending.amount, asset.decimals)} ${asset.symbol} (${format(valueOf(pending.amount, asset.priceUsd, asset.decimals))}) is back in your wallet.`
+          ? `${formatTokenUnits(done.amount, asset.decimals)} ${asset.symbol} (${format(valueOf(done.amount, asset.priceUsd, asset.decimals))}) is back in your wallet.`
           : 'It’s back in your wallet.',
       });
     }
@@ -145,7 +165,23 @@ const CreditDetailsScreen = () => {
       });
   };
 
-  const isFirstLoad = details.isLoading && loans.length === 0;
+  // Until every chain has answered, a total would leave out a loan still loading.
+  const isFirstLoad = details.isLoading;
+
+  // Android Back: this screen's own handler, added on focus so it runs before the card pane's
+  // (still open underneath) — closing a sheet first, then leaving the page on the first press.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (stack.length) setStack([]);
+        else if (isHelpOpen) setIsHelpOpen(false);
+        else if (router.canGoBack()) router.back();
+        else router.replace(path.CARD_DETAILS);
+        return true;
+      });
+      return () => subscription.remove();
+    }, [isHelpOpen, stack.length]),
+  );
   const owes = details.totalDebtUsd > 0n;
   const heading = STATUS_STYLE[worst];
 
@@ -269,7 +305,7 @@ const CreditDetailsScreen = () => {
                           }
                           onAsset={token => openAsset(loan.chainId, token)}
                           onBreakdown={() => open({ view: 'breakdown', chainId: loan.chainId })}
-                          onCancelUnlock={() => void cancelUnlock(loan.chainId)}
+                          onCancelUnlock={() => void cancelUnlock(loan)}
                           onFinishUnlock={() => void finishUnlock(loan)}
                           isCancelling={unlock.isCancelling}
                           isFinishing={unlock.isFinishing}
