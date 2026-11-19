@@ -113,6 +113,19 @@ describe('MessageRow', () => {
     expect(tree.root.findByType('Markdown').props.value).toBe('**Hi**');
   });
 
+  it('lets Solid AI link only to solid.xyz, and teammates to any web page', () => {
+    const ai = render({ type: 'message', key: 'l1', message: message(), first: true, last: true });
+    expect(ai.root.findByType('Markdown').props.linkPolicy).toBe('solid');
+    const agent = render({
+      type: 'message',
+      key: 'l2',
+      message: message({ author: { type: 'agent', name: 'Dana' } }),
+      first: true,
+      last: true,
+    });
+    expect(agent.root.findByType('Markdown').props.linkPolicy).toBe('web');
+  });
+
   it('lists the help articles a Solid AI answer was based on, and opens them in the app', () => {
     const tree = render({
       type: 'message',
