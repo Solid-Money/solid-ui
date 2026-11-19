@@ -95,7 +95,17 @@ export type PerkIconName =
   | 'yield'
   | 'subscription'
   | 'cap'
-  | 'airline';
+  | 'airline'
+  | 'fx';
+
+/** One row of the benefits card. */
+export interface TierPerk {
+  icon: PerkIconName;
+  title: string;
+  description: string;
+  /** A small tag beside the title, e.g. "New". */
+  badge?: string;
+}
 
 export interface TierPresentationContent {
   headline: string;
@@ -117,7 +127,7 @@ export interface TierPresentationContent {
    */
   subscriptionCategories: CashbackCategory[];
   stats: { value: string; label: string }[];
-  perks: { icon: PerkIconName; title: string; description: string }[];
+  perks: TierPerk[];
 }
 
 const balanceCapLabel = (amount: number) =>

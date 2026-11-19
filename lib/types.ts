@@ -2653,6 +2653,25 @@ export interface TierFeeLine {
 }
 
 /**
+ * What a tier pays on a card purchase that needs a currency conversion, under
+ * flat tier FX pricing: all-in against the market rate, with Solid covering
+ * the rest of Wirex's foreign-currency fee. Visa's own conversion still applies
+ * outside EUR, GBP and USD.
+ *
+ * A Wirex price. A Rain card keeps its issuer's fee, which is why this sits
+ * beside {@link TierFees.lines} rather than in it: the screen shows it only to
+ * people it applies to.
+ */
+export interface TierCardFx {
+  /** The tier's rate as a fraction (0.015 = 1.5%). 0 when Solid covers it all. */
+  rate: number;
+  /** Pre-rendered: 'Free' when the rate is 0, else '1.5%'. */
+  value: string;
+  /** Core's rate: the full fee before any tier covers part of it. */
+  baseRate: number;
+}
+
+/**
  * The "Fees & Caps" block for one tier.
  *
  * Values arrive pre-rendered from the same config the charge engine bills from,
@@ -2670,6 +2689,11 @@ export interface TierFees {
   allFree: boolean;
   /** Copy under the table, absent on a tier that already pays nothing. */
   footnote?: string;
+  /**
+   * The tier's card FX price. Absent while the backend is not charging flat
+   * tier FX fees, and on backends from before it could.
+   */
+  cardFx?: TierCardFx;
 }
 
 /** Where one yield boost claim has got to. */
