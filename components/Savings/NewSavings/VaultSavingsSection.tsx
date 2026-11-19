@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
+import YieldIcon from '@/components/Earn/YieldIcon';
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import { useActualDeposited } from '@/hooks/useActualDeposited';
@@ -134,11 +135,16 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
     <View className="mx-4 gap-4 rounded-twice bg-card p-5">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <Image
-            source={getAsset(vault.icon)}
-            style={{ width: 24, height: 24, borderRadius: 12 }}
-            contentFit="contain"
-          />
+          {vault.type === VaultType.BTC ? (
+            // BTC Yield has no PNG mark: Earn's icon, as in the vault selector.
+            <YieldIcon vaultType={VaultType.BTC} size={24} />
+          ) : (
+            <Image
+              source={getAsset(vault.icon)}
+              style={{ width: 24, height: 24, borderRadius: 12 }}
+              contentFit="contain"
+            />
+          )}
           <Text className="text-lg font-semibold text-white">{display.name} savings</Text>
         </View>
         <Text className="text-base font-semibold text-brand">

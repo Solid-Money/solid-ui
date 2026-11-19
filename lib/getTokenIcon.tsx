@@ -5,6 +5,8 @@ import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 import { AssetPath, getAsset } from './assets';
 import { TokenIcon } from './types';
 
+import type { BtcYieldShareIcon as BtcYieldShareIconType } from '@/components/Earn/YieldIcon';
+
 type GetTokenIconProps = {
   logoUrl?: string;
   tokenSymbol?: string;
@@ -62,8 +64,16 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/eth.png'),
       };
-    // soBTC has no share mark of its own yet: it draws the BTC mark.
-    case 'SOBTC':
+    // BTC Yield's share: the mark Earn draws, with the live dot like the other shares.
+    case 'SOBTC': {
+      // Loaded here rather than imported: YieldIcon → PortfolioIcon imports this module, and a
+      // top-level import would make the two depend on each other's load order.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { BtcYieldShareIcon } = require('@/components/Earn/YieldIcon') as {
+        BtcYieldShareIcon: typeof BtcYieldShareIconType;
+      };
+      return { type: 'component', component: <BtcYieldShareIcon size={size} /> };
+    }
     case 'BTC':
       return {
         type: 'image',

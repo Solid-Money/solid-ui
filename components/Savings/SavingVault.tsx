@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -15,9 +16,18 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useVaultTotalValue } from '@/hooks/useVaultTotalValue';
 import { getAsset } from '@/lib/assets';
-import { Vault } from '@/lib/types';
+import { Vault, VaultType } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
 import { useSavingStore } from '@/store/useSavingStore';
+
+const BTC_YIELD_GLYPH = getAsset('images/spend-mode-collateral-btc.svg');
+const BTC_YIELD_CIRCLE = {
+  alignItems: 'center',
+  backgroundColor: 'rgba(255,255,255,0.1)',
+  borderRadius: 999,
+  justifyContent: 'center',
+} as const;
+const BTC_YIELD_GLYPH_SIZE = { height: '70%', width: '70%' } as const;
 
 const ANIMATION_DURATION = 300;
 const TIMING_CONFIG = {
@@ -144,11 +154,19 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
         </Animated.View>
 
         <View style={{ flex: 1, justifyContent: 'space-between' }}>
-          <Animated.Image
-            source={getAsset(vault.icon)}
-            style={animatedIconStyle}
-            resizeMode="contain"
-          />
+          {vault.type === VaultType.BTC ? (
+            // BTC Yield has no PNG mark: Earn's icon (YieldIcon) — the Bitcoin glyph at 28/40 in
+            // the tinted circle — drawn here so it can follow the animated size.
+            <Animated.View style={[animatedIconStyle, BTC_YIELD_CIRCLE]}>
+              <Image source={BTC_YIELD_GLYPH} style={BTC_YIELD_GLYPH_SIZE} contentFit="contain" />
+            </Animated.View>
+          ) : (
+            <Animated.Image
+              source={getAsset(vault.icon)}
+              style={animatedIconStyle}
+              resizeMode="contain"
+            />
+          )}
 
           <Animated.View style={animatedGapStyle} />
 

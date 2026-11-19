@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import YieldIcon from '@/components/Earn/YieldIcon';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
@@ -37,11 +38,16 @@ const MoreSavingsOptions = ({ selectedType, apyByType, onSelect }: MoreSavingsOp
                 className="flex-row items-center justify-between px-5 py-4 web:hover:bg-card-hover"
               >
                 <View className="flex-row items-center gap-3">
-                  <Image
-                    source={getAsset(vault.icon)}
-                    style={{ width: 36, height: 36, borderRadius: 18 }}
-                    contentFit="contain"
-                  />
+                  {vault.type === VaultType.BTC ? (
+                    // BTC Yield has no PNG mark: Earn's icon, as in the vault selector.
+                    <YieldIcon vaultType={VaultType.BTC} size={36} />
+                  ) : (
+                    <Image
+                      source={getAsset(vault.icon)}
+                      style={{ width: 36, height: 36, borderRadius: 18 }}
+                      contentFit="contain"
+                    />
+                  )}
                   <Text className="text-base font-semibold text-white">{vault.name}</Text>
                 </View>
                 <Text className="text-base font-semibold text-white">

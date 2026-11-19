@@ -81,6 +81,7 @@ const HIDDEN_TAB_ROUTES = new Set(['settings', 'sumsub-kyc']);
  * - `main-currency`: the card's main currency picker; the bar covers its Switch button.
  * - `spend-order`, `collateral-order`: the card's order editors; the bar covers their Save
  *   button and the bottom band a lifted row auto-scrolls the page in.
+ * - `credit`: the card's Credit page; the bar covers its loan actions and the end of the page.
  * - `ai-api`, `ai-api-key`, `ai-api-setup`: the AI API screens end in their own
  *   full-width buttons, which the bar would sit on.
  * - `refer/*`: the referral v4 screens pin their share bar to the bottom edge.
@@ -91,6 +92,7 @@ const HIDDEN_NESTED_ROUTES = new Set([
   'main-currency',
   'spend-order',
   'collateral-order',
+  'credit',
   'ai-api',
   'ai-api-key',
   'ai-api-setup',

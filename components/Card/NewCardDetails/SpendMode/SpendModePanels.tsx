@@ -154,13 +154,19 @@ const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
  */
 const ETH_YIELD_ICON = getAsset('images/portfolio/eth.svg');
 
-/**
- * soBTC and WBTC, by the marks `getTokenIcon` already gives them: soBTC has no share mark of its
- * own yet, so it draws the BTC coin with the yield badge dot; WBTC draws its own.
- */
+/** WBTC, by the mark `getTokenIcon` gives it. */
 const BTC_TOKEN_LOGO = {
-  sobtc: getAsset('images/btc.png'),
   wbtc: getAsset('images/wbtc.png'),
+} as const;
+
+/**
+ * BTC Yield (soBTC): the mark Earn draws (`YieldIcon`), the Bitcoin glyph in the same tinted circle
+ * as the soUSD and soEUR glyphs, at Earn's proportion (28 in a 40 circle).
+ */
+const BTC_YIELD_GLYPH = {
+  source: getAsset('images/spend-mode-collateral-btc.svg'),
+  width: 22,
+  height: 22,
 } as const;
 
 /** The card mark the "How you earn" sheet gives card credit, drawn at the rows' 32pt. */
@@ -190,7 +196,12 @@ export const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
   if (icon === 'sobtc') {
     return (
       <View accessible={false} style={styles.tokenLogo}>
-        <Image source={BTC_TOKEN_LOGO.sobtc} style={styles.btcYieldIcon} />
+        <View style={styles.yieldIcon}>
+          <Image
+            source={BTC_YIELD_GLYPH.source}
+            style={{ width: BTC_YIELD_GLYPH.width, height: BTC_YIELD_GLYPH.height }}
+          />
+        </View>
         <Image source={BADGE_DOT} style={styles.badgeDot} />
       </View>
     );
@@ -234,12 +245,22 @@ export const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
 
 /**
  * A collateral row's mark: the yield glyphs and Bitcoin's in their tinted circle, or a token's own
- * logo for the crypto Figma has not drawn a glyph for. soBTC and WBTC take the coins
- * `getTokenIcon` gives them, round at 32 like the other token logos.
+ * logo for the crypto Figma has not drawn a glyph for. BTC Yield takes Earn's mark; WBTC the
+ * coin `getTokenIcon` gives it, round at 32 like the other token logos.
  */
 export const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
-  if (icon === 'sobtc' || icon === 'wbtc') {
-    return <Image accessible={false} source={BTC_TOKEN_LOGO[icon]} style={styles.collateralLogo} />;
+  if (icon === 'sobtc') {
+    return (
+      <View accessible={false} style={styles.collateralIcon}>
+        <Image
+          source={BTC_YIELD_GLYPH.source}
+          style={{ width: BTC_YIELD_GLYPH.width, height: BTC_YIELD_GLYPH.height }}
+        />
+      </View>
+    );
+  }
+  if (icon === 'wbtc') {
+    return <Image accessible={false} source={BTC_TOKEN_LOGO.wbtc} style={styles.collateralLogo} />;
   }
   if (icon === 'eth') {
     return <Image accessible={false} source={ETH_YIELD_ICON} style={styles.collateralEthIcon} />;
@@ -713,8 +734,6 @@ const styles = StyleSheet.create({
   badgeDot: { height: 14, left: 20, position: 'absolute', top: 20, width: 14 },
   // The ETH Yield icon carries its own circle, at the yield icon's size and offset.
   ethYieldIcon: { height: 31.373, marginTop: 0.31, width: 31.976 },
-  // soBTC: the BTC coin, round, at the same size and offset.
-  btcYieldIcon: { borderRadius: 15.7, height: 31.373, marginTop: 0.31, width: 31.976 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
