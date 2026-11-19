@@ -209,7 +209,8 @@ export const readCreditInstance = async (
   const client = publicClient(chainId);
   const module = { address: moduleAddress, abi: SolidCashModuleV2_ABI } as const;
   // One block for both multicalls, so balances and health never pair with a later block's prices.
-  const blockNumber = await client.getBlockNumber();
+  // Uncached: the client would otherwise hand back a block number up to a polling interval old.
+  const blockNumber = await client.getBlockNumber({ cacheTime: 0 });
 
   const [
     pairedModule,

@@ -131,12 +131,18 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       throw new UnlockUserError('Your wallet is still setting up. Please try again shortly.');
     }
     // Read directly rather than through the cache: `fetchQuery` would hand back a poll that was
-    // already in flight before the press. The answer then replaces the cached one.
-    const position = await readCreditInstance(chainId, moduleAddress, instance.lensAddress, safe);
-    queryClient.setQueryData(
-      creditInstanceQuery(chainId, moduleAddress, instance.lensAddress, safe, true).queryKey,
-      position,
+    // already in flight before the press. That poll is cancelled first, so it cannot land after
+    // this read and put an older block's position back on screen.
+    const { queryKey } = creditInstanceQuery(
+      chainId,
+      moduleAddress,
+      instance.lensAddress,
+      safe,
+      true,
     );
+    await queryClient.cancelQueries({ queryKey, exact: true });
+    const position = await readCreditInstance(chainId, moduleAddress, instance.lensAddress, safe);
+    queryClient.setQueryData(queryKey, position);
     if (!position) throw new UnlockUserError('Could not read your loan. Please try again.');
     return position;
   }, [chainId, instance?.lensAddress, moduleAddress, queryClient, safe]);

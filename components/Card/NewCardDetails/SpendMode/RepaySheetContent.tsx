@@ -122,6 +122,8 @@ const RepaySheetContent = ({
   const [text, setText] = useState('');
   const [isMax, setIsMax] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  // Once the cardholder types or picks a source, "Repay in full" stops filling anything in.
+  const hasTouched = useRef(false);
 
   const sources = useMemo(() => state?.sources ?? [], [state]);
   const source = sources.find(candidate => candidate.id === sourceId) ?? null;
@@ -163,6 +165,7 @@ const RepaySheetContent = ({
 
   const handleChangeText = useCallback(
     (next: string) => {
+      hasTouched.current = true;
       setText(sanitizeUsdAmountText(next));
       setIsMax(false);
       if (error) onClearError();
@@ -189,13 +192,23 @@ const RepaySheetContent = ({
     );
   const hasStartedAtMax = useRef(false);
   useEffect(() => {
-    if (!startAtMax || hasStartedAtMax.current || !source || !state || !canRepayInFull) return;
+    if (
+      !startAtMax ||
+      hasStartedAtMax.current ||
+      hasTouched.current ||
+      !source ||
+      !state ||
+      !canRepayInFull
+    ) {
+      return;
+    }
     hasStartedAtMax.current = true;
     fillMax(source);
   }, [canRepayInFull, fillMax, source, startAtMax, state]);
 
   const handleSelect = useCallback(
     (next: RepaySource) => {
+      hasTouched.current = true;
       setSourceId(next.id);
       setIsPickerOpen(false);
       // MAX means "as much as this source can", so it follows the source rather than keeping
