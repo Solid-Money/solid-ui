@@ -406,18 +406,45 @@ export const buildLoan = (position: CreditInstancePosition, nowSeconds: number):
   assemble(position, position.collateral, position.healthFactorWad, nowSeconds);
 
 /**
+ * What `repayFromCollateral` takes from `asset` and credits for `amountUsd`, sized as the module's
+ * `sizeCollateralRepay` sizes it: the principal rounded up in token units, the fee on those units
+ * rounded up on its own, and — when that is more than is locked — everything locked, crediting
+ * what it is worth after the fee.
+ */
+export const sizeCollateralRepay = (
+  asset: Pick<LoanAsset, 'priceUsd' | 'decimals' | 'escrowed' | 'repayFeeBps'>,
+  amountUsd: bigint,
+): { units: bigint; creditedUsd: bigint; capped: boolean } => {
+  if (asset.priceUsd === 0n || amountUsd <= 0n)
+    return { units: 0n, creditedUsd: 0n, capped: false };
+  const unit = 10n ** BigInt(asset.decimals);
+  const fee = BigInt(asset.repayFeeBps);
+  const principal = (amountUsd * unit + asset.priceUsd - 1n) / asset.priceUsd;
+  const units = principal + (principal * fee + BPS - 1n) / BPS;
+  if (units <= asset.escrowed) return { units, creditedUsd: amountUsd, capped: false };
+  const credited = (asset.escrowed * asset.priceUsd * BPS) / (unit * (BPS + fee));
+  return { units: asset.escrowed, creditedUsd: min(credited, amountUsd), capped: true };
+};
+
+/**
  * Health after retiring `amountUsd` of debt with `asset`'s own locked balance
- * (`repayFromCollateral`): its cover drops by the amount and fee, the debt by the amount.
+ * (`repayFromCollateral`): the asset's cover is what stays locked after the actual debit, and the
+ * debt falls by what that debit credits.
  */
 export const healthAfterPayDown = (
   loan: Pick<LoanModel, 'coverUsd' | 'debtUsd'>,
-  asset: Pick<LoanAsset, 'ltWad' | 'repayFeeBps'>,
+  asset: Pick<
+    LoanAsset,
+    'ltWad' | 'repayFeeBps' | 'priceUsd' | 'decimals' | 'escrowed' | 'coverUsd'
+  >,
   amountUsd: bigint,
 ): bigint | null => {
-  const debtAfter = loan.debtUsd - amountUsd;
+  const { units, creditedUsd } = sizeCollateralRepay(asset, amountUsd);
+  const debtAfter = loan.debtUsd - creditedUsd;
   if (debtAfter <= 0n) return null;
-  const taken = (amountUsd * (BPS + BigInt(asset.repayFeeBps))) / BPS;
-  const coverAfter = max(loan.coverUsd - (taken * asset.ltWad) / WAD, 0n);
+  const remainingCover =
+    (valueOf(asset.escrowed - units, asset.priceUsd, asset.decimals) * asset.ltWad) / WAD;
+  const coverAfter = max(loan.coverUsd - asset.coverUsd + remainingCover, 0n);
   return (coverAfter * WAD) / debtAfter;
 };
 
@@ -604,13 +631,10 @@ export const quoteUnlock = ({
     let sourceRemovedUnits = 0n;
     let reason: string | null = null;
     if (repayUsd > 0n && source.kind === 'collateral') {
-      const s = source.asset;
-      // As `sizeCollateralRepay` takes it: the principal rounded up in token units, then the
-      // fee on those units rounded up on its own.
-      const principalUnits = unitsCeil(repayUsd, s.priceUsd, s.decimals);
-      sourceRemovedUnits =
-        principalUnits + (principalUnits * BigInt(s.repayFeeBps) + BPS - 1n) / BPS;
-      if (sourceRemovedUnits > s.escrowed) reason = `Not enough ${s.symbol} locked in this loan.`;
+      const sized = sizeCollateralRepay(source.asset, repayUsd);
+      sourceRemovedUnits = sized.units;
+      // Short of the full principal and fee, the module would credit less than asked.
+      if (sized.capped) reason = `Not enough ${source.asset.symbol} locked in this loan.`;
     }
     const debtAfterUsd = loan.debtUsd - repayUsd;
     const collateral = position.collateral.map(entry => {
@@ -619,10 +643,12 @@ export const quoteUnlock = ({
         source.kind === 'collateral' &&
         entry.token.toLowerCase() === source.asset.token.toLowerCase();
       if (!isAsset && !isSource) return entry;
-      const escrowed = max(
-        entry.escrowed - (isAsset ? units : 0n) - (isSource ? sourceRemovedUnits : 0n),
-        0n,
-      );
+      const left = entry.escrowed - (isAsset ? units : 0n) - (isSource ? sourceRemovedUnits : 0n);
+      // The same asset repaying and being released: both have to fit in what is locked.
+      if (left < 0n) {
+        reason ??= `Not enough ${asset.symbol} locked to repay with it and unlock this much.`;
+      }
+      const escrowed = max(left, 0n);
       return {
         ...entry,
         escrowed,
@@ -645,18 +671,26 @@ export const quoteUnlock = ({
 
   let requiresFullRepay = false;
   let plan: ReturnType<typeof project>;
-  const stepped = roundUpToStep(exactRepayUsd);
+  const fits = (candidate: ReturnType<typeof project>) =>
+    !candidate.reason && !candidate.shortOfCover;
   if (unavailableReason || neededUsd === 0n) {
     plan = project(0n);
-  } else if (stepped < loan.debtUsd) {
-    plan = project(stepped);
   } else {
-    // The $5 step reaches the whole debt; a repayment to the cent may still leave the loan open.
+    // The $5 step when it fits; otherwise — it fails, or reaches the whole debt — a repayment to
+    // the cent, which can still leave the loan open or fit in a smaller locked balance.
+    const stepped = roundUpToStep(exactRepayUsd);
+    const steppedPlan = stepped < loan.debtUsd ? project(stepped) : null;
     const precise = roundUpToStep(exactRepayUsd, CENT_USD);
-    const partial = precise < loan.debtUsd ? project(precise) : null;
-    if (partial && !partial.reason && !partial.shortOfCover) {
-      plan = partial;
-    } else {
+    const precisePlan =
+      steppedPlan && fits(steppedPlan)
+        ? null
+        : precise < loan.debtUsd && precise !== stepped
+          ? project(precise)
+          : null;
+    if (steppedPlan && fits(steppedPlan)) plan = steppedPlan;
+    else if (precisePlan && fits(precisePlan)) plan = precisePlan;
+    else if (steppedPlan) plan = steppedPlan;
+    else {
       requiresFullRepay = true;
       plan = project(loan.debtUsd);
     }

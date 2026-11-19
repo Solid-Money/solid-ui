@@ -258,7 +258,12 @@ export const combineCreditFigures = (
     }));
   const line = instances.reduce((sum, instance) => sum + instance.creditLineUsd, 0n);
   const headroom = instances.reduce((sum, instance) => sum + instance.creditHeadroomUsd, 0n);
-  const accepted = [...(positions?.fuse?.collateral ?? []), ...(positions?.base?.collateral ?? [])];
+  // What can be locked: a token off the collateral list stays in the loan model while it is
+  // escrowed, but is no longer one the card locks.
+  const accepted = [
+    ...(positions?.fuse?.collateral ?? []),
+    ...(positions?.base?.collateral ?? []),
+  ].filter(asset => asset.listedAsCollateral);
   const keyOf = (asset: CreditCollateralAsset) => collateralAssetKeyOf(asset.symbol);
   const lockable = new Set(
     accepted.map(keyOf).filter((key): key is CollateralAssetKey => key !== undefined),

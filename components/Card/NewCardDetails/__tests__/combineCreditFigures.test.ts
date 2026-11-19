@@ -43,6 +43,7 @@ const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset
   ltWad: 950_000_000_000_000_000n,
   liquidationBonusBps: 500,
   countsTowardPower: true,
+  listedAsCollateral: true,
   repayFeeBps: 0,
   ...overrides,
 });
@@ -340,6 +341,29 @@ describe('combineCreditFigures', () => {
       expect(figures.collateral).toEqual([
         expect.objectContaining({ label: 'Bitcoin', icon: 'cbbtc', value: '$798.00' }),
       ]);
+    });
+
+    it('never offers a token taken off the collateral list, even while some is still locked', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({
+              chainId: 8453,
+              token: SOL,
+              symbol: 'SOL',
+              amount: 5n,
+              escrowed: 5n,
+              valueUsd: 500n,
+              listedAsCollateral: false,
+            }),
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR', amount: 0n }),
+          ],
+        }),
+      });
+
+      expect(figures.collateral.map(row => row.label)).toEqual(['EUR Yield']);
+      expect(figures.collateralKeys).not.toContain('SOL');
     });
 
     it('lists crypto only when held, and the yield shares always', () => {

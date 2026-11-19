@@ -30,6 +30,7 @@ import {
   type LoanModel,
   type LoanRisk,
   quoteUnlock,
+  unitsCeil,
   type UnlockQuote,
   WAD,
 } from '@/lib/creditRisk';
@@ -593,6 +594,9 @@ export const UnlockView = ({
   loan,
   asset,
   repayState,
+  isRepayLoading,
+  isRepayError,
+  onRetryRepay,
   now,
   format,
   error,
@@ -604,6 +608,10 @@ export const UnlockView = ({
   loan: LoanModel;
   asset: LoanAsset;
   repayState: CardRepayState | null;
+  /** The wallet read behind the cash options: still loading, or failed. */
+  isRepayLoading: boolean;
+  isRepayError: boolean;
+  onRetryRepay: () => void;
   now: number;
   format: Format;
   error: string | null;
@@ -691,8 +699,21 @@ export const UnlockView = ({
     : quote.amount === 0n
       ? 'Nothing to unlock at this amount.'
       : needsRepay && !source
-        ? 'There’s nothing in your wallet to repay with.'
+        ? // "Nothing to repay with" only once the wallet read has said so.
+          isRepayLoading
+          ? 'Checking your wallet…'
+          : isRepayError
+            ? 'Couldn’t read your wallet.'
+            : 'There’s nothing in your wallet to repay with.'
         : (quote.unavailableReason ?? shortOfCash);
+  // The exact tokens a cash repayment sends, as the signature sizes them.
+  const walletTokens =
+    needsRepay && source?.kind === 'wallet' && source.tender.priceUsd > 0n
+      ? `${formatTokenUnits(
+          unitsCeil(quote.repayUsd, source.tender.priceUsd, source.tender.decimals),
+          source.tender.decimals,
+        )} ${source.tender.displaySymbol}`
+      : null;
 
   const presets: { key: Preset; label: string }[] = [
     ...(free.amount > 0n && free.amount < asset.escrowed
@@ -737,10 +758,12 @@ export const UnlockView = ({
       {quote.requiresFullRepay ? (
         <Note>
           <Text className="text-[14px] leading-[20px] text-white/80">
-            {`Getting this much back means repaying the whole ${format(loan.debtUsd)}. A full repayment returns everything locked at once, with no wait.`}
+            {`Getting this much back with ${source ? source.label : 'this'} means repaying the whole ${format(loan.debtUsd)}. A full repayment returns everything locked at once, with no wait.`}
           </Text>
         </Note>
-      ) : needsRepay ? (
+      ) : null}
+      {/* Kept when the chosen source needs a full repayment, so another one can be picked. */}
+      {needsRepay && (!quote.requiresFullRepay || sources.length > 1) ? (
         <Card>
           <View style={styles.need}>
             <Text className="text-[14px] text-white/70">To unlock this, repay first</Text>
@@ -770,8 +793,21 @@ export const UnlockView = ({
               </Pressable>
             );
           })}
+          {walletTokens ? (
+            <Text className="text-[13px] text-white/70">
+              {`You pay ${walletTokens}, about ${format(quote.repayUsd)} at today’s price.`}
+            </Text>
+          ) : null}
+          {isRepayError ? (
+            <View style={styles.inline}>
+              <Text className="flex-1 text-[13px]" style={{ color: CREDIT_COLORS.amber }}>
+                Couldn’t read your wallet, so cash options may be missing.
+              </Text>
+              <PillButton label="Retry" size="compact" onPress={onRetryRepay} />
+            </View>
+          ) : null}
           <Text className="pb-2 text-[13px] text-white/50">
-            Rounded up to the next $5, so a small price move can’t block the unlock.
+            Rounded up, so a small price move can’t block the unlock.
           </Text>
         </Card>
       ) : null}

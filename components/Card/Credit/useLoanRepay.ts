@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
 import { base } from 'viem/chains';
 
-import { formatTokenUnits } from '@/components/Card/Credit/creditUi';
+import { joinNames } from '@/components/Card/Credit/creditUi';
 import { formatUsd } from '@/constants/cardSpendModule';
 import { explorerUrls } from '@/constants/explorers';
 import {
@@ -55,16 +55,17 @@ export const useLoanRepay = (chainId: CardRepayChainId, enabled: boolean): LoanR
       const result = await repay(request).catch(() => null);
       if (!result) return false;
 
-      // Significant digits under 1, so a small return reads as 0.001 rather than 0.00.
-      const returned = result.returnedCollateral
-        .map(item => `${formatTokenUnits(item.amount, item.decimals)} ${item.displaySymbol}`)
-        .join(' and ');
+      // Names only: `withdrawCollateral` sends whatever is locked when it runs, and the amounts
+      // here are the read from before signing.
+      const returned = joinNames(result.returnedCollateral.map(item => item.displaySymbol));
       const link = explorerTxUrl(chainId)(result.transactionHash);
 
       Toast.show({
         type: 'success',
         text1: result.isFull ? 'Loan repaid' : `Repaid ${formatUsd(result.repayUsd)}`,
-        text2: returned ? `${returned} is back in your wallet` : undefined,
+        text2: returned
+          ? `${returned} ${result.returnedCollateral.length > 1 ? 'are' : 'is'} back in your wallet`
+          : undefined,
         props: link ? { link, linkText: eclipseAddress(result.transactionHash) } : undefined,
       });
       return true;

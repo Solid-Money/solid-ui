@@ -63,7 +63,11 @@ const ltvOf = (holdings: readonly CreditCollateralAsset[]): string | undefined =
 export const buildCollateralOrderRows = (
   positions: CardCreditPositions | undefined,
 ): Map<CollateralAssetKey, CollateralOrderRow> => {
-  const accepted = [...(positions?.fuse?.collateral ?? []), ...(positions?.base?.collateral ?? [])];
+  // Only what the card can lock: a token taken off the collateral list is not ordered.
+  const accepted = [
+    ...(positions?.fuse?.collateral ?? []),
+    ...(positions?.base?.collateral ?? []),
+  ].filter(asset => asset.listedAsCollateral);
   const byKey = new Map<CollateralAssetKey, CreditCollateralAsset[]>();
   for (const asset of accepted) {
     const key = collateralAssetKeyOf(asset.symbol);

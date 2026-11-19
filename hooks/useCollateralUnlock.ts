@@ -1,6 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type Address, type Chain, encodeFunctionData, erc20Abi, maxUint256 } from 'viem';
+import {
+  type Address,
+  type Chain,
+  encodeFunctionData,
+  erc20Abi,
+  maxUint256,
+  parseEventLogs,
+} from 'viem';
 import { base, fuse } from 'viem/chains';
 
 import { formatUsd } from '@/constants/cardSpendModule';
@@ -31,6 +38,7 @@ import {
 } from '@/lib/creditRisk';
 import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { isReceiptTimeout } from '@/lib/pendingTierLocks';
 import { useUserStore } from '@/store/useUserStore';
 
 /** How the repayment an unlock needs is paid. */
@@ -80,6 +88,30 @@ export class UnlockUserError extends Error {
     this.name = 'UnlockUserError';
   }
 }
+
+/**
+ * Sent, and only the wait for its receipt gave up — usually the app going to the background. Not a
+ * failure: it has most likely landed, and the re-read it triggers shows the outcome.
+ */
+export class UnlockPendingError extends UnlockUserError {
+  constructor() {
+    super('Sent, and still confirming. This page updates once it lands.');
+    this.name = 'UnlockPendingError';
+  }
+}
+
+/** `CollateralWithdrawn`, which the module emits with the amount a release actually moved. */
+const COLLATERAL_WITHDRAWN_ABI = [
+  {
+    type: 'event',
+    name: 'CollateralWithdrawn',
+    inputs: [
+      { name: 'safe', type: 'address', indexed: true },
+      { name: 'token', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+] as const;
 
 /** What to show for a failed step: our own words as they are, anything else translated. */
 const describeFailure = (failure: Error): string | null =>
@@ -156,22 +188,45 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
     return position;
   }, [chainId, instance?.lensAddress, moduleAddress, queryClient, safe]);
 
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY] });
+    queryClient.invalidateQueries({ queryKey: [CARD_REPAY_QUERY_KEY] });
+    queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+  }, [queryClient]);
+
   const send = useCallback(
     async (calls: { to: Address; data: `0x${string}` }[], failure: string) => {
       if (!user?.suborgId || !user?.signWith) {
         throw new UnlockUserError('Your wallet is still setting up. Please try again shortly.');
       }
       const client = await safeAA(chain, user.suborgId, user.signWith);
-      return executeTransactions(client, calls, failure, chain);
+      // Known once the bundler accepts it: after that, a missing receipt is not a failure.
+      let sent = false;
+      try {
+        return await executeTransactions(client, calls, failure, chain, () => {
+          sent = true;
+        });
+      } catch (sendError) {
+        if (sent && isReceiptTimeout(sendError)) {
+          refresh();
+          throw new UnlockPendingError();
+        }
+        throw sendError;
+      }
     },
-    [chain, safeAA, user?.signWith, user?.suborgId],
+    [chain, refresh, safeAA, user?.signWith, user?.suborgId],
   );
 
-  const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY] });
-    queryClient.invalidateQueries({ queryKey: [CARD_REPAY_QUERY_KEY] });
-    queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
-  }, [queryClient]);
+  /** An operation that may still land: re-read, say so, and record no failure. */
+  const settlePending = useCallback(
+    (mutationError: Error): boolean => {
+      if (!(mutationError instanceof UnlockPendingError)) return false;
+      setError(mutationError.message);
+      refresh();
+      return true;
+    },
+    [refresh],
+  );
 
   const requestMutation = useMutation({
     mutationFn: async (request: UnlockRequest): Promise<UnlockResult | null> => {
@@ -186,8 +241,19 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       const asset = loan.assets.find(candidate => sameToken(candidate.token, request.token));
       if (!asset) throw new UnlockUserError('That asset is no longer locked in this loan.');
 
+      // Free now, whatever was chosen to repay with: the source is not used, so not checked.
+      const isFreeNow =
+        quoteUnlock({
+          position,
+          loan,
+          asset,
+          amount: request.amount,
+          source: { kind: 'wallet' },
+          nowSeconds: now,
+        }).neededUsd === 0n;
+
       let source: UnlockRepaySource = { kind: 'wallet' };
-      if (request.repay.kind === 'collateral') {
+      if (request.repay.kind === 'collateral' && !isFreeNow) {
         const repayToken = request.repay.token;
         const locked = loan.assets.find(candidate => sameToken(candidate.token, repayToken));
         if (!locked) throw new UnlockUserError('That asset is no longer locked in this loan.');
@@ -329,6 +395,7 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       if (result) refresh();
     },
     onError: (mutationError: Error) => {
+      if (settlePending(mutationError)) return;
       setError(describeFailure(mutationError));
       track(TRACKING_EVENTS.CARD_CREDIT_UNLOCK_FAILED, {
         chain_id: chainId,
@@ -372,6 +439,7 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       if (result) refresh();
     },
     onError: (mutationError: Error) => {
+      if (settlePending(mutationError)) return;
       setError(describeFailure(mutationError));
       if (mutationError instanceof UnlockUserError) refresh();
       track(TRACKING_EVENTS.CARD_CREDIT_UNLOCK_FAILED, {
@@ -449,12 +517,24 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
         chain_id: chainId,
         transaction_hash: result.transactionHash,
       });
-      return { ...result, token: pending.token, amount: releases };
+      // What the module actually moved, from its own event; null if the receipt does not carry it.
+      const withdrawn = parseEventLogs({
+        abi: COLLATERAL_WITHDRAWN_ABI,
+        logs: result.transaction?.logs ?? [],
+        eventName: 'CollateralWithdrawn',
+      }).find(
+        log =>
+          sameToken(log.address, position.moduleAddress) &&
+          sameToken(log.args.safe, safe!) &&
+          sameToken(log.args.token, pending.token),
+      );
+      return { ...result, token: pending.token, amount: withdrawn?.args.amount ?? null };
     },
     onSuccess: result => {
       if (result) refresh();
     },
     onError: (mutationError: Error) => {
+      if (settlePending(mutationError)) return;
       // A loan that needs more cover is explained inline, with its own recovery; every other
       // refusal is said, and the pending state re-read so the screen stops offering it.
       if (
@@ -487,8 +567,16 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
     mutationFn: async (tokens: readonly Address[]) => {
       if (!moduleAddress)
         throw new UnlockUserError('Your wallet is still setting up. Please try again shortly.');
+      // Only what is still locked: withdrawing a zero balance reverts, and takes the batch with it.
+      const position = await freshPosition();
+      const locked = tokens.filter(token =>
+        position.collateral.some(entry => sameToken(entry.token, token) && entry.escrowed > 0n),
+      );
+      if (locked.length === 0) {
+        throw new UnlockUserError('Nothing is locked in this loan anymore.');
+      }
       const result = await send(
-        tokens.map(token => ({
+        locked.map(token => ({
           to: moduleAddress,
           data: encodeFunctionData({
             abi: SolidCashModuleV2_ABI,
@@ -511,7 +599,10 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       if (result) refresh();
     },
     onError: (mutationError: Error) => {
+      if (settlePending(mutationError)) return;
       setError(describeFailure(mutationError));
+      // Balances may have moved since the press: re-read, so a retry sends only what is locked.
+      refresh();
       track(TRACKING_EVENTS.CARD_CREDIT_UNLOCK_FAILED, {
         chain_id: chainId,
         step: 'withdraw_all',

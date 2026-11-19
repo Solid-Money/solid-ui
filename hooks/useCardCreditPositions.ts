@@ -80,6 +80,11 @@ export interface CreditCollateralAsset {
    * guardian, still counts toward what a liquidation could take, but not toward borrowing power.
    */
   countsTowardPower: boolean;
+  /**
+   * On the module's collateral list (`TokenConfig.collateral`). False for a token taken off it
+   * that is still locked: it backs the loan until unlocked, but nothing new can be locked in it.
+   */
+  listedAsCollateral: boolean;
   /** Fee on repaying from this token's escrow, on top of the debt retired. Zero unless set. */
   repayFeeBps: number;
 }
@@ -354,6 +359,7 @@ export const readCreditInstance = async (
         ltWad: config.liquidationThreshold,
         liquidationBonusBps: Number(config.liquidationBonusBps),
         countsTowardPower: config.collateral && !paused,
+        listedAsCollateral: config.collateral,
         // The module charges the stored fee capped at the current bonus (`_sizeCollateralRepay`):
         // a bonus lowered after the fee was set lowers the fee with it.
         repayFeeBps: Math.min(

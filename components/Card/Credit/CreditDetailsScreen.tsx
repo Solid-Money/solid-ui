@@ -137,16 +137,18 @@ const CreditDetailsScreen = () => {
         return null;
       });
     if (done) {
-      // What was actually released, as the fresh read before signing saw it.
+      // The amount from the module's own `CollateralWithdrawn`; without it, no figure at all
+      // rather than the estimate made before signing.
       const asset = loan.assets.find(
         candidate => candidate.token.toLowerCase() === done.token.toLowerCase(),
       );
       Toast.show({
         type: 'success',
         text1: asset ? `${assetName(asset)} unlocked` : 'Unlocked',
-        text2: asset
-          ? `${formatTokenUnits(done.amount, asset.decimals)} ${asset.symbol} (${format(valueOf(done.amount, asset.priceUsd, asset.decimals))}) is back in your wallet.`
-          : 'It’s back in your wallet.',
+        text2:
+          asset && done.amount !== null
+            ? `${formatTokenUnits(done.amount, asset.decimals)} ${asset.symbol} (${format(valueOf(done.amount, asset.priceUsd, asset.decimals))}) is back in your wallet.`
+            : 'It’s back in your wallet.',
       });
     }
   };
@@ -255,7 +257,7 @@ const CreditDetailsScreen = () => {
                   />
                 </View>
                 <Text className="text-[14px] text-white/50">
-                  {`You’ve used ${format(details.totalDebtUsd)} of your ${details.creditLimit} limit`}
+                  {`You’ve used ${details.borrowed} of your ${details.creditLimit} limit`}
                 </Text>
               </View>
 

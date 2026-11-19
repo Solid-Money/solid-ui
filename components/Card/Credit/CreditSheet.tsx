@@ -272,6 +272,9 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
               loan={loan}
               asset={asset}
               repayState={repays[route.chainId]?.state ?? null}
+              isRepayLoading={Boolean(repays[route.chainId]?.isLoading)}
+              isRepayError={Boolean(repays[route.chainId]?.isError)}
+              onRetryRepay={() => repays[route.chainId]?.onRetry()}
               now={details.now}
               format={details.format}
               error={unlock.error}

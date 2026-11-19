@@ -282,18 +282,21 @@ const LoanCard = ({
       </View>
 
       {!owes ? (
-        <>
-          <Text className="text-[14px] leading-[20px] text-white/75">
-            {`${format(loan.valueUsd)} is still locked from a loan you’ve repaid. It can come back now.`}
-          </Text>
-          <PillButton
-            label="Unlock all"
-            kind="primary"
-            size="compact"
-            onPress={onUnlockAll}
-            loading={isUnlockingAll}
-          />
-        </>
+        // Nothing locked either: only a pending unlock keeps this card, and it carries the Cancel.
+        loan.assets.length > 0 ? (
+          <>
+            <Text className="text-[14px] leading-[20px] text-white/75">
+              {`${format(loan.valueUsd)} is still locked from a loan you’ve repaid. It can come back now.`}
+            </Text>
+            <PillButton
+              label="Unlock all"
+              kind="primary"
+              size="compact"
+              onPress={onUnlockAll}
+              loading={isUnlockingAll}
+            />
+          </>
+        ) : null
       ) : (
         <>
           <SaleBlock loan={loan} now={now} format={format} />

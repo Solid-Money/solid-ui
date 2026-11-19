@@ -54,6 +54,8 @@ export interface CreditDetails {
   owingChainIds: number[];
   availableToSpend: string;
   creditLimit: string;
+  /** What the usage line says is used: the same read as {@link creditLimit} and the bar. */
+  borrowed: string;
   borrowedProgress: number;
   borrowApy: string;
   /** "about $3.33 a month", from today's debt and rate. */
@@ -124,6 +126,9 @@ const collateralEntry = (
   };
 };
 
+/** An average month (365.25 days ÷ 12), for the interest line. */
+const SECONDS_PER_MONTH = 2_629_800n;
+
 const STATUS_ORDER: Record<LoanStatus, number> = { 'at-risk': 0, caution: 1, healthy: 2 };
 
 /**
@@ -162,7 +167,11 @@ export const useCreditDetails = (): CreditDetails => {
     const at = Math.max(builtAt, minute * 60);
     const loans = instances
       .filter(
-        position => position.debtUsd > 0n || position.collateral.some(asset => asset.escrowed > 0n),
+        position =>
+          position.debtUsd > 0n ||
+          position.collateral.some(asset => asset.escrowed > 0n) ||
+          // An unlock still pending after a sale took everything: its card carries the Cancel.
+          position.pendingUnlock !== null,
       )
       .map(position => buildLoan(position, at))
       .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
@@ -174,9 +183,12 @@ export const useCreditDetails = (): CreditDetails => {
         borrowApyPerSecond: position.borrowApyPerSecond,
       })),
     );
-    // The quoted APY to a millionth of a percent, then a month of it on the debt, all in bigint.
-    const apyMicroPercent = BigInt(Math.round(borrowApyPercent(rate) * 1_000_000));
-    const monthly = (totalDebtUsd * apyMicroPercent) / (100n * 1_000_000n * 12n);
+    // A month of each loan's own per-second rate on its own debt, as the module accrues it, summed.
+    const monthly = instances.reduce(
+      (sum, position) =>
+        sum + (position.debtUsd * position.borrowApyPerSecond * SECONDS_PER_MONTH) / WAD,
+      0n,
+    );
 
     return {
       isLoading,
@@ -189,6 +201,8 @@ export const useCreditDetails = (): CreditDetails => {
       owingChainIds: loans.filter(loan => loan.debtUsd > 0n).map(loan => loan.chainId),
       availableToSpend: figures.availableToBorrow,
       creditLimit: figures.creditLimit,
+      // The usage line's debt, from the same read as its limit and bar.
+      borrowed: figures.borrowed,
       borrowedProgress: figures.borrowedProgress,
       borrowApy: formatApy(borrowApyPercent(rate)),
       monthlyInterest: formatMicroUsd(monthly),

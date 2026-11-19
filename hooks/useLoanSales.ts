@@ -22,10 +22,14 @@ export interface LoanSaleEvent {
   /** Unix seconds. */
   timestamp: number;
   /**
-   * The penalty the sale took, as the token's `liquidationBonusBps` stood at its block. Null when
-   * that block's state could not be read: the token's terms today may not be the sale's.
+   * The penalty the sale took: the token's `liquidationBonusBps`, when it was the same before and
+   * after the sale's block — so it is what the sale ran under. Null when the two differ or either
+   * block's state could not be read: the penalty is then not shown.
    */
   bonusBps: number | null;
+  /** For ordering sales in the same second. */
+  blockNumber: bigint;
+  logIndex: number;
 }
 
 /** How far back a sale is still news on the Credit page. */
@@ -115,39 +119,60 @@ const readSales = async (
   const bonuses = new Map(
     await Promise.all(
       bonusReads.map(async ([key, { token, blockNumber }]) => {
-        const bonus = await client
-          .readContract({
-            address: moduleAddress,
-            abi: SolidCashModuleV2_ABI,
-            functionName: 'getTokenConfig',
-            args: [token],
-            blockNumber,
-          })
-          .then(config => Number(config.liquidationBonusBps))
-          .catch(() => null);
-        return [key, bonus] as const;
+        // End-of-block state alone could include a change made after the sale in the same block;
+        // unchanged across the block, it is the value the sale ran under.
+        const bonusAt = (at: bigint) =>
+          client
+            .readContract({
+              address: moduleAddress,
+              abi: SolidCashModuleV2_ABI,
+              functionName: 'getTokenConfig',
+              args: [token],
+              blockNumber: at,
+            })
+            .then(config => Number(config.liquidationBonusBps))
+            .catch(() => null);
+        const [before, after] = await Promise.all([
+          bonusAt(blockNumber - 1n),
+          bonusAt(blockNumber),
+        ]);
+        return [key, before !== null && before === after ? after : null] as const;
       }),
     ),
   );
 
-  return events
-    .flatMap(event => {
-      const { collateralToken, repaidUsd, collateralSeized } = event.args;
-      if (!collateralToken || repaidUsd === undefined || collateralSeized === undefined) return [];
-      return [
-        {
-          chainId,
-          token: collateralToken,
-          repaidUsd,
-          seized: collateralSeized,
-          transactionHash: event.transactionHash,
-          timestamp: timestamps.get(event.blockNumber) ?? 0,
-          bonusBps: bonuses.get(bonusKey(collateralToken, event.blockNumber)) ?? null,
-        },
-      ];
-    })
-    .filter(sale => sale.timestamp >= since)
-    .sort((a, b) => b.timestamp - a.timestamp);
+  return (
+    events
+      .flatMap(event => {
+        const { collateralToken, repaidUsd, collateralSeized } = event.args;
+        if (!collateralToken || repaidUsd === undefined || collateralSeized === undefined)
+          return [];
+        return [
+          {
+            chainId,
+            token: collateralToken,
+            repaidUsd,
+            seized: collateralSeized,
+            transactionHash: event.transactionHash,
+            timestamp: timestamps.get(event.blockNumber) ?? 0,
+            bonusBps: bonuses.get(bonusKey(collateralToken, event.blockNumber)) ?? null,
+            blockNumber: event.blockNumber,
+            logIndex: event.logIndex,
+          },
+        ];
+      })
+      .filter(sale => sale.timestamp >= since)
+      // Newest first; within one second, the later block, then the later log.
+      .sort((a, b) =>
+        a.timestamp !== b.timestamp
+          ? b.timestamp - a.timestamp
+          : a.blockNumber !== b.blockNumber
+            ? a.blockNumber > b.blockNumber
+              ? -1
+              : 1
+            : b.logIndex - a.logIndex,
+      )
+  );
 };
 
 /**

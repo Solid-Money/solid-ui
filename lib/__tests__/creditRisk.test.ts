@@ -50,6 +50,7 @@ const asset = (
     ltWad: wad(lt),
     liquidationBonusBps: lt >= 0.9 ? 500 : lt >= 0.7 ? 500 : 750,
     countsTowardPower: true,
+    listedAsCollateral: true,
     repayFeeBps: 0,
     ...overrides,
   };
@@ -266,6 +267,21 @@ describe('buildLoan — when a sale can happen', () => {
     const loan = buildLoan(atRisk({ unhealthySince: NOW - 60, forcedDebtUsd: usd(50) }), NOW);
     expect(loan.risk.kind).toBe('single');
     if (loan.risk.kind === 'single') expect(loan.risk.noWaitPriceUsd).toBeNull();
+  });
+});
+
+describe('a token taken off the collateral list', () => {
+  it('still backs the loan while it is locked, without adding borrowing power', () => {
+    const delisted = asset('SOL', 300, 0.5, 0.6, {
+      listedAsCollateral: false,
+      countsTowardPower: false,
+    });
+    const loan = buildLoan(position(100, [asset('soUSD', 200, 0.9, 0.95), delisted]), NOW);
+    const sol = loan.assets.find(a => a.symbol === 'SOL')!;
+    expect(sol.escrowed).toBe(usd(300));
+    // 300 × 60% of cover, none of power.
+    expect(sol.coverUsd).toBe(usd(180));
+    expect(sol.powerUsd).toBe(0n);
   });
 });
 

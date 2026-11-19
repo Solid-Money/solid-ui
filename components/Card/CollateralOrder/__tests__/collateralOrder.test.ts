@@ -53,6 +53,7 @@ const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset
   ltWad: 950_000_000_000_000_000n,
   liquidationBonusBps: 0,
   countsTowardPower: true,
+  listedAsCollateral: true,
   repayFeeBps: 0,
   ...overrides,
 });
@@ -268,6 +269,26 @@ describe('buildCollateralOrderRows', () => {
     });
     // A module that sets no LTV gets no line.
     expect(rows.get('AAVE')?.subtitle).toBeUndefined();
+  });
+
+  it('leaves out a token taken off the collateral list, even while some is still locked', () => {
+    const rows = buildCollateralOrderRows({
+      fuse: null,
+      base: instance(8453, [
+        asset({ chainId: 8453, token: BASE_SOUSD }),
+        asset({
+          chainId: 8453,
+          token: CBBTC,
+          symbol: 'cbBTC',
+          amount: 5n,
+          escrowed: 5n,
+          valueUsd: 4_000_000n,
+          listedAsCollateral: false,
+        }),
+      ]),
+    });
+
+    expect([...rows.keys()]).toEqual(['USD_YIELD']);
   });
 
   it('adds soUSD on Fuse and on Base into one row', () => {
