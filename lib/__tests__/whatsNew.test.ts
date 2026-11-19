@@ -1,8 +1,10 @@
 import {
   canShowWhatsNew,
+  carouselLayout,
   isSingleWhatsNew,
   singleLeadImageUrl,
   singleMediaSize,
+  slideCta,
   whatsNewEventBase,
   whatsNewViewedProps,
 } from '@/lib/whatsNew';
@@ -129,5 +131,51 @@ describe("What's New analytics", () => {
       media_type: 'image',
       steps: 2,
     });
+  });
+});
+
+describe("What's New carousel layout", () => {
+  it('matches the phone design: 16pt margins, 17pt padding, 5:4 media', () => {
+    expect(carouselLayout({ width: 393, height: 852 }, false)).toEqual({
+      cardWidth: 361,
+      padding: 17,
+      pageWidth: 327,
+      mediaHeight: 261.6,
+      textInset: 0,
+    });
+  });
+
+  it('matches the desktop design: 640 card, 26pt padding, 16:9 media', () => {
+    const layout = carouselLayout({ width: 1440, height: 900 }, true);
+    expect(layout).toMatchObject({ cardWidth: 640, padding: 26, pageWidth: 588, textInset: 16 });
+    expect(layout.mediaHeight).toBeCloseTo(330.75);
+  });
+
+  it('gives up media height on short screens', () => {
+    expect(carouselLayout({ width: 375, height: 600 }, false).mediaHeight).toBeCloseTo(216);
+    expect(carouselLayout({ width: 1280, height: 640 }, true).mediaHeight).toBeCloseTo(268.8);
+  });
+});
+
+describe("What's New slide button", () => {
+  it("is the slide's own when it has a label and a link", () => {
+    expect(slideCta({ ...STEP, buttonLabel: ' Deposit crypto ', buttonLink: '/deposit' })).toEqual({
+      label: 'Deposit crypto',
+      link: '/deposit',
+    });
+  });
+
+  it('is none when either is missing', () => {
+    expect(slideCta({ ...STEP, buttonLabel: 'Deposit crypto' })).toBeNull();
+    expect(slideCta({ ...STEP, buttonLink: '/deposit', buttonLabel: ' ' })).toBeNull();
+  });
+
+  it('reports a carousel with a slide video as video', () => {
+    expect(
+      whatsNewViewedProps(
+        popup({ steps: [STEP, { ...STEP, videoUrl: 'https://cdn.test/slide.mp4' }] }),
+        'popup',
+      ),
+    ).toMatchObject({ format: 'carousel', media_type: 'video' });
   });
 });
