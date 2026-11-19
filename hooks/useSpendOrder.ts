@@ -45,8 +45,12 @@ export const useSpendOrder = () => {
       withRefreshToken(() => setCardSpendOrder({ order: next.order, excluded: next.excluded })),
     onSuccess: saved => {
       // Written into the cached read at once, so the sheet and every Spendable figure follow the
-      // press; the refetches then bring the backend's own figures.
-      queryClient.setQueryData<CardSpendOrder>(queryKey, saved);
+      // press; the refetches then bring the backend's own figures. A save answer without
+      // `canEdit` (an older backend) keeps the cached one rather than reading as false.
+      queryClient.setQueryData<CardSpendOrder>(queryKey, previous => ({
+        ...saved,
+        canEdit: saved.canEdit ?? previous?.canEdit,
+      }));
       void queryClient.invalidateQueries({ queryKey: [CARD_SPEND_ORDER_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [CARD_SPENDABLE_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [CARD_SPEND_ORDER_PREVIEW_QUERY_KEY] });

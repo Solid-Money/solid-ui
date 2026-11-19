@@ -59,7 +59,11 @@ export const useCollateralOrder = () => {
       // refetches then bring the backend's own figures. The quoted credit can move with the order
       // (the lock list is cut to the module's token limit in this order), so the backend's
       // spendable figure and the credit reads are refreshed too.
-      queryClient.setQueryData<CardCollateralOrder>(queryKey, saved);
+      // A save answer without `canEdit` (an older backend) keeps the cached one.
+      queryClient.setQueryData<CardCollateralOrder>(queryKey, previous => ({
+        ...saved,
+        canEdit: saved.canEdit ?? previous?.canEdit,
+      }));
       void queryClient.invalidateQueries({ queryKey: [CARD_COLLATERAL_ORDER_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [CARD_COLLATERAL_ORDER_PREVIEW_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [CARD_SPENDABLE_QUERY_KEY] });
