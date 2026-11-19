@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Toast from 'react-native-toast-message';
 import { type Href, useRouter } from 'expo-router';
 
@@ -54,7 +54,12 @@ export default function CollateralOrderScreen() {
   // Nothing can be edited until the saved order has answered: a drag or a Reset before then would
   // start from the default order, and Save would write it over the saved one. That covers a read
   // still waiting on the card provider, paused offline, or failed, not only one in flight.
-  const isReady = saved.hasLoaded;
+  const isReady = saved.hasLoaded && saved.canEdit;
+
+  // Opened without the cohort (a stale link, or the tag was removed): back to the card.
+  useEffect(() => {
+    if (saved.hasLoaded && !saved.canEdit) router.replace(path.CARD_DETAILS as Href);
+  }, [router, saved.canEdit, saved.hasLoaded]);
   const isChanged = !sameCollateralOrder(current, saved.order);
   const canSave = isReady && isChanged && !saved.isSaving;
 

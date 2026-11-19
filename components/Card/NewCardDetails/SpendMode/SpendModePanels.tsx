@@ -342,11 +342,13 @@ export const SpendModeBalancePanel = ({
           </View>
           <View style={styles.assetsTitle}>
             <Text className="text-[18px] font-medium leading-[18px] text-white">
-              Spends in this order
+              {onEditOrder ? 'Spends in this order' : 'Spendable assets'}
             </Text>
             {onHelpPress ? (
               <Pressable
-                accessibilityLabel="How spend order works"
+                accessibilityLabel={
+                  onEditOrder ? 'How spend order works' : 'How spendable assets work'
+                }
                 accessibilityRole="button"
                 className="active:opacity-80"
                 hitSlop={12}

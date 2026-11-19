@@ -56,6 +56,12 @@ export const useSpendOrder = () => {
   return {
     ...preference,
     customized: query.data?.spendOrderCustomized ?? false,
+    /**
+     * Whether to offer "Edit order": the backend's internal-team cohort decides. Fails closed —
+     * false until the read answers, and on a backend that does not send it. Saved orders still
+     * apply for everyone; this only hides the entry.
+     */
+    canEdit: query.data?.canEdit === true,
     isLoading: query.isLoading,
     /**
      * The saved preference has answered at least once. Until then the fields above are the

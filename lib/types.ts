@@ -666,6 +666,11 @@ export interface CardSpendOrder {
   spendOrder?: string[];
   spendExcluded?: string[];
   spendOrderCustomized?: boolean;
+  /**
+   * Whether this cardholder is offered "Edit order" (the backend's internal-team cohort, tag
+   * "Spend & collateral order"). Absent reads as no: the button stays hidden.
+   */
+  canEdit?: boolean;
 }
 
 /** One asset's share of a previewed purchase. */
@@ -709,6 +714,8 @@ export interface CardCollateralOrder {
   collateralOrder?: string[];
   collateralOrderCustomized?: boolean;
   defaultCollateralOrder?: string[];
+  /** Whether this cardholder is offered "Edit order"; absent reads as no. */
+  canEdit?: boolean;
 }
 
 /** One collateral a previewed purchase would newly lock. */

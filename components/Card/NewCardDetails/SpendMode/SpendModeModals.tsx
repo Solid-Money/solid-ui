@@ -10,7 +10,9 @@ import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCollateralOrder } from '@/hooks/useCollateralOrder';
 import { useCustomer } from '@/hooks/useCustomer';
+import { useSpendOrder } from '@/hooks/useSpendOrder';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
@@ -95,6 +97,11 @@ const SpendModeModals = ({
     setIsCreditDetailsOpen(true);
   }, [closeSpendMode]);
 
+  // "Edit order" is offered to the internal-team cohort only (backend `canEdit`); everyone else
+  // keeps the panels as they were, and spends and locks in the default order.
+  const { canEdit: canEditSpendOrder } = useSpendOrder();
+  const { canEdit: canEditCollateralOrder } = useCollateralOrder();
+
   const openSpendOrder = useCallback(() => {
     // Closed first, like funding, so backing out of the screen lands on the card, not the sheet.
     setIsCollateralHelpOpen(false);
@@ -119,8 +126,8 @@ const SpendModeModals = ({
         onCollateralHelpPress={() => setIsCollateralHelpOpen(true)}
         onViewCreditDetails={openCreditDetails}
         onAddFunds={canAddFunds ? openFunds : undefined}
-        onEditOrder={openSpendOrder}
-        onEditCollateralOrder={openCollateralOrder}
+        onEditOrder={canEditSpendOrder ? openSpendOrder : undefined}
+        onEditCollateralOrder={canEditCollateralOrder ? openCollateralOrder : undefined}
       />
       <SpendModeHelpModal isOpen={isOpen && isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <CollateralHelpSheet

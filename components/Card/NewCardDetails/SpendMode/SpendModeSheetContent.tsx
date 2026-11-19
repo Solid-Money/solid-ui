@@ -235,8 +235,9 @@ const SpendModeSheetContent = ({
     (event: LayoutChangeEvent) => setNoticeHeight(event.nativeEvent.layout.height),
     [],
   );
-  // Two or more kinds of collateral: the order they lock in is worth naming and editing.
-  const locksInOrder = credit.collateralKeys.length > 1;
+  // Two or more kinds of collateral, for a cardholder offered "Edit order": the order they lock in
+  // is worth naming and editing. Everyone else keeps "Collateral assets" and "Keeps earning".
+  const locksInOrder = !!onEditCollateralOrder && credit.collateralKeys.length > 1;
   const sizes = useMemo<StackSizes>(
     () => ({
       balanceRows: balance.rows,

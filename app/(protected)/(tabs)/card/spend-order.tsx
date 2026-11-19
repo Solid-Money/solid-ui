@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Toast from 'react-native-toast-message';
 import { type Href, useRouter } from 'expo-router';
 
@@ -65,7 +65,12 @@ export default function SpendOrderScreen() {
   // default order with nothing excluded, so a drag or a Reset would start from that, and Save
   // would clear the exclusions the cardholder already has. That covers a read still waiting on the
   // card provider, paused offline, or failed, not only one in flight.
-  const isReady = saved.hasLoaded;
+  const isReady = saved.hasLoaded && saved.canEdit;
+
+  // Opened without the cohort (a stale link, or the tag was removed): back to the card.
+  useEffect(() => {
+    if (saved.hasLoaded && !saved.canEdit) router.replace(path.CARD_DETAILS as Href);
+  }, [router, saved.canEdit, saved.hasLoaded]);
   const isChanged = !sameSpendOrder(current, savedPreference);
   // A card with nothing left to spend would decline every purchase.
   const spendsNothing = spendsNothingIn(slots);
