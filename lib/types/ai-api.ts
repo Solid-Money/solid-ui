@@ -85,6 +85,12 @@ export interface AiApiModel {
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
   /**
+   * Solid charges nothing for it, cache writes included: the backend's own
+   * test, the one that sends it upstream under its free-only key. Missing on
+   * an older backend, where the prices above decide.
+   */
+  free?: boolean;
+  /**
    * Average output speed over the last ~24h of streamed requests, in tokens a
    * second. Null when too few requests were seen; missing on an older backend.
    */
@@ -196,4 +202,6 @@ export interface AiApiChargeMetadata {
   cashbackPayoutAt?: string | null;
   cashbackPaidAt?: string | null;
   cashbackTxHash?: string | null;
+  /** The chain `cashbackTxHash` is on: Base (8453) or Fuse (122). */
+  cashbackChainId?: number | null;
 }

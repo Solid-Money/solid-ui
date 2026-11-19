@@ -4,12 +4,14 @@ import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
 import { useMainCurrency } from '@/hooks/useMainCurrency';
+import { useSpendOrder } from '@/hooks/useSpendOrder';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import {
   baseEurcUsdQuote,
   cardSpendableAssetsFor,
   soEurUsdPerShare,
   sumCardSpendableUSD,
+  withoutExcludedAssets,
 } from '@/lib/utils/cardSpendable';
 
 /**
@@ -19,10 +21,23 @@ import {
  * Until the deployment list answers this is the Fuse set alone, so the figure can rise
  * when it lands but never shows EURC to someone who has not enabled it.
  */
-export const useCardSpendableAssets = (): CardSpendableAsset[] => {
+export const useAllCardSpendableAssets = (): CardSpendableAsset[] => {
   const { data } = useCardSpendDeployments();
 
   return useMemo(() => cardSpendableAssetsFor(data?.deployments), [data?.deployments]);
+};
+
+/**
+ * {@link useAllCardSpendableAssets} less the ones the cardholder told the card never to use
+ * (the Spend order screen's "Your card won't use"). The card never draws on those, so they are
+ * left out of the Spendable figure, its tooltip and "Your balance" — counting them would quote
+ * spending power the card will not use. Credit collateral is read elsewhere and is not affected.
+ */
+export const useCardSpendableAssets = (): CardSpendableAsset[] => {
+  const all = useAllCardSpendableAssets();
+  const { excluded } = useSpendOrder();
+
+  return useMemo(() => withoutExcludedAssets(all, excluded), [all, excluded]);
 };
 
 /**

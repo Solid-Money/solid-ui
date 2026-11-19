@@ -529,6 +529,47 @@ describe('WalletDepositAddress for ETH through rhino.fi', () => {
   });
 });
 
+describe('WalletDepositAddress once rhino.fi has paid the Safe', () => {
+  const mainButton = () =>
+    root.root.findAllByType('Button').find((node: any) => node.props.variant === 'brand');
+  const reportComplete = (complete: boolean) =>
+    act(() => {
+      root.root.findByType('RhinoDepositStatus').props.onCompleteChange(complete);
+    });
+
+  beforeEach(() => {
+    mockDeposit.walletDeposit = { chainId: polygon.id, symbol: 'USDC' };
+  });
+
+  it('offers to copy the address until the deposit is complete', () => {
+    render();
+
+    expect(texts()).toContain('Copy address');
+    expect(texts()).not.toContain('Close');
+  });
+
+  it('turns the button into Close, which leaves for the activity feed', () => {
+    render();
+    reportComplete(true);
+
+    expect(texts()).toContain('Close');
+    expect(texts()).not.toContain('Copy address');
+    act(() => {
+      mainButton().props.onPress();
+    });
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.CLOSE);
+    expect(mockRouter.push).toHaveBeenCalledWith('/activity');
+  });
+
+  it('goes back to copying when the status says it is no longer complete', () => {
+    render();
+    reportComplete(true);
+    reportComplete(false);
+
+    expect(texts()).toContain('Copy address');
+  });
+});
+
 /**
  * USDT is rhino.fi's off Base, paid to the Safe on Base as USDC; sent on Base,
  * our own pipeline keeps it, and the address is the Safe.
@@ -575,22 +616,30 @@ describe('WalletDepositAddress for USDT', () => {
   });
 });
 
-/**
- * A "More networks" chain is rhino.fi's address for it, drawn with rhino.fi's
- * name. Only Bitcoin is offered there (see the native BTC tests below).
- */
+/** A "More networks" chain is rhino.fi's address for it, drawn with rhino.fi's name. */
 describe('WalletDepositAddress on a "More networks" chain', () => {
-  // A screen left on Solana or Tron from before they were taken off "More
-  // networks" (or a chain that never took the currency) goes back to the row.
-  it('goes back to the row from a chain not offered for the currency', () => {
-    for (const rhinoChain of ['SOLANA', 'TRON']) {
-      mockDeposit.setWalletDeposit.mockClear();
-      mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC', rhinoChain } as any;
-      render();
+  it('shows the rhino.fi address for the chain, under its own name', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC', rhinoChain: 'SOLANA' } as any;
+    render();
 
-      expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: undefined });
-      act(() => root.unmount());
-    }
+    expect(mockRhinoAddress).toHaveBeenLastCalledWith({
+      chain: 'SOLANA',
+      tokenSymbol: 'USDC',
+      destinationType: 'WALLET',
+    });
+    expect(ownAddressWasEnabled()).toBe(false);
+    expect(root.root.findByType('WalletDepositSelectors').props.extraChain).toMatchObject({
+      chain: 'SOLANA',
+      name: 'Solana',
+    });
+    expect(root.root.findByType('RhinoDepositDetails').props.chainName).toBe('Solana');
+  });
+
+  it('goes back to the row when the chain does not take the currency', () => {
+    mockDeposit.walletDeposit = { chainId: base.id, symbol: 'USDC', rhinoChain: 'TRON' } as any;
+    render();
+
+    expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({ rhinoChain: undefined });
   });
 
   it('is picked from the network list', () => {

@@ -187,11 +187,12 @@ describe('crypto', () => {
     act(() => root.unmount());
   });
 
-  it('lists no BTC for someone not given the new deposit tokens', () => {
+  // Released to everyone, with or without the new deposit tokens.
+  it('lists BTC for someone not given the new deposit tokens too', () => {
     withBitcoin();
     mockAccess.isEnabled = false;
     const root = render(RAIN_PROPS);
-    expect(titlesOf(root)).not.toContain('BTC');
+    expect(titlesOf(root)).toContain('BTC');
     act(() => root.unmount());
   });
 

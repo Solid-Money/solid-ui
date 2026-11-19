@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
 
 import { CheckIcon, CopyIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
@@ -14,6 +14,11 @@ export const AI_API_DANGER = '#FF6B6B';
 
 /** Lucide at the stroke the design's new icons were drawn with. */
 export const AI_API_ICON_STROKE = 1.75;
+
+export const AiApiIntroChevron = ({ expanded }: { expanded: boolean }) => {
+  const Icon = expanded ? ChevronUp : ChevronDown;
+  return <Icon size={24} color="rgba(255, 255, 255, 0.5)" strokeWidth={AI_API_ICON_STROKE} />;
+};
 
 const COPIED_FEEDBACK_MS = 1600;
 

@@ -214,9 +214,10 @@ export const ReferStats = ({
   </View>
 );
 
-export type ReferRuleIcon = 'clock' | 'friends';
+export type ReferRuleIcon = 'card' | 'clock' | 'friends';
 
 const RULE_ICONS: Record<ReferRuleIcon, AssetPath> = {
+  card: 'images/referral-v4/card-16.svg',
   clock: 'images/referral-v4/clock.svg',
   friends: 'images/referral-v4/friends.svg',
 };
@@ -224,20 +225,37 @@ const RULE_ICONS: Record<ReferRuleIcon, AssetPath> = {
 export interface ReferRule {
   icon: ReferRuleIcon;
   text: string;
+  onPress?: () => void;
 }
 
 /** When and how a reward is paid, one line each (Figma "Payout rules"). */
 export const ReferRules = ({ rules }: { rules: ReferRule[] }) => (
   <View className="w-full overflow-hidden rounded-[20px] bg-white/[0.05] px-4 py-1">
-    {rules.map((rule, index) => (
-      <View key={rule.text}>
-        {index > 0 ? <ReferDivider /> : null}
-        <View className="flex-row items-center gap-[10px] py-[13px]">
-          <ReferIcon asset={RULE_ICONS[rule.icon]} size={20} />
-          <Text className="min-w-0 flex-1 text-[14px] text-white/85">{rule.text}</Text>
+    {rules.map((rule, index) => {
+      const Row = rule.onPress ? Pressable : View;
+
+      return (
+        <View key={rule.text}>
+          {index > 0 ? <ReferDivider /> : null}
+          <Row
+            accessibilityRole={rule.onPress ? 'button' : undefined}
+            onPress={rule.onPress}
+            className={cn(
+              'flex-row items-center gap-[10px] py-[13px]',
+              rule.onPress && 'active:opacity-70 web:hover:opacity-80',
+            )}
+          >
+            <View className="size-5 items-center justify-center">
+              <ReferIcon asset={RULE_ICONS[rule.icon]} size={rule.icon === 'card' ? 16.5 : 20} />
+            </View>
+            <Text className="min-w-0 flex-1 text-[14px] text-white/85">{rule.text}</Text>
+            {rule.onPress ? (
+              <ReferIcon asset="images/referral-v4/chevron-16.svg" size={16} />
+            ) : null}
+          </Row>
         </View>
-      </View>
-    ))}
+      );
+    })}
   </View>
 );
 

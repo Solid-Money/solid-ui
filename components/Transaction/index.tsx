@@ -14,7 +14,9 @@ import { useContactNames } from '@/hooks/useContactNames';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
+import { formatBtcRowAmount } from '@/lib/btcAmount';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { BTC_DISPLAY_DECIMALS } from '@/lib/soBtc';
 import {
   TransactionCategory,
   TransactionDirection,
@@ -23,7 +25,17 @@ import {
 } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPresentation';
+
+/**
+ * The row's amount. BTC amounts are fractions of a coin, so two places would round them to 0:
+ * they show up to six, cut in bigint units rather than through a float (see formatBtcRowAmount).
+ */
+const formatRowAmount = (amount: string, symbol?: string) =>
+  /btc/i.test(symbol ?? '')
+    ? formatBtcRowAmount(amount, BTC_DISPLAY_DECIMALS)
+    : formatNumber(Number(amount), 2);
 
 type TransactionClassNames = {
   container?: string;
@@ -253,9 +265,13 @@ const Transaction = ({
   // A direct deposit that has no amount yet is the exception: its whole right
   // column is already the status message, and a chip saying the same thing twice
   // on one row is noise.
+  //
+  // A payout waiting on our payout wallet reads "Pending": it is held on our
+  // side and goes out by itself once the wallet is topped up, with nothing for
+  // the user to do — "Processing" would suggest it is already moving.
   const pendingPill = directDepositStatusMessage
     ? null
-    : isPending
+    : isPending || (isProcessing && isPayoutAwaitingFunds(metadata))
       ? isCardDeposit && isDirectDeposit
         ? 'Processing'
         : 'Pending'
@@ -348,7 +364,7 @@ const Transaction = ({
             style={statusColorStyle}
           >
             {statusSign}
-            {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
+            {formatRowAmount(amount, symbol)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
         {directDepositIsPendingOrProcessing && !isCardDeposit && (

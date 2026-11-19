@@ -67,6 +67,11 @@ interface DirectDepositSession {
   fromActivity?: boolean;
 }
 
+export interface UpgradeTopUpContext {
+  tier: RewardsTier;
+  depositToSavings: boolean;
+}
+
 /**
  * External (connected) wallet connection state, mirrored from thirdweb.
  *
@@ -106,9 +111,15 @@ export interface WalletDepositSelection {
   /**
    * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
-   * token", so the previous step alone cannot tell the two apart.
+   * token", so the previous step alone cannot tell the two apart. Kept through
+   * a coin's own screen (see `coin`), which it ticks the same way.
    */
   isChangingToken?: boolean;
+  /**
+   * The coin whose tokens its own screen lists (`bitcoin`: BTC, WBTC, cbBTC),
+   * set by the "Select token" row or the currency pill that opens it.
+   */
+  coin?: string;
   /**
    * Set when the address is opened to fund something paid from the Safe itself:
    * the AI API, which charges the Safe on Base. The screen then shows the Safe
@@ -160,8 +171,10 @@ interface DepositState {
    * shows the session instead). Not persisted, and cleared with the rest of the flow.
    */
   rhinoDeposit?: RhinoDepositSelection;
-  /** Only set while the deposit chooser was opened by an upgrade Top up action. */
-  upgradeTopUp?: { tier: RewardsTier; depositToSavings: boolean };
+  /** Only set when a tier upgrade needs FUSE. */
+  upgradeTopUp?: UpgradeTopUpContext;
+  /** Returns to the opener on dismissal. Cleared on a reset or handoff to another flow. */
+  onDismiss?: () => void;
   /**
    * Chain and currency chosen for the wallet deposit address ("Show deposit
    * address" -> "Select chain" -> the address).
@@ -180,7 +193,7 @@ interface DepositState {
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
   setRhinoDeposit: (selection: RhinoDepositSelection | undefined) => void;
-  setModal: (modal: DepositModal) => void;
+  setModal: (modal: DepositModal, onDismiss?: () => void) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
   clearBankTransferData: () => void;
@@ -228,11 +241,12 @@ export const useDepositStore = create<DepositState>()(
       setUpgradeTopUp: context => set({ upgradeTopUp: context }),
       setRhinoDeposit: selection => set({ rhinoDeposit: selection }),
 
-      setModal: modal => {
+      setModal: (modal, onDismiss) => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
         set({
           previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
+          onDismiss: isClose ? undefined : (onDismiss ?? get().onDismiss),
           // Several screens close the modal without resetting the whole flow;
           // the next open should still pick the chain afresh, and should not
           // inherit a flow's `toSafe`.
@@ -279,6 +293,7 @@ export const useDepositStore = create<DepositState>()(
           depositSourceChosen: false,
           savingsFundIntent: 'savings',
           upgradeTopUp: undefined,
+          onDismiss: undefined,
           rhinoDeposit: undefined,
           walletDeposit: {},
         }),

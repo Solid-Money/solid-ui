@@ -30,9 +30,9 @@ import {
   readSoBtcQueuedShares,
   readSoBtcRate,
   readSoBtcVaultBalance,
+  SOBTC_ADDRESSES,
   SOBTC_DECIMALS,
-  SOBTC_WITHDRAW_OPTIONS,
-  type SoBtcChainId,
+  SOBTC_WITHDRAW,
 } from '@/lib/soBtc';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { generateId } from '@/lib/utils/generate-id';
@@ -49,31 +49,31 @@ const AVAILABILITY_REFRESH_MS = 30_000;
 const BRIDGE_OUTCOME_UNKNOWN = Symbol('BRIDGE_OUTCOME_UNKNOWN');
 export type SoBtcAvailability = {
   /**
-   * What the option can pay a new request right now, in satoshis: the vault's balance minus what
+   * What a new request can be paid right now, in satoshis: the Ethereum vault's WBTC minus what
    * the open requests ahead of it will take when solved.
    */
   availableSats: bigint;
-  /** Satoshis the open, unexpired requests in this option's queue will take from the vault. */
+  /** Satoshis the open, unexpired requests in the Ethereum queue will take from the vault. */
   queuedSats: bigint;
-  /** The option's share → BTC rate, 8 decimals. */
+  /** The Ethereum accountant's share → BTC rate, 8 decimals. */
   rate: bigint;
   /** The most shares that vault can redeem right now, at that rate. */
   maxShares: bigint;
 };
 
 /**
- * What each soBTC withdraw option can pay right now. Each side pays only from its own vault
- * (cbBTC in the Base vault, WBTC in the Ethereum vault), so the two figures differ whenever more
- * of one was deposited, or one side's assets are out earning.
+ * What a soBTC withdrawal can be paid right now. Every withdrawal pays WBTC from the Ethereum
+ * vault, so this is what that vault holds less what the open requests will take; it is lower
+ * while assets are out earning or still sit in the Base vault.
  */
-export const useSoBtcAvailability = (chainId: SoBtcChainId, enabled = true) =>
+export const useSoBtcAvailability = (enabled = true) =>
   useQuery({
-    queryKey: ['soBtcAvailability', chainId],
+    queryKey: ['soBtcAvailability', SOBTC_WITHDRAW.chainId],
     queryFn: async (): Promise<SoBtcAvailability> => {
       const [vaultSats, queuedShares, rate] = await Promise.all([
-        readSoBtcVaultBalance(chainId),
-        readSoBtcQueuedShares(chainId),
-        readSoBtcRate(chainId),
+        readSoBtcVaultBalance(),
+        readSoBtcQueuedShares(),
+        readSoBtcRate(SOBTC_WITHDRAW.chainId),
       ]);
       const oneShare = 10n ** BigInt(SOBTC_DECIMALS);
       // A solve pays out shares x the rate at solve time (the discount goes to the solver Safe),
@@ -89,15 +89,16 @@ export const useSoBtcAvailability = (chainId: SoBtcChainId, enabled = true) =>
   });
 
 /**
- * Requests a soBTC withdrawal on `chainId`'s queue, for that chain's asset: cbBTC on Base
- * (shares already there) or WBTC on Ethereum (shares bridged there in step 1).
+ * Step 2 of a soBTC withdrawal: the request on the Ethereum queue, for WBTC there. The shares
+ * were bridged to Ethereum in step 1.
  */
-export const useWithdrawSoBtc = (chainId: SoBtcChainId) => {
+export const useWithdrawSoBtc = () => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
   const [status, setStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
-  const option = SOBTC_WITHDRAW_OPTIONS[chainId];
+  const option = SOBTC_WITHDRAW;
+  const { chainId } = option;
 
   const withdrawSoBtc = useCallback(
     async (amount: string): Promise<TransactionReceipt> => {
@@ -130,7 +131,7 @@ export const useWithdrawSoBtc = (chainId: SoBtcChainId) => {
                 },
               ]
             : []),
-          buildSoBtcWithdrawRequestCall(chainId, shares, WITHDRAW_SECONDS_TO_DEADLINE),
+          buildSoBtcWithdrawRequestCall(shares, WITHDRAW_SECONDS_TO_DEADLINE),
         ];
 
         track(TRACKING_EVENTS.WITHDRAW_TRANSACTION_INITIATED, {
@@ -206,7 +207,7 @@ export const useWithdrawSoBtc = (chainId: SoBtcChainId) => {
 };
 
 /**
- * Step 1 of a WBTC withdrawal: bridge soBTC from Base to the same Safe on Ethereum, where step 2
+ * Step 1 of a soBTC withdrawal: bridge soBTC from Base to the same Safe on Ethereum, where step 2
  * requests it on the Ethereum queue. The Safe pays the LayerZero fee in ETH on Base: the
  * paymaster covers gas, not value. A resume session is written as soon as the bridge is
  * broadcast, so a closed flow reopens on step 2.
@@ -264,7 +265,7 @@ export const useBridgeSoBtcToEthereum = () => {
             metadata: {
               description: `Move ${amount} soBTC from Base to Ethereum to withdraw WBTC`,
               fee: fee.toString(),
-              tokenAddress: SOBTC_WITHDRAW_OPTIONS[base.id].vault,
+              tokenAddress: SOBTC_ADDRESSES.base.vault,
             },
           },
           onUserOpHash =>

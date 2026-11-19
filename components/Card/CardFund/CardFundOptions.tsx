@@ -26,7 +26,6 @@ import {
 } from '@/components/Card/CardFund/localCurrencies';
 import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import NeedHelp from '@/components/NeedHelp';
-import { useDepositTokensAccess } from '@/hooks/useDepositTokensAccess';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 
@@ -107,10 +106,9 @@ const CardFundOptions = ({
     sections.localCurrencies && !!onLocalCurrencyPress && isTransfiAvailable;
   const showCashDeposit = sections.cashDeposit || showLocalCurrencies;
   const showOther = sections.moveFromSolid || sections.externalWallet || !!onBuyCryptoPress;
-  // Only what rhino.fi takes to the card from somewhere, and only with access.
+  // Only what rhino.fi takes to the card from somewhere.
   const rhino = useOfferedRhinoDepositAssets();
-  const { isEnabled: hasNewTokens } = useDepositTokensAccess();
-  const cryptoRows = sections.crypto ? getCardFundCryptoRows(rhino, hasNewTokens) : [];
+  const cryptoRows = sections.crypto ? getCardFundCryptoRows(rhino) : [];
 
   return (
     <View className="gap-y-8">

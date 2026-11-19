@@ -30,6 +30,13 @@ export interface TrackedLifiSwap {
   fromAmountUsd?: string;
   /** Set once whatever the swap was for has used it — a membership it paid. */
   consumed?: boolean;
+  /**
+   * When the app learned LI.FI had settled it, ms since epoch. A balance read
+   * asked for after this includes whatever it delivered; one asked for before
+   * may not, however late it came back. Absent on swaps settled before it was
+   * kept, all of them settled before anything this session has read.
+   */
+  settledAt?: number;
 }
 
 /** After this long a swap is no longer polled; its activity row stays as it was. */

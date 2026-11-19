@@ -30,6 +30,8 @@ const SpendModeSheet = ({
   onViewCreditDetails,
   activeMode = 'cash',
   onAddFunds,
+  onEditOrder,
+  onEditCollateralOrder,
 }: SpendModeSheetProps) => {
   const figures = useSpendModeFigures();
   // Fuse and Base together, with the collateral behind each — read only while the sheet is open.
@@ -83,6 +85,8 @@ const SpendModeSheet = ({
           onCollateralHelpPress={onCollateralHelpPress}
           onViewCreditDetails={onViewCreditDetails}
           onAddFunds={onAddFunds}
+          onEditOrder={onEditOrder}
+          onEditCollateralOrder={onEditCollateralOrder}
           topPadding={topPadding}
           presentation={presentation}
         />

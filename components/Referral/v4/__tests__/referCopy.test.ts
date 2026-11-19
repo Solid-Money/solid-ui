@@ -105,10 +105,16 @@ describe('reward sheets', () => {
       'Get 2% of everything your friend spends with their card, up to $1,500 per friend.',
     );
     expect(rewardCopy('welcome', terms).description).toBe(
-      'You get $15 and your friend gets $12 of card credit when they spend $200 at 4 or more shops in their first 21 days.',
+      'You get a $15 card bonus and your friend gets a $12 card bonus when they spend $200 at 4 or more shops in their first 21 days.',
     );
     expect(rewardCopy('bigSpender', terms).chip).toBe('$60 each');
+    expect(rewardCopy('bigSpender', terms).description).toBe(
+      'You and your friend each get a $60 card bonus when they spend $4,000 in their first 75 days.',
+    );
     expect(rewardCopy('upgrade', terms).chip).toBe('$25 or $120');
+    expect(rewardCopy('upgrade', terms).description).toBe(
+      'Get a $25 card bonus when your friend gets Prime, or $120 when they get Ultra.',
+    );
   });
 });
 

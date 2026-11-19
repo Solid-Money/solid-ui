@@ -4,11 +4,18 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
-import Loading from '@/components/Loading';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
+import {
+  TAB_SUMMARY_ACTION_ROW,
+  TabSummary,
+  TabSummaryActionButton,
+  TabSummaryActionSkeleton,
+  TabSummaryHeadline,
+} from '@/components/TabSummary';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
@@ -25,8 +32,13 @@ import {
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import { monthlyCashbackCap, monthlyCashbackTotal } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackCap,
+  resolveAllTimeCashback,
+  resolveCashbackMonth,
+} from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
+import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { isReferralV4Live } from '@/lib/referral/referralV4';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { isTierOnTrial, nextPurchasableTier } from '@/lib/tierUpgrade';
@@ -161,7 +173,15 @@ export default function RewardsScreenNew() {
           <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         }
       >
-        <Loading />
+        <TabSummary
+          headline={
+            <TabSummaryHeadline
+              label={<Skeleton className="h-6 w-24 rounded-md" />}
+              value={<Skeleton className="h-[54px] w-40 rounded-xl" />}
+            />
+          }
+          actions={<TabSummaryActionSkeleton count={2} />}
+        />
       </PageLayout>
     );
   }
@@ -220,17 +240,18 @@ export default function RewardsScreenNew() {
     );
   }
 
-  const cashbackSettled = rewardsData?.cashbackThisMonth ?? 0;
-  const cashbackPending = rewardsData?.cashbackPendingThisMonth;
-  // One figure, settled and escrowed together — see `monthlyCashbackTotal`.
-  const cashback = monthlyCashbackTotal(cashbackSettled, cashbackPending);
+  // In the cardholder's cashback currency: a euro cardholder's figures and caps
+  // are all in EUR — see `resolveCashbackMonth`.
+  const cashbackMonth = resolveCashbackMonth(rewardsData);
+  const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
+  const monthlyCashbackLabel = formatMonthlyCashback(rewardsData);
   // v4's total already includes the legacy rewards paid, so it replaces today's figure.
   const referrals = isReferralV4
     ? (referralV4?.totals.earnedUsd ?? 0)
     : (referralSummary?.totalRewardedUsd ?? 0);
   // All-time counts only what has actually been paid, so this month's escrowed
-  // part is deliberately not floored into it.
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackSettled);
+  // part is deliberately not floored into it. Per currency, never summed.
+  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
   // cashback rate" row read this, so they can't disagree with each other.
   const cashbackRate = resolveUserCashbackRate(rewardsData, currentTier);
@@ -265,28 +286,31 @@ export default function RewardsScreenNew() {
     >
       <View className="mb-5 w-full pb-24">
         <View className="mb-5 gap-5">
-          {/* The countdown goes between the tier name and the points, and draws
-              nothing at all when no trial is running. */}
-          <PointsHeadline
-            tier={currentTier}
-            points={totalPoints}
-            badge={<TierTrialPill trial={rewardsData?.activeTierTrial} />}
-            onPressTier={() => setIsMembershipSheetOpen(true)}
+          <TabSummary
+            headline={
+              <PointsHeadline
+                tier={currentTier}
+                points={totalPoints}
+                badge={<TierTrialPill trial={rewardsData?.activeTierTrial} />}
+                onPressTier={() => setIsMembershipSheetOpen(true)}
+              />
+            }
+            actions={
+              <View className={TAB_SUMMARY_ACTION_ROW}>
+                <TabSummaryActionButton
+                  label="Invite friends"
+                  primary
+                  className="flex-1"
+                  onPress={openReferral}
+                />
+                <TabSummaryActionButton
+                  label="Explore tiers"
+                  className="flex-1"
+                  onPress={() => router.push(path.REWARDS_BENEFITS)}
+                />
+              </View>
+            }
           />
-          <View className="flex-row gap-3 px-4">
-            <Pressable
-              onPress={openReferral}
-              className="h-14 flex-1 items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
-            >
-              <Text className="text-base font-bold text-black">Invite friends</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(path.REWARDS_BENEFITS)}
-              className="h-14 flex-1 items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80"
-            >
-              <Text className="text-base font-semibold text-white">Explore tiers</Text>
-            </Pressable>
-          </View>
 
           {/* The spin & win flow is a native-only modal — SpinWinModalProvider
               force-closes itself on web — so the button stays native-only. It is
@@ -310,17 +334,13 @@ export default function RewardsScreenNew() {
         </View>
 
         <RewardsSummaryCard
-          cashback={cashback}
           referrals={referrals}
           cashbackDetails={{
             cashbackRate,
-            // The settled and escrowed halves go in separately: the sheet sums
-            // them itself, so handing it `cashback` would count the escrowed
-            // part twice.
-            cashbackThisMonth: cashbackSettled,
-            cashbackPendingThisMonth: cashbackPending,
-            maxCashbackMonthly: monthlyCashbackCap(rewardsData),
-            tierMonthlyCap: rewardsData?.maxCashbackMonthly,
+            currency: cashbackCurrency,
+            monthlyCashbackLabel,
+            maxCashbackMonthly: monthlyCashbackCap(cashbackMonth),
+            tierMonthlyCap: cashbackMonth?.maxCashbackMonthly,
             allTimeCashback,
           }}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
@@ -333,13 +353,10 @@ export default function RewardsScreenNew() {
             actualSubscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
             subscriptionCategoryRates={rewardsData?.subscriptionCategoryRates}
             cashbackRate={cashbackRate}
-            // The settled and escrowed halves go down separately: the sheet
-            // sums them itself, so handing it `cashback` would count the
-            // escrowed part twice.
-            cashbackThisMonth={cashbackSettled}
-            cashbackPendingThisMonth={cashbackPending}
-            maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
-            tierMonthlyCap={rewardsData?.maxCashbackMonthly}
+            currency={cashbackCurrency}
+            monthlyCashbackLabel={monthlyCashbackLabel}
+            maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
+            tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
             allTimeCashback={allTimeCashback}
             {...benefitRates}
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}

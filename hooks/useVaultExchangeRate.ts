@@ -47,13 +47,14 @@ export const useVaultExchangeRate = (tokenName: string, enabled = true) => {
       }
 
       if (tokenName === 'BTC') {
-        // Both soBTC accountants carry the same rate; Base's is the one its shares sit beside.
+        // Both soBTC accountants (WBTC on each chain) carry the same rate; Base's is the one its
+        // shares sit beside.
         const rate = await readSoBtcRate(base.id);
         return Number(rate) / 10 ** SOBTC_DECIMALS; // soBTC → BTC (8 decimals)
       }
 
       if (tokenName === 'BTC_ETHEREUM') {
-        // What the Ethereum queue pays a WBTC withdrawal at.
+        // What the Ethereum queue pays a withdrawal at.
         const rate = await readSoBtcRate(mainnet.id);
         return Number(rate) / 10 ** SOBTC_DECIMALS;
       }

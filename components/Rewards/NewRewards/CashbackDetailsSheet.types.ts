@@ -1,10 +1,12 @@
+import type { CashbackFigure } from '@/lib/cashbackProgress';
+import type { CashbackCurrency } from '@/lib/types';
 import type { ReactElement } from 'react';
 
 export interface CashbackDetailsData {
   cashbackRate: number;
-  cashbackThisMonth: number;
-  /** Earned this month but still escrowed; absent hides the pending row. */
-  cashbackPendingThisMonth?: number;
+  /** Current cashback currency for the rate description and monthly cap. */
+  currency?: CashbackCurrency;
+  monthlyCashbackLabel: string;
   /** What this month's purchases are paid up to — see `monthlyCashbackCap`. */
   maxCashbackMonthly: number;
   /**
@@ -13,7 +15,7 @@ export interface CashbackDetailsData {
    * (purchases made during a trial that has since ended keep its cap).
    */
   tierMonthlyCap?: number;
-  allTimeCashback: number;
+  allTimeCashback: CashbackFigure[];
 }
 
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {

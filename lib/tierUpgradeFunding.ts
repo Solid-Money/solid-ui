@@ -2,7 +2,7 @@ import { formatUnits, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { covers } from '@/lib/tierUpgrade';
-import { TokenBalance, TokenType } from '@/lib/types';
+import { TierPaymentMode, TokenBalance, TokenType } from '@/lib/types';
 import { isSolidVaultShare, meetsSwapThreshold } from '@/lib/utils/cardFundMove';
 
 import type { TrackedLifiSwap } from '@/store/lifiSwapStore';
@@ -105,6 +105,19 @@ export const cashFundingTokens = ({
 /** What is still missing on Fuse for the fee, in dollars. */
 export const fundingNeedUsd = (feeUsd: number, fuseUsdc: number) =>
   Math.max(0, feeUsd - Math.max(0, fuseUsdc));
+
+/**
+ * How much more than the shortfall a bridged payment sends when nothing will
+ * cover what the bridge takes — a `transfer` upgrade, or a backend with no
+ * cover allowance. The fee then has to arrive on Fuse in full, and a payment
+ * sized to the shortfall would land a bridge fee and a slippage band short of
+ * it every time. What arrives beyond the fee stays in the Safe as USDC.
+ */
+export const UNCOVERED_FUNDING_HEADROOM = 0.02;
+
+/** What a bridged payment sends, in dollars, for a shortfall of `needUsd`. */
+export const fundingSendUsd = (needUsd: number, coverPct: number) =>
+  coverPct > 0 ? needUsd : needUsd * (1 + UNCOVERED_FUNDING_HEADROOM);
 
 /**
  * How much of `token` to send so that `usd` reaches Fuse in value, in its raw
@@ -238,8 +251,11 @@ export const arrivedFundingCoverUsd = ({
  * Whether the cash route can go ahead with `token` right now.
  *
  * USDC on Fuse pays when it covers the fee, counting what an arrived bridge
- * payment earns. Anything else pays when it is worth the missing part: that is
- * what gets sent, and the bridge's cost comes out of the cover, not the user.
+ * payment earns. Anything else pays when it is worth what a bridged payment
+ * sends for the missing part (`fundingSendUsd`): the shortfall itself when the
+ * bridge's cost comes out of the cover, the shortfall and its headroom when
+ * nothing covers it. A holding between the two would be quoted capped at the
+ * balance and land short.
  */
 export const canPayCashWith = ({
   token,
@@ -247,19 +263,21 @@ export const canPayCashWith = ({
   feeUsd,
   fuseUsdc,
   coverUsd,
+  coverPct,
 }: {
   token: TokenBalance;
   billingTokenAddress: string;
   feeUsd: number;
   fuseUsdc: number;
   coverUsd: number;
+  coverPct: number;
 }): boolean => {
   if (!(feeUsd > 0)) return false;
   if (isBillingToken(token, billingTokenAddress)) {
     return covers(Math.max(0, fuseUsdc) + coverUsd, feeUsd);
   }
   const need = fundingNeedUsd(feeUsd, fuseUsdc);
-  return need > 0 && covers(tokenUsd(token), need);
+  return need > 0 && covers(tokenUsd(token), fundingSendUsd(need, coverPct));
 };
 
 /**
@@ -277,20 +295,171 @@ export const defaultCashToken = ({
   feeUsd,
   fuseUsdc,
   funding,
+  coverPct,
 }: {
   rows: TokenBalance[];
   billingTokenAddress: string;
   feeUsd: number;
   fuseUsdc: number;
   funding: UpgradeFunding;
+  /** Sizes what a bridged payment sends, as `canPayCashWith` judges it. */
+  coverPct: number;
 }): TokenBalance | undefined => {
   const billing = rows.find(row => isBillingToken(row, billingTokenAddress));
   if (covers(fuseUsdc, feeUsd) || funding.state === 'pending' || funding.state === 'arrived') {
     return billing;
   }
-  const need = fundingNeedUsd(feeUsd, fuseUsdc);
+  const sendUsd = fundingSendUsd(fundingNeedUsd(feeUsd, fuseUsdc), coverPct);
   const payer = rows
-    .filter(row => !isBillingToken(row, billingTokenAddress) && covers(tokenUsd(row), need))
+    .filter(row => !isBillingToken(row, billingTokenAddress) && covers(tokenUsd(row), sendUsd))
     .sort((a, b) => tokenUsd(b) - tokenUsd(a))[0];
   return payer ?? billing;
+};
+
+/**
+ * How the annual fee is being paid, from what the upgrade steps know — the
+ * pure half of `useCashPayment`, so every step reads the same answer.
+ */
+export const resolveCashPayment = ({
+  tokens,
+  chosen,
+  billingTokenAddress,
+  feeUsd,
+  fuseUsdc,
+  coverPct,
+  funding,
+  balancesLoaded,
+  usdcReadAt,
+  paymentMode,
+  awaitingConfirm,
+}: {
+  /** What can pay, USDC on Fuse first — see `cashFundingTokens`. */
+  tokens: TokenBalance[];
+  /** The user's pick, or none for the screen's own. */
+  chosen: CashTokenKey | null | undefined;
+  billingTokenAddress: string | undefined;
+  /** What the first year costs now. */
+  feeUsd: number;
+  /** USDC on Fuse, as last read off the chain. */
+  fuseUsdc: number;
+  coverPct: number;
+  funding: UpgradeFunding;
+  /** Whether the Fuse balance has been read yet. */
+  balancesLoaded: boolean;
+  /**
+   * When the read `fuseUsdc` came from was asked for, ms since epoch — the
+   * chain state's `readStartedAt`. Undefined until there is one.
+   */
+  usdcReadAt: number | undefined;
+  paymentMode: TierPaymentMode;
+  /**
+   * An upgrade paid by transfer was sent and is not confirmed yet: the fee has
+   * already left the Safe, and there is nothing more to send for it.
+   */
+  awaitingConfirm: boolean;
+}) => {
+  const coverUsd = arrivedFundingCoverUsd({ funding, feeUsd, fuseUsdc, coverPct });
+  const needUsd = fundingNeedUsd(feeUsd, fuseUsdc);
+  // A bridged payment that has landed, measured against a balance that may not
+  // have it in yet: the read was asked for before the app learned it landed,
+  // however late it answered, or there is no read at all. Until a read asked
+  // for after it comes back, whatever looks missing on Fuse may be that very
+  // payment — "short by the whole fee" off a balance of zero — so the payment
+  // goes on standing in for itself, and nothing is offered to send the "rest".
+  // A swap settled before `settledAt` was kept settled before any read now in
+  // hand.
+  const checkingArrivedBalance =
+    funding.state === 'arrived' &&
+    !(balancesLoaded && usdcReadAt !== undefined && usdcReadAt > (funding.swap.settledAt ?? 0));
+  // Nothing covers what a bridge takes off a `transfer` upgrade, so a bridged
+  // payment that landed short of the fee — slippage past the headroom, or
+  // USDC spent since — stays short. It stops standing in for the payment, and
+  // the rest can be sent from another chain, sized to what is still missing.
+  // Not while an upgrade is awaiting confirmation: then the gap on Fuse is that
+  // payment, not a shortfall. Nor before a balance read that can include it.
+  const arrivedShortUsd =
+    funding.state === 'arrived' &&
+    !checkingArrivedBalance &&
+    paymentMode === 'transfer' &&
+    !awaitingConfirm &&
+    feeUsd > 0 &&
+    !covers(fuseUsdc, feeUsd)
+      ? needUsd
+      : 0;
+  // A token on another chain is only honoured while Fuse is actually short:
+  // with the fee already there, there is nothing to bridge, and the charge
+  // is taken from USDC on Fuse whatever the row says.
+  // Nor while a bridged payment is on its way or has landed: it is paid from
+  // Fuse now, and honouring the token that started it would quote a second
+  // bridge for what the cover already absorbs, and judge readiness on that
+  // token's balance instead of on the USDC actually sitting on Fuse.
+  const fundingInHand =
+    awaitingConfirm ||
+    funding.state === 'pending' ||
+    (funding.state === 'arrived' && arrivedShortUsd === 0);
+  const chosenKey = chosen ? `${chosen.chainId}:${chosen.address.toLowerCase()}` : undefined;
+  const picked = chosenKey
+    ? tokens.find(
+        token =>
+          cashTokenKey(token) === chosenKey &&
+          ((needUsd > 0 && !fundingInHand) ||
+            !billingTokenAddress ||
+            isBillingToken(token, billingTokenAddress)),
+      )
+    : undefined;
+  // Until the Fuse balance has been read, the default stays on USDC on Fuse:
+  // picking a token on another chain off a balance of zero that is merely
+  // still loading would flip the row from Base to Fuse a moment later. So it
+  // does while a payment is awaiting confirmation, which only Fuse can finish.
+  const token =
+    picked ??
+    (billingTokenAddress
+      ? balancesLoaded && !awaitingConfirm
+        ? defaultCashToken({
+            rows: tokens,
+            billingTokenAddress,
+            feeUsd,
+            fuseUsdc,
+            funding: arrivedShortUsd > 0 ? { state: 'none' } : funding,
+            coverPct,
+          })
+        : tokens[0]
+      : undefined);
+  const payingFromFuse =
+    !token || !billingTokenAddress || isBillingToken(token, billingTokenAddress);
+
+  const affordable =
+    token && billingTokenAddress
+      ? canPayCashWith({ token, billingTokenAddress, feeUsd, fuseUsdc, coverUsd, coverPct })
+      : feeUsd > 0 && covers(fuseUsdc, feeUsd);
+
+  return {
+    token,
+    payingFromFuse,
+    /** What is still missing on Fuse. */
+    needUsd,
+    /** What a bridged payment sends for it — see `fundingSendUsd`. */
+    sendUsd: fundingSendUsd(needUsd, coverPct),
+    /** What an arrived bridged payment earns off the first charge. */
+    coverUsd,
+    /** Whether the payment can go ahead with `token`. */
+    affordable,
+    /**
+     * Whether the USDC already on Fuse pays the fee now, with what an arrived
+     * payment's cover absorbs — whichever token the row names. What the second
+     * signature after a bridge is judged on.
+     */
+    fuseCoversFee: feeUsd > 0 && covers(Math.max(0, fuseUsdc) + coverUsd, feeUsd),
+    /**
+     * What a bridged payment that landed left a `transfer` upgrade short by,
+     * and so what is left to send. Zero in every other case — including
+     * while `checkingArrivedBalance`.
+     */
+    arrivedShortUsd,
+    /**
+     * A bridged payment has landed and no balance read asked for since has
+     * come back: nothing about what it left short can be said yet.
+     */
+    checkingArrivedBalance,
+  };
 };

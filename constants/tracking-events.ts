@@ -591,6 +591,10 @@ export const TRACKING_EVENTS = {
   TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
   TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
   TIER_SUBSCRIBE_FAILED: 'tier_subscribe_failed',
+  // An upgrade paid by transfer that was sent, but whose receipt wait gave up
+  // (usually the app was backgrounded). Not a failure: the payment has most
+  // likely landed, and the next press confirms it rather than paying again.
+  TIER_SUBSCRIBE_PENDING: 'tier_subscribe_pending',
   // Paying the annual fee from another chain: the LI.FI swap into USDC on Fuse.
   TIER_FUNDING_SWAP_PRESSED: 'tier_funding_swap_pressed',
   TIER_FUNDING_SWAP_SENT: 'tier_funding_swap_sent',

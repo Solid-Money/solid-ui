@@ -275,9 +275,9 @@ export function useActivity() {
       }
 
       const vault = getVaultKey(activity.symbol);
-      // soBTC has no subgraph. Its requests on either queue (Base cbBTC, Ethereum WBTC) are read
-      // on-chain above; anything else stays processing rather than being looked up in the USD
-      // vault's withdrawals, where it never appears.
+      // soBTC has no subgraph. Its requests on the Ethereum queue (WBTC) are read on-chain above;
+      // anything else stays processing rather than being looked up in the USD vault's
+      // withdrawals, where it never appears.
       const vaultWithdraws =
         vault === 'BTC'
           ? undefined

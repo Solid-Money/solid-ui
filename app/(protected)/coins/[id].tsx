@@ -7,6 +7,7 @@ import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import CoinActionPills from '@/components/Coin/CoinActionPills';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinBalanceBreakdown from '@/components/Coin/CoinBalanceBreakdown';
+import CoinEarnBanner from '@/components/Coin/CoinEarnBanner';
 import CoinEarnLink from '@/components/Coin/CoinEarnLink';
 import CoinSummary from '@/components/Coin/CoinSummary';
 import CoinGeckoAttribution from '@/components/CoinGeckoAttribution';
@@ -75,7 +76,11 @@ export default function Coin() {
 
         <CoinActionPills tokenVault={tokenVault} token={sendToken} />
 
-        <CoinEarnLink shareVault={shareVault} />
+        {shareVault ? (
+          <CoinEarnLink shareVault={shareVault} />
+        ) : (
+          <CoinEarnBanner token={token} tokens={tokens} />
+        )}
 
         <CoinBalanceBreakdown breakdown={breakdown} isShare={!!shareVault} />
 
@@ -86,7 +91,7 @@ export default function Coin() {
         )}
       </View>
     ),
-    [token, breakdown, tokenVault, shareVault, sendToken],
+    [token, tokens, breakdown, tokenVault, shareVault, sendToken],
   );
 
   return (

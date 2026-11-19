@@ -51,11 +51,29 @@ describe('fetchWithTimeout', () => {
   it('leaves a caller-supplied abort reported as an AbortError', async () => {
     // A superseded request must stay distinguishable from a timeout - callers
     // deliberately ignore AbortError.
-    const aborted = new Error('Aborted');
-    aborted.name = 'AbortError';
-    global.fetch = jest.fn(() => Promise.reject(aborted)) as unknown as typeof fetch;
+    global.fetch = hangingFetch() as unknown as typeof fetch;
+    const controller = new AbortController();
+    const pending = fetchWithTimeout('https://example.test', { signal: controller.signal }, 30000);
+    controller.abort();
 
-    await expect(fetchWithTimeout('https://example.test', {}, 30000)).rejects.toBe(aborted);
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('times out while reading a body after the headers arrive', async () => {
+    jest.useFakeTimers();
+    const json = jest.fn(() => new Promise(() => {}));
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json });
+    const pending = fetchWithTimeout('https://example.test', {}, 5000, response => response.json());
+    const assertion = expect(pending).rejects.toBeInstanceOf(FetchTimeoutError);
+
+    await jest.advanceTimersByTimeAsync(4999);
+    expect(json).toHaveBeenCalledTimes(1);
+    const init = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(init.signal.aborted).toBe(false);
+    await jest.advanceTimersByTimeAsync(1);
+
+    await assertion;
+    expect(init.signal.aborted).toBe(true);
   });
 
   it('does not leave its timer running after the request settles', async () => {

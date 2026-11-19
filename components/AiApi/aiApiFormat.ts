@@ -69,16 +69,18 @@ export const formatAiApiModelSpeed = (model: {
 
 /**
  * A per-million-token price, the way Figma's price sheet writes it: `$1.14`
- * and `$0.27` in cents, `$0.072` and `$0.004` in tenths of a cent below
- * $0.10, and `Free` for a model we don't charge for.
+ * and `$0.05` in cents, `$0.072` and `$0.004` in tenths of a cent when
+ * needed below $0.10, and `Free` for a model we don't charge for.
  */
 export const formatAiApiTokenPrice = (usdPerMTok: number): string => {
   const value = Math.max(0, usdPerMTok || 0);
   if (value === 0) return 'Free';
   // Rounded to tenths of a cent first, so $0.0996 reads as $0.10 and not $0.100.
-  const thousandths = Math.round(value * 1000) / 1000;
-  if (thousandths >= 0.1) return `$${value.toFixed(2)}`;
-  if (thousandths >= 0.001) return `$${thousandths.toFixed(3)}`;
+  const thousandths = Math.round(value * 1000);
+  if (thousandths >= 100 || (thousandths >= 10 && thousandths % 10 === 0)) {
+    return `$${usd.format(value)}`;
+  }
+  if (thousandths >= 1) return `$${(thousandths / 1000).toFixed(3)}`;
   return '<$0.001';
 };
 
@@ -88,29 +90,69 @@ type AiApiPricedModel = {
   cachedInputUsdPerMTok?: number | null;
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
+  /** The backend's word on whether it is free; missing on an older backend. */
+  free?: boolean;
 };
 
 /** Three input tokens to one output token: what a typical agent request reads and writes. */
 const blend = (input: number, output: number) => (3 * input + output) / 4;
 
-/** A model we charge nothing for: input, output or cached. */
+const modelPricesAtBlend = (model: AiApiPricedModel) => {
+  const { officialInputUsdPerMTok: officialIn, officialOutputUsdPerMTok: officialOut } = model;
+  return {
+    solid: blend(model.inputUsdPerMTok, model.outputUsdPerMTok),
+    official: officialIn != null && officialOut != null ? blend(officialIn, officialOut) : null,
+  };
+};
+
+const percentBelowOfficial = (price: number, official: number | null): number | null => {
+  if (official == null || official <= 0) return null;
+  // The epsilon keeps a float like 0.9399999 from reading as 93%.
+  const percent = Math.floor((1 - price / official) * 100 + 1e-9);
+  return percent > 0 ? percent : null;
+};
+
+/** The cost of 750K input and 250K output tokens, assuming the full cashback is available. */
+export const aiApiModelPriceExample = (model: AiApiPricedModel, cashbackRate: number) => {
+  const { solid, official } = modelPricesAtBlend(model);
+  const afterCashback = solid * (1 - cashbackRate);
+  return {
+    solid,
+    official,
+    afterCashback,
+    // No saving is claimed when the blend is $0: see `aiApiModelDiscount`.
+    savingsAfterCashback: solid > 0 ? percentBelowOfficial(afterCashback, official) : null,
+  };
+};
+
+/**
+ * A model we charge nothing for. The backend says so in `free`, by the same
+ * test that routes the model upstream (cache writes included, which the app
+ * isn't sent a price for); an older backend doesn't, and input, output and
+ * cached prices of 0 decide.
+ */
 export const aiApiModelIsFree = (model: AiApiPricedModel): boolean =>
-  model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
+  typeof model.free === 'boolean'
+    ? model.free
+    : model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
 
 /**
  * How far below the model maker's list price ours is, as a whole percent, on
  * Figma's 3:1 input:output blend, rounded down so the tag never claims more
  * than the blend saves. Null when there is no list price to compare with, or
  * nothing is saved.
+ *
+ * Also null when the blend is $0. A free model is tagged `Free` instead, and a
+ * model the backend says isn't free while every price the app is sent is 0
+ * charges for something the app doesn't show (cache writes), so a "−100%" would
+ * overstate the saving.
  */
 export const aiApiModelDiscount = (model: AiApiPricedModel): number | null => {
   const { officialInputUsdPerMTok: officialIn, officialOutputUsdPerMTok: officialOut } = model;
   if (!officialIn || !officialOut || officialIn <= 0 || officialOut <= 0) return null;
-  const discount =
-    1 - blend(model.inputUsdPerMTok, model.outputUsdPerMTok) / blend(officialIn, officialOut);
-  // The epsilon keeps a float like 0.9399999 from reading as 93%.
-  const percent = Math.floor(discount * 100 + 1e-9);
-  return percent > 0 ? percent : null;
+  const { solid, official } = modelPricesAtBlend(model);
+  if (solid <= 0) return null;
+  return percentBelowOfficial(solid, official);
 };
 
 /** `−94%`, with a true minus sign. */

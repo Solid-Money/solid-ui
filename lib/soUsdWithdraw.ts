@@ -1,4 +1,4 @@
-import { Address, Chain, zeroAddress } from 'viem';
+import { Address, Chain, formatUnits, parseUnits, zeroAddress } from 'viem';
 import { base, mainnet } from 'viem/chains';
 
 import { ADDRESSES, EXPO_PUBLIC_SOUSD_BASE_WITHDRAWALS } from '@/lib/config';
@@ -64,4 +64,29 @@ export const getSoUsdWithdrawChain = (
   if (chainId === mainnet.id) return mainnet.id;
   if (chainId === base.id && isSoUsdBaseConfigured) return base.id;
   return undefined;
+};
+
+/**
+ * What a resumed step 2 can withdraw: the amount step 1 sent, or the shares
+ * that actually arrived on the withdraw chain when fewer did. The bridge fee
+ * comes out of the shares, so fewer always arrive than were sent.
+ */
+export const resumeWithdrawAmount = (sentAmount: string, arrivedShares?: bigint): string => {
+  if (!arrivedShares) return sentAmount;
+  return arrivedShares < parseUnits(sentAmount, 6) ? formatUnits(arrivedShares, 6) : sentAmount;
+};
+
+/**
+ * User copy when step 2 asks for more soUSD than the Safe holds on the withdraw
+ * chain, or undefined when it holds enough. The queue would revert otherwise.
+ */
+export const withdrawShortfallCopy = (
+  amount: bigint,
+  shares: bigint,
+  chainName: string,
+): string | undefined => {
+  if (amount <= shares) return undefined;
+  return shares > 0n
+    ? `Only ${formatUnits(shares, 6)} soUSD is on ${chainName}. Withdraw up to that amount.`
+    : `There is no soUSD on ${chainName} to withdraw yet.`;
 };

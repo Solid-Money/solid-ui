@@ -89,6 +89,7 @@ import {
 } from '@/lib/utils/deposit-steps';
 import { bankDepositFeeLine, readBankDepositFee } from '@/lib/utils/feePromotion';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
+import { isPayoutAwaitingFunds } from '@/lib/utils/payoutAwaitingFunds';
 import {
   getMonthKey,
   getSpendingCategory,
@@ -395,7 +396,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       refund?.tx_hash && `Refund tx: ${refund.tx_hash}`,
       // Card credit changes what left the balance, so support needs the split.
       cardCredit &&
-        `Card credit: ${cardCredit.used_usd} USD used, ${cardCredit.from_balance_usd} USD from balance (${cardCredit.state})`,
+        `Card bonus: ${cardCredit.used_usd} USD used, ${cardCredit.from_balance_usd} USD from balance (${cardCredit.state})`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
   }, [spend, sweepHash, refund, transaction.usd_amount, cardCredit]);
@@ -856,7 +857,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
             {/* Figma 29602:14103: said under the amount, because it changes
                 what the amount cost the balance. The split is in its own card. */}
-            {cardCredit && <Text className="text-base text-white/70">Paid with card credit</Text>}
+            {cardCredit && <Text className="text-base text-white/70">Paid with card bonus</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
             {/* Status reads as a chip, the same one the activity row uses
                 (Figma 24781:7724 / 24781:7993), rather than as one more fact in
@@ -1238,7 +1239,15 @@ export default function ActivityDetail() {
       status && {
         key: 'status',
         label: <Label>Status</Label>,
-        value: <Value>{toTitleCase(status)}</Value>,
+        // Held on our side until our payout wallet is topped up, then sent by
+        // itself: pending, as the list row says, not "Processing".
+        value: (
+          <Value>
+            {status === TransactionStatus.PROCESSING && isPayoutAwaitingFunds(metadata)
+              ? 'Pending'
+              : toTitleCase(status)}
+          </Value>
+        ),
       },
       isCrossChainSend &&
         crossChainNetwork && {

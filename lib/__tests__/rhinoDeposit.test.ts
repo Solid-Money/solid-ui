@@ -28,6 +28,7 @@ import {
   isOwnPayoutChain,
   isOwnPipelineChain,
   isOwnPipelineToken,
+  isRhinoDepositComplete,
   isRhinoDepositOffered,
   isRhinoPayoutFinal,
   isSameDepositAddress,
@@ -512,6 +513,44 @@ describe('isRhinoPayoutFinal', () => {
   });
 });
 
+describe('isRhinoDepositComplete', () => {
+  it('is a payout into the Safe that rhino.fi has made', () => {
+    expect(
+      isRhinoDepositComplete({
+        status: 'EXECUTED',
+        destinationType: 'WALLET',
+        receiveSymbol: 'USDC',
+      }),
+    ).toBe(true);
+  });
+
+  it('is not one still on its way, nor one that ended any other way', () => {
+    (['DETECTED', 'ACCEPTED', 'DELAYED', 'REJECTED', 'REFUNDED'] as const).forEach(status => {
+      expect(
+        isRhinoDepositComplete({ status, destinationType: 'WALLET', receiveSymbol: 'USDC' }),
+      ).toBe(false);
+    });
+  });
+
+  // Our pipeline still has these to deliver after rhino.fi's leg.
+  it('is not a payout that goes on through our pipeline', () => {
+    expect(
+      isRhinoDepositComplete({
+        status: 'EXECUTED',
+        destinationType: 'WALLET',
+        receiveSymbol: 'ETH',
+      }),
+    ).toBe(false);
+    expect(
+      isRhinoDepositComplete({
+        status: 'EXECUTED',
+        destinationType: 'RAIN_CARD',
+        receiveSymbol: 'USDC',
+      }),
+    ).toBe(false);
+  });
+});
+
 describe('getRhinoDepositStatusView', () => {
   it('says a seen deposit is on its way, naming the token it came in as', () => {
     ['DETECTED', 'ACCEPTED', 'DELAYED', 'EXECUTED'].forEach(status => {
@@ -968,22 +1007,45 @@ describe('isOwnPipelineToken', () => {
 
 /** "More networks": rhino.fi's chains the app has no row for. */
 describe('getRhinoExtraChains', () => {
-  // Product decision, 2026-11-10: of the chains the app has no row for, only
-  // Bitcoin is offered (see the native BTC tests). The backend still lists
-  // the rest, routes and all.
-  it('offers none of Tron, Solana, Avalanche or Arc, whatever rhino.fi routes', () => {
-    const offers = (filter: Parameters<typeof getRhinoExtraChains>[1]) =>
-      chainsOf(getRhinoExtraChains(RHINO_ASSETS_WITH_BITCOIN, filter));
+  // Never an app chain, which shows once as its own row.
+  it('lists only the chains the app has no row for', () => {
+    expect(
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'USDC' })),
+    ).toEqual(['SOLANA', 'AVALANCHE', 'ARC']);
+    expect(
+      chainsOf(
+        getRhinoExtraChains(RHINO_ASSETS, {
+          destinationType: 'PROTOCOL',
+          symbol: 'USDT',
+          vault: 'soUSD',
+        }),
+      ),
+    ).toEqual(['TRON', 'SOLANA', 'AVALANCHE']);
+  });
 
-    expect(chainsOf(RHINO_ASSETS_WITH_BITCOIN.chains)).toEqual(
-      expect.arrayContaining(['TRON', 'SOLANA', 'AVALANCHE', 'ARC']),
+  it('lists only what rhino.fi routes to the screen’s destination', () => {
+    expect(
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'WALLET', symbol: 'EURC' })),
+    ).toEqual(['SOLANA', 'ARC']);
+    expect(
+      chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType: 'RAIN_CARD', symbol: 'EURC' })),
+    ).toEqual([]);
+    expect(
+      getRhinoExtraChains(RHINO_ASSETS, {
+        destinationType: 'PROTOCOL',
+        symbol: 'ETH',
+        vault: 'soUSD',
+      }),
+    ).toEqual([]);
+  });
+
+  // Tron, Solana and the rest pay wallet and card USDT out as USDC.
+  it('lists wallet and card USDT on the chains the app has no row for', () => {
+    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType =>
+      expect(
+        chainsOf(getRhinoExtraChains(RHINO_ASSETS, { destinationType, symbol: 'USDT' })),
+      ).toEqual(['TRON', 'SOLANA', 'AVALANCHE']),
     );
-    (['WALLET', 'RAIN_CARD'] as const).forEach(destinationType => {
-      expect(offers({ destinationType, symbol: 'USDC' })).toEqual([]);
-      expect(offers({ destinationType, symbol: 'USDT' })).toEqual([]);
-    });
-    expect(offers({ destinationType: 'WALLET', symbol: 'EURC' })).toEqual([]);
-    expect(offers({ destinationType: 'PROTOCOL', symbol: 'USDT', vault: 'soUSD' })).toEqual([]);
   });
 
   it('has none while rhino.fi is off', () => {

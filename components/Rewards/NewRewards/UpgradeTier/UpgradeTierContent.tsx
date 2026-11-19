@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { CHAIN_NAMES } from '@/constants/chains';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
@@ -34,28 +33,35 @@ import {
   formatFuseShortfall,
   formatLockDuration,
   formatMembershipDate,
+  formatPriceUsd,
   formatUsd,
   formatUsdHeld,
+  isOfferOnSale,
   isTierOnTrial,
   membershipDateLabel,
   nextPurchasableTier,
+  offerFirstYearFeeUsd,
+  offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
 import { tokenAmount, tokenUsd } from '@/lib/tierUpgradeFunding';
 import { RewardsTier, VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import TierDetailRow from './TierDetailRow';
+import TierPrice from './TierPrice';
+import TierReplacementNotice from './TierReplacementNotice';
 import { findTierBenefits, resolveTierUpgradeBenefits } from './tierUpgradeBenefits';
 import UpgradeRouteSwitch from './UpgradeRouteSwitch';
 import UpgradeTierHeroCard from './UpgradeTierHeroCard';
 
 import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
+import type { UpgradeTopUpContext } from '@/store/useDepositStore';
 
 interface UpgradeTierContentProps {
   onRouteSelected?: (route: TierUpgradeRoute, changed: boolean) => void;
+  onTopUp: (context?: UpgradeTopUpContext) => void;
 }
 
 /** Where "Learn more" and "How to earn points?" send the user. */
@@ -77,7 +83,7 @@ export const MEMBERSHIP_HELP_URL =
  * answer from, and the benefits pager is the one with the tier's case laid out
  * beside it.
  */
-const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
+const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProps) => {
   const { data: membership, isLoading } = useTierMembership();
   const { data: tierBenefits } = useTierBenefits();
   const { data: chain } = useTierUpgradeChainState(membership?.contracts);
@@ -99,20 +105,39 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
 
   const offer = tier ? findOffer(membership, tier) : undefined;
   // Memoised because the effect below depends on it: a fresh array every render
-  // would re-run the effect every render for no reason.
-  const routes = useMemo(() => availableRoutes(offer), [offer]);
+  // would re-run the effect every render for no reason. The contracts decide
+  // whether an upgrade paid by transfer can be built at all.
+  const contracts = membership?.contracts;
+  const routes = useMemo(() => availableRoutes(offer, contracts), [offer, contracts]);
   // Called up here with the rest of the hooks: the early returns below would
   // otherwise change how many run from one render to the next.
-  const payment = useCashPayment({ membership, chain, feeUsd: offer?.annualFeeUsd ?? 0 });
+  const payment = useCashPayment({
+    membership,
+    chain,
+    feeUsd: offerFirstYearFeeUsd(offer) ?? 0,
+    paymentMode: offer ? offerPaymentMode(offer) : undefined,
+  });
 
   // Settles on a route once the offer is known, and re-settles if the one in
   // hand stops being available — a tier taken off cash sale while the modal is
   // open must not leave a "Cash" tab selected that cannot be completed.
+  //
+  // Except while an upgrade paid by transfer awaits confirmation. Its money is
+  // already at the treasury, and pressing on along the cash route is the only
+  // way this screen confirms it — which needs no treasury, module or price, so
+  // cash being switched off since must not take that route away. It is kept if
+  // selected, and chosen when nothing is yet (the modal opened afresh); a user
+  // who picks the lock instead is left on it.
+  const { awaitingConfirm } = payment;
   useEffect(() => {
+    if (awaitingConfirm && (!route || route === 'cash')) {
+      if (route !== 'cash') setRoute('cash');
+      return;
+    }
     if (routes.length === 0) return;
     if (route && routes.includes(route)) return;
     setRoute(routes[0]);
-  }, [route, routes, setRoute]);
+  }, [route, routes, setRoute, awaitingConfirm]);
 
   useEffect(() => {
     if (tier) track(TRACKING_EVENTS.TIER_UPGRADE_OPENED, { tier });
@@ -121,8 +146,23 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
   if (isLoading) return <Loading />;
 
   // Nothing to sell: the routes are switched off, or the user already holds
-  // everything. Either way this is the wrong thing to be looking at.
-  if (!membership?.enabled || !tier || !offer || !route) {
+  // everything. Either way this is the wrong thing to be looking at. A route
+  // held over from before is no route at all once it stops being on offer — a
+  // "Cash" tab kept after the treasury went would sell what cannot be paid.
+  // Cash with a payment awaiting confirmation is the exception: it sells
+  // nothing, it only confirms what was paid (see the effect above) — so
+  // neither cash nor memberships as a whole being switched off since takes it
+  // away. The money is at the treasury either way, and this is the way to the
+  // review that confirms it.
+  const cashConfirmOnly = route === 'cash' && awaitingConfirm;
+  const routeOnOffer = !!route && (routes.includes(route) || cashConfirmOnly);
+  if (
+    !membership ||
+    (!membership.enabled && !cashConfirmOnly) ||
+    !tier ||
+    !offer ||
+    !routeOnOffer
+  ) {
     return (
       <UpgradeUnavailable
         message={
@@ -190,18 +230,21 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
 
   // The cash route pays from whichever token the row above names, and only
   // falls back to the Fuse-only check when the backend has not said which USDC
-  // it bills in — an older backend, which has no bridged route to offer.
+  // it bills in — an older backend, which has no bridged route to offer. An
+  // upgrade already paid by transfer and not yet confirmed goes on to the
+  // review whatever the balance, which only confirms it.
   const affordable =
     route === 'cash'
-      ? payment.billingTokenAddress
-        ? payment.affordable
-        : canAffordUpgrade({
-            route,
-            offer,
-            lockedFuse: membership.lock.lockedFuse,
-            availableFuse: balances.sofuse,
-            availableUsdc,
-          })
+      ? payment.awaitingConfirm ||
+        (payment.billingTokenAddress
+          ? payment.affordable
+          : canAffordUpgrade({
+              route,
+              offer,
+              lockedFuse: membership.lock.lockedFuse,
+              availableFuse: balances.sofuse,
+              availableUsdc,
+            }))
       : canPayLockWith(paymentAsset, remainingFuse, balances);
   // A bridged payment already on its way: the next step is to watch it land,
   // not to start a second one.
@@ -217,34 +260,9 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
     track(TRACKING_EVENTS.TIER_UPGRADE_ROUTE_SELECTED, { tier, route: next });
   };
 
-  /**
-   * Short of what the upgrade costs, so the press has to fix that first.
-   *
-   * Which flow depends on which balance is short, and the two are not
-   * interchangeable: the savings direct deposit mints share tokens, while the
-   * "Add funds" sheet funds the wallet, where a token stays the token that was
-   * sent. Sending a user short of native FUSE to the savings flow would hand
-   * them more soFUSE and leave the row they were looking at unmoved, with
-   * nothing on screen explaining why.
-   *
-   * Closes this modal before opening the funding one. Both are dialogs, and a
-   * dialog opened over a dialog leaves two overlays and a back gesture that
-   * dismisses the wrong one.
-   */
   const handleTopUp = () => {
-    const depositToSavings = route === 'lock' && paymentAsset === 'soFUSE';
-    close();
-
-    // The upgrade modal's native exit animation takes 180ms. Opening a second
-    // portal during that same render can leave Android with a black surface.
-    // Let the first dialog finish leaving before mounting the deposit flow.
-    setTimeout(() => {
-      const depositStore = useDepositStore.getState();
-      depositStore.resetDepositFlow();
-      // A cash upgrade is paid in USDC; buying FUSE would not fill that balance.
-      if (route === 'lock') depositStore.setUpgradeTopUp({ tier, depositToSavings });
-      depositStore.setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
-    }, 200);
+    // A cash upgrade needs USDC. For a FUSE lock, only soFUSE needs a Savings deposit.
+    onTopUp(route === 'lock' ? { tier, depositToSavings: paymentAsset === 'soFUSE' } : undefined);
   };
 
   const handleReview = () => {
@@ -266,7 +284,9 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
         }
       />
 
-      {tier !== RewardsTier.ULTRA && (
+      {/* Any tier sold more than one way gets the choice; one sold one way
+          has nothing to choose between, and the card below names the route. */}
+      {routes.length > 1 && (
         <>
           <Text className="mb-3 mt-7 text-center text-[16px] leading-5 text-white/70">
             Upgrade tier with
@@ -292,7 +312,20 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
                 />
               </TierDetailRow>
             ) : null}
-            <TierDetailRow label="Annual Fee" value={formatUsd(offer.annualFeeUsd)} withDivider />
+            {/* During a sale the first year is cheaper and the renewals are
+                not, so the regular fee is struck through and the line under
+                it says what the membership renews at. */}
+            <TierDetailRow label="Annual Fee" withDivider>
+              <TierPrice
+                priceUsd={offerFirstYearFeeUsd(offer)}
+                listPriceUsd={offer.annualFeeUsd}
+                secondaryValue={
+                  isOfferOnSale(offer) && offer.annualFeeUsd !== null
+                    ? `First year, then ${formatPriceUsd(offer.annualFeeUsd)}/year`
+                    : undefined
+                }
+              />
+            </TierDetailRow>
             {payment.payingFromFuse || !cashToken ? (
               <TierDetailRow
                 label="Your balance"
@@ -370,11 +403,17 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
         )}
       </View>
 
+      {/* Only the annual fee ends the membership it replaces; a lock sits
+          alongside it. */}
+      {route === 'cash' ? <TierReplacementNotice offer={offer} /> : null}
+
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
           ? `${keeping ? 'Keep' : 'Upgrade to'} the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee${keeping ? ' after your trial' : ''}. ${
               !payment.payingFromFuse && cashToken
-                ? `Your ${cashToken.contractTickerSymbol} on ${cashChainName} is moved to Fuse for you, and the bridge fees are on us. `
+                ? `Your ${cashToken.contractTickerSymbol} on ${cashChainName} is moved to Fuse for you${
+                    payment.coverPct > 0 ? ', and the bridge fees are on us' : ''
+                  }. `
                 : ''
             }`
           : paymentAsset === 'soFUSE'

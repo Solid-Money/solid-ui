@@ -6,6 +6,7 @@ import {
 import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance } from '@/lib/types';
+import { type SpendAssetKey, spendAssetKeyOf } from '@/lib/utils/spendOrder';
 
 /** USD value of one holding: balance scaled out of its decimals × its USD rate. */
 const tokenValueUSD = (token: TokenBalance, usdRate = token.quoteRate ?? 0): number => {
@@ -135,6 +136,22 @@ export const cardSpendableAssetsFor = (
   if (!addresses.length) return CARD_SPENDABLE_ASSETS;
 
   return [...CARD_SPENDABLE_ASSETS, ...baseSpendableAssets(addresses)];
+};
+
+/**
+ * The spendable set less the assets the cardholder excluded on the Spend order screen. Matched on
+ * the asset's spend-order key, so an excluded soUSD leaves on Fuse and on Base alike. An asset with
+ * no key is kept: the card spends it, and leaving it out would under-report.
+ */
+export const withoutExcludedAssets = (
+  assets: CardSpendableAsset[],
+  excluded: readonly SpendAssetKey[],
+): CardSpendableAsset[] => {
+  if (!excluded.length) return assets;
+  return assets.filter(asset => {
+    const key = spendAssetKeyOf(asset.symbol);
+    return !key || !excluded.includes(key);
+  });
 };
 
 /** One holding on Base that the Base instance spends, for a cardholder who has not turned it on. */

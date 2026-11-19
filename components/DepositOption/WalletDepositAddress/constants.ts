@@ -5,8 +5,10 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
 import {
   WALLET_DEPOSIT_CHAIN_IDS,
+  WALLET_DEPOSIT_COINS,
   WALLET_DEPOSIT_TOKEN_GROUPS,
   WALLET_DEPOSIT_TOKENS,
+  WalletDepositCoinConfig,
   WalletDepositTokenConfig,
   WalletDepositTokenGroup,
 } from '@/constants/walletDepositTokens';
@@ -42,6 +44,22 @@ export type WalletDepositToken = {
   group: WalletDepositTokenGroup;
   icon: ImageSourcePropType;
 };
+
+/** A coin that comes as several tokens (see `WALLET_DEPOSIT_COINS`), and those offered. */
+export type WalletDepositCoin = {
+  coin: string;
+  name: string;
+  group: WalletDepositTokenGroup;
+  icon: ImageSourcePropType;
+  /** Its tokens this person is offered, in the order its screen lists them. */
+  tokens: WalletDepositToken[];
+};
+
+/** A row of "Select token": a token, or a coin that opens onto its tokens. */
+export type WalletDepositChoice = WalletDepositToken | WalletDepositCoin;
+
+export const isWalletDepositCoin = (choice: WalletDepositChoice): choice is WalletDepositCoin =>
+  'tokens' in choice;
 
 /** Who the screen is for, which decides where stablecoins go. */
 type WalletDepositProvider = CardProvider | null | undefined;
@@ -108,6 +126,7 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
   FUSE: '500',
   WFUSE: '500',
   BTC: '0.00015',
+  WBTC: '0.00015',
   cbBTC: '0.00015',
   cbZEC: '0.01',
   AAVE: '0.07',
@@ -262,16 +281,6 @@ const findToken = (symbol?: string): WalletDepositTokenConfig | undefined =>
 const isMoreNetworksOnly = (token: WalletDepositTokenConfig): boolean =>
   Object.keys(token.contracts).length === 0;
 
-/**
- * Whether a currency is on offer to this person at all, on any chain. One only
- * "More networks" carries is a new deposit token on every chain it has, so it
- * is offered only with access (see `useDepositTokensAccess`).
- */
-const isOffered = (
-  token: WalletDepositTokenConfig,
-  { hasNewTokens = false }: WalletDepositViewer,
-): boolean => !isMoreNetworksOnly(token) || hasNewTokens;
-
 const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isComingSoon;
 
 /** Whether everyone is offered the currency on this chain, not only those with access. */
@@ -288,7 +297,6 @@ const getCandidateChainIds = (
   viewer: WalletDepositViewer,
 ): number[] => {
   const { hasNewTokens = false } = viewer;
-  if (!isOffered(token, viewer)) return [];
 
   return WALLET_DEPOSIT_CHAIN_IDS.filter(
     chainId =>
@@ -383,7 +391,7 @@ export const getWalletDepositExtraNetworks = (
   viewer: WalletDepositViewer = {},
 ): RhinoDepositChain[] => {
   const token = findToken(symbol);
-  if (!token || !isOffered(token, viewer) || viewer.rhino?.status !== 'ready') return [];
+  if (!token || viewer.rhino?.status !== 'ready') return [];
   return getRhinoExtraChains(viewer.rhino.assets, {
     destinationType: WALLET_RHINO_DESTINATION,
     symbol,
@@ -598,11 +606,11 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
 };
 
 /**
- * Every currency the deposit address can take, each once, for "Select token" —
- * the first step, taken before any chain is chosen. In the order the design
- * lists them: the stablecoins, gold and silver, then ETH and the rest, with the
- * wrapped natives last. A currency only "More networks" carries counts: native
- * BTC has no row of the list's own.
+ * Every currency the deposit address can take, each once — the first step,
+ * taken before any chain is chosen. In the order the design lists them: the
+ * stablecoins, then ETH and the rest, with the wrapped natives last. A currency
+ * only "More networks" carries counts: native BTC has no row of the list's own.
+ * "Select token" folds these into coins (see `getWalletDepositChoices`).
  */
 export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): WalletDepositToken[] =>
   WALLET_DEPOSIT_TOKENS.filter(token =>
@@ -611,23 +619,99 @@ export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): Wal
       : getTokenChainIds(token, viewer).length > 0,
   ).map(toWalletDepositToken);
 
+const toWalletDepositCoin = (
+  { key, name, group, icon, symbols }: WalletDepositCoinConfig,
+  offered: WalletDepositToken[],
+): WalletDepositCoin => ({
+  coin: key,
+  name,
+  group,
+  icon: getAsset(icon),
+  tokens: symbols.flatMap(symbol => offered.filter(token => token.symbol === symbol)),
+});
+
 /**
- * Whether a currency answers a search: by ticker or by name, so "btc" finds WBTC
- * and cbBTC and "gold" finds PAXG, plus the aliases a person might type instead
- * ("bitcoin", "paxos").
+ * The coin row a currency is listed under, given what this person is offered:
+ * only where two or more of the coin's tokens are. With one there is nothing to
+ * pick between, so that token is listed as itself.
  */
-export const matchesWalletDepositSearch = (token: WalletDepositToken, query: string): boolean => {
+const findCoinRow = (
+  symbol: string | undefined,
+  offered: WalletDepositToken[],
+): WalletDepositCoin | undefined => {
+  const config = WALLET_DEPOSIT_COINS.find(coin => !!symbol && coin.symbols.includes(symbol));
+  const coin = config && toWalletDepositCoin(config, offered);
+  return coin && coin.tokens.length > 1 ? coin : undefined;
+};
+
+/**
+ * The rows of "Select token": every currency `getAllWalletDepositTokens` lists,
+ * with a coin's tokens folded into one row for the coin, where the first of
+ * them is listed. Ether, Bitcoin and Fuse each come as several tokens.
+ */
+export const getWalletDepositChoices = (
+  viewer: WalletDepositViewer = {},
+): WalletDepositChoice[] => {
+  const offered = getAllWalletDepositTokens(viewer);
+  const listed = new Set<string>();
+
+  return offered.flatMap<WalletDepositChoice>(token => {
+    const coin = findCoinRow(token.symbol, offered);
+    if (!coin) return [token];
+    if (listed.has(coin.coin)) return [];
+    listed.add(coin.coin);
+    return [coin];
+  });
+};
+
+/**
+ * The coin row `symbol` is listed under in "Select token", if it is one of two
+ * or more tokens of a coin this person is offered: where its currency pill and
+ * back from its address go.
+ */
+export const getWalletDepositCoinOf = (
+  symbol: string | undefined,
+  viewer: WalletDepositViewer = {},
+): WalletDepositCoin | undefined => findCoinRow(symbol, getAllWalletDepositTokens(viewer));
+
+/** A coin and the tokens of it this person is offered, for the screen that lists them. */
+export const getWalletDepositCoin = (
+  key: string | undefined,
+  viewer: WalletDepositViewer = {},
+): WalletDepositCoin | undefined => {
+  const config = WALLET_DEPOSIT_COINS.find(coin => coin.key === key);
+  return config && toWalletDepositCoin(config, getAllWalletDepositTokens(viewer));
+};
+
+/** A coin's name, which titles its screen. */
+export const getWalletDepositCoinName = (key: string | undefined): string | undefined =>
+  WALLET_DEPOSIT_COINS.find(coin => coin.key === key)?.name;
+
+/**
+ * Whether a row answers a search: a token by ticker or by name, so "usd" finds
+ * USDC and "solana" finds SOL, plus the aliases a person might type instead
+ * ("zcash"); a coin by its name or by any of its tokens, so "btc" and "wbtc"
+ * both find Bitcoin.
+ */
+export const matchesWalletDepositSearch = (choice: WalletDepositChoice, query: string): boolean => {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
 
-  const aliases = findToken(token.symbol)?.aliases ?? [];
-  return [token.symbol, token.name, ...aliases].some(text => text.toLowerCase().includes(needle));
+  if (isWalletDepositCoin(choice)) {
+    return (
+      choice.name.toLowerCase().includes(needle) ||
+      choice.tokens.some(token => matchesWalletDepositSearch(token, needle))
+    );
+  }
+
+  const aliases = findToken(choice.symbol)?.aliases ?? [];
+  return [choice.symbol, choice.name, ...aliases].some(text => text.toLowerCase().includes(needle));
 };
 
-/** The currencies under their group headings, leaving out a group with none. */
-export const groupWalletDepositTokens = (
-  tokens: WalletDepositToken[],
-): { key: WalletDepositTokenGroup; label: string; tokens: WalletDepositToken[] }[] =>
+/** The rows under their group headings, leaving out a group with none. */
+export const groupWalletDepositTokens = <T extends { group: WalletDepositTokenGroup }>(
+  tokens: T[],
+): { key: WalletDepositTokenGroup; label: string; tokens: T[] }[] =>
   WALLET_DEPOSIT_TOKEN_GROUPS.map(group => ({
     ...group,
     tokens: tokens.filter(token => token.group === group.key),

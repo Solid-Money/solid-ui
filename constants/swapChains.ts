@@ -2,7 +2,7 @@ import { Address, zeroAddress } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE, WRAPPED_FUSE } from '@/constants/addresses';
-import { ADDRESSES } from '@/lib/config';
+import { ADDRESSES, PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { SwapAsset } from '@/lib/types/lifi-swap';
 
 /**
@@ -117,8 +117,8 @@ export const SWAP_LIST: readonly SwapListing[] = [
   listed(base.id, '0x58538e6A46E07434d7E7375Bc268D3cb839C0133', 'ENA', 'crypto'),
   listed(base.id, '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82', 'SOL', 'crypto'),
   listed(base.id, '0xc3De830EA07524a0761646a6a4e4be0e114a3C83', 'UNI', 'crypto'),
-  // Earn: the Fuse vaults, whose share tokens differ between builds.
-  listed(fuse.id, ADDRESSES.fuse.vault, 'USD Yield', 'earn'),
+  // The swap catalogue and Home preset use the deployed Fuse USD share in every build.
+  listed(fuse.id, PRODUCTION_VAULT_ADDRESSES.fuse.vault, 'USD Yield', 'earn'),
   listed(fuse.id, ADDRESSES.fuse.fuseVault, 'FUSE Yield', 'earn'),
 ];
 

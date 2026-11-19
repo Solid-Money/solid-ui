@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
+import { TAB_SUMMARY_ACTION_ROW, TabSummaryActionButton } from '@/components/TabSummary';
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import { useVaultDepositEntry } from '@/hooks/useVaultDepositEntry';
@@ -29,25 +30,38 @@ const WithdrawTrigger = (props: React.ComponentProps<typeof Pressable>) => (
 interface SavingsFundedActionsProps {
   /** Vault to pre-select for the deposit (mirrors the chosen APY vault). */
   vaultType: VaultType;
+  variant?: 'product' | 'tab';
 }
 
 /**
  * Funded-savings action row: "Deposit" (deposit-to-savings) + "Withdraw"
  * (unstake). Deposit pre-selects the currently chosen vault.
  */
-const SavingsFundedActions = ({ vaultType }: SavingsFundedActionsProps) => {
+const SavingsFundedActions = ({ vaultType, variant = 'product' }: SavingsFundedActionsProps) => {
   const { modal, onBeforeOpen } = useVaultDepositEntry(vaultType);
+  const deposit =
+    variant === 'tab' ? (
+      <TabSummaryActionButton label="Deposit" primary className="flex-1" />
+    ) : (
+      <DepositTriggerButton />
+    );
+  const withdraw =
+    variant === 'tab' ? (
+      <TabSummaryActionButton label="Withdraw" className="flex-1" />
+    ) : (
+      <WithdrawTrigger />
+    );
 
   return (
-    <View className="flex-row items-center gap-3 px-4">
+    <View className={TAB_SUMMARY_ACTION_ROW}>
       <DepositTrigger
         modal={modal}
         preserveSelectedVault
         source="savings_add_funds"
         onBeforeOpen={onBeforeOpen}
-        trigger={<DepositTriggerButton />}
+        trigger={deposit}
       />
-      <UnstakeModal trigger={<WithdrawTrigger />} />
+      <UnstakeModal trigger={withdraw} />
     </View>
   );
 };

@@ -290,22 +290,12 @@ const APP_NETWORK_CHAIN_IDS: ReadonlySet<number> = new Set([
 ]);
 
 /**
- * The rhino.fi chains "More networks" offers: Bitcoin alone, the one network
- * native BTC comes in on, and only where the backend lists it (it has Bitcoin
- * switched off on prod). The others rhino.fi takes (Tron, Solana, Avalanche,
- * Celo, Gnosis, Mantle, Plasma, Kaia, Tempo, Arc) are not offered, by product
- * decision (2026-11-10): a deposit on one comes to an address the app no
- * longer hands out, though an address already handed out keeps working.
- */
-const MORE_NETWORKS_CHAINS: ReadonlySet<string> = new Set(['BITCOIN']);
-
-/**
- * Whether a rhino.fi chain belongs under "More networks": one the app has no
- * row for, and one it offers there (see `MORE_NETWORKS_CHAINS`).
+ * Whether a rhino.fi chain is one the app has no row for, listed after the
+ * app's own rows: Tron, Solana, Bitcoin, Avalanche, Celo, Gnosis, Mantle,
+ * Plasma, Kaia, Tempo, Arc, whichever the backend lists. Never an app chain.
  */
 export const isRhinoExtraChain = (chain: Pick<RhinoDepositChain, 'chain' | 'chainId'>): boolean =>
-  MORE_NETWORKS_CHAINS.has(chain.chain) &&
-  (chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId));
+  chain.chainId === undefined || !APP_NETWORK_CHAIN_IDS.has(chain.chainId);
 
 /** "More networks" always serves one token, the one the screen has already chosen. */
 export type RhinoExtraChainFilter = RhinoRouteFilter & { symbol: string };
@@ -671,6 +661,15 @@ export const isRhinoPayoutFinal = (
 ): boolean => deposit.destinationType === 'WALLET' && deposit.receiveSymbol !== 'ETH';
 
 /**
+ * Whether the deposit is done for good: rhino.fi has paid out, and its payout is
+ * the end of it (see `isRhinoPayoutFinal`). The address screen says "Deposit
+ * complete" then, and offers to close rather than to copy the address again.
+ */
+export const isRhinoDepositComplete = (
+  deposit: Pick<RhinoDeposit, 'status' | 'destinationType' | 'receiveSymbol'>,
+): boolean => deposit.status === 'EXECUTED' && isRhinoPayoutFinal(deposit);
+
+/**
  * How a deposit seen by rhino.fi is shown on the address screen. It covers
  * rhino.fi's leg: once the payout is executed, the regular deposit pipeline and
  * the activity feed take over, except for a payout into the Safe, which
@@ -696,7 +695,7 @@ export const getRhinoDepositStatusView = (
         body: 'This is taking longer than usual.',
       };
     case 'EXECUTED':
-      return isRhinoPayoutFinal(deposit)
+      return isRhinoDepositComplete(deposit)
         ? {
             tone: 'success',
             title: 'Deposit complete',

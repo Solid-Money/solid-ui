@@ -3,7 +3,7 @@ import { base } from 'viem/chains';
 
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
-import { CBBTC_BASE, WBTC_ETHEREUM } from '@/lib/soBtc';
+import { WBTC_ETHEREUM } from '@/lib/soBtc';
 import { publicClient } from '@/lib/wagmi';
 
 /**
@@ -33,7 +33,7 @@ export type BaseWithdrawRequest = {
    * and JSON-safe); priced by the caller.
    */
   amountWethWei?: string;
-  /** The cbBTC a soBTC request pays out, in satoshis (8 decimals) as a decimal string. */
+  /** The WBTC a soBTC request pays out, in satoshis (8 decimals) as a decimal string. */
   amountBtcSats?: string;
 };
 
@@ -69,10 +69,7 @@ export async function readBaseWithdrawRequest(
           amountUsd = Number(formatUnits(event.args.amountOfAssets, USDC_DECIMALS));
         } else if (isAddressEqual(event.args.assetOut, ADDRESSES.base.weth)) {
           amountWethWei = event.args.amountOfAssets.toString();
-        } else if (
-          isAddressEqual(event.args.assetOut, CBBTC_BASE) ||
-          isAddressEqual(event.args.assetOut, WBTC_ETHEREUM)
-        ) {
+        } else if (isAddressEqual(event.args.assetOut, WBTC_ETHEREUM)) {
           amountBtcSats = event.args.amountOfAssets.toString();
         }
         break;

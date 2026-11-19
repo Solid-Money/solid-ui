@@ -1,6 +1,5 @@
-import { Linking, Pressable, View } from 'react-native';
-import { Image } from 'expo-image';
-import { Check, ChevronRight, Percent, X } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
+import { Percent, X } from 'lucide-react-native';
 
 import CardBottomSheet from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet';
 import {
@@ -8,8 +7,6 @@ import {
   sheetBodyInset,
 } from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
 import { Text } from '@/components/ui/text';
-import { getAsset } from '@/lib/assets';
-import { cn } from '@/lib/utils';
 
 import {
   aiApiModelDiscount,
@@ -25,18 +22,6 @@ import { AI_API_BRAND, AI_API_ICON_STROKE } from './AiApiPrimitives';
 
 import type { AiApiCashbackTier, AiApiModel } from '@/lib/types/ai-api';
 
-/** How many models the intro lists: the whole launch list, kept short if it ever grows. */
-const MODELS_SHOWN = 6;
-
-const ANTSEED_DOCS_URL = 'https://antseed.com/docs/overview/';
-
-/** Figma "Points" in the Antseed banner. */
-const ANTSEED_POINTS = [
-  'One fixed price per model, set by Solid',
-  'We don’t store your prompts or answers',
-  'Only usage is kept, for billing',
-];
-
 /** What the green tag says to a screen reader: the saving, or that the model is free. */
 const tagLabel = (model: AiApiModel): string | null => {
   if (aiApiModelIsFree(model)) return 'Free';
@@ -44,37 +29,15 @@ const tagLabel = (model: AiApiModel): string | null => {
   return discount ? `${discount}% below the official price` : null;
 };
 
-/**
- * The green tag beside a model. The intro's list draws it a size up from the
- * price sheet's, as Figma does ("Saving pill" against "Tag — vs official").
- */
-const ModelTag = ({ label, variant }: { label: string; variant: 'list' | 'sheet' }) => (
-  <View
-    className={cn(
-      'rounded-full px-2.5',
-      variant === 'list'
-        ? 'bg-[rgba(148,242,127,0.14)] py-[5px]'
-        : 'bg-[rgba(148,242,127,0.12)] py-1',
-    )}
-  >
-    <Text
-      className={cn(
-        'text-brand',
-        variant === 'list' ? 'text-[14px] font-semibold' : 'text-[13px] font-medium',
-      )}
-    >
-      {label}
-    </Text>
+const ModelTag = ({ label }: { label: string }) => (
+  <View className="rounded-full bg-[rgba(148,242,127,0.12)] px-2.5 py-1">
+    <Text className="text-[13px] font-medium text-brand">{label}</Text>
   </View>
 );
 
-/** A model's name, then its maker when the dashboard names one. */
-const ModelName = ({ model, size }: { model: AiApiModel; size: 'list' | 'sheet' }) => (
+const ModelName = ({ model }: { model: AiApiModel }) => (
   <View className="flex-1 gap-px">
-    <Text
-      className={cn('font-medium text-white', size === 'list' ? 'text-[15px]' : 'text-[16px]')}
-      numberOfLines={1}
-    >
+    <Text className="text-[16px] font-medium text-white" numberOfLines={1}>
       {model.name}
     </Text>
     {model.provider ? (
@@ -82,112 +45,6 @@ const ModelName = ({ model, size }: { model: AiApiModel; size: 'list' | 'sheet' 
         {model.provider}
       </Text>
     ) : null}
-  </View>
-);
-
-/** The trailing chevron of a card's link row. */
-const LinkRow = ({ label, onPress }: { label: string; onPress: () => void }) => (
-  <Pressable
-    accessibilityRole="button"
-    accessibilityLabel={label}
-    onPress={onPress}
-    className="flex-row items-center gap-1 pt-0.5 active:opacity-70"
-  >
-    <Text className="flex-1 text-[15px] font-medium text-white">{label}</Text>
-    <ChevronRight size={18} color="white" strokeWidth={AI_API_ICON_STROKE} />
-  </Pressable>
-);
-
-/**
- * Figma "Models" on the intro: the models a key can call, each tagged with how
- * far below its maker's list price ours is, and a way into every price.
- */
-export const AiApiModelList = ({
-  models,
-  onSeePrices,
-}: {
-  models: AiApiModel[];
-  onSeePrices: () => void;
-}) => {
-  if (models.length === 0) return null;
-  const shown = models.slice(0, MODELS_SHOWN);
-  const anyTag = shown.some(model => aiApiModelTag(model) !== null);
-
-  return (
-    <View className="gap-3.5 rounded-twice bg-card px-4 pb-1 pt-[18px]">
-      <View className="flex-row items-end gap-3">
-        <View className="flex-1 gap-0.5">
-          <Text className="text-[16px] font-semibold text-white">Models</Text>
-          <Text className="text-[13px] text-white/50">All on one API key</Text>
-        </View>
-        {anyTag ? <Text className="text-[13px] text-white/50">vs official price</Text> : null}
-      </View>
-
-      <View className="gap-4">
-        {shown.map(model => {
-          const tag = aiApiModelTag(model);
-          return (
-            <View
-              key={model.id}
-              className="h-10 flex-row items-center gap-3"
-              accessible
-              accessibilityLabel={[
-                model.provider ? `${model.name}, ${model.provider}` : model.name,
-                tagLabel(model),
-              ]
-                .filter(Boolean)
-                .join('. ')}
-            >
-              <AiApiModelLogo model={model} />
-              <ModelName model={model} size="list" />
-              {tag ? <ModelTag label={tag} variant="list" /> : null}
-            </View>
-          );
-        })}
-      </View>
-
-      <View className="h-px bg-white/[0.08]" />
-      <View className="pb-3">
-        <LinkRow label="See prices" onPress={onSeePrices} />
-      </View>
-    </View>
-  );
-};
-
-/** Figma "Banner — About Antseed": who runs the models behind the key, and what we keep. */
-export const AiApiAntseedCard = () => (
-  <View className="gap-3.5 rounded-twice bg-card px-4 pb-4 pt-[18px]">
-    <View className="flex-row items-center gap-3">
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-[rgba(148,242,127,0.12)]">
-        <Image
-          source={getAsset('images/ai-api/antseed-ant.svg')}
-          style={{ width: 36, height: 36 }}
-          contentFit="contain"
-        />
-      </View>
-      <View className="flex-1 gap-px">
-        <Text className="text-[16px] font-semibold text-white">Powered by Antseed</Text>
-        <Text className="text-[13px] text-white/50">An open market for AI models</Text>
-      </View>
-    </View>
-    <Text className="text-[14px] leading-5 text-white/70">
-      Your requests run on Antseed’s network of AI providers. Solid sets one fixed price for each
-      model, so you always know what you’ll pay.
-    </Text>
-    <View className="gap-2.5">
-      {ANTSEED_POINTS.map(point => (
-        <View key={point} className="flex-row items-center gap-2.5">
-          <View className="h-6 w-6 items-center justify-center rounded-full bg-[rgba(148,242,127,0.12)]">
-            <Check size={14} color={AI_API_BRAND} strokeWidth={2.5} />
-          </View>
-          <Text className="flex-1 text-[14px] text-white/85">{point}</Text>
-        </View>
-      ))}
-    </View>
-    <LinkRow
-      label="Learn about Antseed"
-      onPress={() => void Linking.openURL(ANTSEED_DOCS_URL).catch(() => undefined)}
-    />
   </View>
 );
 
@@ -236,8 +93,8 @@ const ModelPriceCard = ({ model }: { model: AiApiModel }) => {
     <View className="gap-3" accessible accessibilityLabel={modelCardLabel(model)}>
       <View className="flex-row items-center gap-3">
         <AiApiModelLogo model={model} />
-        <ModelName model={model} size="sheet" />
-        {tag ? <ModelTag label={tag} variant="sheet" /> : null}
+        <ModelName model={model} />
+        {tag ? <ModelTag label={tag} /> : null}
       </View>
       <View className="flex-row gap-2">
         <PriceCell label="Input" price={model.inputUsdPerMTok} />

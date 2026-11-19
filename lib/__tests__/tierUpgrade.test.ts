@@ -1,19 +1,31 @@
 import {
   availableRoutes,
   canAffordUpgrade,
+  canPayCashFor,
+  formatAnnualPrice,
   formatFuse,
   formatFuseHeld,
   formatFuseShortfall,
   formatLockDuration,
   formatMembershipDate,
   formatMembershipDay,
+  formatPriceUsd,
+  formatRenewalTerms,
+  formatRenewsAt,
+  formatReplacementNotice,
+  formatSaleEnds,
   formatUsd,
   formatUsdHeld,
+  formatYearlyPrice,
   fuseForShares,
   fuseSharesForAmount,
+  isOfferOnSale,
   isTierOnTrial,
   membershipDateLabel,
   nextPurchasableTier,
+  offerFirstYearFeeUsd,
+  offerMandateUsd,
+  offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
 import { RewardsTier, TierMembershipState, TierOffer, TierSubscriptionStatus } from '@/lib/types';
@@ -35,7 +47,7 @@ const membership = (overrides: Partial<TierMembershipState> = {}): TierMembershi
   pointsUnlockEnabled: false,
   // Nothing resting on the legacy skip-the-line route by default.
   legacyFuseOnly: false,
-  offers: [offer(), offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null })],
+  offers: [offer(), offer({ tier: RewardsTier.ULTRA, lockFuse: 600_000, annualFeeUsd: 999 })],
   lock: {
     enabled: true,
     lockAddress: '0xlock',
@@ -59,9 +71,24 @@ const membership = (overrides: Partial<TierMembershipState> = {}): TierMembershi
     shareTokenAddress: '0xshare',
     wrappedNativeAddress: '0xwfuse',
     billingTokenAddress: '0xusdc',
+    revenueTreasuryAddress: '0xtreasury',
   },
   ...overrides,
 });
+
+/** Ultra on Black Friday, to a Prime member: $799 now, $999 a year after. */
+const ultraUpgrade = (overrides: Partial<TierOffer> = {}): TierOffer =>
+  offer({
+    tier: RewardsTier.ULTRA,
+    lockFuse: 600_000,
+    annualFeeUsd: 999,
+    firstYearFeeUsd: 799,
+    mandateUsd: 999,
+    saleEndsAt: '2026-11-30T12:00:00.000Z',
+    paymentMode: 'transfer',
+    replacesSubscription: { tier: RewardsTier.PRIME, currentPeriodEnd: '2027-03-01T00:00:00.000Z' },
+    ...overrides,
+  });
 
 describe('fuseSharesForAmount', () => {
   it('converts at par', () => {
@@ -130,7 +157,12 @@ describe('availableRoutes', () => {
     expect(availableRoutes(offer())).toEqual(['cash', 'lock']);
   });
 
-  /** Ultra is FUSE-only, which the design shows as a single full-width option. */
+  /** Ultra is sold for cash too now, exactly as Prime is. */
+  it('offers both routes on Ultra once it is sold for cash', () => {
+    expect(availableRoutes(ultraUpgrade(), membership().contracts)).toEqual(['cash', 'lock']);
+  });
+
+  /** What a build that has not opted into transfer upgrades is still sent. */
   it('offers only the lock when a tier is not sold for cash', () => {
     expect(availableRoutes(offer({ cashAvailable: false }))).toEqual(['lock']);
   });
@@ -138,6 +170,86 @@ describe('availableRoutes', () => {
   it('offers nothing for a tier that is not sold at all', () => {
     expect(availableRoutes(offer({ cashAvailable: false, lockAvailable: false }))).toEqual([]);
     expect(availableRoutes(undefined)).toEqual([]);
+  });
+
+  /**
+   * A transfer upgrade pays the treasury directly, so without the treasury or
+   * the USDC there is nothing to build it against — and a "Cash" tab that
+   * cannot be signed is not offered.
+   */
+  it('drops cash for a transfer upgrade it has no addresses for', () => {
+    const { contracts } = membership();
+
+    expect(availableRoutes(ultraUpgrade(), { ...contracts, revenueTreasuryAddress: null })).toEqual(
+      ['lock'],
+    );
+    expect(availableRoutes(ultraUpgrade(), { ...contracts, billingTokenAddress: null })).toEqual([
+      'lock',
+    ]);
+    // An older backend sends no treasury at all.
+    expect(availableRoutes(ultraUpgrade(), { billingTokenAddress: '0xusdc' })).toEqual(['lock']);
+    expect(availableRoutes(ultraUpgrade())).toEqual(['lock']);
+  });
+
+  /** A module subscription is charged by the backend, which needs no treasury here. */
+  it('keeps cash for a module subscription whatever the treasury', () => {
+    expect(availableRoutes(offer(), { billingTokenAddress: null })).toEqual(['cash', 'lock']);
+    expect(canPayCashFor(offer({ paymentMode: 'module' }), undefined)).toBe(true);
+    expect(canPayCashFor(offer({ cashAvailable: false }), membership().contracts)).toBe(false);
+  });
+});
+
+describe('offer pricing', () => {
+  it('charges the first year at the sale price, and signs the mandate at the annual fee', () => {
+    const sale = ultraUpgrade();
+
+    expect(offerFirstYearFeeUsd(sale)).toBe(799);
+    expect(offerMandateUsd(sale)).toBe(999);
+    expect(isOfferOnSale(sale)).toBe(true);
+  });
+
+  /**
+   * The bug the mandate change exists to prevent: signing the price paid now
+   * would sign $799 during a sale, and the $999 renewal would be refused.
+   */
+  it('never signs the mandate at the sale price', () => {
+    expect(offerMandateUsd(ultraUpgrade({ mandateUsd: undefined }))).toBe(999);
+    expect(offerMandateUsd(ultraUpgrade({ mandateUsd: null }))).toBe(999);
+  });
+
+  it('takes the mandate the backend sends', () => {
+    expect(offerMandateUsd(ultraUpgrade({ mandateUsd: 1_049 }))).toBe(1_049);
+  });
+
+  /** An older backend sends none of the new fields: today's behaviour, unchanged. */
+  it('falls back to the annual fee and the module on an older backend', () => {
+    const old = offer();
+
+    expect(offerFirstYearFeeUsd(old)).toBe(199);
+    expect(offerMandateUsd(old)).toBe(199);
+    expect(offerPaymentMode(old)).toBe('module');
+    expect(isOfferOnSale(old)).toBe(false);
+  });
+
+  it('is no sale when the first year costs the annual fee', () => {
+    expect(isOfferOnSale(ultraUpgrade({ firstYearFeeUsd: 999 }))).toBe(false);
+    expect(isOfferOnSale(ultraUpgrade({ firstYearFeeUsd: 999.000001 }))).toBe(false);
+  });
+
+  it('prices nothing for a tier that is not sold for cash', () => {
+    expect(offerFirstYearFeeUsd(offer({ annualFeeUsd: null, firstYearFeeUsd: 799 }))).toBeNull();
+    expect(offerFirstYearFeeUsd(undefined)).toBeNull();
+    expect(offerMandateUsd(offer({ annualFeeUsd: null }))).toBeNull();
+  });
+
+  it('ignores a first-year price it cannot use', () => {
+    expect(offerFirstYearFeeUsd(ultraUpgrade({ firstYearFeeUsd: 0 }))).toBe(999);
+    expect(offerFirstYearFeeUsd(ultraUpgrade({ firstYearFeeUsd: Number.NaN }))).toBe(999);
+  });
+
+  it('reads the payment mode, and only ever the two it knows', () => {
+    expect(offerPaymentMode(ultraUpgrade())).toBe('transfer');
+    expect(offerPaymentMode(offer({ paymentMode: 'module' }))).toBe('module');
   });
 });
 
@@ -187,6 +299,18 @@ describe('canAffordUpgrade', () => {
     expect(canAffordUpgrade({ ...base, route: 'cash', availableUsdc: 199 })).toBe(true);
   });
 
+  /** During a sale the first year is what is charged, so it is what has to be held. */
+  it('needs the first year, not the annual fee, during a sale', () => {
+    const sale = ultraUpgrade();
+
+    expect(canAffordUpgrade({ ...base, offer: sale, route: 'cash', availableUsdc: 798.99 })).toBe(
+      false,
+    );
+    expect(canAffordUpgrade({ ...base, offer: sale, route: 'cash', availableUsdc: 799 })).toBe(
+      true,
+    );
+  });
+
   it('needs only the remaining FUSE, not the whole threshold', () => {
     expect(
       canAffordUpgrade({
@@ -222,7 +346,7 @@ describe('nextPurchasableTier', () => {
         membership({
           offers: [
             offer({ held: true }),
-            offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null }),
+            offer({ tier: RewardsTier.ULTRA, lockFuse: 600_000, annualFeeUsd: 999 }),
           ],
         }),
       ),
@@ -267,7 +391,7 @@ describe('isTierOnTrial', () => {
       currentTier: RewardsTier.ULTRA,
       offers: [
         offer({ held: true }),
-        offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null }),
+        offer({ tier: RewardsTier.ULTRA, lockFuse: 600_000, annualFeeUsd: 999 }),
       ],
     });
 
@@ -353,6 +477,15 @@ describe('membershipDateLabel', () => {
       ),
     ).toBeNull();
   });
+
+  /** Ended by an upgrade: nothing renews and nothing is due. */
+  it('says nothing about a membership an upgrade replaced', () => {
+    expect(
+      membershipDateLabel(
+        membership({ subscription: subscription({ status: TierSubscriptionStatus.REPLACED }) }),
+      ),
+    ).toBeNull();
+  });
 });
 
 describe('formatting', () => {
@@ -416,6 +549,57 @@ describe('formatting', () => {
   it('rounds a USDC balance down to the cent', () => {
     expect(formatUsdHeld(198.999)).toBe('$198.99');
     expect(formatUsdHeld(199)).toBe('$199.00');
+  });
+
+  it('writes a price compactly for running copy', () => {
+    expect(formatPriceUsd(999)).toBe('$999');
+    expect(formatPriceUsd(1_049)).toBe('$1,049');
+    expect(formatPriceUsd(149.5)).toBe('$149.5');
+  });
+
+  describe('a sale', () => {
+    it('reads as the sale price with the annual fee it replaces, in plain text', () => {
+      expect(formatAnnualPrice(ultraUpgrade())).toBe('$799/year (was $999)');
+      expect(formatYearlyPrice(159, 199)).toBe('$159/year (was $199)');
+    });
+
+    it('reads as just the price outside a sale', () => {
+      expect(formatAnnualPrice(offer())).toBe('$199/year');
+      expect(formatYearlyPrice(999, 999)).toBe('$999/year');
+      expect(formatYearlyPrice(999)).toBe('$999/year');
+    });
+
+    it('reads as nothing for a tier that is not sold for cash', () => {
+      expect(formatAnnualPrice(offer({ annualFeeUsd: null }))).toBe('');
+      expect(formatAnnualPrice(undefined)).toBe('');
+    });
+
+    /** The discount is the first year's only, and the review must say what renews. */
+    it('states the renewal beside the sale price', () => {
+      expect(formatRenewalTerms(ultraUpgrade())).toBe('First year $799, then $999/year');
+      expect(formatRenewalTerms(offer())).toBe('Renews at $199/year');
+      expect(formatRenewsAt(ultraUpgrade())).toBe('Renews at $999/year');
+      expect(formatRenewalTerms(offer({ annualFeeUsd: null }))).toBe('');
+    });
+
+    it('says when the offer ends, only while it runs', () => {
+      expect(formatSaleEnds(ultraUpgrade())).toBe('Offer ends Nov 30, 2026');
+      expect(formatSaleEnds(ultraUpgrade({ firstYearFeeUsd: 999 }))).toBe('');
+      expect(formatSaleEnds(ultraUpgrade({ saleEndsAt: null }))).toBe('');
+    });
+  });
+
+  describe('an upgrade that replaces a membership', () => {
+    it('says the old one ends now and is not refunded', () => {
+      expect(formatReplacementNotice(ultraUpgrade())).toBe(
+        'Your Prime membership ends today and Ultra starts now for 12 months. The time left on Prime isn’t refunded.',
+      );
+    });
+
+    it('says nothing when there is nothing to replace', () => {
+      expect(formatReplacementNotice(ultraUpgrade({ replacesSubscription: null }))).toBe('');
+      expect(formatReplacementNotice(offer())).toBe('');
+    });
   });
 
   it('writes a lock term in months', () => {

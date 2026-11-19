@@ -2,6 +2,7 @@ import {
   aiApiLimitProgress,
   aiApiModelDiscount,
   aiApiModelIsFree,
+  aiApiModelPriceExample,
   aiApiModelTag,
   aiApiSharedTierRate,
   formatAiApiBillingFunds,
@@ -168,6 +169,7 @@ describe('model prices', () => {
     [0.266, '$0.27'],
     [0.2166, '$0.22'],
     [0.0722, '$0.072'],
+    [0.05, '$0.05'],
     [0.003612, '$0.004'],
     [0.00784, '$0.008'],
     [0.007288, '$0.007'],
@@ -206,12 +208,57 @@ describe('model prices', () => {
     expect(aiApiModelDiscount({ ...opus, inputUsdPerMTok: 20, outputUsdPerMTok: 80 })).toBeNull();
   });
 
+  it('prices a million blended tokens before and after cashback without rounding the inputs', () => {
+    const model = {
+      inputUsdPerMTok: 0.38,
+      outputUsdPerMTok: 1.2,
+      cachedInputUsdPerMTok: 0.1,
+      officialInputUsdPerMTok: 4,
+      officialOutputUsdPerMTok: 20,
+    };
+    const example = aiApiModelPriceExample(model, 0.5);
+    expect(example.official).toBe(8);
+    expect(formatAiApiTokenPrice(example.solid)).toBe('$0.59');
+    expect(formatAiApiTokenPrice(example.afterCashback)).toBe('$0.29');
+    expect(example.savingsAfterCashback).toBe(96);
+
+    const noComparison = aiApiModelPriceExample({ ...model, officialOutputUsdPerMTok: null }, 0.5);
+    expect(noComparison.official).toBeNull();
+    expect(noComparison.savingsAfterCashback).toBeNull();
+  });
+
   it('tags a model we charge nothing for as free, list price or not', () => {
     const free = { ...opus, inputUsdPerMTok: 0, outputUsdPerMTok: 0, cachedInputUsdPerMTok: 0 };
     expect(aiApiModelIsFree(free)).toBe(true);
     expect(aiApiModelTag(free)).toBe('Free');
     expect(aiApiModelTag({ ...free, officialInputUsdPerMTok: null })).toBe('Free');
     expect(aiApiModelIsFree({ ...free, cachedInputUsdPerMTok: 0.01 })).toBe(false);
+  });
+
+  it("takes the backend's word on free over the prices it can see", () => {
+    const free = { ...opus, inputUsdPerMTok: 0, outputUsdPerMTok: 0, cachedInputUsdPerMTok: 0 };
+    // Priced for cache writes only, which the app isn't sent: not free.
+    expect(aiApiModelIsFree({ ...free, free: false })).toBe(false);
+    expect(aiApiModelTag({ ...free, free: false, officialInputUsdPerMTok: null })).toBeNull();
+    // The flag wins over the prices both ways, not only where they agree.
+    expect(aiApiModelIsFree({ ...opus, free: true })).toBe(true);
+    expect(aiApiModelIsFree({ ...opus, free: false })).toBe(false);
+  });
+
+  it('claims no saving for a model that is not free but shows only $0 prices', () => {
+    // Billed for cache writes, which the app isn't sent a price for.
+    const cacheWriteOnly = {
+      ...opus,
+      inputUsdPerMTok: 0,
+      outputUsdPerMTok: 0,
+      cachedInputUsdPerMTok: 0,
+      free: false,
+    };
+    expect(aiApiModelDiscount(cacheWriteOnly)).toBeNull();
+    expect(aiApiModelTag(cacheWriteOnly)).toBeNull();
+    expect(aiApiModelPriceExample(cacheWriteOnly, 0.5).savingsAfterCashback).toBeNull();
+    // A priced model still shows its saving.
+    expect(aiApiModelTag(opus)).toBe('−97%');
   });
 
   it('tags a priced model with its saving, and nothing without a list price', () => {

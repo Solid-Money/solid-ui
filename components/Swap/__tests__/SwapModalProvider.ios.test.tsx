@@ -35,6 +35,7 @@ jest.mock('@/components/Swap/flow/SwapFlow', () => ({
     'open_pay_picker',
     'open_get_picker',
     'open_review',
+    'open_review',
     'open_swapped',
     'open_on_its_way',
   ],
@@ -191,8 +192,57 @@ describe('with the new swap flow', () => {
     const modal = root.root.findByType('ResponsiveModal');
     expect(modal.props.title).toBe('You get');
     expect(modal.props.showBackButton).toBe(true);
+    expect(modal.props.showCloseButton).toBe(false);
     act(() => modal.props.onBackPress());
     expect(mockSetModal).toHaveBeenCalledWith(SWAP_MODAL.OPEN_FORM);
+    mockSetModal.mockClear();
+    act(() => modal.props.onOpenChange(false));
+    expect(mockSetModal).toHaveBeenCalledWith(SWAP_MODAL.OPEN_FORM);
+    act(() => root.unmount());
+  });
+
+  it('keeps the popup mounted across the form and both pickers', () => {
+    mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+    const root = render();
+    const layout = () => {
+      const {
+        compactControls,
+        containerClassName,
+        fillViewportHeight,
+        shouldAnimate,
+        titleTextClassName,
+        wideScreenHeight,
+      } = root.root.findByType('ResponsiveModal').props;
+      return {
+        compactControls,
+        containerClassName,
+        fillViewportHeight,
+        shouldAnimate,
+        titleTextClassName,
+        wideScreenHeight,
+      };
+    };
+    const formLayout = layout();
+    const formKey = root.root.findByType('ResponsiveModal').props.contentKey;
+    expect(formLayout).toMatchObject({
+      compactControls: true,
+      fillViewportHeight: true,
+      shouldAnimate: false,
+    });
+    expect(formLayout.wideScreenHeight).toBeGreaterThan(0);
+
+    for (const step of [
+      SWAP_MODAL.OPEN_PAY_PICKER,
+      SWAP_MODAL.OPEN_GET_PICKER,
+      SWAP_MODAL.OPEN_REVIEW,
+    ]) {
+      mockCurrentModal = step;
+      act(() => root.update(<SwapModalProvider />));
+      expect(layout()).toEqual(formLayout);
+      expect(root.root.findByType('ResponsiveModal').props.contentKey).toBe(formKey);
+      expect(root.root.findByType('SwapFlow').props.name).toBe(step.name);
+    }
+
     act(() => root.unmount());
   });
 

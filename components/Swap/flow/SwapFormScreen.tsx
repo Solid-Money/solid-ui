@@ -137,7 +137,7 @@ const SwapFormScreen: React.FC = () => {
 
   return (
     <View className="flex-1 justify-between gap-8">
-      <View className="gap-2">
+      <View className="gap-2 pt-4">
         <SwapAmountCard
           label="You pay"
           asset={fromAsset}
