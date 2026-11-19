@@ -204,10 +204,8 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   const pagerRef = useRef<ScrollView>(null);
   const startIndex = Math.max(0, Math.min(initialStep, steps.length - 1));
   const [activeIndex, setActiveIndex] = useState(startIndex);
-  const activeIndexRef = useRef(startIndex);
-  activeIndexRef.current = activeIndex;
   // Until the pager has been placed on the linked slide, its scroll events
-  // (a web pager reports x = 0 as it mounts) must not move the slide back to 0.
+  // must not move the slide back to the first.
   const positionedRef = useRef(startIndex === 0);
   const [isClosing, setIsClosing] = useState(false);
   const closedRef = useRef(false);
@@ -216,14 +214,16 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   const cta = step ? slideCta(step) : null;
   const isLast = activeIndex >= steps.length - 1;
 
+  // Mounted only while open (see LazyWhatsNewModal), so once per showing, with
+  // the slide it opened on: 1 normally, the linked one from a push.
   useEffect(() => {
     if (isOpen) {
       track(TRACKING_EVENTS.WHATS_NEW_VIEWED, {
         ...whatsNewViewedProps(whatsNew, 'popup'),
-        step: activeIndexRef.current + 1,
+        step: startIndex + 1,
       });
     }
-  }, [isOpen, whatsNew]);
+  }, [isOpen, startIndex, whatsNew]);
 
   const dismiss = (method: WhatsNewDismissMethod) => {
     if (closedRef.current) return;
@@ -262,18 +262,16 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
     [layout.pageWidth, steps.length],
   );
 
-  // Puts the pager on the active slide once its width is known, and again when
-  // the width changes: on mount that is the slide a link named; after a
-  // rotation or a window resize it keeps the slide the user was on.
-  useEffect(() => {
+  // Puts the pager on the active slide whenever its slides are laid out. The
+  // first time, that is the slide a link named (contentOffset covers iOS; web
+  // and Android only scroll once there is content to scroll). After a rotation
+  // or a window resize it keeps the slide the user was on.
+  const placePager = useCallback(() => {
     if (!layout.pageWidth) return;
-    const index = positionedRef.current ? activeIndexRef.current : startIndex;
-    const frame = requestAnimationFrame(() => {
-      pagerRef.current?.scrollTo({ x: index * layout.pageWidth, animated: false });
-      positionedRef.current = true;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [layout.pageWidth, startIndex]);
+    const index = positionedRef.current ? activeIndex : startIndex;
+    pagerRef.current?.scrollTo({ x: index * layout.pageWidth, animated: false });
+    positionedRef.current = true;
+  }, [activeIndex, layout.pageWidth, startIndex]);
 
   // Follows a swipe. Web doesn't always send momentum-end after a manual
   // scroll, so the nearest page is taken on every scroll event.
@@ -379,6 +377,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
               style={{ width: layout.pageWidth }}
               // Opens on the linked slide without first drawing slide 1.
               contentOffset={{ x: startIndex * layout.pageWidth, y: 0 }}
+              onContentSizeChange={placePager}
             >
               {steps.map((item, index) => (
                 <Slide

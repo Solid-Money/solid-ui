@@ -41,7 +41,12 @@ describe('useWhatsNew auto-open', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockStorage.clear();
-    useWhatsNewStore.setState({ whatsNew: announcement, isVisible: false, failedIds: [], request: null });
+    useWhatsNewStore.setState({
+      whatsNew: announcement,
+      isVisible: false,
+      failedIds: [],
+      request: null,
+    });
     (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
   });
 
@@ -70,6 +75,24 @@ describe('useWhatsNew auto-open', () => {
 
   it("doesn't retry a popup whose image failed this session", async () => {
     useWhatsNewStore.setState({ failedIds: [announcement._id] });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+
+    act(() => jest.advanceTimersByTime(10000));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
+  it("holds back while a link's ask is being answered", async () => {
+    // A push tapped on a cold start: the link's refresh is still out when Home
+    // is ready, and it opens the popup on the page it names.
+    useWhatsNewStore.setState({ request: { id: announcement._id, step: 2 } });
+    (useQuery as jest.Mock).mockReturnValue({
+      data: undefined,
+      refetch: jest.fn(() => new Promise(() => {})),
+    });
     let renderer: ReturnType<typeof create>;
     await act(async () => {
       renderer = create(<Probe ready />);
@@ -189,6 +212,28 @@ describe('useWhatsNew opening a linked page', () => {
       whatsNew: replacement,
       isVisible: true,
       initialStep: 0,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('opens a single image or video as it is, whatever page the link named', async () => {
+    const single: WhatsNew = {
+      ...active,
+      format: 'single',
+      presentation: 'popup',
+      media: { type: 'image', url: 'https://cdn.test/a.png', width: 1080, height: 1350, alt: '' },
+      steps: [],
+    };
+    serverHas(single);
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: single,
+      isVisible: true,
+      initialStep: 0,
+      request: null,
     });
     act(() => renderer.unmount());
   });
