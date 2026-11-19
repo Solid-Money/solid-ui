@@ -3473,7 +3473,13 @@ export type ProvisioningStepInput = {
 };
 
 export interface WhatsNewStep {
+  /** The slide's image, or its video's poster. */
   imageUrl: string;
+  /** A short line over the title, e.g. "Spend your crypto". */
+  eyebrow?: string;
+  /** A few seconds of muted loop, played in place of the image. */
+  videoUrl?: string;
+  videoDurationSec?: number;
   title: string;
   text: string;
   buttonLabel?: string;

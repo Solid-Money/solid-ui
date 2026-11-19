@@ -212,7 +212,7 @@ SplashScreen.setOptions({
 // WhatsNew wrapper component - must be inside QueryClientProvider
 // since useWhatsNew uses React Query hooks.
 // Note: Only rendered when hasSelectedUser is true (see conditional render below)
-// Uses LazyWhatsNewModal to defer react-native-reanimated-carousel bundle
+// Uses LazyWhatsNewModal to keep both What's New formats out of the main bundle
 function WhatsNewWrapper() {
   const pathname = usePathname();
   const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
