@@ -29,10 +29,16 @@ const STALE_MS = 5 * 60 * 1000;
  * Cached for five minutes. Cohort membership changes by hand, at human pace, and a per-render
  * refetch of a boolean that almost never moves is a request for nothing.
  */
-export const useCardSpendModeAccess = (): { isEnabled: boolean; isLoading: boolean } => {
+export const useCardSpendModeAccess = (): {
+  isEnabled: boolean;
+  isLoading: boolean;
+  /** The read failed: `isEnabled` is false for want of an answer, not because it said no. */
+  isError: boolean;
+  refetch: () => Promise<unknown>;
+} => {
   const { user } = useUser();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: [CARD_SPEND_MODE_ACCESS_QUERY_KEY, user?.userId],
     queryFn: getCardSpendModeAccess,
     // Nothing to ask about without a signed-in user, and the request would 401.
@@ -46,6 +52,8 @@ export const useCardSpendModeAccess = (): { isEnabled: boolean; isLoading: boole
   return {
     isEnabled: data?.enabled === true,
     isLoading: !!user?.userId && isLoading,
+    isError: !!user?.userId && isError,
+    refetch,
   };
 };
 

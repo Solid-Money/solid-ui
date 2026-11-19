@@ -1,5 +1,4 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { formatUnits } from 'viem';
 
 import { CollateralLogo } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import {
@@ -128,15 +127,35 @@ export const penaltyText = (loan: Pick<LoanModel, 'penaltyBps'>): string =>
 
 /**
  * Token units for people: whole and two places for most balances, enough significant digits
- * for a small amount of an expensive coin ("0.00572").
+ * for a small amount of an expensive coin ("0.00572"). Worked in bigint, never through a float.
  */
 export const formatTokenUnits = (amount: bigint, decimals: number): string => {
-  const value = Number(formatUnits(amount, decimals));
-  if (value === 0) return '0';
-  if (Math.abs(value) >= 1) {
-    return value.toLocaleString('en-US', { maximumFractionDigits: value >= 1000 ? 2 : 4 });
+  if (amount === 0n) return '0';
+  const sign = amount < 0n ? '-' : '';
+  const abs = amount < 0n ? -amount : amount;
+  const one = 10n ** BigInt(decimals);
+  if (abs >= one) {
+    const digits = abs >= 1000n * one ? 2 : 4;
+    return sign + renderScaled(roundToFraction(abs, decimals, digits), digits);
   }
-  return value.toLocaleString('en-US', { maximumSignificantDigits: 3 });
+  // Under 1, three significant digits: the zeros after the point, then three more places.
+  const digits = decimals - abs.toString().length + 3;
+  return sign + renderScaled(roundToFraction(abs, decimals, digits), digits);
+};
+
+/** `amount` (in `decimals`) as an integer of `digits` fraction places, rounded half up. */
+const roundToFraction = (amount: bigint, decimals: number, digits: number): bigint => {
+  if (digits >= decimals) return amount * 10n ** BigInt(digits - decimals);
+  const divisor = 10n ** BigInt(decimals - digits);
+  return (amount + divisor / 2n) / divisor;
+};
+
+/** "1,234.5": grouped whole part, fraction without trailing zeros. */
+const renderScaled = (scaled: bigint, digits: number): string => {
+  const unit = 10n ** BigInt(digits);
+  const whole = (scaled / unit).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const fraction = (scaled % unit).toString().padStart(digits, '0').replace(/0+$/, '');
+  return fraction ? `${whole}.${fraction}` : whole;
 };
 
 export const PillButton = ({

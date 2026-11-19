@@ -269,6 +269,15 @@ describe('buildLoan — when a sale can happen', () => {
   });
 });
 
+describe('pay-down suggestion', () => {
+  it('never suggests repaying with an asset that would lower the loan’s health', () => {
+    // Health 0.90 against soUSD's 0.95 threshold: each dollar repaid with it removes more cover
+    // than debt, and it cannot clear the loan.
+    const underwater = position(105.56, [asset('soUSD', 100, 0.9, 0.95)]);
+    expect(buildLoan(underwater, NOW).payDown).toBeNull();
+  });
+});
+
 describe('unlocking while the loan stays open', () => {
   const { position: six } = sixAssets();
   const loan = buildLoan(six, NOW);
@@ -342,6 +351,23 @@ describe('unlocking while the loan stays open', () => {
     });
     expect(quote.requiresFullRepay).toBe(true);
     expect(quote.repayUsd).toBe(usd(400));
+  });
+
+  it('repays to the cent rather than the whole loan when the $5 step would reach the debt', () => {
+    const small = position(10, [asset('soUSD', 100, 0.9, 0.95)]);
+    const smallLoan = buildLoan(small, NOW);
+    const quote = quoteUnlock({
+      position: small,
+      loan: smallLoan,
+      asset: smallLoan.assets[0],
+      amount: usd(97),
+      source: { kind: 'wallet' },
+      nowSeconds: NOW,
+    });
+    // 10 − (90 − 97 × 90%) = 7.30 → 7.31; the $5 step would be 10, the whole debt.
+    expect(quote.requiresFullRepay).toBe(false);
+    expect(quote.repayUsd).toBe(usd(7.31));
+    expect(quote.unavailableReason).toBeNull();
   });
 
   it('sizes unlocking all of one asset from the rest of the loan', () => {

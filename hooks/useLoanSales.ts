@@ -21,6 +21,11 @@ export interface LoanSaleEvent {
   transactionHash: `0x${string}`;
   /** Unix seconds. */
   timestamp: number;
+  /**
+   * The penalty the sale took, as the token's `liquidationBonusBps` stood at its block. Null when
+   * that block's state could not be read: the token's terms today may not be the sale's.
+   */
+  bonusBps: number | null;
 }
 
 /** How far back a sale is still news on the Credit page. */
@@ -28,6 +33,9 @@ export const SALE_LOOKBACK_SECONDS = 7 * 24 * 60 * 60;
 
 /** Blocks sampled to measure a chain's block time; block times change (Base went to 0.2s). */
 const BLOCK_TIME_SAMPLE = 10_000n;
+
+/** Doublings of the lookback allowed when its start block is still inside the week. */
+const MAX_LOOKBACK_STEPS = 4;
 
 /** How often the open Credit page looks for a new sale: nothing else reports one. */
 const SALES_REFRESH_MS = 60_000;
@@ -55,9 +63,18 @@ const readSales = async (
     sampledBlocks > 0
       ? Math.max(Number(head.timestamp - sample.timestamp) / sampledBlocks, 0.05)
       : 1;
-  const span = BigInt(Math.ceil((SALE_LOOKBACK_SECONDS / secondsPerBlock) * 1.1));
-  const fromBlock = latest > span ? latest - span : 0n;
   const since = Number(head.timestamp) - SALE_LOOKBACK_SECONDS;
+  // The estimate is only a starting point: blocks may have been slower earlier in the week. Step
+  // further back until the start block is at or before the week's start, so no sale is missed;
+  // anything older is cut by timestamp below. Usually one read confirms the estimate.
+  let span = BigInt(Math.ceil((SALE_LOOKBACK_SECONDS / secondsPerBlock) * 1.1));
+  let fromBlock = latest > span ? latest - span : 0n;
+  for (let step = 0; step < MAX_LOOKBACK_STEPS && fromBlock > 0n; step += 1) {
+    const start = await client.getBlock({ blockNumber: fromBlock });
+    if (Number(start.timestamp) <= since) break;
+    span *= 2n;
+    fromBlock = latest > span ? latest - span : 0n;
+  }
 
   const events = await client.getContractEvents({
     address: moduleAddress,
@@ -79,6 +96,40 @@ const readSales = async (
     ),
   );
 
+  // The bonus as configured at each sale's block, one historical read per token and block.
+  const bonusKey = (token: Address, blockNumber: bigint) => `${token.toLowerCase()}:${blockNumber}`;
+  const bonusReads = [
+    ...new Map(
+      events.flatMap(event =>
+        event.args.collateralToken
+          ? [
+              [
+                bonusKey(event.args.collateralToken, event.blockNumber),
+                { token: event.args.collateralToken, blockNumber: event.blockNumber },
+              ] as const,
+            ]
+          : [],
+      ),
+    ).entries(),
+  ];
+  const bonuses = new Map(
+    await Promise.all(
+      bonusReads.map(async ([key, { token, blockNumber }]) => {
+        const bonus = await client
+          .readContract({
+            address: moduleAddress,
+            abi: SolidCashModuleV2_ABI,
+            functionName: 'getTokenConfig',
+            args: [token],
+            blockNumber,
+          })
+          .then(config => Number(config.liquidationBonusBps))
+          .catch(() => null);
+        return [key, bonus] as const;
+      }),
+    ),
+  );
+
   return events
     .flatMap(event => {
       const { collateralToken, repaidUsd, collateralSeized } = event.args;
@@ -91,6 +142,7 @@ const readSales = async (
           seized: collateralSeized,
           transactionHash: event.transactionHash,
           timestamp: timestamps.get(event.blockNumber) ?? 0,
+          bonusBps: bonuses.get(bonusKey(collateralToken, event.blockNumber)) ?? null,
         },
       ];
     })

@@ -21,7 +21,14 @@ import { CARD_SPEND_REGISTRATION_QUERY_KEY } from '@/hooks/useCardSpendRegistrat
 import useUser from '@/hooks/useUser';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { track } from '@/lib/analytics';
-import { buildLoan, quoteUnlock, unitsCeil, type UnlockRepaySource, WAD } from '@/lib/creditRisk';
+import {
+  buildLoan,
+  quoteUnlock,
+  unitsCeil,
+  type UnlockRepaySource,
+  valueOf,
+  WAD,
+} from '@/lib/creditRisk';
 import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { useUserStore } from '@/store/useUserStore';
@@ -82,17 +89,19 @@ const describeFailure = (failure: Error): string | null =>
 
 const sameToken = (a: Address, b: Address) => a.toLowerCase() === b.toLowerCase();
 
+/** Whether two reads of the pending unlock are the same request. */
+export const isSamePendingUnlock = (
+  a: PendingCollateralUnlock | null | undefined,
+  b: PendingCollateralUnlock | null | undefined,
+): boolean =>
+  !!a && !!b && sameToken(a.token, b.token) && a.amount === b.amount && a.readyAt === b.readyAt;
+
 /** Refuses when the unlock waiting on the loan is not the one the cardholder is looking at. */
 const requireSamePending = (
   pending: PendingCollateralUnlock,
   expected: PendingCollateralUnlock | undefined,
 ) => {
-  if (
-    expected &&
-    (!sameToken(pending.token, expected.token) ||
-      pending.amount !== expected.amount ||
-      pending.readyAt !== expected.readyAt)
-  ) {
+  if (expected && !isSamePendingUnlock(pending, expected)) {
     throw new UnlockUserError(
       'The unlock waiting on this loan has changed. Check it and try again.',
     );
@@ -406,9 +415,15 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
       if (position.debtUsd > 0n) {
         const loan = buildLoan(position, Math.floor(Date.now() / 1000));
         const asset = loan.assets.find(candidate => sameToken(candidate.token, pending.token));
-        const value = asset ? (releases * asset.priceUsd) / 10n ** BigInt(asset.decimals) : 0n;
-        const removedPower = asset?.countsTowardPower ? (value * asset.ltvWad) / WAD : 0n;
-        if (position.debtUsd > loan.powerUsd - removedPower) {
+        // The asset's power from what stays locked, rounded as the module values a balance, not
+        // the released part's power subtracted: the two floors can differ by a unit.
+        const powerAfter = asset?.countsTowardPower
+          ? loan.powerUsd -
+            asset.powerUsd +
+            (valueOf(asset.escrowed - releases, asset.priceUsd, asset.decimals) * asset.ltvWad) /
+              WAD
+          : loan.powerUsd;
+        if (position.debtUsd > powerAfter) {
           throw new UnlockBlockedError(
             'needs-more-cover',
             'Prices moved while you waited, so this loan needs more cover before it can let go.',
@@ -546,8 +561,14 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
     isRequesting: requestMutation.isPending,
     isCancelling: cancelMutation.isPending,
     isFinishing: finishMutation.isPending,
-    /** The last finish was refused because the loan needs more cover. */
-    finishBlocked: finishMutation.error instanceof UnlockBlockedError ? finishMutation.error : null,
+    /**
+     * The last finish refusal, for the request it was made on (`for`). Show it only while that
+     * same request is still the pending one: after a cancel and a new request it says nothing.
+     */
+    finishBlocked:
+      finishMutation.error instanceof UnlockBlockedError
+        ? { error: finishMutation.error, for: finishMutation.variables }
+        : null,
     error,
     clearError: useCallback(() => {
       setError(null);

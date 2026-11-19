@@ -455,10 +455,25 @@ const PendingUnlock = ({
   const pending = loan.pendingUnlock!;
   const asset: LoanAsset | undefined = pending.asset;
   const name = asset ? assetName(asset) : 'Collateral';
-  const value = asset
-    ? format(valueOf(pending.amount, asset.priceUsd, asset.decimals))
-    : formatTokenUnits(pending.amount, 18);
+  // The module releases the request clamped to what is still locked: a sale during the wait can
+  // have taken part, or all, of it. `pending.amount` itself stays as read, for matching requests.
+  const releases = asset ? (asset.escrowed < pending.amount ? asset.escrowed : pending.amount) : 0n;
+  const value = asset ? format(valueOf(releases, asset.priceUsd, asset.decimals)) : null;
   const remaining = pending.readyAt - now;
+
+  if (releases === 0n) {
+    return (
+      <View style={styles.pending}>
+        <View style={styles.headerText}>
+          <Text className="text-[15px] font-medium text-white">{name}</Text>
+          <Text className="text-[13px] text-white/60">
+            None of this unlock is still locked. Cancel it to unlock something else.
+          </Text>
+        </View>
+        <PillButton label="Cancel" size="compact" onPress={onCancel} loading={isCancelling} />
+      </View>
+    );
+  }
 
   if (finishBlocked) {
     return (
@@ -542,17 +557,29 @@ export const SaleNotice = ({
     loan?.assets.find(candidate => candidate.token.toLowerCase() === sale.token.toLowerCase()) ??
     knownAssets.find(candidate => candidate.token.toLowerCase() === sale.token.toLowerCase());
   const name = asset ? assetName(asset) : 'collateral';
-  const bonus = BigInt(asset?.liquidationBonusBps ?? 0);
-  const taken = (sale.repaidUsd * (10_000n + bonus)) / 10_000n;
+  const sold = `${formatWhen(sale.timestamp)}: we sold ${asset ? `${formatTokenUnits(sale.seized, asset.decimals)} ${name}` : name}`;
+  const which = loan ? 'this' : 'your';
+  // The penalty as the sale's own block had it; today's terms may differ, so without that read
+  // only the recorded figures are shown.
+  const taken =
+    sale.bonusBps === null ? null : (sale.repaidUsd * (10_000n + BigInt(sale.bonusBps))) / 10_000n;
   const link = explorerTxUrl?.(sale.transactionHash);
   const body: ReactNode = (
     <Sentence
       className="text-[14px] leading-[20px] text-white/80"
-      segments={[
-        `${formatWhen(sale.timestamp)}: we sold ${asset ? `${formatTokenUnits(sale.seized, asset.decimals)} ${name}` : name}, about `,
-        { bold: format(taken) },
-        `, to cover ${format(sale.repaidUsd)} of ${loan ? 'this' : 'your'} loan. ${format(taken - sale.repaidUsd)} of that was the penalty.`,
-      ]}
+      segments={
+        taken === null
+          ? [
+              `${sold} to cover `,
+              { bold: format(sale.repaidUsd) },
+              ` of ${which} loan, plus a penalty.`,
+            ]
+          : [
+              `${sold}, about `,
+              { bold: format(taken) },
+              `, to cover ${format(sale.repaidUsd)} of ${which} loan. ${format(taken - sale.repaidUsd)} of that was the penalty.`,
+            ]
+      }
     />
   );
   return (

@@ -427,8 +427,18 @@ export const readCreditInstance = async (
  * repay flow, so a Base repayment goes to exactly the module the position was read from.
  */
 export const useBaseCreditInstance = () => {
-  const { isEnabled: isSpendModeCohort, isLoading: isAccessLoading } = useCardSpendModeAccess();
-  const { data: spendDeployments, isLoading: isDeploymentsLoading } = useCardSpendDeployments();
+  const {
+    isEnabled: isSpendModeCohort,
+    isLoading: isAccessLoading,
+    isError: isAccessError,
+    refetch: refetchAccess,
+  } = useCardSpendModeAccess();
+  const {
+    data: spendDeployments,
+    isLoading: isDeploymentsLoading,
+    isError: isDeploymentsError,
+    refetch: refetchDeployments,
+  } = useCardSpendDeployments();
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === baseChain.id,
   );
@@ -440,7 +450,21 @@ export const useBaseCreditInstance = () => {
     isSpendModeCohort && baseDeployment?.enabled === true && !!moduleAddress && !!lensAddress;
 
   // `isLive` reads false until both gates answer; this says whether that false is final yet.
-  return { isLive, isLoading: isAccessLoading || isDeploymentsLoading, moduleAddress, lensAddress };
+  // A gate that failed leaves it false too, which is not a Safe with no Base loan.
+  const isError = isAccessError || (isSpendModeCohort && isDeploymentsError);
+  return {
+    isLive,
+    isLoading: isAccessLoading || isDeploymentsLoading,
+    isError,
+    /** Retries whichever gate failed. */
+    refetchGate: () =>
+      Promise.all([
+        isAccessError ? refetchAccess() : undefined,
+        isDeploymentsError ? refetchDeployments() : undefined,
+      ]),
+    moduleAddress,
+    lensAddress,
+  };
 };
 
 /**
@@ -503,6 +527,8 @@ export const useCardCreditPositions = ({
   const {
     isLive: readsBase,
     isLoading: isBaseGateLoading,
+    isError: isBaseGateError,
+    refetchGate: refetchBaseGate,
     moduleAddress: baseModule,
     lensAddress: baseLens,
   } = useBaseCreditInstance();
@@ -545,12 +571,17 @@ export const useCardCreditPositions = ({
     // Base's gate counts too: until it answers, a Base-only borrower would read as owing nothing.
     isLoading:
       (readsFuse && fuseQuery.isLoading) || isBaseGateLoading || (readsBase && baseQuery.isLoading),
-    /** Some instance's read failed, so a loan there may be missing from `data`. */
-    isError: (readsFuse && fuseQuery.isError) || (readsBase && baseQuery.isError),
+    /**
+     * Some instance's read failed, so a loan there may be missing from `data` — including the Base
+     * gate, which otherwise reads as "no Base loan".
+     */
+    isError:
+      (readsFuse && fuseQuery.isError) || isBaseGateError || (readsBase && baseQuery.isError),
     // Only queries that can run: a manual refetch ignores `enabled` and would read without a lens.
     refetch: () =>
       Promise.all([
         readsFuse && safeAddress ? fuseQuery.refetch() : undefined,
+        isBaseGateError ? refetchBaseGate() : undefined,
         readsBase && safeAddress && baseModule && baseLens ? baseQuery.refetch() : undefined,
       ]),
   };

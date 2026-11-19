@@ -43,6 +43,9 @@ export const CAUTION_HF_WAD = (105n * WAD) / 100n;
  */
 export const PAY_DOWN_TARGET_HF_WAD = (110n * WAD) / 100n;
 
+/** A cent, for a repayment that the $5 step would round onto the whole debt. */
+const CENT_USD = USD / 100n;
+
 /** Repayments that size an unlock are rounded up to this, so a small move cannot block it. */
 export const UNLOCK_REPAY_STEP_USD = 5n * USD;
 
@@ -433,6 +436,7 @@ export const suggestPayDown = (
   const target = PAY_DOWN_TARGET_HF_WAD;
   const shortfall = (target * loan.debtUsd) / WAD - loan.coverUsd;
   if (shortfall <= 0n) return null;
+  const healthNow = (loan.coverUsd * WAD) / loan.debtUsd;
 
   // Sized per asset, then compared on what each can actually reach: a tiny balance at the lowest
   // threshold is no use if a larger one gets the loan back to Healthy.
@@ -447,6 +451,9 @@ export const suggestPayDown = (
       const amountUsd = min(min(roundUpToStep(exact), affordable), loan.debtUsd);
       if (amountUsd <= 0n) return [];
       const hfAfterWad = healthAfterPayDown(loan, asset, amountUsd);
+      // Repaying with an asset whose threshold (with its fee) is above the loan's health lowers
+      // health: the module allows that under 1.0, but it is no way out. Only a clear or a rise.
+      if (hfAfterWad !== null && hfAfterWad <= healthNow) return [];
       return [
         {
           asset,
@@ -576,63 +583,88 @@ export const quoteUnlock = ({
   const removedPower = asset.countsTowardPower ? (valueUsd * asset.ltvWad) / WAD : 0n;
   const neededUsd = max(debtAtUnlock(loan) - (loan.powerUsd - removedPower), 0n);
 
-  let repayUsd = 0n;
-  let sourceRemovedUnits = 0n;
   let unavailableReason: string | null = null;
-
+  // The repayment the unlock needs from this source, before any rounding.
+  let exactRepayUsd = 0n;
   if (neededUsd > 0n) {
     if (source.kind === 'wallet') {
-      repayUsd = roundUpToStep(neededUsd);
+      exactRepayUsd = neededUsd;
     } else {
       const s = source.asset;
-      const fee = BigInt(s.repayFeeBps);
-      const takesPower = s.countsTowardPower ? (s.ltvWad * (BPS + fee)) / BPS : 0n;
-      if (takesPower >= WAD) {
-        unavailableReason = `${s.symbol} can’t cover this on its own.`;
-      } else {
-        repayUsd = roundUpToStep((neededUsd * WAD) / (WAD - takesPower));
-        // As `sizeCollateralRepay` takes it: the principal rounded up in token units, then the
-        // fee on those units rounded up on its own.
-        const principalUnits = unitsCeil(repayUsd, s.priceUsd, s.decimals);
-        sourceRemovedUnits = principalUnits + (principalUnits * fee + BPS - 1n) / BPS;
-        if (sourceRemovedUnits > s.escrowed) {
-          unavailableReason = `Not enough ${s.symbol} locked in this loan.`;
-        }
-      }
+      const takesPower = s.countsTowardPower
+        ? (s.ltvWad * (BPS + BigInt(s.repayFeeBps))) / BPS
+        : 0n;
+      if (takesPower >= WAD) unavailableReason = `${s.symbol} can’t cover this on its own.`;
+      else exactRepayUsd = (neededUsd * WAD + WAD - takesPower - 1n) / (WAD - takesPower);
     }
   }
 
-  const requiresFullRepay = neededUsd > 0n && repayUsd >= loan.debtUsd;
-  if (requiresFullRepay) repayUsd = loan.debtUsd;
-  const debtAfterUsd = loan.debtUsd - repayUsd;
-
-  const collateral = position.collateral.map(entry => {
-    const isAsset = entry.token.toLowerCase() === asset.token.toLowerCase();
-    const isSource =
-      source.kind === 'collateral' &&
-      entry.token.toLowerCase() === source.asset.token.toLowerCase();
-    if (!isAsset && !isSource) return entry;
-    const escrowed = max(
-      entry.escrowed - (isAsset ? units : 0n) - (isSource ? sourceRemovedUnits : 0n),
-      0n,
+  /** The loan once `repayUsd` is repaid and the unlock is finished, and whether that holds. */
+  const project = (repayUsd: bigint) => {
+    let sourceRemovedUnits = 0n;
+    let reason: string | null = null;
+    if (repayUsd > 0n && source.kind === 'collateral') {
+      const s = source.asset;
+      // As `sizeCollateralRepay` takes it: the principal rounded up in token units, then the
+      // fee on those units rounded up on its own.
+      const principalUnits = unitsCeil(repayUsd, s.priceUsd, s.decimals);
+      sourceRemovedUnits =
+        principalUnits + (principalUnits * BigInt(s.repayFeeBps) + BPS - 1n) / BPS;
+      if (sourceRemovedUnits > s.escrowed) reason = `Not enough ${s.symbol} locked in this loan.`;
+    }
+    const debtAfterUsd = loan.debtUsd - repayUsd;
+    const collateral = position.collateral.map(entry => {
+      const isAsset = entry.token.toLowerCase() === asset.token.toLowerCase();
+      const isSource =
+        source.kind === 'collateral' &&
+        entry.token.toLowerCase() === source.asset.token.toLowerCase();
+      if (!isAsset && !isSource) return entry;
+      const escrowed = max(
+        entry.escrowed - (isAsset ? units : 0n) - (isSource ? sourceRemovedUnits : 0n),
+        0n,
+      );
+      return {
+        ...entry,
+        escrowed,
+        escrowedValueUsd: entry.priceUsable
+          ? valueOf(escrowed, entry.priceUsd, entry.decimals)
+          : 0n,
+      };
+    });
+    const after = assemble(
+      { ...position, debtUsd: debtAfterUsd, pendingUnlock: null },
+      collateral,
+      undefined,
+      nowSeconds,
     );
-    return {
-      ...entry,
-      escrowed,
-      escrowedValueUsd: entry.priceUsable ? valueOf(escrowed, entry.priceUsd, entry.decimals) : 0n,
-    };
-  });
-  const after = assemble(
-    { ...position, debtUsd: debtAfterUsd, pendingUnlock: null },
-    collateral,
-    undefined,
-    nowSeconds,
-  );
-  // The release check the module runs: whole-unit rounding of a collateral repayment can take a
-  // hair more power than it frees, so the projected loan is checked rather than assumed.
-  if (!unavailableReason && !requiresFullRepay && debtAtUnlock(after) > after.powerUsd) {
-    unavailableReason = 'This would leave the loan short of cover. Try a smaller amount.';
+    // The release check the module runs: whole-unit rounding of a collateral repayment can take a
+    // hair more power than it frees, so the projected loan is checked rather than assumed.
+    const shortOfCover = debtAfterUsd > 0n && debtAtUnlock(after) > after.powerUsd;
+    return { repayUsd, debtAfterUsd, after, reason, shortOfCover };
+  };
+
+  let requiresFullRepay = false;
+  let plan: ReturnType<typeof project>;
+  const stepped = roundUpToStep(exactRepayUsd);
+  if (unavailableReason || neededUsd === 0n) {
+    plan = project(0n);
+  } else if (stepped < loan.debtUsd) {
+    plan = project(stepped);
+  } else {
+    // The $5 step reaches the whole debt; a repayment to the cent may still leave the loan open.
+    const precise = roundUpToStep(exactRepayUsd, CENT_USD);
+    const partial = precise < loan.debtUsd ? project(precise) : null;
+    if (partial && !partial.reason && !partial.shortOfCover) {
+      plan = partial;
+    } else {
+      requiresFullRepay = true;
+      plan = project(loan.debtUsd);
+    }
   }
+  unavailableReason ??=
+    plan.reason ??
+    (plan.shortOfCover ? 'This would leave the loan short of cover. Try a smaller amount.' : null);
+  const { repayUsd, debtAfterUsd, after } = plan;
 
   return {
     asset,

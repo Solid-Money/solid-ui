@@ -32,6 +32,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import {
+  isSamePendingUnlock,
   UnlockBlockedError,
   UnlockUserError,
   useCollateralUnlock,
@@ -331,8 +332,9 @@ const CreditDetailsScreen = () => {
                           isFinishing={unlock.isFinishing}
                           isUnlockingAll={unlock.isWithdrawingAll}
                           finishBlocked={
-                            unlock.finishBlocked?.reason === 'needs-more-cover'
-                              ? unlock.finishBlocked.message
+                            unlock.finishBlocked?.error.reason === 'needs-more-cover' &&
+                            isSamePendingUnlock(unlock.finishBlocked.for, loan.pendingUnlock)
+                              ? unlock.finishBlocked.error.message
                               : null
                           }
                         />
