@@ -13,7 +13,7 @@ import { ANTSEED_DOCS_URL } from './aiApiLinks';
 import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiIntroChevron } from './AiApiPrimitives';
 
 const ANTSEED_POINTS = [
-  'One fixed price per model, set by Solid',
+  'One price per model, set by Solid',
   'We don’t store your prompts or answers',
   'Only usage is kept, for billing',
 ];
@@ -63,8 +63,8 @@ const AntseedRow = () => {
       {expanded ? (
         <>
           <Text className="text-[14px] leading-5 text-white/70">
-            Your requests run on Antseed’s network of AI providers. Solid sets one fixed price for
-            each model, so you always know what you’ll pay.
+            Your requests run on Antseed’s network of AI providers. Solid sets one price for each
+            model, whichever provider serves it, and adjusts it as Antseed’s market rates move.
           </Text>
           <View className="gap-2.5">
             {ANTSEED_POINTS.map(point => (
@@ -186,7 +186,7 @@ export const AiApiIntroFaq = ({
     {
       question: 'Why is it so much cheaper?',
       answer:
-        'Antseed is an open market of AI providers. Solid sets a fixed price for each model, so you can see how it compares with the official API price.',
+        'Antseed is an open market of AI providers. Solid sets one price for each model from what that market charges, so you can see how it compares with the official API price.',
     },
     {
       question: 'Do you see my prompts?',
