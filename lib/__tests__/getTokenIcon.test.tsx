@@ -3,6 +3,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 jest.mock('@/lib/assets', () => ({ getAsset: (path: string) => ({ asset: path }) }));
 jest.mock('@/components/DefaultTokenIcon', () => 'DefaultTokenIcon');
 jest.mock('@/constants/gooddollar', () => ({ G_DOLLAR_LOGO_URI: 'g-dollar' }));
+jest.mock('@/components/Earn/YieldIcon', () => ({ BtcYieldShareIcon: 'BtcYieldShareIcon' }));
 
 describe('getTokenIcon', () => {
   it('draws each share token with its own mark, unclipped, whatever logo it carries', () => {
@@ -18,6 +19,16 @@ describe('getTokenIcon', () => {
     expect(getTokenIcon({ tokenSymbol: 'soFUSE' }).source).toEqual({
       asset: 'images/sofuse-4x.png',
     });
+  });
+
+  it('draws soBTC with the BTC Yield mark Earn uses, whatever logo it carries', () => {
+    for (const logoUrl of [undefined, 'https://old/btc.png']) {
+      const icon = getTokenIcon({ tokenSymbol: 'soBTC', logoUrl, size: 28 });
+      expect(icon.type).toBe('component');
+      expect(icon.component).toEqual(
+        expect.objectContaining({ type: 'BtcYieldShareIcon', props: { size: 28 } }),
+      );
+    }
   });
 
   it('draws soEUR with the EUR Yield share mark, not the EURC coin, under either symbol', () => {

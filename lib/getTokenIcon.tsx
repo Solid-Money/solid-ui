@@ -33,6 +33,18 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
   const shareIcon = SHARE_ICONS[tokenSymbol?.toUpperCase() ?? ''];
   if (shareIcon) return { type: 'image', source: getAsset(shareIcon), bare: true };
 
+  // BTC Yield's share has no PNG mark: the one Earn draws, with the live dot like the others.
+  // Ahead of `logoUrl` for the same reason as the marks above.
+  if (tokenSymbol?.toUpperCase() === 'SOBTC') {
+    // Loaded here rather than imported: YieldIcon → PortfolioIcon imports this module, and a
+    // top-level import would make the two depend on each other's load order.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { BtcYieldShareIcon } = require('@/components/Earn/YieldIcon') as {
+      BtcYieldShareIcon: typeof BtcYieldShareIconType;
+    };
+    return { type: 'component', component: <BtcYieldShareIcon size={size} /> };
+  }
+
   if (logoUrl) {
     return { type: 'image', source: { uri: logoUrl } };
   }
@@ -64,16 +76,6 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/eth.png'),
       };
-    // BTC Yield's share: the mark Earn draws, with the live dot like the other shares.
-    case 'SOBTC': {
-      // Loaded here rather than imported: YieldIcon → PortfolioIcon imports this module, and a
-      // top-level import would make the two depend on each other's load order.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { BtcYieldShareIcon } = require('@/components/Earn/YieldIcon') as {
-        BtcYieldShareIcon: typeof BtcYieldShareIconType;
-      };
-      return { type: 'component', component: <BtcYieldShareIcon size={size} /> };
-    }
     case 'BTC':
       return {
         type: 'image',
