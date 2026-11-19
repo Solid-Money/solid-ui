@@ -90,6 +90,8 @@ type AiApiPricedModel = {
   cachedInputUsdPerMTok?: number | null;
   officialInputUsdPerMTok: number | null;
   officialOutputUsdPerMTok: number | null;
+  /** The backend's word on whether it is free; missing on an older backend. */
+  free?: boolean;
 };
 
 /** Three input tokens to one output token: what a typical agent request reads and writes. */
@@ -118,24 +120,38 @@ export const aiApiModelPriceExample = (model: AiApiPricedModel, cashbackRate: nu
     solid,
     official,
     afterCashback,
-    savingsAfterCashback: percentBelowOfficial(afterCashback, official),
+    // No saving is claimed when the blend is $0: see `aiApiModelDiscount`.
+    savingsAfterCashback: solid > 0 ? percentBelowOfficial(afterCashback, official) : null,
   };
 };
 
-/** A model we charge nothing for: input, output or cached. */
+/**
+ * A model we charge nothing for. The backend says so in `free`, by the same
+ * test that routes the model upstream (cache writes included, which the app
+ * isn't sent a price for); an older backend doesn't, and input, output and
+ * cached prices of 0 decide.
+ */
 export const aiApiModelIsFree = (model: AiApiPricedModel): boolean =>
-  model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
+  typeof model.free === 'boolean'
+    ? model.free
+    : model.inputUsdPerMTok === 0 && model.outputUsdPerMTok === 0 && !model.cachedInputUsdPerMTok;
 
 /**
  * How far below the model maker's list price ours is, as a whole percent, on
  * Figma's 3:1 input:output blend, rounded down so the tag never claims more
  * than the blend saves. Null when there is no list price to compare with, or
  * nothing is saved.
+ *
+ * Also null when the blend is $0. A free model is tagged `Free` instead, and a
+ * model the backend says isn't free while every price the app is sent is 0
+ * charges for something the app doesn't show (cache writes), so a "−100%" would
+ * overstate the saving.
  */
 export const aiApiModelDiscount = (model: AiApiPricedModel): number | null => {
   const { officialInputUsdPerMTok: officialIn, officialOutputUsdPerMTok: officialOut } = model;
   if (!officialIn || !officialOut || officialIn <= 0 || officialOut <= 0) return null;
   const { solid, official } = modelPricesAtBlend(model);
+  if (solid <= 0) return null;
   return percentBelowOfficial(solid, official);
 };
 
