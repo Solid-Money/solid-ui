@@ -264,6 +264,28 @@ describe('useWhatsNew opening a linked page', () => {
     act(() => renderer.unmount());
   });
 
+  it('closes an open popup the server has switched off', async () => {
+    // Open on a linked page when another link's ask finds nothing active.
+    useWhatsNewStore.setState({ isVisible: true, initialStep: 2 });
+    serverHas(null);
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: null,
+      isVisible: false,
+      initialStep: 0,
+      request: null,
+    });
+
+    // The next announcement waits for the auto-open instead of appearing at once.
+    const next: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
+    act(() => useWhatsNewStore.setState({ whatsNew: next }));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer.unmount());
+  });
+
   it('opens the stored copy when the server cannot be reached', async () => {
     const refetch = jest
       .fn()

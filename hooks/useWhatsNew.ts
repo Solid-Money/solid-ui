@@ -183,8 +183,15 @@ export const useWhatsNew = (autoShowOnHome = false) => {
       if (!latest?.isActive || !canShowWhatsNew(latest)) {
         // The server said so, so the stored copy goes too. Otherwise the
         // auto-open, free again once the ask is cleared, would show the
-        // announcement the server no longer offers.
-        if (isFromServer) setWhatsNew(null);
+        // announcement the server no longer offers. A popup open at the time
+        // closes with it: left visible, the next announcement stored would
+        // open at once, past the auto-open's delay and seen check, on this
+        // one's page.
+        if (isFromServer) {
+          setWhatsNew(null);
+          setIsVisible(false);
+          setInitialStep(0);
+        }
         clearRequest();
         return;
       }
