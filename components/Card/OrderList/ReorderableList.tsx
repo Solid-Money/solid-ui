@@ -897,8 +897,10 @@ const ReorderableRow = memo(function ReorderableRow({
   );
 
   // The web's keyboard path. A focused row moves with Alt+ArrowUp / Alt+ArrowDown; the move
-  // re-renders the list in its new order, so focus is put back on the row once it has its new
-  // rank. Focus and key events only — nothing here runs during a drag.
+  // re-renders the list in its new order, which can drop DOM focus, so focus is put back on the row
+  // once it has its new place. `initialTop` is in the deps because a move inside the excluded group
+  // changes neither rank nor side of the divider, only position. Only the row that set `refocus`
+  // takes focus. Focus and key events only — nothing here runs during a drag.
   const [focusVisible, setFocusVisible] = useState(false);
   const refocus = useRef<WebFocusTarget | null>(null);
   useEffect(() => {
@@ -906,7 +908,7 @@ const ReorderableRow = memo(function ReorderableRow({
     if (!target) return;
     refocus.current = null;
     target.focus?.({ preventScroll: true });
-  }, [rank, excluded]);
+  }, [rank, excluded, initialTop]);
   const webProps = useMemo(() => {
     if (!IS_WEB) return undefined;
     const onKeyDown = (event: WebKeyEvent) => {

@@ -8,7 +8,7 @@ import {
 } from '@/components/Card/SpendOrder/spendOrderRows';
 import { CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { withoutExcludedAssets } from '@/lib/utils/cardSpendable';
-import { requirePreviewLines } from '@/lib/utils/orderPreview';
+import { requireOrderArrays, requirePreviewLines } from '@/lib/utils/orderPreview';
 import {
   DEFAULT_SPEND_ORDER,
   DEFAULT_SPEND_ORDER_PREFERENCE,
@@ -87,6 +87,32 @@ describe('requirePreviewLines', () => {
     );
     expect(() => requirePreviewLines({ lines: 'x' }, 'spend order')).toThrow();
     expect(() => requirePreviewLines(null, 'spend order')).toThrow();
+  });
+
+  it('throws when a line is not an object', () => {
+    expect(() => requirePreviewLines({ lines: [null] }, 'spend order')).toThrow(
+      'Invalid spend order preview',
+    );
+    expect(() => requirePreviewLines({ lines: [{ asset: 'USDC' }, 'x'] }, 'spend order')).toThrow();
+  });
+});
+
+describe('requireOrderArrays', () => {
+  const FIELDS = ['spendOrder', 'spendExcluded'];
+
+  it('passes missing fields and an exclusions-only answer through', () => {
+    const empty = {};
+    expect(requireOrderArrays(empty, FIELDS, 'spend order')).toBe(empty);
+    const onlyExcluded = { spendExcluded: ['USDT'] };
+    expect(requireOrderArrays(onlyExcluded, FIELDS, 'spend order')).toBe(onlyExcluded);
+  });
+
+  it('throws on a field that is not a list of keys', () => {
+    expect(() => requireOrderArrays({ spendExcluded: 'USDT' }, FIELDS, 'spend order')).toThrow(
+      'Invalid spend order: spendExcluded is not a list of keys',
+    );
+    expect(() => requireOrderArrays({ spendOrder: ['USDC', 1] }, FIELDS, 'spend order')).toThrow();
+    expect(() => requireOrderArrays(null, FIELDS, 'spend order')).toThrow();
   });
 });
 

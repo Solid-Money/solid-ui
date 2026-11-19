@@ -211,7 +211,7 @@ import {
   YieldBoostSummary,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
-import { requirePreviewLines } from './utils/orderPreview';
+import { requireOrderArrays, requirePreviewLines } from './utils/orderPreview';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
@@ -4700,7 +4700,11 @@ export const getCardSpendOrder = async (): Promise<CardSpendOrder> => {
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return requireOrderArrays<CardSpendOrder>(
+    await response.json(),
+    ['spendOrder', 'spendExcluded'],
+    'spend order',
+  );
 };
 
 /**
@@ -4726,7 +4730,11 @@ export const setCardSpendOrder = async (body: {
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return requireOrderArrays<CardSpendOrder>(
+    await response.json(),
+    ['spendOrder', 'spendExcluded'],
+    'spend order',
+  );
 };
 
 /**
@@ -4783,7 +4791,11 @@ export const getCardCollateralOrder = async (): Promise<CardCollateralOrder> => 
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return requireOrderArrays<CardCollateralOrder>(
+    await response.json(),
+    ['collateralOrder', 'defaultCollateralOrder'],
+    'collateral order',
+  );
 };
 
 /**
@@ -4812,7 +4824,11 @@ export const setCardCollateralOrder = async (body: {
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return requireOrderArrays<CardCollateralOrder>(
+    await response.json(),
+    ['collateralOrder', 'defaultCollateralOrder'],
+    'collateral order',
+  );
 };
 
 /**
