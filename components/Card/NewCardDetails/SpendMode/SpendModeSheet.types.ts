@@ -16,4 +16,8 @@ export interface SpendModeSheetProps {
   onViewCreditDetails: () => void;
   /** Opens the add-funds flow from the balance panel. */
   onAddFunds?: () => void;
+  /** Opens the Spend order screen from "Edit order" on the Cash panel. */
+  onEditOrder?: () => void;
+  /** Opens the Collateral order screen from "Edit order" on the Credit panel. */
+  onEditCollateralOrder?: () => void;
 }

@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Platform } from 'react-native';
+import { router } from 'expo-router';
 
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
 import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCollateralOrder } from '@/hooks/useCollateralOrder';
 import { useCustomer } from '@/hooks/useCustomer';
+import { useSpendOrder } from '@/hooks/useSpendOrder';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
@@ -93,6 +97,25 @@ const SpendModeModals = ({
     setIsCreditDetailsOpen(true);
   }, [closeSpendMode]);
 
+  // "Edit order" is offered to the internal-team cohort only (backend `canEdit`); everyone else
+  // keeps the panels as they were, and spends and locks in the default order.
+  const { canEdit: canEditSpendOrder } = useSpendOrder();
+  const { canEdit: canEditCollateralOrder } = useCollateralOrder();
+
+  const openSpendOrder = useCallback(() => {
+    // Closed first, like funding, so backing out of the screen lands on the card, not the sheet.
+    setIsCollateralHelpOpen(false);
+    closeSpendMode();
+    router.push(path.CARD_SPEND_ORDER);
+  }, [closeSpendMode]);
+
+  const openCollateralOrder = useCallback(() => {
+    // The same hand-over as the spend order: back from the screen lands on the card.
+    setIsCollateralHelpOpen(false);
+    closeSpendMode();
+    router.push(path.CARD_COLLATERAL_ORDER);
+  }, [closeSpendMode]);
+
   return (
     <>
       <SpendModeSheet
@@ -103,6 +126,8 @@ const SpendModeModals = ({
         onCollateralHelpPress={() => setIsCollateralHelpOpen(true)}
         onViewCreditDetails={openCreditDetails}
         onAddFunds={canAddFunds ? openFunds : undefined}
+        onEditOrder={canEditSpendOrder ? openSpendOrder : undefined}
+        onEditCollateralOrder={canEditCollateralOrder ? openCollateralOrder : undefined}
       />
       <SpendModeHelpModal isOpen={isOpen && isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <CollateralHelpSheet
