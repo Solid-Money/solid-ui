@@ -42,10 +42,7 @@ jest.mock('@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal', () =>
   __esModule: true,
   default: 'SpendModeHelpModal',
 }));
-jest.mock('@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet', () => ({
-  __esModule: true,
-  default: 'BorrowPositionSheet',
-}));
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet', () => ({
   __esModule: true,
   default: 'CollateralHelpSheet',
@@ -64,7 +61,6 @@ let tree: any;
 const sheet = () => tree.root.findByType('SpendModeSheet').props;
 const help = () => tree.root.findByType('SpendModeHelpModal').props;
 const collateralHelp = () => tree.root.findByType('CollateralHelpSheet').props;
-const creditDetails = () => tree.root.findByType('BorrowPositionSheet').props;
 const funds = () => tree.root.findByType('WirexCardFundModal').props;
 const render = (canChangeMode = true) => {
   act(() => {
@@ -135,21 +131,19 @@ test('the "?" beside Collateral assets opens How collateral works, not the intro
   expect(collateralHelp().isOpen).toBe(false);
 });
 
-test('View Credit details hands over from the selector to the borrow position', () => {
+test('View Credit details hands over from the selector to the Credit page', () => {
+  const { router } = jest.requireMock('expo-router');
+  router.push.mockClear();
   useSpendModeHelpStore.getState().markShown('user-a');
   render();
   open();
-  expect(creditDetails().isOpen).toBe(false);
+  expect(router.push).not.toHaveBeenCalled();
 
   act(() => sheet().onCollateralHelpPress());
   act(() => sheet().onViewCreditDetails());
-  expect(creditDetails().isOpen).toBe(true);
+  expect(router.push).toHaveBeenCalledWith('/card/credit');
   expect(sheet().isOpen).toBe(false);
   expect(collateralHelp().isOpen).toBe(false);
-
-  act(() => creditDetails().onOpenChange(false));
-  expect(creditDetails().isOpen).toBe(false);
-  expect(sheet().isOpen).toBe(false);
 });
 
 test('Android Back closes How collateral works before the selector under it', () => {

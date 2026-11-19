@@ -77,6 +77,8 @@ type Path = {
    */
   CARD_3DS: Href;
   CARD_MAIN_CURRENCY: Href;
+  /** The credit page: each loan, what backs it, how close it is to a sale, and the ways out. */
+  CARD_CREDIT: Href;
   /** The order a Wirex card spends balances in, from "Edit order" on the Cash panel. */
   CARD_SPEND_ORDER: Href;
   /** The order a Wirex card locks collateral in, from "Edit order" on the Credit panel. */
@@ -167,6 +169,7 @@ export const path: Path = {
   CARD_PENDING: '/card/pending' as Href,
   CARD_3DS: '/card/3ds' as Href,
   CARD_MAIN_CURRENCY: '/card/main-currency' as Href,
+  CARD_CREDIT: '/card/credit' as Href,
   CARD_SPEND_ORDER: '/card/spend-order' as Href,
   CARD_COLLATERAL_ORDER: '/card/collateral-order' as Href,
   CARD_ACTIVATE: '/card/activate',

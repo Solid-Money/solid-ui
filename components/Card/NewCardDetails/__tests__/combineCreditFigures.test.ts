@@ -34,6 +34,17 @@ const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset
   valueUsd: 0n,
   priceUsable: true,
   ltvWad: 900_000_000_000_000_000n,
+  escrowed: 0n,
+  loose: 0n,
+  decimals: 18,
+  priceUsd: 1_000_000n,
+  priceInBand: true,
+  escrowedValueUsd: 0n,
+  ltWad: 950_000_000_000_000_000n,
+  liquidationBonusBps: 500,
+  countsTowardPower: true,
+  listedAsCollateral: true,
+  repayFeeBps: 0,
   ...overrides,
 });
 
@@ -47,6 +58,17 @@ const instance = (overrides: Partial<CreditInstancePosition>): CreditInstancePos
   creditHeadroomUsd: 0n,
   borrowApyPerSecond: RATE,
   collateral: [],
+  unhealthySince: 0,
+  forcedDebtUsd: 0n,
+  pendingUnlock: null,
+  liquidationsPaused: false,
+  params: {
+    liquidationGracePeriod: 86_400,
+    graceFloorHfWad: 950_000_000_000_000_000n,
+    closeFactorBps: 5_000,
+    minPositionUsd: 25_000_000n,
+    collateralWithdrawDelay: 300,
+  },
   ...overrides,
 });
 
@@ -249,7 +271,7 @@ describe('combineCreditFigures', () => {
     it('rates each loan by its own health factor', () => {
       const figures = combineCreditFigures(fusePosition, RATE, {
         fuse: null,
-        base: baseLoan({ healthFactorWad: 1_010_000_000_000_000_000n }),
+        base: baseLoan({ healthFactorWad: 990_000_000_000_000_000n }),
       });
 
       expect(figures.positions.map(position => position.risk)).toEqual(['none', 'at-risk']);
@@ -319,6 +341,29 @@ describe('combineCreditFigures', () => {
       expect(figures.collateral).toEqual([
         expect.objectContaining({ label: 'Bitcoin', icon: 'cbbtc', value: '$798.00' }),
       ]);
+    });
+
+    it('never offers a token taken off the collateral list, even while some is still locked', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({
+              chainId: 8453,
+              token: SOL,
+              symbol: 'SOL',
+              amount: 5n,
+              escrowed: 5n,
+              valueUsd: 500n,
+              listedAsCollateral: false,
+            }),
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR', amount: 0n }),
+          ],
+        }),
+      });
+
+      expect(figures.collateral.map(row => row.label)).toEqual(['EUR Yield']);
+      expect(figures.collateralKeys).not.toContain('SOL');
     });
 
     it('lists crypto only when held, and the yield shares always', () => {

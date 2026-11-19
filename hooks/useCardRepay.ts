@@ -202,7 +202,7 @@ const readCardRepayState = async (
   };
 };
 
-const cardRepayQueryOptions = (
+export const cardRepayQueryOptions = (
   chainId: CardRepayChainId,
   moduleAddress: Address | undefined,
   selectedUserId: string | undefined,

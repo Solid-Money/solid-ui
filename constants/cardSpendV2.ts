@@ -1,5 +1,6 @@
 import { USDC_STARGATE } from '@/constants/addresses';
 import { ADDRESSES, EXPO_PUBLIC_CARD_SPEND_V2 } from '@/lib/config';
+import { statusOf } from '@/lib/creditRisk';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import type { Address } from 'viem';
@@ -152,29 +153,26 @@ export const healthFactorToNumber = (wad: bigint): number | null => {
 };
 
 /**
- * How close a position is to liquidation, for the "At risk" panel.
+ * How close a position is to liquidation, for the chips and the "At risk" panel.
  *
- * The thresholds are presentation, not protocol: the contract liquidates below 1.0 and
- * knows nothing about "caution". Warning early is the point — a cardholder who only learns
- * at 1.0 learns when it is already happening.
+ * The same bands as the Credit page's loans (`statusOf` in `lib/creditRisk`), so the chip on the
+ * spend-mode sheet and the loan it summarises never disagree:
  *
- * But not so early that a healthy loan is flagged. `spendCredit` locks only enough collateral
- * to borrow at `ltv × targetLtvBps`, so a fresh loan RESTS at `threshold / (ltv × target)`:
- * about 1.11 for soUSD and soEUR (95 / (90 × 0.95)) and 1.23 for cbBTC. The old 1.25 caution
- * line sat above every one of those, so every borrower saw "Getting close" from their first
- * credit spend — beside a line they had barely touched, since loose collateral is not counted.
- * Now "Getting close" is about a 5% price fall from liquidation, "At risk" about 2%.
+ *  - **At risk** — under 1.0. The module can sell part of the loan here (after its grace period),
+ *    so this is the only band where "at risk" is literally true.
+ *  - **Getting close** — under 1.05, about a 5% fall from a sale.
+ *
+ * Not lower than 1.05 for "Getting close": `spendCredit` locks only enough collateral to borrow
+ * at `ltv × targetLtvBps`, so a fresh loan RESTS at `threshold / (ltv × target)` — about 1.11 for
+ * soUSD and soEUR (95 / (90 × 0.95)) and 1.23 for cbBTC. A higher line flagged every borrower from
+ * their first credit spend.
  */
 export type BorrowRisk = 'none' | 'caution' | 'at-risk';
 
 export const borrowRisk = (healthFactorWad: bigint, debtUsd: bigint): BorrowRisk => {
-  if (debtUsd === 0n) return 'none';
-
-  const hf = healthFactorToNumber(healthFactorWad);
-  if (hf === null) return 'none';
-  if (hf < 1.02) return 'at-risk';
-  if (hf < 1.05) return 'caution';
-  return 'none';
+  // One classifier for both surfaces; this only maps its names onto the chip's.
+  const status = statusOf(healthFactorWad, debtUsd);
+  return status === 'healthy' ? 'none' : status;
 };
 
 /**

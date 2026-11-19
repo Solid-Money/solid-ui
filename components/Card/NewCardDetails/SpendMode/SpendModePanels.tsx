@@ -505,15 +505,16 @@ interface CreditPanelProps extends BorrowedSummaryFigures {
 }
 
 /**
- * The chip beside "Borrowed" (Figma 30396:14678): green "Healthy", or the borrow-position
- * sheet's own warning in its red once a loan nears liquidation. Left out with nothing borrowed.
+ * The chip beside "Borrowed" (Figma 30396:14678): green "Healthy", amber "Getting close", red
+ * "At risk" — the same bands as the Credit page's loans. Left out with nothing borrowed.
  */
 const RISK_CHIP = {
   none: { label: 'Healthy', text: 'text-[#94F27F]', background: 'rgba(148, 242, 127, 0.15)' },
+  // Amber, not red: red is kept for "At risk", where part of the loan can actually be sold.
   caution: {
     label: 'Getting close',
-    text: 'text-[#D96167]',
-    background: 'rgba(217, 97, 103, 0.15)',
+    text: 'text-[#F5B547]',
+    background: 'rgba(245, 181, 71, 0.15)',
   },
   'at-risk': { label: 'At risk', text: 'text-[#D96167]', background: 'rgba(217, 97, 103, 0.15)' },
 } as const;

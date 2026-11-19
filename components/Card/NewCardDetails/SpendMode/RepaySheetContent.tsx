@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextStyle, View } from 'react-native';
 import Animated, {
   Easing,
@@ -81,6 +81,13 @@ interface RepaySheetContentProps {
    * modal's compact size, and drops the side inset.
    */
   presentation?: CardSheetPresentation;
+  /**
+   * The source to open on, by id (`collateral:0x…` for "Pay down with Bitcoin"). Falls back to
+   * the most useful source when it is not offered.
+   */
+  preferredSourceId?: string;
+  /** Open with MAX filled in: "Repay in full". */
+  startAtMax?: boolean;
 }
 
 /**
@@ -108,23 +115,35 @@ const RepaySheetContent = ({
   onDismiss,
   topPadding,
   presentation = 'sheet',
+  preferredSourceId,
+  startAtMax = false,
 }: RepaySheetContentProps) => {
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [isMax, setIsMax] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  // Once the cardholder types or picks a source, "Repay in full" stops filling anything in.
+  const hasTouched = useRef(false);
 
   const sources = useMemo(() => state?.sources ?? [], [state]);
   const source = sources.find(candidate => candidate.id === sourceId) ?? null;
 
-  // The most useful source until the cardholder picks one, and again if the one they picked
-  // disappears from a refreshed read.
+  // The source asked for, else the most useful one, until the cardholder picks; and again if
+  // the one they picked disappears from a refreshed read.
   useEffect(() => {
     if (sources.length === 0) return;
     if (!sourceId || !sources.some(candidate => candidate.id === sourceId)) {
-      setSourceId(sources[0].id);
+      // "Repay in full" opens on a source that can actually cover all of it.
+      const covering = startAtMax
+        ? sources.find(
+            candidate =>
+              candidate.unavailableReason === null && candidate.valueUsd >= (state?.debtUsd ?? 0n),
+          )
+        : undefined;
+      const preferred = sources.find(candidate => candidate.id === preferredSourceId);
+      setSourceId((covering ?? preferred ?? sources[0]).id);
     }
-  }, [sources, sourceId]);
+  }, [sources, sourceId, preferredSourceId, startAtMax, state?.debtUsd]);
 
   const debtUsd = state?.debtUsd ?? 0n;
   const amountUsd = parseUsdAmountText(text);
@@ -146,6 +165,7 @@ const RepaySheetContent = ({
 
   const handleChangeText = useCallback(
     (next: string) => {
+      hasTouched.current = true;
       setText(sanitizeUsdAmountText(next));
       setIsMax(false);
       if (error) onClearError();
@@ -162,8 +182,33 @@ const RepaySheetContent = ({
     [debtUsd, error, onClearError],
   );
 
+  // "Repay in full": MAX once, on a source that covers the whole debt, then the cardholder's to
+  // change. With no such source, nothing is filled: a source's MAX would be a partial repayment
+  // presented as a full one.
+  const canRepayInFull =
+    !startAtMax ||
+    sources.some(
+      candidate => candidate.unavailableReason === null && candidate.valueUsd >= debtUsd,
+    );
+  const hasStartedAtMax = useRef(false);
+  useEffect(() => {
+    if (
+      !startAtMax ||
+      hasStartedAtMax.current ||
+      hasTouched.current ||
+      !source ||
+      !state ||
+      !canRepayInFull
+    ) {
+      return;
+    }
+    hasStartedAtMax.current = true;
+    fillMax(source);
+  }, [canRepayInFull, fillMax, source, startAtMax, state]);
+
   const handleSelect = useCallback(
     (next: RepaySource) => {
+      hasTouched.current = true;
       setSourceId(next.id);
       setIsPickerOpen(false);
       // MAX means "as much as this source can", so it follows the source rather than keeping
@@ -181,7 +226,13 @@ const RepaySheetContent = ({
     void onRepay({ sourceId: source.id, amountUsd: isMax ? null : amountUsd, isMax });
   }, [amountUsd, canSubmit, isMax, onRepay, source]);
 
-  const note = describeQuote(quote, source, error);
+  const note =
+    !canRepayInFull && !text && !error
+      ? {
+          text: `Nothing in your wallet or collateral covers the whole ${formatUsd(debtUsd)} on its own. You can repay part of it.`,
+          isError: true,
+        }
+      : describeQuote(quote, source, error);
   const tokenEstimate = source
     ? repayTokenEstimate({ source, quote, debtUsd, amountUsd, isMax })
     : null;

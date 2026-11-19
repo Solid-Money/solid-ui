@@ -9,7 +9,7 @@ import {
   erc20Abi,
   isAddressEqual,
 } from 'viem';
-import { base, fuse } from 'viem/chains';
+import { base as baseChain, fuse } from 'viem/chains';
 
 import { isCardSpendV2Configured, SpendCohort } from '@/constants/cardSpendV2';
 import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
@@ -26,41 +26,7 @@ import { SolidSpendLens_ABI } from '@/lib/abis/SolidSpendLens';
 import { ADDRESSES } from '@/lib/config';
 import { publicClient } from '@/lib/wagmi';
 
-/**
- * `getTokenConfig` and the lens's `v2()`, which the app's ABIs leave out.
- *
- * The struct is `TokenConfig` from `SolidCashTypes.sol`, and both live instances — Fuse and the
- * older Base build — decode it in this layout. Only `collateral`, `tokenDecimals` and `ltv` are read.
- */
-const TOKEN_CONFIG_ABI = [
-  {
-    type: 'function',
-    name: 'getTokenConfig',
-    stateMutability: 'view',
-    inputs: [{ name: 'token', type: 'address' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        components: [
-          { name: 'spendable', type: 'bool' },
-          { name: 'collateral', type: 'bool' },
-          { name: 'tokenDecimals', type: 'uint8' },
-          { name: 'haircutBps', type: 'uint16' },
-          { name: 'liquidationBonusBps', type: 'uint16' },
-          { name: 'ltv', type: 'uint64' },
-          { name: 'liquidationThreshold', type: 'uint64' },
-          { name: 'maxStalenessSeconds', type: 'uint64' },
-          { name: 'minPriceUsd', type: 'uint64' },
-          { name: 'maxPriceUsd', type: 'uint64' },
-          { name: 'ceilingGrowthPerSec', type: 'uint64' },
-          { name: 'ceilingAnchor', type: 'uint64' },
-        ],
-      },
-    ],
-  },
-] as const;
-
+/** The lens's `v2()`, which the app's lens ABI leaves out. */
 const LENS_MODULE_ABI = [
   {
     type: 'function',
@@ -90,6 +56,60 @@ export interface CreditCollateralAsset {
   priceUsable: boolean;
   /** The module's own LTV for this token, as a WAD: `0.6e18` is 60%. */
   ltvWad: bigint;
+  /** Locked against this instance's loan (`collateralOf`), in token units. */
+  escrowed: bigint;
+  /** In the Safe and not locked, in token units. */
+  loose: bigint;
+  decimals: number;
+  /** The module's own price, 6-decimal USD. Zero when it cannot price the token. */
+  priceUsd: bigint;
+  /**
+   * Inside the module's price band. Every path that divides by a price — repaying from it,
+   * selling it in a liquidation — refuses a price outside the band, and a position holding any
+   * such token cannot be liquidated at all.
+   */
+  priceInBand: boolean;
+  /** {@link escrowed} at {@link priceUsd}, rounded down. */
+  escrowedValueUsd: bigint;
+  /** The liquidation threshold, as a WAD: the "sold at" line. */
+  ltWad: bigint;
+  /** What a liquidation takes on top of the debt it covers, out of this token. */
+  liquidationBonusBps: number;
+  /**
+   * Whether the module lends against it. A token taken off the collateral list, or paused by the
+   * guardian, still counts toward what a liquidation could take, but not toward borrowing power.
+   */
+  countsTowardPower: boolean;
+  /**
+   * On the module's collateral list (`TokenConfig.collateral`). False for a token taken off it
+   * that is still locked: it backs the loan until unlocked, but nothing new can be locked in it.
+   */
+  listedAsCollateral: boolean;
+  /** Fee on repaying from this token's escrow, on top of the debt retired. Zero unless set. */
+  repayFeeBps: number;
+}
+
+/** The module parameters that decide when, and how much of, a loan can be sold. */
+export interface CreditRiskParams {
+  /** Seconds between a loan going under 1.0 and a sale being allowed. */
+  liquidationGracePeriod: number;
+  /** Below this health, no waiting at all — unless the loan carries a forced charge. WAD. */
+  graceFloorHfWad: bigint;
+  /** Most of the debt one sale can cover, in bps. */
+  closeFactorBps: number;
+  /** A loan at or under this (6-decimal USD) can be covered in full by one sale. */
+  minPositionUsd: bigint;
+  /** Seconds an unlock waits before it can be finished. */
+  collateralWithdrawDelay: number;
+}
+
+/** An unlock that has been asked for and not yet finished or cancelled. */
+export interface PendingCollateralUnlock {
+  token: Address;
+  /** Token units. */
+  amount: bigint;
+  /** Unix seconds from which it can be finished. */
+  readyAt: number;
 }
 
 /** One spend-module instance's credit position, from its lens. */
@@ -107,8 +127,19 @@ export interface CreditInstancePosition {
   /** What the line leaves to draw, as `useCardSpendRegistration` computes it for Fuse. */
   creditHeadroomUsd: bigint;
   borrowApyPerSecond: bigint;
-  /** Every token the module accepts as collateral, held or not. */
+  /**
+   * Every token the module accepts as collateral, held or not, and any other token still
+   * escrowed here (one taken off the collateral list after it was locked).
+   */
   collateral: CreditCollateralAsset[];
+  /** When the loan was first seen under 1.0, unix seconds; 0 when it has not been. */
+  unhealthySince: number;
+  /** Debt from charges Wirex made regardless of our answer. Such a loan always gets the full wait. */
+  forcedDebtUsd: bigint;
+  pendingUnlock: PendingCollateralUnlock | null;
+  /** The guardian's switch: nothing can be sold while it is on. */
+  liquidationsPaused: boolean;
+  params: CreditRiskParams;
 }
 
 export interface CardCreditPositions {
@@ -125,6 +156,9 @@ type TokenAvailability = {
 
 const valueAt = (amount: bigint, priceUsd: bigint, decimals: number): bigint =>
   (amount * priceUsd) / 10n ** BigInt(decimals);
+
+/** Reads per token in the details multicall, in the order {@link readCreditInstance} unpacks. */
+const PER_TOKEN_CALLS = 5;
 
 /**
  * Throws the first multicall failure the chain did not answer — an RPC error or a timeout, as
@@ -171,7 +205,7 @@ const throwUnansweredFailure = (
  * `credit.perCollateral` (escrowed) both cover every token; which of them count as collateral
  * comes from the module's own token config.
  */
-const readCreditInstance = async (
+export const readCreditInstance = async (
   chainId: number,
   moduleAddress: Address,
   lensAddress: Address,
@@ -179,24 +213,42 @@ const readCreditInstance = async (
 ): Promise<CreditInstancePosition | null> => {
   const client = publicClient(chainId);
   const module = { address: moduleAddress, abi: SolidCashModuleV2_ABI } as const;
+  // One block for both multicalls, so balances and health never pair with a later block's prices.
+  // Uncached: the client would otherwise hand back a block number up to a polling interval old.
+  const blockNumber = await client.getBlockNumber({ cacheTime: 0 });
 
-  const [pairedModule, availability, params, totalDebtUsd, borrowApyPerSecond, healthFactor] =
-    await client.multicall({
-      allowFailure: true,
-      contracts: [
-        { address: lensAddress, abi: LENS_MODULE_ABI, functionName: 'v2' },
-        {
-          address: lensAddress,
-          abi: SolidSpendLens_ABI,
-          functionName: 'availableToSpend',
-          args: [safeAddress],
-        },
-        { ...module, functionName: 'getParams' },
-        { ...module, functionName: 'totalDebtUsd' },
-        { ...module, functionName: 'borrowApyPerSecond' },
-        { ...module, functionName: 'healthFactor', args: [safeAddress] },
-      ],
-    });
+  const [
+    pairedModule,
+    availability,
+    params,
+    totalDebtUsd,
+    borrowApyPerSecond,
+    healthFactor,
+    unhealthySince,
+    forcedDebtUsd,
+    pendingWithdrawal,
+    liquidationsPaused,
+  ] = await client.multicall({
+    allowFailure: true,
+    blockNumber,
+    contracts: [
+      { address: lensAddress, abi: LENS_MODULE_ABI, functionName: 'v2' },
+      {
+        address: lensAddress,
+        abi: SolidSpendLens_ABI,
+        functionName: 'availableToSpend',
+        args: [safeAddress],
+      },
+      { ...module, functionName: 'getParams' },
+      { ...module, functionName: 'totalDebtUsd' },
+      { ...module, functionName: 'borrowApyPerSecond' },
+      { ...module, functionName: 'healthFactor', args: [safeAddress] },
+      { ...module, functionName: 'unhealthySince', args: [safeAddress] },
+      { ...module, functionName: 'forcedDebtUsd', args: [safeAddress] },
+      { ...module, functionName: 'getPendingWithdrawal', args: [safeAddress] },
+      { ...module, functionName: 'liquidationsPaused' },
+    ],
+  });
   throwUnansweredFailure([
     pairedModule,
     availability,
@@ -204,6 +256,10 @@ const readCreditInstance = async (
     totalDebtUsd,
     borrowApyPerSecond,
     healthFactor,
+    unhealthySince,
+    forcedDebtUsd,
+    pendingWithdrawal,
+    liquidationsPaused,
   ]);
 
   if (
@@ -227,47 +283,59 @@ const readCreditInstance = async (
 
   const details = await client.multicall({
     allowFailure: true,
+    blockNumber,
     contracts: tokens.flatMap(token => [
-      {
-        address: moduleAddress,
-        abi: TOKEN_CONFIG_ABI,
-        functionName: 'getTokenConfig',
-        args: [token],
-      } as const,
+      { ...module, functionName: 'getTokenConfig', args: [token] } as const,
       { address: token, abi: erc20Abi, functionName: 'symbol' } as const,
+      { ...module, functionName: 'getPriceUsd', args: [token] } as const,
+      { ...module, functionName: 'tokenPaused', args: [token] } as const,
+      { ...module, functionName: 'collateralRepayFeeBps', args: [token] } as const,
     ]),
   });
   throwUnansweredFailure(details);
 
+  const read = <T>(tokenIndex: number, call: number): T | undefined => {
+    const result = details[tokenIndex * PER_TOKEN_CALLS + call];
+    return result?.status === 'success' ? (result.result as T) : undefined;
+  };
+
   const symbolOf = (token: Address): string | undefined => {
     const index = tokens.findIndex(candidate => isAddressEqual(candidate, token));
-    const result = index >= 0 ? details[index * 2 + 1] : undefined;
-    return result?.status === 'success' ? (result.result as string) : undefined;
+    return index >= 0 ? read<string>(index, 1) : undefined;
   };
 
   const eurc = loose.find(entry => symbolOf(entry.token) === EURC_SYMBOL);
   const eurcPriceUsd = eurc?.priceUsable && eurc.priceUsd > 0n ? eurc.priceUsd : undefined;
 
   const collateral = escrowed.flatMap((entry, index): CreditCollateralAsset[] => {
-    const config = details[index * 2];
-    // A token whose config cannot be read cannot be shown as collateral or as not: left out.
-    if (config?.status !== 'success') return [];
-    const {
-      collateral: isCollateral,
-      tokenDecimals,
-      ltv,
-    } = config.result as {
+    const config = read<{
       collateral: boolean;
       tokenDecimals: number;
+      liquidationBonusBps: number;
       ltv: bigint;
-    };
-    if (!isCollateral) return [];
+      liquidationThreshold: bigint;
+    }>(index, 0);
+    // A token whose config cannot be read cannot be shown as collateral or as not: left out.
+    if (!config) return [];
+    // Listed when the module lends against it, and also when it is still locked here after
+    // being taken off the list: it still backs the loan, and a sale can still take it.
+    if (!config.collateral && entry.amount === 0n) return [];
 
     const symbol = symbolOf(entry.token) ?? '';
+    const decimals = config.tokenDecimals;
     const looseAmount =
       loose.find(candidate => isAddressEqual(candidate.token, entry.token))?.amount ?? 0n;
     const amount = entry.amount + looseAmount;
-    const valueUsd = entry.priceUsable ? valueAt(amount, entry.priceUsd, tokenDecimals) : 0n;
+
+    // The module's own accessor says whether the price is inside its band, which the lens
+    // does not. Falls back to the lens when the call is missing.
+    const priced = read<readonly [bigint, boolean, boolean]>(index, 2);
+    const priceUsable = priced ? priced[1] && priced[0] > 0n : entry.priceUsable;
+    const priceUsd = priceUsable ? (priced ? priced[0] : entry.priceUsd) : 0n;
+    // Only the module knows its band; without its answer the price is treated as out of it.
+    const priceInBand = priced ? priced[2] && priceUsable : false;
+    const paused = read<boolean>(index, 3) ?? false;
+    const valueUsd = priceUsable ? valueAt(amount, priceUsd, decimals) : 0n;
 
     return [
       {
@@ -277,14 +345,44 @@ const readCreditInstance = async (
         amount,
         valueUsd,
         valueEur:
-          EURO_COLLATERAL_SYMBOLS.includes(symbol) && entry.priceUsable && eurcPriceUsd
+          EURO_COLLATERAL_SYMBOLS.includes(symbol) && priceUsable && eurcPriceUsd
             ? (valueUsd * 1_000_000n) / eurcPriceUsd
             : undefined,
-        priceUsable: entry.priceUsable,
-        ltvWad: ltv,
+        priceUsable,
+        ltvWad: config.ltv,
+        escrowed: entry.amount,
+        loose: looseAmount,
+        decimals,
+        priceUsd,
+        priceInBand,
+        escrowedValueUsd: priceUsable ? valueAt(entry.amount, priceUsd, decimals) : 0n,
+        ltWad: config.liquidationThreshold,
+        liquidationBonusBps: Number(config.liquidationBonusBps),
+        countsTowardPower: config.collateral && !paused,
+        listedAsCollateral: config.collateral,
+        // The module charges the stored fee capped at the current bonus (`_sizeCollateralRepay`):
+        // a bonus lowered after the fee was set lowers the fee with it.
+        repayFeeBps: Math.min(
+          Number(read<number>(index, 4) ?? 0),
+          Number(config.liquidationBonusBps),
+        ),
       },
     ];
   });
+
+  const moduleParams = params.result as {
+    maxDebtPerSafeUsd: bigint;
+    maxGlobalDebtUsd: bigint;
+    minPositionUsd: bigint;
+    closeFactorBps: number;
+    collateralWithdrawDelay: bigint;
+    liquidationGracePeriod: bigint;
+    graceFloorHf: bigint;
+  };
+  const pending =
+    pendingWithdrawal.status === 'success'
+      ? (pendingWithdrawal.result as { token: Address; readyAt: bigint; amount: bigint })
+      : undefined;
 
   return {
     chainId,
@@ -293,13 +391,25 @@ const readCreditInstance = async (
     healthFactorWad: healthFactor.result as bigint,
     fullyPriced: credit.fullyPriced,
     creditLineUsd: credit.borrowingPowerUsd + credit.prospectiveCollateralUsd,
-    creditHeadroomUsd: creditHeadroom(
-      credit,
-      params.result as { maxDebtPerSafeUsd: bigint; maxGlobalDebtUsd: bigint },
-      totalDebtUsd.result as bigint,
-    ),
+    creditHeadroomUsd: creditHeadroom(credit, moduleParams, totalDebtUsd.result as bigint),
     borrowApyPerSecond: borrowApyPerSecond.result as bigint,
     collateral,
+    unhealthySince: unhealthySince.status === 'success' ? Number(unhealthySince.result) : 0,
+    forcedDebtUsd: forcedDebtUsd.status === 'success' ? (forcedDebtUsd.result as bigint) : 0n,
+    // `readyAt` is zero when nothing is armed; the module's own test for "none".
+    pendingUnlock:
+      pending && pending.readyAt > 0n
+        ? { token: pending.token, amount: pending.amount, readyAt: Number(pending.readyAt) }
+        : null,
+    liquidationsPaused:
+      liquidationsPaused.status === 'success' ? (liquidationsPaused.result as boolean) : false,
+    params: {
+      liquidationGracePeriod: Number(moduleParams.liquidationGracePeriod),
+      graceFloorHfWad: moduleParams.graceFloorHf,
+      closeFactorBps: Number(moduleParams.closeFactorBps),
+      minPositionUsd: moduleParams.minPositionUsd,
+      collateralWithdrawDelay: Number(moduleParams.collateralWithdrawDelay),
+    },
   };
 };
 
@@ -323,10 +433,20 @@ const readCreditInstance = async (
  * repay flow, so a Base repayment goes to exactly the module the position was read from.
  */
 export const useBaseCreditInstance = () => {
-  const { isEnabled: isSpendModeCohort, isLoading: isAccessLoading } = useCardSpendModeAccess();
-  const { data: spendDeployments, isLoading: isDeploymentsLoading } = useCardSpendDeployments();
+  const {
+    isEnabled: isSpendModeCohort,
+    isLoading: isAccessLoading,
+    isError: isAccessError,
+    refetch: refetchAccess,
+  } = useCardSpendModeAccess();
+  const {
+    data: spendDeployments,
+    isLoading: isDeploymentsLoading,
+    isError: isDeploymentsError,
+    refetch: refetchDeployments,
+  } = useCardSpendDeployments();
   const baseDeployment = spendDeployments?.deployments.find(
-    deployment => deployment.chainId === base.id,
+    deployment => deployment.chainId === baseChain.id,
   );
   const moduleAddress = (baseDeployment?.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress) as
     | Address
@@ -336,18 +456,33 @@ export const useBaseCreditInstance = () => {
     isSpendModeCohort && baseDeployment?.enabled === true && !!moduleAddress && !!lensAddress;
 
   // `isLive` reads false until both gates answer; this says whether that false is final yet.
-  return { isLive, isLoading: isAccessLoading || isDeploymentsLoading, moduleAddress, lensAddress };
+  // A gate that failed leaves it false too, which is not a Safe with no Base loan.
+  const isError = isAccessError || (isSpendModeCohort && isDeploymentsError);
+  return {
+    isLive,
+    isLoading: isAccessLoading || isDeploymentsLoading,
+    isError,
+    /** Retries whichever gate failed. */
+    refetchGate: () =>
+      Promise.all([
+        isAccessError ? refetchAccess() : undefined,
+        isDeploymentsError ? refetchDeployments() : undefined,
+      ]),
+    moduleAddress,
+    lensAddress,
+  };
 };
 
 /**
  * One query per instance, so a read that fails on one chain never discards the other's answer.
  */
-const creditInstanceQuery = (
+export const creditInstanceQuery = (
   chainId: number,
   moduleAddress: Address | undefined,
   lensAddress: Address | undefined,
   safeAddress: Address | undefined,
   enabled: boolean,
+  refetchInterval?: number,
 ) => ({
   queryKey: [
     CARD_SPEND_REGISTRATION_QUERY_KEY,
@@ -361,14 +496,45 @@ const creditInstanceQuery = (
   // Only reads the chain never answered get here; a Safe with no position resolves to null.
   retry: 2,
   staleTime: 15_000,
+  refetchInterval,
 });
 
-export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
+/**
+ * Where each instance's position is read from, for code that has to read it again itself — an
+ * unlock re-quotes against a fresh read right before it is signed.
+ */
+export const useCreditInstanceAddresses = () => {
+  const base = useBaseCreditInstance();
+  return {
+    [fuse.id]: {
+      live: isCardSpendV2Configured(),
+      moduleAddress: ADDRESSES.fuse.cashModuleV2 as Address,
+      lensAddress: ADDRESSES.fuse.spendLensV2 as Address,
+    },
+    [baseChain.id]: {
+      live: base.isLive,
+      moduleAddress: base.moduleAddress,
+      lensAddress: base.lensAddress,
+    },
+  } as Record<number, { live: boolean; moduleAddress?: Address; lensAddress?: Address }>;
+};
+
+export const useCardCreditPositions = ({
+  enabled,
+  refetchInterval,
+}: {
+  enabled: boolean;
+  /** Re-read while a screen shows a countdown or a pending unlock. */
+  refetchInterval?: number;
+}) => {
   const { user } = useUser();
   const safeAddress = user?.safeAddress as Address | undefined;
 
   const {
     isLive: readsBase,
+    isLoading: isBaseGateLoading,
+    isError: isBaseGateError,
+    refetchGate: refetchBaseGate,
     moduleAddress: baseModule,
     lensAddress: baseLens,
   } = useBaseCreditInstance();
@@ -381,10 +547,18 @@ export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
       ADDRESSES.fuse.spendLensV2,
       safeAddress,
       enabled && readsFuse,
+      refetchInterval,
     ),
   );
   const baseQuery = useQuery(
-    creditInstanceQuery(base.id, baseModule, baseLens, safeAddress, enabled && readsBase),
+    creditInstanceQuery(
+      baseChain.id,
+      baseModule,
+      baseLens,
+      safeAddress,
+      enabled && readsBase,
+      refetchInterval,
+    ),
   );
 
   const data = useMemo<CardCreditPositions>(
@@ -395,8 +569,28 @@ export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
     [readsFuse, readsBase, fuseQuery.data, baseQuery.data],
   );
 
-  // True only while an enabled read has yet to answer for the first time.
-  return { data, base: baseQuery, isLoading: fuseQuery.isLoading || baseQuery.isLoading };
+  return {
+    data,
+    fuse: fuseQuery,
+    base: baseQuery,
+    /** Some instance this cardholder borrows on has not answered its first read yet. */
+    // Base's gate counts too: until it answers, a Base-only borrower would read as owing nothing.
+    isLoading:
+      (readsFuse && fuseQuery.isLoading) || isBaseGateLoading || (readsBase && baseQuery.isLoading),
+    /**
+     * Some instance's read failed, so a loan there may be missing from `data` — including the Base
+     * gate, which otherwise reads as "no Base loan".
+     */
+    isError:
+      (readsFuse && fuseQuery.isError) || isBaseGateError || (readsBase && baseQuery.isError),
+    // Only queries that can run: a manual refetch ignores `enabled` and would read without a lens.
+    refetch: () =>
+      Promise.all([
+        readsFuse && safeAddress ? fuseQuery.refetch() : undefined,
+        isBaseGateError ? refetchBaseGate() : undefined,
+        readsBase && safeAddress && baseModule && baseLens ? baseQuery.refetch() : undefined,
+      ]),
+  };
 };
 
 export default useCardCreditPositions;

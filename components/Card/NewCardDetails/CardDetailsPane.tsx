@@ -33,7 +33,6 @@ import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCard
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
 import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
-import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import useCreditModeFigures from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
@@ -225,8 +224,6 @@ const CardDetailsPane = () => {
       // The hook recorded the reason as `error`, which the row shows in place of its subtitle.
     }
   }, [spendRegistration]);
-  // The borrow position's own sheet, opened by tapping the card that shows it.
-  const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
   // Stable identities: the reveal section folds its opener into the memoised toggle
   // handler, which would be rebuilt on every render of this pane otherwise.
   const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
@@ -266,7 +263,6 @@ const CardDetailsPane = () => {
     // rather than merely hiding it also stops the sheet reappearing on the next visit.
     setSpendSheetSource(null);
     setIsAddToWalletOpen(false);
-    setIsBorrowPositionOpen(false);
   }, [isOpen]);
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
@@ -466,7 +462,7 @@ const CardDetailsPane = () => {
                 creditLimit={creditFigures.creditLimit}
                 borrowApy={creditFigures.borrowApy}
                 borrowedProgress={creditFigures.borrowedProgress}
-                onPress={() => setIsBorrowPositionOpen(true)}
+                onPress={() => router.push(path.CARD_CREDIT)}
               />
             </HeroEnter>
           ) : null}
@@ -560,10 +556,6 @@ const CardDetailsPane = () => {
         error={realTimeFunding.error}
         onClose={() => setIsRtfModalOpen(false)}
         onApprove={realTimeFunding.approve}
-      />
-      <BorrowPositionSheet
-        isOpen={isOpen && isBorrowPositionOpen}
-        onOpenChange={setIsBorrowPositionOpen}
       />
       <AddToWalletModal
         trigger={null}

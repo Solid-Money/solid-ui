@@ -503,6 +503,18 @@ export const TRACKING_EVENTS = {
   CARD_CREDIT_REPAY_COMPLETED: 'card_credit_repay_completed',
   CARD_CREDIT_REPAY_FAILED: 'card_credit_repay_failed',
   CARD_CREDIT_REPAY_CANCELLED: 'card_credit_repay_cancelled',
+  // Unlocking part of a locked asset while the credit loan stays open: one signature for the
+  // repayment it needs plus the request, then a cancel or a finish once the wait is over.
+  // `repay_source` is none, wallet or collateral; `asset` is the token being unlocked.
+  CARD_CREDIT_UNLOCK_PRESSED: 'card_credit_unlock_pressed',
+  CARD_CREDIT_UNLOCK_REQUESTED: 'card_credit_unlock_requested',
+  CARD_CREDIT_UNLOCK_FAILED: 'card_credit_unlock_failed',
+  CARD_CREDIT_UNLOCK_CANCELLED: 'card_credit_unlock_cancelled',
+  CARD_CREDIT_UNLOCK_WITHDRAWN: 'card_credit_unlock_withdrawn',
+  CARD_CREDIT_UNLOCK_FINISHED: 'card_credit_unlock_finished',
+  // The Credit page and the steps it opens, so the funnel from a risk state to an action shows.
+  CARD_CREDIT_DETAILS_VIEWED: 'card_credit_details_viewed',
+  CARD_CREDIT_ASSET_OPENED: 'card_credit_asset_opened',
   // Changing the caps on an existing registration. Separate from the register funnel
   // because it is a returning user tuning a live card, not a new one being set up, and
   // the two directions are genuinely different products of the contract: a decrease
