@@ -10,6 +10,7 @@ const { act, create } = require('react-test-renderer');
 
 const mockScrollTo = jest.fn();
 const mockWindow = { width: 419, height: 900 };
+const mockPlatform = { OS: 'ios' };
 
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 jest.mock('react-native', () => {
@@ -18,7 +19,10 @@ jest.mock('react-native', () => {
     Modal: 'Modal',
     View: 'View',
     Pressable: 'Pressable',
-    Platform: { OS: 'ios' },
+    // Read when used: the factory runs before `mockPlatform` is assigned.
+    get Platform() {
+      return mockPlatform;
+    },
     Linking: { openURL: jest.fn(() => Promise.resolve()) },
     StyleSheet: { create: (styles: unknown) => styles, absoluteFill: {} },
     useWindowDimensions: () => mockWindow,
@@ -74,12 +78,24 @@ const render = (initialStep: number) => {
     );
   });
   const pager = () => renderer!.root.find((node: any) => node.props.horizontal === true);
+  const at = (x: number) => ({ nativeEvent: { contentOffset: { x, y: 0 } } });
   return {
     renderer: renderer!,
     /** The slides have been laid out (at the current window width). */
     layOut: () => act(() => pager().props.onContentSizeChange()),
-    scrollTo: (x: number) =>
-      act(() => pager().props.onScroll({ nativeEvent: { contentOffset: { x, y: 0 } } })),
+    /** A scroll event the user didn't drive, e.g. a late one from before a rotation. */
+    scrollTo: (x: number) => act(() => pager().props.onScroll(at(x))),
+    /** The user drags to `releasedAt`, and the momentum snaps the pager to `restsAt`. */
+    swipe: (releasedAt: number, restsAt: number) =>
+      act(() => {
+        const props = pager().props;
+        props.onScrollBeginDrag();
+        props.onScroll(at(releasedAt));
+        props.onScrollEndDrag(at(releasedAt));
+        props.onMomentumScrollBegin();
+        props.onScroll(at(restsAt));
+        props.onMomentumScrollEnd(at(restsAt));
+      }),
     /** "Next" on every slide but the last, which says "Done". */
     primaryLabel: (): string => renderer!.root.findByType('Button').props.accessibilityLabel,
   };
@@ -91,6 +107,7 @@ describe('WhatsNewModal pager', () => {
     mockScrollTo.mockClear();
     mockWindow.width = 419;
     mockWindow.height = 900;
+    mockPlatform.OS = 'ios';
   });
 
   afterEach(() => {
@@ -111,16 +128,40 @@ describe('WhatsNewModal pager', () => {
     act(() => modal.renderer.unmount());
   });
 
-  it('ignores an old offset delivered just after placement, then follows swipes', () => {
+  it("ignores an old offset whenever it lands, and follows the user's swipe", () => {
     const modal = render(2);
     modal.layOut();
 
     modal.scrollTo(0);
     expect(modal.primaryLabel()).toBe('Done');
+    act(() => jest.advanceTimersByTime(5000));
+    modal.scrollTo(0);
+    expect(modal.primaryLabel()).toBe('Done');
 
-    act(() => jest.advanceTimersByTime(300));
-    modal.scrollTo(pageWidth());
+    modal.swipe(1.4 * pageWidth(), pageWidth());
     expect(modal.primaryLabel()).toBe('Next');
+    act(() => modal.renderer.unmount());
+  });
+
+  it('follows a swipe that ends right after the pager is placed', () => {
+    const modal = render(2);
+    modal.layOut();
+
+    modal.swipe(0.4 * pageWidth(), 0);
+    expect(modal.primaryLabel()).toBe('Next');
+    act(() => modal.renderer.unmount());
+  });
+
+  it('follows every scroll on web, where the offset is read live', () => {
+    mockPlatform.OS = 'web';
+    const modal = render(0);
+    modal.scrollTo(2 * pageWidth());
+    // Not placed yet: the pager reports where it was before the first layout.
+    expect(modal.primaryLabel()).toBe('Next');
+
+    modal.layOut();
+    modal.scrollTo(2 * pageWidth());
+    expect(modal.primaryLabel()).toBe('Done');
     act(() => modal.renderer.unmount());
   });
 
@@ -128,7 +169,6 @@ describe('WhatsNewModal pager', () => {
     const modal = render(1);
     modal.layOut();
     const oldOffset = pageWidth();
-    act(() => jest.advanceTimersByTime(300));
     expect(modal.primaryLabel()).toBe('Next');
 
     // Narrower: the old offset read at the new width would name the last slide.

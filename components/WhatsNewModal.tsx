@@ -40,12 +40,6 @@ const MEDIA_RADIUS = 16;
 /** Same backdrop as the single image or video. */
 const BACKDROP = 'rgba(0, 0, 0, 0.7)';
 const MEDIA_CORNERS = { borderRadius: MEDIA_RADIUS };
-/**
- * How long after the pager is placed a scroll event must report the placed
- * offset to count. A native scroll event is a snapshot sent before the resize
- * that can arrive after the placement; nobody starts a swipe this quickly.
- */
-const PAGER_SETTLE_MS = 250;
 /** The card never comes closer than this to the top of the screen (and, from `md` up, the bottom). */
 const CARD_SCREEN_MARGIN = 24;
 
@@ -218,8 +212,14 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   // first, and after a resize they carry the old width's offset, which read
   // at the new width names a neighbouring slide.
   const placedWidthRef = useRef<number | null>(null);
-  // Where the last placement put the pager, and until when only that offset counts.
-  const placementRef = useRef<{ x: number; until: number } | null>(null);
+  // A native scroll event is a snapshot that can arrive late: one sent before a
+  // rotation can land after the pager has been placed at the new width, at any
+  // time. So on native the slide follows only the user's own swipe, from the
+  // drag until the pager comes to rest. React Native Web reads the live offset
+  // as it dispatches, so there every scroll event counts (a trackpad swipe
+  // sends no drag events).
+  const followsEveryScroll = Platform.OS === 'web';
+  const isSwipingRef = useRef(false);
   const [isClosing, setIsClosing] = useState(false);
   const closedRef = useRef(false);
 
@@ -282,26 +282,33 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
   const placePager = useCallback(() => {
     if (!layout.pageWidth) return;
     const index = placedWidthRef.current === null ? startIndex : activeIndex;
-    const x = index * layout.pageWidth;
-    pagerRef.current?.scrollTo({ x, animated: false });
+    pagerRef.current?.scrollTo({ x: index * layout.pageWidth, animated: false });
     placedWidthRef.current = layout.pageWidth;
-    placementRef.current = { x, until: Date.now() + PAGER_SETTLE_MS };
   }, [activeIndex, layout.pageWidth, startIndex]);
 
-  // Follows a swipe. Web doesn't always send momentum-end after a manual
-  // scroll, so the nearest page is taken on every scroll event.
-  const handleScroll = useCallback(
+  // The nearest page to an offset the user scrolled to becomes the slide.
+  const followOffset = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!layout.pageWidth || placedWidthRef.current !== layout.pageWidth) return;
-      const { x } = event.nativeEvent.contentOffset;
-      const placement = placementRef.current;
-      // Sent before the placement, delivered after it: still the old offset.
-      if (placement && Date.now() < placement.until && Math.abs(x - placement.x) > 1) return;
-      const index = Math.round(x / layout.pageWidth);
+      if (!followsEveryScroll && !isSwipingRef.current) return;
+      const index = Math.round(event.nativeEvent.contentOffset.x / layout.pageWidth);
       const bounded = Math.max(0, Math.min(index, steps.length - 1));
       setActiveIndex(current => (current === bounded ? current : bounded));
     },
-    [layout.pageWidth, steps.length],
+    [followsEveryScroll, layout.pageWidth, steps.length],
+  );
+
+  // A swipe: the drag, then the momentum that snaps it to a page, if any.
+  const handleSwipeStart = useCallback(() => {
+    isSwipingRef.current = true;
+  }, []);
+  // Where the pager came to rest ends the swipe.
+  const handleSwipeEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      followOffset(event);
+      isSwipingRef.current = false;
+    },
+    [followOffset],
   );
 
   const handlePrimary = () => {
@@ -402,8 +409,12 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose, initialStep = 0 }: WhatsNewM
                 overScrollMode="never"
                 showsHorizontalScrollIndicator={false}
                 scrollEnabled={steps.length > 1}
-                onScroll={handleScroll}
-                onMomentumScrollEnd={handleScroll}
+                onScroll={followOffset}
+                onScrollBeginDrag={handleSwipeStart}
+                // Released on a page: no momentum follows.
+                onScrollEndDrag={handleSwipeEnd}
+                onMomentumScrollBegin={handleSwipeStart}
+                onMomentumScrollEnd={handleSwipeEnd}
                 scrollEventThrottle={16}
                 style={{ width: layout.pageWidth }}
                 // Opens on the linked slide without first drawing slide 1.
