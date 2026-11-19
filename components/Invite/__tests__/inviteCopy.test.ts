@@ -1,4 +1,4 @@
-import { inviteCopy, inviterInitial } from '@/components/Invite/inviteCopy';
+import { inviteCopy, inviteHeaderLabel, inviterInitial } from '@/components/Invite/inviteCopy';
 
 import type { ReferralInviteLookup } from '@/lib/types';
 
@@ -79,5 +79,15 @@ describe('inviterInitial', () => {
 
   it('is empty for an empty name', () => {
     expect(inviterInitial('')).toBe('');
+  });
+});
+
+describe('inviteHeaderLabel', () => {
+  it('offers a visitor to log in', () => {
+    expect(inviteHeaderLabel(false)).toBe('Log in');
+  });
+
+  it('offers someone already signed in the way back to the wallet, not a login', () => {
+    expect(inviteHeaderLabel(true)).toBe('Go to wallet');
   });
 });

@@ -16,11 +16,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 
 import {
   type InviteCopy,
   inviteCopy,
+  inviteHeaderLabel,
   inviterInitial,
   type InviteTitlePart,
 } from '@/components/Invite/inviteCopy';
@@ -277,9 +278,10 @@ const openSite = (url: string) => {
  * In the app it stores the code for signup and sends the friend there. On the web it is
  * also the hand-off to the app: a QR code on desktop, the store on a phone — Play
  * carrying the code as the install referrer, the App Store side copying it to the
- * clipboard for the signup screen to offer back. Anyone already signed in just goes
- * home; the invite is for new accounts and must not replace the referrer an existing
- * one already has.
+ * clipboard for the signup screen to offer back. Someone already signed in sees the same
+ * page — sending them home reads as a bug — with the header's "Log in" turned into a way
+ * back to the wallet. Their device keeps no code: the invite is for new accounts and must
+ * not replace the referrer an existing one already has.
  */
 export default function InviteScreen({ rawCode }: { rawCode: string | undefined }) {
   const { isDesktop } = useDimension();
@@ -323,6 +325,7 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
 
   const getStarted = useCallback(() => router.push(path.SIGNUP_EMAIL), []);
   const logIn = useCallback(() => router.push(path.ONBOARDING), []);
+  const goToWallet = useCallback(() => router.replace(path.HOME), []);
   const learnAboutSolid = useCallback(() => openSite(SOLID_SITE_URL), []);
 
   const openAppStore = useCallback(async () => {
@@ -340,8 +343,6 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
     // The code rides along as the install referrer; the app reads it on first launch.
     openStore(storedCode ? buildPlayStoreInviteUrl(storedCode) : PLAY_STORE_URL);
   }, [storedCode]);
-
-  if (usersHydrated && isSignedIn) return <Redirect href={path.HOME} />;
 
   if (!isReady) {
     return (
@@ -445,7 +446,7 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
         >
           <SolidLockup width={layout.header.logoWidth} />
           <Pressable
-            onPress={logIn}
+            onPress={isSignedIn ? goToWallet : logIn}
             accessibilityRole="link"
             hitSlop={8}
             className="active:opacity-70 web:hover:opacity-80"
@@ -454,7 +455,7 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
               className="font-medium text-white/70"
               style={{ fontSize: layout.header.loginFontSize }}
             >
-              Log in
+              {inviteHeaderLabel(isSignedIn)}
             </Text>
           </Pressable>
         </View>
