@@ -24,6 +24,7 @@ import {
   formatWait,
   type LoanAsset,
   type LoanModel,
+  type LoanSale,
   valueOf,
 } from '@/lib/creditRisk';
 
@@ -143,7 +144,10 @@ const SaleBlock = ({
   now: number;
   format: (usd: bigint) => string;
 }) => {
-  const sale = loan.sale;
+  // The loan is rebuilt on each read, the clock ticks every second: a wait that ran out since the
+  // last read is already "at any time", not a countdown at zero.
+  const sale: LoanSale | null =
+    loan.sale?.kind === 'countdown' && now >= loan.sale.saleAt ? { kind: 'now' } : loan.sale;
   if (!sale) return null;
   const single = loan.risk.kind === 'single' ? loan.risk : null;
   const graceHours = Math.round(loan.saleWaitSeconds / 3600);
@@ -494,23 +498,33 @@ const PendingUnlock = ({
             : `${value} ready to unlock`}
         </Text>
       </View>
-      {remaining > 0 ? (
-        <PillButton label="Cancel" size="compact" onPress={onCancel} loading={isCancelling} />
-      ) : (
+      <View style={styles.pendingActions}>
+        {/* Cancel stays once the wait is over: a cardholder may change their mind, and the asset
+            sheet offers no other unlock while this one is pending. */}
         <PillButton
-          label="Finish"
-          kind="primary"
+          label="Cancel"
           size="compact"
-          onPress={onFinish}
-          loading={isFinishing}
+          onPress={onCancel}
+          loading={isCancelling}
+          disabled={isFinishing}
         />
-      )}
+        {remaining > 0 ? null : (
+          <PillButton
+            label="Finish"
+            kind="primary"
+            size="compact"
+            onPress={onFinish}
+            loading={isFinishing}
+            disabled={isCancelling}
+          />
+        )}
+      </View>
     </View>
   );
 };
 
 /** E2: part of the loan was sold. Nothing else tells the cardholder. */
-const SaleNotice = ({
+export const SaleNotice = ({
   sale,
   loan,
   knownAssets,
@@ -518,13 +532,14 @@ const SaleNotice = ({
   explorerTxUrl,
 }: {
   sale: LoanSaleEvent;
-  loan: LoanModel;
+  /** The loan it came from, or null once that loan has been repaid. */
+  loan: Pick<LoanModel, 'assets'> | null;
   knownAssets: readonly CreditCollateralAsset[];
   format: (usd: bigint) => string;
   explorerTxUrl?: (hash: string) => string | undefined;
 }) => {
   const asset =
-    loan.assets.find(candidate => candidate.token.toLowerCase() === sale.token.toLowerCase()) ??
+    loan?.assets.find(candidate => candidate.token.toLowerCase() === sale.token.toLowerCase()) ??
     knownAssets.find(candidate => candidate.token.toLowerCase() === sale.token.toLowerCase());
   const name = asset ? assetName(asset) : 'collateral';
   const bonus = BigInt(asset?.liquidationBonusBps ?? 0);
@@ -536,13 +551,15 @@ const SaleNotice = ({
       segments={[
         `${formatWhen(sale.timestamp)}: we sold ${asset ? `${formatTokenUnits(sale.seized, asset.decimals)} ${name}` : name}, about `,
         { bold: format(taken) },
-        `, to cover ${format(sale.repaidUsd)} of this loan. ${format(taken - sale.repaidUsd)} of that was the penalty.`,
+        `, to cover ${format(sale.repaidUsd)} of ${loan ? 'this' : 'your'} loan. ${format(taken - sale.repaidUsd)} of that was the penalty.`,
       ]}
     />
   );
   return (
     <Note tone="bad">
-      <Text className="text-[14px] font-semibold text-white">Part of this loan was sold</Text>
+      <Text className="text-[14px] font-semibold text-white">
+        {loan ? 'Part of this loan was sold' : 'Part of a loan you’ve since repaid was sold'}
+      </Text>
       {body}
       {link ? (
         <Pressable
@@ -571,6 +588,7 @@ const styles = StyleSheet.create({
   loan: { gap: 12, padding: 16 },
   header: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   headerText: { flex: 1, gap: 2 },
+  pendingActions: { flexDirection: 'row', gap: 8 },
   saleTitle: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   legend: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -4 },
   inlineLink: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 4 },

@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
 import { base } from 'viem/chains';
 
+import { formatTokenUnits } from '@/components/Card/Credit/creditUi';
 import { formatUsd } from '@/constants/cardSpendModule';
 import { explorerUrls } from '@/constants/explorers';
 import {
@@ -11,7 +12,6 @@ import {
   useCardRepay,
 } from '@/hooks/useCardRepay';
 import { eclipseAddress } from '@/lib/utils';
-import { formatRepayTokenAmount } from '@/lib/utils/cardRepay';
 
 /** Everything a loan's repay step needs. */
 export interface LoanRepay {
@@ -55,8 +55,9 @@ export const useLoanRepay = (chainId: CardRepayChainId, enabled: boolean): LoanR
       const result = await repay(request).catch(() => null);
       if (!result) return false;
 
+      // Significant digits under 1, so a small return reads as 0.001 rather than 0.00.
       const returned = result.returnedCollateral
-        .map(item => `${formatRepayTokenAmount(item.amount, item.decimals)} ${item.displaySymbol}`)
+        .map(item => `${formatTokenUnits(item.amount, item.decimals)} ${item.displaySymbol}`)
         .join(' and ');
       const link = explorerTxUrl(chainId)(result.transactionHash);
 

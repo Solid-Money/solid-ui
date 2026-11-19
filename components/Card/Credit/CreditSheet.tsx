@@ -19,6 +19,7 @@ import { explorerTxUrl, type LoanRepay, useLoanRepay } from '@/components/Card/C
 import CardBottomSheet from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet';
 import RepaySheetContent from '@/components/Card/NewCardDetails/SpendMode/RepaySheetContent';
 import { Text } from '@/components/ui/text';
+import { showErrorToast } from '@/lib/errors';
 import { eclipseAddress } from '@/lib/utils';
 
 import type { CreditDetails } from '@/components/Card/Credit/useCreditDetails';
@@ -227,7 +228,12 @@ const CreditSheet = ({ stack, onStackChange, details, unlocks }: CreditSheetProp
               const started = session.current;
               const done = await unlock
                 .withdrawAll(loan.assets.map(asset => asset.token))
-                .catch(() => null);
+                // The asset view has no error line of its own; a dismissed prompt resolves, so
+                // only a real failure reaches this.
+                .catch(error => {
+                  void showErrorToast(error, { action: 'card_unlock' });
+                  return null;
+                });
               if (done) {
                 Toast.show({
                   type: 'success',

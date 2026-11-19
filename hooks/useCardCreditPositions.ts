@@ -354,7 +354,12 @@ export const readCreditInstance = async (
         ltWad: config.liquidationThreshold,
         liquidationBonusBps: Number(config.liquidationBonusBps),
         countsTowardPower: config.collateral && !paused,
-        repayFeeBps: Number(read<number>(index, 4) ?? 0),
+        // The module charges the stored fee capped at the current bonus (`_sizeCollateralRepay`):
+        // a bonus lowered after the fee was set lowers the fee with it.
+        repayFeeBps: Math.min(
+          Number(read<number>(index, 4) ?? 0),
+          Number(config.liquidationBonusBps),
+        ),
       },
     ];
   });

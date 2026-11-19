@@ -1,11 +1,13 @@
 import {
   buildLoan,
+  debtAtUnlock,
   formatClock,
   formatWait,
   freeToUnlock,
   quoteUnlock,
   roundUpToStep,
   statusOf,
+  UNLOCK_INTEREST_HEADROOM_SECONDS,
   WAD,
 } from '@/lib/creditRisk';
 
@@ -354,6 +356,56 @@ describe('unlocking while the loan stays open', () => {
     // 880 − (937.90 − 300)
     expect(quote.neededUsd).toBe(usd(242.1));
     expect(quote.repayUsd).toBe(usd(245));
+  });
+
+  it('leaves room for the interest that runs before the unlock is finished', () => {
+    // 10% a year, per second, as the module stores it.
+    const apy = wad(0.1) / 31_536_000n;
+    const accruing = position(880, sixAssets().assets, { borrowApyPerSecond: apy });
+    const accruingLoan = buildLoan(accruing, NOW);
+    const weth = accruingLoan.assets.find(a => a.symbol === 'WETH')!;
+    const seconds = BigInt(300 + UNLOCK_INTEREST_HEADROOM_SECONDS);
+    const interest = (usd(880) * apy * seconds + WAD - 1n) / WAD;
+    expect(debtAtUnlock(accruingLoan)).toBe(usd(880) + interest);
+
+    const free = freeToUnlock(accruingLoan, weth);
+    expect(free.valueUsd).toBeLessThan(usd(96.5));
+    const quote = quoteUnlock({
+      position: accruing,
+      loan: accruingLoan,
+      asset: weth,
+      amount: free.amount,
+      source: { kind: 'wallet' },
+      nowSeconds: NOW,
+    });
+    expect(quote.repayUsd).toBe(0n);
+    // Still within borrowing power once the wait and the headroom have run.
+    expect(debtAtUnlock(quote.after)).toBeLessThanOrEqual(quote.after.powerUsd);
+  });
+
+  it('takes a collateral repayment as the module does: principal and fee each rounded up', () => {
+    // 0.01 BTC at $99,999 with a 1% fee: $5 is 5,000.05 → 5,001 units, the fee 50.01 → 51.
+    const btcSource = bitcoin(999.99, {
+      priceUsd: usd(99_999),
+      amount: 1_000_000n,
+      escrowed: 1_000_000n,
+      repayFeeBps: 100,
+    });
+    const stable = asset('soUSD', 100, 0.9, 0.95);
+    // Exactly at borrowing power: 100 × 90% + 999.99 × 60%.
+    const atPower = position(689.994, [stable, btcSource]);
+    const atPowerLoan = buildLoan(atPower, NOW);
+    const quote = quoteUnlock({
+      position: atPower,
+      loan: atPowerLoan,
+      asset: atPowerLoan.assets.find(a => a.symbol === 'soUSD')!,
+      amount: usd(1),
+      source: { kind: 'collateral', asset: atPowerLoan.assets.find(a => a.symbol === 'cbBTC')! },
+      nowSeconds: NOW,
+    });
+    expect(quote.repayUsd).toBe(usd(5));
+    expect(quote.after.assets.find(a => a.symbol === 'cbBTC')!.escrowed).toBe(1_000_000n - 5_052n);
+    expect(quote.unavailableReason).toBeNull();
   });
 });
 

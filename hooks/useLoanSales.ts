@@ -26,11 +26,11 @@ export interface LoanSaleEvent {
 /** How far back a sale is still news on the Credit page. */
 export const SALE_LOOKBACK_SECONDS = 7 * 24 * 60 * 60;
 
-/**
- * Rough block times, only to size the lookback. Erring short is harmless: a sale a few hours
- * older than a week simply is not shown.
- */
-const SECONDS_PER_BLOCK: Record<number, number> = { [fuse.id]: 5, [base.id]: 2 };
+/** Blocks sampled to measure a chain's block time; block times change (Base went to 0.2s). */
+const BLOCK_TIME_SAMPLE = 10_000n;
+
+/** How often the open Credit page looks for a new sale: nothing else reports one. */
+const SALES_REFRESH_MS = 60_000;
 
 /**
  * The sales on one instance in the last week, newest first.
@@ -44,9 +44,20 @@ const readSales = async (
   safe: Address,
 ): Promise<LoanSaleEvent[]> => {
   const client = publicClient(chainId);
-  const latest = await client.getBlockNumber();
-  const span = BigInt(Math.ceil(SALE_LOOKBACK_SECONDS / (SECONDS_PER_BLOCK[chainId] ?? 2)));
+  // The lookback in blocks, from the chain's measured block time rather than an assumed one, with
+  // a tenth spare; events are then cut to the week by their own timestamps.
+  const head = await client.getBlock({ blockTag: 'latest' });
+  const latest = head.number;
+  const sampleFrom = latest > BLOCK_TIME_SAMPLE ? latest - BLOCK_TIME_SAMPLE : 0n;
+  const sample = await client.getBlock({ blockNumber: sampleFrom });
+  const sampledBlocks = Number(latest - sampleFrom);
+  const secondsPerBlock =
+    sampledBlocks > 0
+      ? Math.max(Number(head.timestamp - sample.timestamp) / sampledBlocks, 0.05)
+      : 1;
+  const span = BigInt(Math.ceil((SALE_LOOKBACK_SECONDS / secondsPerBlock) * 1.1));
   const fromBlock = latest > span ? latest - span : 0n;
+  const since = Number(head.timestamp) - SALE_LOOKBACK_SECONDS;
 
   const events = await client.getContractEvents({
     address: moduleAddress,
@@ -83,6 +94,7 @@ const readSales = async (
         },
       ];
     })
+    .filter(sale => sale.timestamp >= since)
     .sort((a, b) => b.timestamp - a.timestamp);
 };
 
@@ -111,6 +123,7 @@ export const useLoanSales = ({ enabled }: { enabled: boolean }) => {
       queryFn: () => readSales(chainId, instance!.moduleAddress!, safe!),
       enabled: enabled && Boolean(instance?.live && instance.moduleAddress && safe),
       staleTime: 60_000,
+      refetchInterval: SALES_REFRESH_MS,
       retry: 1,
     };
   };

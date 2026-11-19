@@ -387,14 +387,26 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
         throw new UnlockBlockedError('not-ready', 'This unlock isn’t ready yet.');
       }
 
+      // The module releases the request clamped to what is still locked (a sale during the wait
+      // can take part of it), so the check and the result both use that figure.
+      const escrowed = position.collateral.find(entry =>
+        sameToken(entry.token, pending.token),
+      )?.escrowed;
+      const releases =
+        escrowed !== undefined && escrowed < pending.amount ? escrowed : pending.amount;
+      if (releases === 0n) {
+        throw new UnlockBlockedError(
+          'nothing-pending',
+          'None of this asset is still locked, so this unlock can only be cancelled.',
+        );
+      }
+
       // The module's own release check, worked out first so a loan that moved during the wait
       // gets an explanation rather than a reverted operation.
       if (position.debtUsd > 0n) {
         const loan = buildLoan(position, Math.floor(Date.now() / 1000));
         const asset = loan.assets.find(candidate => sameToken(candidate.token, pending.token));
-        const value = asset
-          ? (pending.amount * asset.priceUsd) / 10n ** BigInt(asset.decimals)
-          : 0n;
+        const value = asset ? (releases * asset.priceUsd) / 10n ** BigInt(asset.decimals) : 0n;
         const removedPower = asset?.countsTowardPower ? (value * asset.ltvWad) / WAD : 0n;
         if (position.debtUsd > loan.powerUsd - removedPower) {
           throw new UnlockBlockedError(
@@ -422,7 +434,7 @@ export function useCollateralUnlock(chainId: CardRepayChainId) {
         chain_id: chainId,
         transaction_hash: result.transactionHash,
       });
-      return { ...result, token: pending.token, amount: pending.amount };
+      return { ...result, token: pending.token, amount: releases };
     },
     onSuccess: result => {
       if (result) refresh();

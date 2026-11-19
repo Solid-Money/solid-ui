@@ -172,6 +172,8 @@ export interface LoanModel {
   sparePowerUsd: bigint;
   pendingUnlock: (PendingCollateralUnlock & { asset: LoanAsset | undefined }) | null;
   borrowApyPerSecond: bigint;
+  /** How long an unlock waits before it can be finished (`collateralWithdrawDelay`), seconds. */
+  unlockWaitSeconds: number;
 }
 
 const min = (a: bigint, b: bigint) => (a < b ? a : b);
@@ -390,6 +392,7 @@ const assemble = (
         }
       : null,
     borrowApyPerSecond: position.borrowApyPerSecond,
+    unlockWaitSeconds: position.params.collateralWithdrawDelay,
   };
   model.payDown = suggestPayDown(model);
   return model;
@@ -473,9 +476,29 @@ export const suggestPayDown = (
   return options.sort((a, b) => (healthOf(a) > healthOf(b) ? -1 : 1))[0];
 };
 
+/**
+ * Interest an unlock is sized to absorb beyond its own wait: the module accrues before its release
+ * check, so an unlock sized to the cent would be refused once any interest had run. A day covers a
+ * cardholder who finishes later than the earliest moment, at a cost of cents.
+ */
+export const UNLOCK_INTEREST_HEADROOM_SECONDS = 86_400;
+
+/**
+ * The debt as it will stand when an unlock is finished: today's, plus interest through the wait and
+ * {@link UNLOCK_INTEREST_HEADROOM_SECONDS}, rounded up as the module rounds debt.
+ */
+export const debtAtUnlock = (
+  loan: Pick<LoanModel, 'debtUsd' | 'borrowApyPerSecond' | 'unlockWaitSeconds'>,
+): bigint => {
+  if (loan.debtUsd === 0n || loan.borrowApyPerSecond === 0n) return loan.debtUsd;
+  const seconds = BigInt(loan.unlockWaitSeconds + UNLOCK_INTEREST_HEADROOM_SECONDS);
+  const interest = (loan.debtUsd * loan.borrowApyPerSecond * seconds + WAD - 1n) / WAD;
+  return loan.debtUsd + interest;
+};
+
 /** What can be unlocked from `asset` with nothing repaid, in token units and value. */
 export const freeToUnlock = (
-  loan: Pick<LoanModel, 'debtUsd' | 'powerUsd'>,
+  loan: Pick<LoanModel, 'debtUsd' | 'powerUsd' | 'borrowApyPerSecond' | 'unlockWaitSeconds'>,
   asset: Pick<
     LoanAsset,
     'escrowed' | 'escrowedValueUsd' | 'priceUsd' | 'decimals' | 'ltvWad' | 'countsTowardPower'
@@ -484,11 +507,11 @@ export const freeToUnlock = (
   if (loan.debtUsd === 0n) return { amount: asset.escrowed, valueUsd: asset.escrowedValueUsd };
   // An asset the module does not lend against adds no power, so taking it costs none.
   if (!asset.countsTowardPower || asset.ltvWad === 0n) {
-    return loan.powerUsd >= loan.debtUsd
+    return loan.powerUsd >= debtAtUnlock(loan)
       ? { amount: asset.escrowed, valueUsd: asset.escrowedValueUsd }
       : { amount: 0n, valueUsd: 0n };
   }
-  const spare = max(loan.powerUsd - loan.debtUsd, 0n);
+  const spare = max(loan.powerUsd - debtAtUnlock(loan), 0n);
   const valueUsd = min((spare * WAD) / asset.ltvWad, asset.escrowedValueUsd);
   const amount = min(unitsFloor(valueUsd, asset.priceUsd, asset.decimals), asset.escrowed);
   return { amount, valueUsd: valueOf(amount, asset.priceUsd, asset.decimals) };
@@ -528,7 +551,8 @@ export interface UnlockQuote {
  * Unlocking `amount` of `asset` while the loan stays open.
  *
  * The release is allowed only if, after it, debt ≤ borrowing power. So the repayment needed is
- * `debt − (power − value × LTV)`. Paid from another locked asset, that asset stops backing the
+ * `debt − (power − value × LTV)`, with the debt taken as it will stand at the finish
+ * ({@link debtAtUnlock}). Paid from another locked asset, that asset stops backing the
  * loan too, which takes `needed ÷ (1 − (1 + fee) × its LTV)`.
  */
 export const quoteUnlock = ({
@@ -550,7 +574,7 @@ export const quoteUnlock = ({
   const valueUsd = valueOf(units, asset.priceUsd, asset.decimals);
   const free = freeToUnlock(loan, asset);
   const removedPower = asset.countsTowardPower ? (valueUsd * asset.ltvWad) / WAD : 0n;
-  const neededUsd = max(loan.debtUsd - (loan.powerUsd - removedPower), 0n);
+  const neededUsd = max(debtAtUnlock(loan) - (loan.powerUsd - removedPower), 0n);
 
   let repayUsd = 0n;
   let sourceRemovedUnits = 0n;
@@ -567,11 +591,13 @@ export const quoteUnlock = ({
         unavailableReason = `${s.symbol} can’t cover this on its own.`;
       } else {
         repayUsd = roundUpToStep((neededUsd * WAD) / (WAD - takesPower));
-        const takenUsd = (repayUsd * (BPS + fee)) / BPS;
-        if (takenUsd > s.escrowedValueUsd) {
+        // As `sizeCollateralRepay` takes it: the principal rounded up in token units, then the
+        // fee on those units rounded up on its own.
+        const principalUnits = unitsCeil(repayUsd, s.priceUsd, s.decimals);
+        sourceRemovedUnits = principalUnits + (principalUnits * fee + BPS - 1n) / BPS;
+        if (sourceRemovedUnits > s.escrowed) {
           unavailableReason = `Not enough ${s.symbol} locked in this loan.`;
         }
-        sourceRemovedUnits = unitsCeil(takenUsd, s.priceUsd, s.decimals);
       }
     }
   }
@@ -604,7 +630,7 @@ export const quoteUnlock = ({
   );
   // The release check the module runs: whole-unit rounding of a collateral repayment can take a
   // hair more power than it frees, so the projected loan is checked rather than assumed.
-  if (!unavailableReason && !requiresFullRepay && debtAfterUsd > after.powerUsd) {
+  if (!unavailableReason && !requiresFullRepay && debtAtUnlock(after) > after.powerUsd) {
     unavailableReason = 'This would leave the loan short of cover. Try a smaller amount.';
   }
 

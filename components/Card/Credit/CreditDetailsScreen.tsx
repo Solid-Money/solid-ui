@@ -22,7 +22,7 @@ import {
   STATUS_STYLE,
   StatusChip,
 } from '@/components/Card/Credit/creditUi';
-import LoanCard from '@/components/Card/Credit/LoanCard';
+import LoanCard, { SaleNotice } from '@/components/Card/Credit/LoanCard';
 import { useCreditDetails } from '@/components/Card/Credit/useCreditDetails';
 import { explorerTxUrl } from '@/components/Card/Credit/useLoanRepay';
 import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
@@ -183,6 +183,14 @@ const CreditDetailsScreen = () => {
     }, [isHelpOpen, stack.length]),
   );
   const owes = details.totalDebtUsd > 0n;
+  const closedLoanSales = [fuse.id, base.id]
+    .filter(chainId => !loans.some(loan => loan.chainId === chainId))
+    .flatMap(chainId => {
+      const sale = details.sales[chainId]?.find(
+        event => now - event.timestamp < SALE_LOOKBACK_SECONDS,
+      );
+      return sale ? [{ chainId, sale }] : [];
+    });
   const heading = STATUS_STYLE[worst];
 
   return (
@@ -249,6 +257,18 @@ const CreditDetailsScreen = () => {
                   {`You’ve used ${format(details.totalDebtUsd)} of your ${details.creditLimit} limit`}
                 </Text>
               </View>
+
+              {/* A sale on a loan since repaid in full: that loan has no card to carry it. */}
+              {closedLoanSales.map(({ chainId, sale }) => (
+                <SaleNotice
+                  key={sale.transactionHash}
+                  sale={sale}
+                  loan={null}
+                  knownAssets={details.positions[chainId]?.collateral ?? []}
+                  format={format}
+                  explorerTxUrl={explorerTxUrl(chainId)}
+                />
+              ))}
 
               {loans.length ? (
                 <View style={[styles.card, styles.loans]}>
