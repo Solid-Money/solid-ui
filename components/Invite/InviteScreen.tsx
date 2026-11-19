@@ -318,7 +318,10 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
   }, [isReady, isSignedIn, lookup, code, isError]);
 
   const copy: InviteCopy = useMemo(() => inviteCopy(lookup), [lookup]);
-  const storedCode = lookup?.valid ? lookup.code : code;
+  // What the store hand-off carries. Someone signed in keeps no code (see the effect above),
+  // so neither store gets one: it would only overwrite their clipboard or seed a referrer
+  // they can't use.
+  const handoffCode = isSignedIn ? null : lookup?.valid ? lookup.code : code;
   const platform = useMemo(() => webDevicePlatform(), []);
   const isWeb = Platform.OS === 'web';
   const pageUrl = isWeb && typeof window !== 'undefined' ? window.location.href : '';
@@ -332,17 +335,17 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
     track(TRACKING_EVENTS.GET_APP_PRESSED, { context: 'invite', store: 'ios' });
     // iOS has no install referrer: the code rides the clipboard instead, and the
     // signup screen offers to paste it back without a prompt.
-    if (storedCode) {
-      await Clipboard.setStringAsync(inviteClipboardText(storedCode)).catch(() => false);
+    if (handoffCode) {
+      await Clipboard.setStringAsync(inviteClipboardText(handoffCode)).catch(() => false);
     }
     openStore(APP_STORE_URL);
-  }, [storedCode]);
+  }, [handoffCode]);
 
   const openPlayStore = useCallback(() => {
     track(TRACKING_EVENTS.GET_APP_PRESSED, { context: 'invite', store: 'android' });
     // The code rides along as the install referrer; the app reads it on first launch.
-    openStore(storedCode ? buildPlayStoreInviteUrl(storedCode) : PLAY_STORE_URL);
-  }, [storedCode]);
+    openStore(handoffCode ? buildPlayStoreInviteUrl(handoffCode) : PLAY_STORE_URL);
+  }, [handoffCode]);
 
   if (!isReady) {
     return (
