@@ -73,6 +73,13 @@ export const inviteCopy = (lookup: ReferralInviteLookup | undefined): InviteCopy
   };
 };
 
+/**
+ * The header's link: "Log in" for a visitor, a way back to the wallet for someone who is
+ * already signed in and has nothing to log in to.
+ */
+export const inviteHeaderLabel = (isSignedIn: boolean): string =>
+  isSignedIn ? 'Go to wallet' : 'Log in';
+
 /** The pill's avatar letter: the inviter's first character, upper-cased. */
 export const inviterInitial = (name: string): string =>
   Array.from(name.trim())[0]?.toUpperCase() ?? '';

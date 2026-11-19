@@ -16,11 +16,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 
 import {
   type InviteCopy,
   inviteCopy,
+  inviteHeaderLabel,
   inviterInitial,
   type InviteTitlePart,
 } from '@/components/Invite/inviteCopy';
@@ -277,9 +278,10 @@ const openSite = (url: string) => {
  * In the app it stores the code for signup and sends the friend there. On the web it is
  * also the hand-off to the app: a QR code on desktop, the store on a phone — Play
  * carrying the code as the install referrer, the App Store side copying it to the
- * clipboard for the signup screen to offer back. Anyone already signed in just goes
- * home; the invite is for new accounts and must not replace the referrer an existing
- * one already has.
+ * clipboard for the signup screen to offer back. Someone already signed in sees the same
+ * page — sending them home reads as a bug — with the header's "Log in" turned into a way
+ * back to the wallet. Their device keeps no code: the invite is for new accounts and must
+ * not replace the referrer an existing one already has.
  */
 export default function InviteScreen({ rawCode }: { rawCode: string | undefined }) {
   const { isDesktop } = useDimension();
@@ -316,32 +318,34 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
   }, [isReady, isSignedIn, lookup, code, isError]);
 
   const copy: InviteCopy = useMemo(() => inviteCopy(lookup), [lookup]);
-  const storedCode = lookup?.valid ? lookup.code : code;
+  // What the store hand-off carries. Someone signed in keeps no code (see the effect above),
+  // so neither store gets one: it would only overwrite their clipboard or seed a referrer
+  // they can't use.
+  const handoffCode = isSignedIn ? null : lookup?.valid ? lookup.code : code;
   const platform = useMemo(() => webDevicePlatform(), []);
   const isWeb = Platform.OS === 'web';
   const pageUrl = isWeb && typeof window !== 'undefined' ? window.location.href : '';
 
   const getStarted = useCallback(() => router.push(path.SIGNUP_EMAIL), []);
   const logIn = useCallback(() => router.push(path.ONBOARDING), []);
+  const goToWallet = useCallback(() => router.replace(path.HOME), []);
   const learnAboutSolid = useCallback(() => openSite(SOLID_SITE_URL), []);
 
   const openAppStore = useCallback(async () => {
     track(TRACKING_EVENTS.GET_APP_PRESSED, { context: 'invite', store: 'ios' });
     // iOS has no install referrer: the code rides the clipboard instead, and the
     // signup screen offers to paste it back without a prompt.
-    if (storedCode) {
-      await Clipboard.setStringAsync(inviteClipboardText(storedCode)).catch(() => false);
+    if (handoffCode) {
+      await Clipboard.setStringAsync(inviteClipboardText(handoffCode)).catch(() => false);
     }
     openStore(APP_STORE_URL);
-  }, [storedCode]);
+  }, [handoffCode]);
 
   const openPlayStore = useCallback(() => {
     track(TRACKING_EVENTS.GET_APP_PRESSED, { context: 'invite', store: 'android' });
     // The code rides along as the install referrer; the app reads it on first launch.
-    openStore(storedCode ? buildPlayStoreInviteUrl(storedCode) : PLAY_STORE_URL);
-  }, [storedCode]);
-
-  if (usersHydrated && isSignedIn) return <Redirect href={path.HOME} />;
+    openStore(handoffCode ? buildPlayStoreInviteUrl(handoffCode) : PLAY_STORE_URL);
+  }, [handoffCode]);
 
   if (!isReady) {
     return (
@@ -445,7 +449,7 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
         >
           <SolidLockup width={layout.header.logoWidth} />
           <Pressable
-            onPress={logIn}
+            onPress={isSignedIn ? goToWallet : logIn}
             accessibilityRole="link"
             hitSlop={8}
             className="active:opacity-70 web:hover:opacity-80"
@@ -454,7 +458,7 @@ export default function InviteScreen({ rawCode }: { rawCode: string | undefined 
               className="font-medium text-white/70"
               style={{ fontSize: layout.header.loginFontSize }}
             >
-              Log in
+              {inviteHeaderLabel(isSignedIn)}
             </Text>
           </Pressable>
         </View>
