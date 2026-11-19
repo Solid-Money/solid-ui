@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronDown } from 'lucide-react-native';
 
+import YieldIcon from '@/components/Earn/YieldIcon';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
@@ -34,11 +35,16 @@ export const ApyPill = React.forwardRef<View, ApyPillProps>(
         className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
         {...props}
       >
-        <Image
-          source={getAsset(vault.icon)}
-          style={{ width: 20, height: 20, borderRadius: 10 }}
-          contentFit="contain"
-        />
+        {vault.type === VaultType.BTC ? (
+          // BTC Yield has no PNG mark: Earn's icon, as in the vault selector.
+          <YieldIcon vaultType={VaultType.BTC} size={20} />
+        ) : (
+          <Image
+            source={getAsset(vault.icon)}
+            style={{ width: 20, height: 20, borderRadius: 10 }}
+            contentFit="contain"
+          />
+        )}
         <Text
           className="font-semibold text-brand"
           style={{
@@ -77,11 +83,16 @@ const VaultApyRow = ({
       className="flex-row items-center justify-between px-5 py-3 web:hover:bg-card-hover"
     >
       <View className="flex-row items-center gap-3">
-        <Image
-          source={getAsset(vault.icon)}
-          style={{ width: 32, height: 32, borderRadius: 16 }}
-          contentFit="contain"
-        />
+        {vault.type === VaultType.BTC ? (
+          // BTC Yield has no PNG mark: Earn's icon, as in the vault selector.
+          <YieldIcon vaultType={VaultType.BTC} size={32} />
+        ) : (
+          <Image
+            source={getAsset(vault.icon)}
+            style={{ width: 32, height: 32, borderRadius: 16 }}
+            contentFit="contain"
+          />
+        )}
         <Text className="text-base font-semibold text-white">{vault.name}</Text>
       </View>
       <Text className="text-base font-semibold text-white">

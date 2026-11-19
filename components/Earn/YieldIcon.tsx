@@ -112,3 +112,8 @@ export default function YieldIcon({
     </View>
   );
 }
+
+/** BTC Yield's share token (soBTC): the BTC Yield mark with the live dot, for `getTokenIcon`. */
+export const BtcYieldShareIcon = ({ size }: { size: number }) => (
+  <YieldIcon vaultType={VaultType.BTC} size={size} badge="live" />
+);
