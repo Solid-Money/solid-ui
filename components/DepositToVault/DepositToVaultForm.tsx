@@ -82,12 +82,14 @@ function getGaslessText(
 /**
  * soBTC's note under the form. Either input ends as soBTC on Base; an Ethereum WBTC deposit gets
  * there over LayerZero, whose fee is paid in ETH on Ethereum (from the Safe or the connected wallet).
+ * Base WBTC doesn't stay on Base: the strategist bridges it to the Ethereum vault over BitGo's OFT,
+ * and every withdrawal pays WBTC on Ethereum.
  */
 function getSoBtcDepositNote(chainId: number | undefined): string {
   if (chainId === mainnet.id) {
     return 'You get soBTC on Base. Your WBTC stays on Ethereum; a small bridge fee in ETH applies and soBTC arrives in a few minutes.';
   }
-  return 'You get soBTC on Base right away. Your WBTC stays on Base.';
+  return 'You get soBTC on Base right away. Your WBTC moves to the vault on Ethereum, and withdrawals pay out WBTC on Ethereum.';
 }
 
 function DepositToVaultForm() {
