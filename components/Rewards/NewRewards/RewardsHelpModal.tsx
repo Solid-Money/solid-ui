@@ -21,7 +21,6 @@ import VideoIllustration from '@/components/ui/video-illustration';
 import { useDimension } from '@/hooks/useDimension';
 
 import { REWARDS_HELP_SLIDES, type RewardsHelpSlide } from './rewardsHelpData';
-import TierPointsSheet from './TierPointsSheet';
 
 const MODAL_BACKGROUND = '#0f0f10';
 const DOT_TRANSITION_MS = 250;
@@ -65,13 +64,11 @@ const HelpPage = ({
   slide,
   isActive,
   playbackSession,
-  onOpenPoints,
   pageWidth,
 }: {
   slide: RewardsHelpSlide;
   isActive: boolean;
   playbackSession: number;
-  onOpenPoints: () => void;
   pageWidth: number;
 }) => {
   return (
@@ -107,26 +104,8 @@ const HelpPage = ({
           >
             {slide.description}
           </Text>
-          {slide.key === 'rewards' && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="How to earn points?"
-              hitSlop={8}
-              onPress={onOpenPoints}
-              className="mt-2 transition-all active:opacity-70"
-            >
-              <Text
-                className="text-center text-base text-white/70 underline"
-                style={{
-                  fontFamily: 'SolidLink_700Bold',
-                  fontWeight: '700',
-                  lineHeight: 18,
-                }}
-              >
-                How to earn points?
-              </Text>
-            </Pressable>
-          )}
+          {/* No "How to earn points?" link: points are deprecated and no
+              longer move anyone between tiers. */}
         </View>
       </View>
     </View>
@@ -155,7 +134,6 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
   const navigationTargetRef = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
   const [isPresented, setIsPresented] = useState(false);
-  const [isPointsOpen, setIsPointsOpen] = useState(false);
   const [playbackSession, setPlaybackSession] = useState(0);
   const slide = REWARDS_HELP_SLIDES[index];
   const isLastSlide = index === REWARDS_HELP_SLIDES.length - 1;
@@ -164,7 +142,6 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
     if (!isOpen) {
       navigationTargetRef.current = null;
       setIsPresented(false);
-      setIsPointsOpen(false);
       setPlaybackSession(session => session + 1);
       return;
     }
@@ -229,17 +206,9 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
     [pageWidth],
   );
 
-  const handleOpenPoints = useCallback(() => {
-    setIsPointsOpen(true);
-  }, []);
   const handleRequestClose = useCallback(() => {
-    if (isPointsOpen) {
-      setIsPointsOpen(false);
-      return;
-    }
-
     onClose();
-  }, [isPointsOpen, onClose]);
+  }, [onClose]);
 
   return (
     <Modal
@@ -308,9 +277,8 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
                   <HelpPage
                     key={item.key}
                     slide={item}
-                    isActive={isOpen && isPresented && !isPointsOpen && itemIndex === index}
+                    isActive={isOpen && isPresented && itemIndex === index}
                     playbackSession={playbackSession}
-                    onOpenPoints={handleOpenPoints}
                     pageWidth={pageWidth}
                   />
                 ))}
@@ -341,8 +309,6 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
               </View>
             </View>
           </View>
-
-          <TierPointsSheet open={isPointsOpen} onOpenChange={setIsPointsOpen} />
         </BottomSheetModalProvider>
       </GestureHandlerRootView>
     </Modal>

@@ -24,7 +24,8 @@ interface TierTrialOfferPopupProps {
  * The celebration that follows is not opened from here. Activating writes the
  * new tier into the rewards cache, and the upgrade watcher mounted on the
  * protected layout shows the celebration off the back of that — the same path a
- * points or FUSE upgrade takes, so all three look identical to the user.
+ * FUSE lock or a membership upgrade takes, so all three look identical to the
+ * user.
  */
 const TierTrialOfferPopup = ({ trial, isOpen, onDismiss }: TierTrialOfferPopupProps) => {
   const { data: tierBenefits } = useTierBenefits();

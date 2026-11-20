@@ -11,13 +11,14 @@ export const REWARDS_HELP_SLIDES: RewardsHelpSlide[] = [
     key: 'rewards',
     title: 'Rewards',
     description:
-      'Earn points when you spend, when you save, and when friends you invite spend too.',
+      'Earn cashback when you spend, yield when you save, and rewards when friends you invite spend too.',
     cta: 'Next',
   },
   {
     key: 'tiers',
     title: 'Tiers',
-    description: 'Move up tiers to earn higher cashback, better benefits, and exclusive perks.',
+    description:
+      'Upgrade by locking FUSE or with an annual membership for higher cashback and better perks.',
     cta: 'Next',
   },
   {

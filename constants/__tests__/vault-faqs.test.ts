@@ -37,14 +37,19 @@ describe('vault FAQs', () => {
     }
   });
 
-  it('ties the FUSE vault to Skip the Line, which is what that deposit unlocks', () => {
+  // Skip the Line is retired: holding FUSE no longer upgrades a tier, and the
+  // lock prices are config, so the FAQ must neither promise the old route nor
+  // hardcode thresholds.
+  it('says only a lock (or a membership) upgrades a tier, never Skip the Line', () => {
     const copy = getVaultFaqs(VaultType.FUSE)
       .map(faq => faq.answer)
       .join(' ');
 
-    expect(copy).toContain('Skip the Line');
-    expect(copy).toContain('50,000 FUSE');
-    expect(copy).toContain('400,000');
+    expect(copy).toMatch(/lock/i);
+    expect(copy).not.toContain('Skip the Line');
+    expect(copy).not.toMatch(/points/i);
+    expect(copy).not.toContain('50,000');
+    expect(copy).not.toContain('400,000');
   });
 
   it('never calls a product a vault in what the user reads', () => {

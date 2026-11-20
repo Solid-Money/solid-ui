@@ -128,11 +128,12 @@ interface UpgradeCelebrationCopy {
 /**
  * The celebration's words for a tier the user now holds.
  *
- * The body names how they got there, because the three routes are genuinely
- * different news: a trial someone handed them, a points milestone they climbed
- * to, and a FUSE balance that unlocked it outright (Figma 25480:2355). A trial
- * also gets the line that says how long it runs — the one thing this upgrade
- * has that the other two do not.
+ * The body names how they got there where that is different news: a trial
+ * someone handed them, or a grandfathered FUSE Savings balance (Figma
+ * 25480:2355). Everything else is a tier they bought — a FUSE lock or an
+ * annual membership, the only ways up now that points no longer count — so it
+ * never says "points milestone". A trial also gets the line that says how long
+ * it runs.
  */
 export const upgradeCelebrationCopy = (data: RewardsUserData): UpgradeCelebrationCopy => {
   const tierName = getTierDisplayName(data.currentTier);
@@ -160,6 +161,6 @@ export const upgradeCelebrationCopy = (data: RewardsUserData): UpgradeCelebratio
     body:
       data.currentTier === RewardsTier.ULTRA
         ? "You've reached a new tier. Enjoy your highest rewards yet."
-        : `You reached the ${tierName} points milestone. Your new benefits are now active.`,
+        : `Your ${tierName} membership is active. Your new benefits are ready to use.`,
   };
 };

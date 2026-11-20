@@ -137,10 +137,12 @@ describe('upgradeCelebrationCopy', () => {
     expect(copy.body).toBe('Your confirmed FUSE Savings balance has unlocked Prime.');
   });
 
-  it('falls back to the points milestone', () => {
-    expect(upgradeCelebrationCopy(data()).body).toBe(
-      'You reached the Prime points milestone. Your new benefits are now active.',
-    );
+  // Points no longer grant a tier, so a tier that is neither a trial nor a
+  // grandfathered FUSE balance was bought: a lock or a membership.
+  it('falls back to a bought membership, never a points milestone', () => {
+    const { body } = upgradeCelebrationCopy(data());
+    expect(body).toBe('Your Prime membership is active. Your new benefits are ready to use.');
+    expect(body).not.toMatch(/points/i);
   });
 
   it('has its own line for the top tier', () => {
