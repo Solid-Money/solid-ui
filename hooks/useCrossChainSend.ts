@@ -12,10 +12,7 @@ import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { authoriseCrossChainSend } from '@/lib/api/cross-chain-send';
 import { getUserErrorMessage, sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import {
-  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
-  isBridgePaymasterAddress,
-} from '@/lib/protocolAddresses';
+import { isProtocolAddress, PROTOCOL_ADDRESS_RECIPIENT_ERROR } from '@/lib/protocolAddresses';
 import { Status, TransactionType } from '@/lib/types';
 import {
   CrossChainSendAuthorised,
@@ -115,8 +112,8 @@ const useCrossChainSend = () => {
 
       // Nothing is deployed at our bridge contract's address on the
       // destination chains: a voucher to it delivers the funds to no one.
-      if (isBridgePaymasterAddress(params.recipient)) {
-        throw new Error(BRIDGE_PAYMASTER_RECIPIENT_ERROR);
+      if (isProtocolAddress(params.recipient)) {
+        throw new Error(PROTOCOL_ADDRESS_RECIPIENT_ERROR);
       }
 
       setSendStatus(Status.PENDING);

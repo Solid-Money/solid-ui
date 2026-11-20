@@ -31,6 +31,13 @@ interface SendState {
   crossChainEntry: 'recipient' | 'token';
   /** Cross-chain send: the network the recipient receives on. */
   destinationChainId: number | null;
+  /**
+   * The network the user picked for this recipient in the bridge flow, kept
+   * when they then switch to a token on another chain (a regular send on that
+   * token's chain). Review warns when the send would land elsewhere. Cleared
+   * whenever the recipient changes.
+   */
+  recipientChainId: number | null;
   /** Cross-chain send: the quote the Review step shows and the voucher is priced against. */
   crossChainQuote: CrossChainSendQuote | null;
   /** Cross-chain send: the authorised send, tracked on the "On its way" screen. */
@@ -47,6 +54,7 @@ interface SendState {
   setIsCrossChain: (isCrossChain: boolean) => void;
   setCrossChainEntry: (entry: 'recipient' | 'token') => void;
   setDestinationChainId: (chainId: number | null) => void;
+  setRecipientChainId: (chainId: number | null) => void;
   setCrossChainQuote: (quote: CrossChainSendQuote | null) => void;
   setCrossChainSend: (send: CrossChainSendRecord | null) => void;
   clearForm: () => void;
@@ -66,6 +74,7 @@ const EMPTY_FORM = {
   isCrossChain: false,
   crossChainEntry: 'recipient' as 'recipient' | 'token',
   destinationChainId: null,
+  recipientChainId: null,
   crossChainQuote: null,
   crossChainSend: null,
 };
@@ -88,12 +97,18 @@ export const useSendStore = create<SendState>()((set, get) => ({
   setCurrentTokenAddress: address => set({ currentTokenAddress: address }),
   setSelectedToken: token => set({ selectedToken: token }),
   setAmount: amount => set({ amount }),
-  setAddress: address => set({ address }),
+  setAddress: address =>
+    set(state =>
+      state.address.toLowerCase() === address.toLowerCase()
+        ? { address }
+        : { address, recipientChainId: null },
+    ),
   setName: name => set({ name }),
   setSearchQuery: query => set({ searchQuery: query }),
   setIsCrossChain: isCrossChain => set({ isCrossChain }),
   setCrossChainEntry: crossChainEntry => set({ crossChainEntry }),
   setDestinationChainId: chainId => set({ destinationChainId: chainId }),
+  setRecipientChainId: chainId => set({ recipientChainId: chainId }),
   setCrossChainQuote: quote => set({ crossChainQuote: quote }),
   setCrossChainSend: send => set({ crossChainSend: send }),
   clearForm: () => set({ ...EMPTY_FORM }),

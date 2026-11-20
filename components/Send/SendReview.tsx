@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Control } from 'react-hook-form';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
+import { useQuery } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -11,8 +12,10 @@ import Wallet from '@/assets/images/wallet';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
+import { CHAIN_NAMES } from '@/constants/chains';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
@@ -21,33 +24,63 @@ import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
+import { fetchAddressBook } from '@/lib/api';
 import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
-import {
-  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
-  isBridgePaymasterAddress,
-} from '@/lib/protocolAddresses';
+import { isProtocolAddress, PROTOCOL_ADDRESS_RECIPIENT_ERROR } from '@/lib/protocolAddresses';
+import { getExpectedRecipientChainId } from '@/lib/sendRecipients';
 import { Status, TokenType } from '@/lib/types';
-import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { cn, eclipseAddress, formatNumber, withRefreshToken } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 
 import ContractAddressWarning from './ContractAddressWarning';
 import SaveContact from './SaveContact';
 
+const chainName = (chainId: number) =>
+  CHAIN_NAMES[chainId] ?? getChain(chainId)?.name ?? `chain ${chainId}`;
+
 const SendReview: React.FC = () => {
-  const { selectedToken, amount, address, name, setTransaction, setModal, setName } = useSendStore(
+  const {
+    selectedToken,
+    amount,
+    address,
+    name,
+    recipientChainId,
+    setTransaction,
+    setModal,
+    setName,
+  } = useSendStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
       amount: state.amount,
       address: state.address,
       name: state.name,
+      recipientChainId: state.recipientChainId,
       setTransaction: state.setTransaction,
       setModal: state.setModal,
       setName: state.setName,
     })),
   );
-  const { refetchAll } = useActivity();
+  const { activities, refetchAll } = useActivity();
+  const { data: addressBook = [] } = useQuery({
+    queryKey: ['address-book'],
+    queryFn: () => withRefreshToken(() => fetchAddressBook()),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+  // A regular send always executes on the token's chain. When this recipient is
+  // known on another network (picked in the bridge flow, a saved contact's, or
+  // the last send's), say so and make the user confirm before sending.
+  const expectedChainId = getExpectedRecipientChainId(
+    address,
+    activities,
+    addressBook,
+    recipientChainId,
+  );
+  const isNetworkMismatch =
+    !!selectedToken && !!expectedChainId && expectedChainId !== selectedToken.chainId;
+  const [networkConfirmed, setNetworkConfirmed] = useState(false);
 
   const { send, sendStatus, totpModal } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
@@ -81,7 +114,7 @@ const SendReview: React.FC = () => {
   const { isVerified: isTotpVerified } = useTotp();
 
   const isSendLoading = sendStatus === Status.PENDING;
-  const isBridgePaymasterRecipient = isBridgePaymasterAddress(address);
+  const isProtocolRecipient = isProtocolAddress(address);
   const showSkip2fa = isTotpVerified && !hasSkipped2fa;
   const isContact = !name || showSkip2fa;
 
@@ -92,6 +125,7 @@ const SendReview: React.FC = () => {
 
   const handleSend = async () => {
     if (!selectedToken || !amount || !address) return;
+    if (isNetworkMismatch && !networkConfirmed) return;
 
     const nameValue = watchName('name');
     const skip2fa = watchName('skip2fa');
@@ -112,6 +146,7 @@ const SendReview: React.FC = () => {
         amount: amount.toString(),
         to_address: address,
         source: 'send_modal',
+        ...(isNetworkMismatch ? { expected_chain_id: expectedChainId } : {}),
       });
 
       const transaction = await send(amount.toString(), address as Address);
@@ -243,15 +278,44 @@ const SendReview: React.FC = () => {
           </Text>
         </View>
 
-        {isBridgePaymasterRecipient ? (
+        {isProtocolRecipient ? (
           <Text className="text-center text-sm text-red-500">
-            {BRIDGE_PAYMASTER_RECIPIENT_ERROR}
+            {PROTOCOL_ADDRESS_RECIPIENT_ERROR}
           </Text>
         ) : (
           isContract && (
             <ContractAddressWarning chainName={getBridgeChain(selectedToken?.chainId || 1).name} />
           )
         )}
+
+        {isNetworkMismatch && expectedChainId ? (
+          <View className="gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4">
+            <Text className="text-base font-bold text-red-400">
+              Check the network: this sends on {chainName(selectedToken.chainId)}
+            </Text>
+            <Text className="text-sm font-medium leading-5 text-red-300">
+              {recipientChainId
+                ? `You chose ${chainName(expectedChainId)} for this recipient`
+                : `Your last send to this address was on ${chainName(expectedChainId)}`}
+              , but this sends {selectedToken.contractTickerSymbol} on{' '}
+              {chainName(selectedToken.chainId)}. If the recipient can&apos;t receive on{' '}
+              {chainName(selectedToken.chainId)} (exchange deposit addresses often can&apos;t), the
+              funds can be lost.
+            </Text>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: networkConfirmed }}
+              onPress={() => setNetworkConfirmed(value => !value)}
+              className="flex-row items-center gap-3"
+            >
+              <Checkbox checked={networkConfirmed} onCheckedChange={setNetworkConfirmed} />
+              <Text className="flex-1 text-sm text-white">
+                The recipient can receive {selectedToken.contractTickerSymbol} on{' '}
+                {chainName(selectedToken.chainId)}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {isContact && (
           <SaveContact
@@ -282,7 +346,7 @@ const SendReview: React.FC = () => {
         variant="brand"
         className="h-12 rounded-xl"
         onPress={handleSend}
-        disabled={isSendLoading || isBridgePaymasterRecipient}
+        disabled={isSendLoading || isProtocolRecipient || (isNetworkMismatch && !networkConfirmed)}
       >
         <Key />
         <Text className="text-base font-bold">{getButtonText()}</Text>
