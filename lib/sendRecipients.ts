@@ -1,4 +1,4 @@
-import { isBridgePaymasterAddress } from '@/lib/protocolAddresses';
+import { isSolidSystemAddress } from '@/lib/protocolAddresses';
 import {
   ActivityEvent,
   AddressBookResponse,
@@ -15,8 +15,10 @@ export interface SendRecipient {
 
 /**
  * A successful send to someone, as a recent recipient. A bridge's source leg
- * is indexed as a plain send to our BridgePaymaster; offering that address as
- * a recipient sent a user's funds to it, so it never counts.
+ * is indexed as a plain send to our BridgePaymaster, a deposit from a wallet as
+ * one to our relayer, and a card settlement as one to our treasury. None of
+ * them is anyone's wallet, and offering the first two as recipients already
+ * sent users' funds to them, so none counts.
  */
 export function isRecentSendActivity(
   activity: ActivityEvent,
@@ -25,7 +27,7 @@ export function isRecentSendActivity(
     [TransactionType.SEND, TransactionType.CROSS_CHAIN_SEND].includes(activity.type) &&
     activity.status === TransactionStatus.SUCCESS &&
     !!activity.toAddress &&
-    !isBridgePaymasterAddress(activity.toAddress)
+    !isSolidSystemAddress(activity.toAddress)
   );
 }
 
