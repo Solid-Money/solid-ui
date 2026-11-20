@@ -28,9 +28,9 @@ import {
   availableRoutes,
   canAffordUpgrade,
   findOffer,
-  formatFuse,
   formatFuseHeld,
   formatFuseShortfall,
+  formatFuseToLock,
   formatLockDuration,
   formatMembershipDate,
   formatPriceUsd,
@@ -367,7 +367,7 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
             </TierDetailRow>
             <TierDetailRow
               label="Amount"
-              value={`${formatFuse(remainingFuse)} FUSE`}
+              value={`${formatFuseToLock(remainingFuse)} FUSE`}
               secondaryValue={
                 fusePriceUsd > 0 ? formatUsd(remainingFuse * fusePriceUsd) : undefined
               }
