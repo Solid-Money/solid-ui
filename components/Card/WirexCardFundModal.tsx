@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
@@ -9,9 +10,11 @@ import { BuyCryptoFlowContent } from '@/components/BuyCrypto/Transfi/BuyCryptoFl
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
+import CardFundTurnOnBase from '@/components/Card/CardFund/CardFundTurnOnBase';
 import {
   CARD_FUND_DESTINATION_TYPE,
   CARD_FUND_MOVE_COPY,
+  getCardFundNetworks,
   getCardFundRhinoDestination,
   getCardFundTokenIcon,
   WIREX_CARD_FUND_SECTIONS,
@@ -29,6 +32,7 @@ import { SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useOfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
@@ -42,6 +46,7 @@ import { CardProvider, DepositModal } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
 import { MovableHolding, SwappableHolding } from '@/lib/utils/cardFundMove';
+import { wirexBaseDepositGate } from '@/lib/utils/wirexBaseDepositGate';
 import { useSwapState } from '@/store/swapStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -98,6 +103,10 @@ export interface WirexCardFundModalProps {
  * - USDT anywhere else: the card deposit address again, which our pipeline
  *   delivers to the Safe on Base (rhino.fi cannot deliver USDT there yet).
  *
+ * Off Fuse, the address waits until the cardholder has turned Base on: their
+ * card cannot spend from the Safe on Base before that (see
+ * `wirexBaseDepositGate`).
+ *
  * EURC is offered beside the dollar stablecoins, to Wirex cardholders only - a
  * Rain card cannot spend from the Safe. It goes through rhino.fi's wallet route
  * as EURC to the cardholder's Safe on Base, which is where the Base
@@ -121,6 +130,9 @@ export default function WirexCardFundModal({
   suggestedAmountUsd,
 }: WirexCardFundModalProps) {
   const { provider } = useCardProvider();
+  // Whether this cardholder turned Base on: every deposit off Fuse lands in
+  // their Safe on Base, which their card spends from only once they have.
+  const baseSpend = useEuroSpendEnablement();
   const resetTransfi = useTransfiStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
 
@@ -460,6 +472,33 @@ export default function WirexCardFundModal({
           onDone={handleMoveSubmitted}
         />
       );
+    }
+
+    // Before either address: a deposit off Fuse lands in the Safe on Base, out
+    // of the card's reach until the cardholder turns Base on.
+    if (step === 'address') {
+      const gate = wirexBaseDepositGate(selectedChainId, baseSpend);
+      if (gate === 'checking') {
+        return (
+          <View className="items-center justify-center py-10">
+            <ActivityIndicator color="white" />
+          </View>
+        );
+      }
+      if (gate === 'turn-on-base') {
+        return (
+          <CardFundTurnOnBase
+            networkName={
+              getCardFundNetworks(selectedToken).find(item => item.chainId === selectedChainId)
+                ?.name
+            }
+            onTurnOn={() => baseSpend.enable('card_deposit')}
+            isTurningOn={baseSpend.isEnabling}
+            error={baseSpend.error}
+            onChangeNetwork={handleBack}
+          />
+        );
+      }
     }
 
     if (step === 'address' && rhinoSelection) {
