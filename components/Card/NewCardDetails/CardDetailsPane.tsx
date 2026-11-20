@@ -61,8 +61,8 @@ import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import {
   monthlyCashbackCap,
-  resolveAllTimeCashback,
   resolveCashbackMonth,
+  resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
 import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
@@ -340,7 +340,7 @@ const CardDetailsPane = () => {
   // In the cardholder's cashback currency — euros, euro caps and a euro
   // lifetime for a euro cardholder, never mixed with dollars.
   const cashbackMonth = resolveCashbackMonth(rewardsData);
-  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
+  const lifetimeCashback = resolveLifetimeCashback(rewardsData, cardDetails?.cashback);
   // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
   // while this absolute pane does not. Keep the pane on the measured card centre so
   // opening it never adds the resulting half-scrollbar horizontal drift.
@@ -475,7 +475,7 @@ const CardDetailsPane = () => {
               monthlyCashbackLabel={formatMonthlyCashback(rewardsData)}
               maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
               tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-              allTimeCashback={allTimeCashback}
+              {...lifetimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
             />
           </HeroEnter>

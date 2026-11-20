@@ -34,8 +34,8 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
 import {
   monthlyCashbackCap,
-  resolveAllTimeCashback,
   resolveCashbackMonth,
+  resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
@@ -65,8 +65,8 @@ import TierUpgradeCard from './TierUpgradeCard';
  * builds via the dispatcher in rewards/index.tsx. Production and all
  * desktop-web users keep the legacy rewards screen.
  *
- * Shows the user's CURRENT tier + points, a rewards summary (cashback +
- * referrals), and the current tier's daily benefits. "Invite friends" opens the
+ * Shows the user's CURRENT tier + points, a rewards summary (lifetime cashback
+ * + referrals), and the current tier's daily benefits. "Invite friends" opens the
  * referral program popup; "Explore tiers" opens the rewards benefits screen
  * (full tier comparison).
  */
@@ -249,9 +249,11 @@ export default function RewardsScreenNew() {
   const referrals = isReferralV4
     ? (referralV4?.totals.earnedUsd ?? 0)
     : (referralSummary?.totalRewardedUsd ?? 0);
-  // All-time counts only what has actually been paid, so this month's escrowed
-  // part is deliberately not floored into it. Per currency, never summed.
-  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
+  // Everything earned, paid and still escrowed, on every card held — the
+  // summary card's headline and the sheet's row, so they can't disagree. A
+  // lifetime figure, like the referrals total beside it. Per currency, never
+  // summed.
+  const lifetimeCashback = resolveLifetimeCashback(rewardsData, cardDetails?.cashback);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
   // cashback rate" row read this, so they can't disagree with each other.
   const cashbackRate = resolveUserCashbackRate(rewardsData, currentTier);
@@ -341,7 +343,7 @@ export default function RewardsScreenNew() {
             monthlyCashbackLabel,
             maxCashbackMonthly: monthlyCashbackCap(cashbackMonth),
             tierMonthlyCap: cashbackMonth?.maxCashbackMonthly,
-            allTimeCashback,
+            ...lifetimeCashback,
           }}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           onReferralsPress={openReferral}
@@ -357,7 +359,7 @@ export default function RewardsScreenNew() {
             monthlyCashbackLabel={monthlyCashbackLabel}
             maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
             tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-            allTimeCashback={allTimeCashback}
+            {...lifetimeCashback}
             {...benefitRates}
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}

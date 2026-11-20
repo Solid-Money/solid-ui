@@ -81,8 +81,20 @@ test('hands the cashback sheet dollar figures for a dollar cardholder', () => {
       currency: 'USD',
       monthlyCashbackLabel: '$7.60',
       maxCashbackMonthly: 100,
-      allTimeCashback: [{ value: 25, currency: 'USD' }],
+      lifetimeCashback: [{ value: 25, currency: 'USD' }],
     }),
+  );
+  act(() => tree.unmount());
+});
+
+test("hands the cashback sheet the backend's lifetime figure, escrow included", () => {
+  // Paid on every card plus escrow, worked out server-side: it outranks the
+  // card's own paid total, which misses a retired card's history.
+  mockRewards = { ...USD_REWARDS, cashbackLifetime: 40.25 };
+
+  const tree = render();
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({ lifetimeCashback: [{ value: 40.25, currency: 'USD' }] }),
   );
   act(() => tree.unmount());
 });
@@ -110,7 +122,7 @@ test("shows a euro cardholder's cashback in euros, never added to dollars", () =
       monthlyCashbackLabel: '€2.00 + $7.60',
       maxCashbackMonthly: 50,
       tierMonthlyCap: 50,
-      allTimeCashback: [
+      lifetimeCashback: [
         { value: 9, currency: 'EUR' },
         { value: 25, currency: 'USD' },
       ],
@@ -137,7 +149,7 @@ test.each([
     expect(mockSheetProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         monthlyCashbackLabel: expected,
-        allTimeCashback: [{ value: 25, currency: 'USD' }],
+        lifetimeCashback: [{ value: 25, currency: 'USD' }],
       }),
     );
     act(() => tree.unmount());

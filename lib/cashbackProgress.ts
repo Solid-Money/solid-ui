@@ -151,31 +151,68 @@ export const cashbackFiguresByCurrency = (
 };
 
 /**
- * Lifetime cashback paid in each currency.
+ * One currency's lifetime cashback: everything paid plus what is still in
+ * escrow.
  *
- * Each is the card details' paid total, floored at this month's settled figure
- * in the same currency (the details can lag the rewards data). This month's
- * escrowed part is deliberately not floored in: all-time counts what has been
- * paid. A dollar cardholder with no euro cashback reads exactly as before.
+ * Escrow counts for the same reason it does in the month's figure: leaving it
+ * out read $0 for the fortnight a new cardholder's first purchase takes to
+ * mature, and put the lifetime below the month shown in the same sheet.
+ *
+ * `fromBackend` is the backend's figure, worked out over every card the
+ * cardholder has held, paid and escrowed together in one read. Without it — an
+ * older backend, or a paid total it couldn't read — the card details' paid
+ * total stands in, and is only ever floored at the month's figure, never added
+ * to it: the card details and the rewards data are fetched and cached apart, so
+ * a payout can already be in the first and still pending in the second.
+ * That fallback is a lower bound: it can trail escrow from last month or on top
+ * of earlier history, but it never counts a payout twice.
+ *
+ * Never below this month's figure in the same currency.
  */
-export const resolveAllTimeCashback = (
+const laneLifetime = (
+  fromBackend: number | undefined,
+  paidOnCard: number | undefined,
+  month: { cashbackThisMonth?: number; cashbackPendingThisMonth?: number } | undefined,
+): number => {
+  const thisMonth = monthlyCashbackTotal(month?.cashbackThisMonth, month?.cashbackPendingThisMonth);
+  const lifetime =
+    typeof fromBackend === 'number' ? toPositive(fromBackend) : toPositive(paidOnCard);
+  return Math.max(lifetime, thisMonth);
+};
+
+/**
+ * Lifetime cashback, per currency — the rewards card's headline and the
+ * cashback sheet's "Lifetime cashback" row: one figure per currency the
+ * cardholder has cashback in, the month's currency first, printed side by side
+ * and never added together (see `cashbackFiguresByCurrency`). See
+ * `laneLifetime` for what each figure counts.
+ *
+ * `lifetimeCashbackIsPartial` says a figure on show is the fallback rather
+ * than the backend's complete one: it can still be missing escrow from last
+ * month, or cashback from a card the cardholder no longer holds, so the sheet
+ * says so rather than presenting it as the whole lifetime. Never set while the
+ * rewards data is still loading.
+ */
+export const resolveLifetimeCashback = (
   rewards: RewardsUserData | undefined,
   cardCashback: CashbackData | undefined,
-): CashbackFigure[] => {
+): { lifetimeCashback: CashbackFigure[]; lifetimeCashbackIsPartial?: boolean } => {
   const currency = resolveCashbackMonth(rewards)?.currency ?? 'USD';
-  return cashbackFiguresByCurrency(
+  const fromBackend: Record<CashbackCurrency, number | undefined> = {
+    USD: rewards?.cashbackLifetime,
+    EUR: rewards?.cashbackLifetimeEur,
+  };
+  const lifetimeCashback = cashbackFiguresByCurrency(
     {
-      USD: Math.max(
-        toPositive(cardCashback?.totalUsdValue),
-        toPositive(rewards?.cashbackThisMonth),
-      ),
-      EUR: Math.max(
-        toPositive(cardCashback?.eur?.totalEurValue),
-        toPositive(rewards?.cashbackEur?.cashbackThisMonth),
-      ),
+      USD: laneLifetime(fromBackend.USD, cardCashback?.totalUsdValue, rewards),
+      EUR: laneLifetime(fromBackend.EUR, cardCashback?.eur?.totalEurValue, rewards?.cashbackEur),
     },
     currency,
   );
+  const isPartial =
+    rewards !== undefined &&
+    lifetimeCashback.some(figure => typeof fromBackend[figure.currency] !== 'number');
+  return { lifetimeCashback, ...(isPartial && { lifetimeCashbackIsPartial: true }) };
 };
 
 /** A non-finite or negative amount contributes nothing rather than NaN. */

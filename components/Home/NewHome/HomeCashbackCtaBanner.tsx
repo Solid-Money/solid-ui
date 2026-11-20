@@ -9,8 +9,8 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import {
   monthlyCashbackCap,
-  resolveAllTimeCashback,
   resolveCashbackMonth,
+  resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
 import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
@@ -39,7 +39,7 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
   const cashbackMonth = resolveCashbackMonth(rewardsData);
   const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
   const monthlyCashbackLabel = formatMonthlyCashback(rewardsData);
-  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
+  const lifetimeCashback = resolveLifetimeCashback(rewardsData, cardDetails?.cashback);
 
   return (
     <CashbackDetailsSheet
@@ -49,7 +49,7 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
       monthlyCashbackLabel={monthlyCashbackLabel}
       maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
       tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-      allTimeCashback={allTimeCashback}
+      {...lifetimeCashback}
       onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
       trigger={
         <Pressable

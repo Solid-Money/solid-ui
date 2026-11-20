@@ -15,7 +15,18 @@ export interface CashbackDetailsData {
    * (purchases made during a trial that has since ended keep its cap).
    */
   tierMonthlyCap?: number;
-  allTimeCashback: CashbackFigure[];
+  /**
+   * Everything earned, paid and still escrowed, one figure per currency — the
+   * cardholder's own first, side by side and never added together. See
+   * `resolveLifetimeCashback`.
+   */
+  lifetimeCashback: CashbackFigure[];
+  /**
+   * The lifetime figures are the app's own lower bound, not the backend's
+   * complete total, so the sheet notes some cashback may not show yet — see
+   * `resolveLifetimeCashback`.
+   */
+  lifetimeCashbackIsPartial?: boolean;
 }
 
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {
