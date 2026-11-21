@@ -7,37 +7,47 @@ import type { WalletDeviceAvailability } from '@/lib/walletTopUp';
 import type { CheckWalletAvailabilityOptions } from '@wirexapp/card-wallet-topup-web';
 
 const WALLET_DEVICE_QUERY_KEY = 'walletTopUpDevice';
-const LAST_PROBE_KEY = 'walletTopUpDevice.lastProbe';
+const REMEMBERED_KEY = 'walletTopUpDevice.answer';
+
+const isDevice = (value: unknown): value is WalletDeviceAvailability => {
+  const device = value as Partial<WalletDeviceAvailability> | null;
+  return (
+    typeof device?.applePay === 'boolean' &&
+    typeof device.googlePay === 'boolean' &&
+    typeof device.googlePayHandoff === 'boolean' &&
+    typeof device.googlePayNeedsCard === 'boolean'
+  );
+};
 
 /**
- * What the SDK's cached answer in this browser was probed for: environment,
- * client and provider block, in ONE slot. The SDK keeps one answer per frame
- * origin in localStorage (and one per frame URL in memory), whatever the client
- * or block, so its cache is trusted only when this holds exactly the current
- * three. Anything else, or no record (an answer cached before this was kept,
- * storage that can't be read), forces a fresh probe.
+ * The last answer this browser got, kept WITH what it was probed for —
+ * environment, client, provider and block — in one localStorage write, so the
+ * two can never come apart. It is shown for exactly that identity, and only
+ * while a fresh probe runs; a record any tab wrote for anything else is a miss.
  *
- * A change is probed fresh and then remembered as unknown, not as the new
- * identity: whenever the SDK serves a cached answer it revalidates it in the
- * background, and that probe — for the identity before the change — can land
- * after ours and put the old answer back in its slot. The next load probes
- * fresh again and records the identity. Failing storage costs a probe, never
- * a stale answer.
+ * It replaces the SDK's own caches, which every probe here skips (`force`):
+ * the SDK keeps one answer per frame origin in localStorage and one per frame
+ * URL in memory, whatever the client or block, and the background
+ * revalidation it starts whenever it serves one — in this tab or another —
+ * can refill them for a different identity at any time. Nothing ties what is
+ * in them to what we asked. Storage that fails costs the instant answer,
+ * never a wrong one.
  */
-const lastProbe = {
-  read(): string | null {
+const remembered = {
+  read(identity: string): WalletDeviceAvailability | undefined {
     try {
-      return globalThis.localStorage?.getItem(LAST_PROBE_KEY) ?? null;
+      const raw = globalThis.localStorage?.getItem(REMEMBERED_KEY);
+      const record = raw ? (JSON.parse(raw) as { identity?: unknown; device?: unknown }) : null;
+      return record?.identity === identity && isDevice(record.device) ? record.device : undefined;
     } catch {
-      return null;
+      return undefined;
     }
   },
-  write(identity: string | null) {
+  write(identity: string, device: WalletDeviceAvailability) {
     try {
-      if (identity === null) globalThis.localStorage?.removeItem(LAST_PROBE_KEY);
-      else globalThis.localStorage?.setItem(LAST_PROBE_KEY, identity);
+      globalThis.localStorage?.setItem(REMEMBERED_KEY, JSON.stringify({ identity, device }));
     } catch {
-      // Not remembered: the next probe forces past the SDK's cache.
+      // Not remembered: the next load waits for its probe.
     }
   },
 };
@@ -46,9 +56,10 @@ const lastProbe = {
  * Web: what this browser can pay with, from Wirex's hidden probe frame.
  *
  * Asked with the default provider's block, before any quote exists, so the
- * Google Pay check runs on the provider's own parameters. The SDK caches the
- * answer per page session (and the last real one in localStorage), so asking
- * again on every open of the sheet costs nothing.
+ * Google Pay check runs on the provider's own parameters. Probed afresh once
+ * per page load (the answer is kept for the session, so reopening the sheet
+ * asks nothing); until it answers, the answer this browser last got for the
+ * very same environment, client and block stands in.
  *
  * The frame only loads with Wirex's company id, which QA does not have: with no
  * `clientId` the answer is null and the row stays hidden.
@@ -70,47 +81,46 @@ export const useWalletDeviceAvailability = (
     () => [WALLET_DEVICE_QUERY_KEY, environment, clientId, provider, walletConfig],
     [clientId, environment, provider, walletConfig],
   );
-
-  const probe = useCallback(
-    async (force: boolean): Promise<WalletDeviceAvailability> => {
-      const answer = await checkWalletAvailability(
-        { environment, clientId: clientId ?? undefined },
-        {
-          // Verbatim: the probe copies the provider's Google Pay values unchanged.
-          config: (walletConfig ?? undefined) as CheckWalletAvailabilityOptions['config'],
-          force,
-        },
-      );
-      return {
-        applePay: answer.applePay,
-        googlePay: answer.googlePay,
-        googlePayHandoff: answer.googlePayHandoff === true,
-        googlePayNeedsCard: answer.googlePayState === 'needs_card',
-      };
-    },
-    [clientId, environment, walletConfig],
+  const identity = useMemo(
+    () => JSON.stringify([environment, clientId, provider, walletConfig]),
+    [clientId, environment, provider, walletConfig],
   );
+
+  // Always past the SDK's caches; the answer is remembered with what it answered.
+  const probe = useCallback(async (): Promise<WalletDeviceAvailability> => {
+    const answer = await checkWalletAvailability(
+      { environment, clientId: clientId ?? undefined },
+      {
+        // Verbatim: the probe copies the provider's Google Pay values unchanged.
+        config: (walletConfig ?? undefined) as CheckWalletAvailabilityOptions['config'],
+        force: true,
+      },
+    );
+    const device = {
+      applePay: answer.applePay,
+      googlePay: answer.googlePay,
+      googlePayHandoff: answer.googlePayHandoff === true,
+      googlePayNeedsCard: answer.googlePayState === 'needs_card',
+    };
+    remembered.write(identity, device);
+    return device;
+  }, [clientId, environment, identity, walletConfig]);
 
   const { data, isError } = useQuery({
     queryKey,
-    // The SDK's cache only for what we know it answered for.
-    queryFn: async () => {
-      const identity = JSON.stringify([environment, clientId, walletConfig]);
-      const last = lastProbe.read();
-      const answer = await probe(last !== identity);
-      lastProbe.write(last === null || last === identity ? identity : null);
-      return answer;
-    },
+    queryFn: probe,
+    // Shown only while the probe runs, and only for this exact identity.
+    placeholderData: () => remembered.read(identity),
     enabled: canProbe,
     staleTime: Infinity,
     retry: false,
   });
 
-  // After the user adds a card to Google Wallet: skip the SDK's caches and ask again.
+  // After the user adds a card to Google Wallet: ask again.
   const recheck = useCallback(async () => {
     if (!canProbe) return;
     try {
-      queryClient.setQueryData(queryKey, await probe(true));
+      queryClient.setQueryData(queryKey, await probe());
     } catch {
       // The previous answer stands.
     }

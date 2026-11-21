@@ -10,8 +10,9 @@ import type { WalletTopUpAvailability } from '@/lib/types/wallet-topup';
 const { act, create } = require('react-test-renderer');
 
 /**
- * Web: the device probe answers for the provider's block, so a new block asks
- * again instead of reusing the answer cached for the old one.
+ * Web: the device probe answers for the provider's block and never trusts the
+ * SDK's own caches; what stands in until it answers is only ever an answer
+ * remembered for the very same environment, client and block.
  */
 
 // Virtual: the package exports an ESM `import` condition only, which jest's resolver skips.
@@ -35,6 +36,14 @@ const availability = (
   defaultCurrency: 'USD',
   limits: { USD: { min: '10.00', max: '500.00' } },
   payoutTokens: { USD: 'USDC' },
+});
+
+const M1 = { google_pay: { merchantId: 'm-1' } };
+const M2 = { google_pay: { merchantId: 'm-2' } };
+/** What this device can do for a block, as a fresh probe finds it. */
+const answerFor = (config: unknown) => ({
+  applePay: false,
+  googlePay: (config as typeof M1 | undefined)?.google_pay?.merchantId === 'm-1',
 });
 
 const settle = () =>
@@ -71,23 +80,39 @@ beforeEach(() => {
   jest.clearAllMocks();
   storage.clear();
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // By default the frame answers at once, for the block it is asked with.
+  mockCheck.mockImplementation(async (_init, options) => answerFor(options?.config) as any);
 });
 
 /**
- * Like the SDK's persisted answer: one slot per frame origin, so whatever client
- * or block it is asked with (every test here is one environment), unless forced.
+ * Like the SDK: an answer cached per frame origin, whatever client or block it
+ * is asked with (every test here is one environment), unless forced.
  */
-const sdkWithCache = (initial?: { applePay: boolean; googlePay: boolean }) => {
+const sdkWithCache = (initial: { applePay: boolean; googlePay: boolean }) => {
   let cached = initial;
   mockCheck.mockImplementation(async (_init, options) => {
-    if (!options?.force && cached) return cached as any;
-    const fresh = {
-      applePay: false,
-      googlePay: (options?.config as any)?.google_pay?.merchantId === 'm-1',
-    };
-    cached = fresh;
-    return fresh as any;
+    if (!options?.force) return cached as any;
+    cached = answerFor(options.config);
+    return cached as any;
   });
+};
+
+/** Each probe waits until the test answers it, as a slow frame would. */
+const deferredSdk = () => {
+  const pending: { config: unknown; answer: (value: unknown) => Promise<void> }[] = [];
+  mockCheck.mockImplementation(
+    (_init, options) =>
+      new Promise(resolve => {
+        pending.push({
+          config: options?.config,
+          answer: value =>
+            act(async () => {
+              resolve(value as any);
+            }),
+        });
+      }) as any,
+  );
+  return pending;
 };
 
 // Here rather than in the test, so a failed expectation cannot leave timers running.
@@ -97,43 +122,31 @@ afterEach(async () => {
   client.clear();
 });
 
-it('probes again, with the new block, when the provider’s config changes', async () => {
-  mockCheck
-    .mockResolvedValueOnce({ applePay: false, googlePay: true } as any)
-    .mockResolvedValueOnce({ applePay: false, googlePay: false } as any);
-
+/** One tab: its own query cache and React tree, sharing the browser's storage. */
+const mountTab = async (config: Record<string, unknown>, clientId?: string) => {
   const devices: unknown[] = [];
+  const tabClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const Probe = ({ value }: { value: WalletTopUpAvailability }) => {
     devices.push(useWalletDeviceAvailability(value).device);
     return null;
   };
-  const tree = (value: WalletTopUpAvailability) => (
-    <QueryClientProvider client={client}>
-      <Probe value={value} />
-    </QueryClientProvider>
-  );
-
-  const first = { google_pay: { merchantId: 'm-1' } };
-  const second = { google_pay: { merchantId: 'm-2' } };
+  let tabRoot: any;
   await act(async () => {
-    root = create(tree(availability(first)));
+    tabRoot = create(
+      <QueryClientProvider client={tabClient}>
+        <Probe value={availability(config, clientId)} />
+      </QueryClientProvider>,
+    );
   });
   await settle();
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
-
-  // The same block again, as a fresh object: still the cached answer.
-  await act(async () => root.update(tree(availability({ ...first }))));
-  await settle();
-  expect(mockCheck).toHaveBeenCalledTimes(1);
-
-  await act(async () => root.update(tree(availability(second))));
-  await settle();
-  expect(mockCheck).toHaveBeenCalledTimes(2);
-  // No record of an earlier block: the first ask forces too; so does the change.
-  expect(mockCheck.mock.calls[0][1]).toMatchObject({ config: first, force: true });
-  expect(mockCheck.mock.calls[1][1]).toMatchObject({ config: second, force: true });
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
-});
+  return {
+    devices,
+    close: async () => {
+      await act(async () => tabRoot.unmount());
+      tabClient.clear();
+    },
+  };
+};
 
 const mountWith = async (config: Record<string, unknown>, clientId?: string) => {
   const devices: unknown[] = [];
@@ -152,69 +165,162 @@ const mountWith = async (config: Record<string, unknown>, clientId?: string) => 
   return devices;
 };
 
-const lastForce = () => mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]?.force;
-
-/** A reload: a fresh query cache and React tree, while the SDK's cache and storage survive. */
+/** A reload: a fresh query cache and React tree, while storage (and the SDK's cache) survive. */
 const reload = async () => {
   await act(async () => root.unmount());
   root = undefined;
   client.clear();
 };
 
-it('never trusts an SDK answer cached before the block was remembered', async () => {
-  // A browser that probed with an older build: the SDK holds an answer, we hold no block.
+const last = (devices: unknown[]) => devices[devices.length - 1];
+
+it('probes again, with the new block, when the provider’s config changes', async () => {
+  const devices: unknown[] = [];
+  const Probe = ({ value }: { value: WalletTopUpAvailability }) => {
+    devices.push(useWalletDeviceAvailability(value).device);
+    return null;
+  };
+  const tree = (value: WalletTopUpAvailability) => (
+    <QueryClientProvider client={client}>
+      <Probe value={value} />
+    </QueryClientProvider>
+  );
+
+  await act(async () => {
+    root = create(tree(availability(M1)));
+  });
+  await settle();
+  expect(last(devices)).toMatchObject({ googlePay: true });
+
+  // The same block again, as a fresh object: still the answer this session got.
+  await act(async () => root.update(tree(availability({ ...M1 }))));
+  await settle();
+  expect(mockCheck).toHaveBeenCalledTimes(1);
+
+  await act(async () => root.update(tree(availability(M2))));
+  await settle();
+  expect(mockCheck).toHaveBeenCalledTimes(2);
+  expect(mockCheck.mock.calls[0][1]).toMatchObject({ config: M1, force: true });
+  expect(mockCheck.mock.calls[1][1]).toMatchObject({ config: M2, force: true });
+  expect(last(devices)).toMatchObject({ googlePay: false });
+});
+
+it('never trusts the SDK’s own cache, whatever it holds', async () => {
+  // A browser whose SDK cache holds an answer for some other client or block.
   sdkWithCache({ applePay: false, googlePay: false });
 
-  const devices = await mountWith({ google_pay: { merchantId: 'm-1' } });
+  const devices = await mountWith(M1);
 
   expect(mockCheck.mock.calls[0][1]).toMatchObject({ force: true });
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
+  expect(last(devices)).toMatchObject({ googlePay: true });
 });
 
-it('uses the SDK cache after a reload only for the block it answered for', async () => {
-  sdkWithCache();
-  await mountWith({ google_pay: { merchantId: 'm-1' } });
+it('shows the answer remembered for this exact identity while the fresh probe runs, then the fresh one', async () => {
+  await mountWith(M1);
+  await reload();
 
-  // Same block after a reload: the remembered block matches, the SDK cache is fine.
-  await reload();
-  let devices = await mountWith({ google_pay: { merchantId: 'm-1' } });
-  expect(mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]).toMatchObject({ force: false });
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
+  const pending = deferredSdk();
+  const devices = await mountWith(M1);
+  // The frame has not answered: the answer this browser got last time stands in.
+  expect(pending).toHaveLength(1);
+  expect(last(devices)).toMatchObject({ googlePay: true });
 
-  // A new block after a reload: read back from storage, it forces past the SDK cache.
-  await reload();
-  devices = await mountWith({ google_pay: { merchantId: 'm-2' } });
-  expect(mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]).toMatchObject({ force: true });
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
-
-  // A change is remembered as unknown (the SDK may still be revalidating the
-  // old block): the next load forces once more, and the one after trusts it.
-  await reload();
-  await mountWith({ google_pay: { merchantId: 'm-2' } });
-  expect(lastForce()).toBe(true);
-  await reload();
-  devices = await mountWith({ google_pay: { merchantId: 'm-2' } });
-  expect(lastForce()).toBe(false);
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
+  // The device changed since: the fresh answer replaces it.
+  await pending[0].answer({ applePay: false, googlePay: false });
+  await settle();
+  expect(last(devices)).toMatchObject({ googlePay: false });
 });
 
-it('never serves one client the answer another client probed on the same origin', async () => {
-  sdkWithCache();
-  const configA = { google_pay: { merchantId: 'm-1' } };
-  const configB = { google_pay: { merchantId: 'm-2' } };
+it('never stands in an answer remembered for another client or block', async () => {
+  await mountWith(M1, 'client-a');
 
-  // Client A probes and is remembered…
-  await mountWith(configA, 'client-a');
-  // …then client B, on the same frame origin, replaces the SDK's one answer.
-  await reload();
-  let devices = await mountWith(configB, 'client-b');
-  expect(lastForce()).toBe(true);
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
+  for (const [config, clientId] of [
+    [M1, 'client-b'],
+    [M2, 'client-a'],
+  ] as const) {
+    await reload();
+    const pending = deferredSdk();
+    const devices = await mountWith(config, clientId);
+    expect(devices.every(device => device === null)).toBe(true);
+    await pending[0].answer(answerFor(config));
+    await settle();
+    expect(last(devices)).toMatchObject(answerFor(config));
+  }
+});
 
-  // Back on client A after a reload: the SDK's slot holds B's answer, so A
-  // must be probed afresh, not served from it.
-  await reload();
-  devices = await mountWith(configA, 'client-a');
-  expect(lastForce()).toBe(true);
-  expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
+it('never shows one identity the answer another tab probed for another, however late it lands', async () => {
+  const pending = deferredSdk();
+  // Tab A starts probing client A; tab B probes client B and is answered first…
+  const tabA = await mountTab(M1, 'client-a');
+  const tabB = await mountTab(M2, 'client-b');
+  await pending[1].answer(answerFor(M2));
+  // …then A's probe lands late, after B's was remembered.
+  await pending[0].answer(answerFor(M1));
+  await settle();
+  expect(last(tabA.devices)).toMatchObject({ googlePay: true });
+  expect(last(tabB.devices)).toMatchObject({ googlePay: false });
+  await tabA.close();
+  await tabB.close();
+
+  // B reloads: what is remembered now is A's answer, so nothing stands in, and
+  // B never sees A's answer — only its own fresh one.
+  const devices = await mountWith(M2, 'client-b');
+  expect(devices.every(device => device === null)).toBe(true);
+  expect(pending).toHaveLength(3);
+  await pending[2].answer(answerFor(M2));
+  await settle();
+  expect(devices.some(device => (device as { googlePay?: boolean } | null)?.googlePay)).toBe(false);
+  expect(last(devices)).toMatchObject({ googlePay: false });
+  expect(mockCheck.mock.calls.every(([, options]) => options?.force === true)).toBe(true);
+});
+
+it('ignores a remembered answer it cannot read', async () => {
+  storage.set('walletTopUpDevice.answer', 'not json');
+  const pending = deferredSdk();
+
+  const devices = await mountWith(M1);
+
+  expect(devices.every(device => device === null)).toBe(true);
+  await pending[0].answer(answerFor(M1));
+  await settle();
+  expect(last(devices)).toMatchObject({ googlePay: true });
+});
+
+it('is immune to the SDK’s background revalidation refilling its slot for another identity', async () => {
+  // Like the SDK: unforced, it serves its one slot at once and revalidates in
+  // the background, writing the slot whenever that lands.
+  let slot: { applePay: boolean; googlePay: boolean } | undefined;
+  const revalidations: (() => void)[] = [];
+  mockCheck.mockImplementation(async (_init, options) => {
+    const fresh = answerFor(options?.config);
+    if (!options?.force && slot) {
+      const served = slot;
+      revalidations.push(() => {
+        slot = fresh;
+      });
+      return served as any;
+    }
+    slot = fresh;
+    return fresh as any;
+  });
+
+  // Client A loads twice, client B twice, then whatever A's loads left
+  // revalidating lands — refilling the slot with A's answer.
+  for (const [config, clientId] of [
+    [M1, 'client-a'],
+    [M1, 'client-a'],
+    [M2, 'client-b'],
+    [M2, 'client-b'],
+  ] as const) {
+    await mountWith(config, clientId);
+    await reload();
+  }
+  revalidations.forEach(land => land());
+
+  // B again: its own answer, never the one A's revalidation left in the slot.
+  const devices = await mountWith(M2, 'client-b');
+  expect(devices.some(device => (device as { googlePay?: boolean } | null)?.googlePay)).toBe(false);
+  expect(last(devices)).toMatchObject({ googlePay: false });
+  // The SDK never served from its cache, so never started a revalidation.
+  expect(revalidations).toHaveLength(0);
 });
