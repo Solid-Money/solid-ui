@@ -13,15 +13,21 @@ import {
   getWalletTopUpTitle,
   getWalletTopUpToken,
   HIDDEN_WALLET_TOPUP_ENTRY,
+  isWalletTopUpAvailability,
   isWalletTopUpModal,
+  isWalletTopUpQuoteResponse,
   isWalletTopUpSettled,
+  readWalletTopUpResponse,
   resolveWalletTopUpEntry,
   sanitizeWalletTopUpAmount,
   toWalletTopUpRequestError,
   toWalletTopUpWireAmount,
+  WALLET_TOPUP_INVALID_RESPONSE,
   WalletDeviceAvailability,
   WalletTopUpRequestError,
 } from '@/lib/walletTopUp';
+
+import type { WalletTopUpAvailability, WalletTopUpQuoteResponse } from '@/lib/types/wallet-topup';
 
 const device = (overrides: Partial<WalletDeviceAvailability> = {}): WalletDeviceAvailability => ({
   applePay: false,
@@ -162,6 +168,139 @@ describe('formatting', () => {
 
   it('formats a token amount with its symbol after it', () => {
     expect(formatWalletTopUpTokenAmount('100', 'USDC')).toBe('100.00 USDC');
+    expect(formatWalletTopUpTokenAmount('1234.5', 'EURC')).toBe('1,234.50 EURC');
+    expect(formatWalletTopUpTokenAmount(' 87.40 ', 'EURC')).toBe('87.40 EURC');
+    expect(formatWalletTopUpTokenAmount('100.', 'USDC')).toBe('100.00 USDC');
+  });
+
+  it('rounds a token amount to two decimals, half up', () => {
+    expect(formatWalletTopUpTokenAmount('99.123456', 'USDC')).toBe('99.12 USDC');
+    expect(formatWalletTopUpTokenAmount('1.005', 'USDC')).toBe('1.01 USDC');
+    expect(formatWalletTopUpTokenAmount('99.995', 'USDC')).toBe('100.00 USDC');
+    expect(formatWalletTopUpTokenAmount('0.004999', 'USDC')).toBe('0.00 USDC');
+  });
+
+  it('formats a token amount exactly, never through a float', () => {
+    // An 18-decimal payout, and a whole part past 2^53: a double loses both.
+    expect(formatWalletTopUpTokenAmount('12.344999999999999999', 'USDC')).toBe('12.34 USDC');
+    expect(formatWalletTopUpTokenAmount('9007199254740993.005', 'USDC')).toBe(
+      '9,007,199,254,740,993.01 USDC',
+    );
+  });
+
+  it('shows a token amount that is not a plain decimal as it came', () => {
+    expect(formatWalletTopUpTokenAmount('abc', 'USDC')).toBe('abc USDC');
+    expect(formatWalletTopUpTokenAmount('1e3', 'USDC')).toBe('1e3 USDC');
+    expect(formatWalletTopUpTokenAmount('-5', 'USDC')).toBe('-5 USDC');
+  });
+});
+
+const AVAILABILITY: WalletTopUpAvailability = {
+  available: true,
+  reason: 'ok',
+  capabilityStatus: 'Active',
+  sdk: { webEnvironment: 'uat', mobileEnvironment: 'test', clientId: null },
+  provider: 'checkout',
+  walletConfig: { apple_pay: {} },
+  currencies: ['USD', 'EUR'],
+  defaultCurrency: 'USD',
+  limits: { USD: { min: '10.00', max: '500.00' }, EUR: { min: '10.00', max: '500.00' } },
+  payoutTokens: { USD: 'USDC', EUR: 'EURC' },
+};
+
+const QUOTE: WalletTopUpQuoteResponse = {
+  estimationId: 'est-1',
+  provider: 'checkout',
+  walletConfig: { apple_pay: {} },
+  checkoutToken: 'token-1',
+  checkoutTokenExpiresAt: 1_700_000_000,
+  quote: {
+    estimationId: 'est-1',
+    sourceAmount: { amount: '101.50', currency: 'USD' },
+    destinationAmount: { amount: '100.00', currency: 'USDC' },
+    fee: { amount: '1.50', currency: 'USD' },
+    rate: null,
+    expiresAtMs: 1_700_000_000_000,
+  },
+  payout: { token: 'USDC', chainId: 8453, amount: '100.00' },
+};
+
+describe('responses', () => {
+  it('accepts a complete availability, and a "no" with nothing else to read', () => {
+    expect(isWalletTopUpAvailability(AVAILABILITY)).toBe(true);
+    expect(isWalletTopUpAvailability({ available: false, reason: 'not_in_cohort' })).toBe(true);
+  });
+
+  it('refuses a "yes" missing what the row and the amount step read', () => {
+    const without = (key: keyof WalletTopUpAvailability) => {
+      const { [key]: _dropped, ...rest } = AVAILABILITY;
+      return rest;
+    };
+    expect(isWalletTopUpAvailability(without('limits'))).toBe(false);
+    expect(isWalletTopUpAvailability(without('sdk'))).toBe(false);
+    expect(isWalletTopUpAvailability(without('currencies'))).toBe(false);
+    expect(isWalletTopUpAvailability({ ...AVAILABILITY, sdk: null })).toBe(false);
+    expect(isWalletTopUpAvailability({ ...AVAILABILITY, currencies: [] })).toBe(false);
+    expect(isWalletTopUpAvailability({ ...AVAILABILITY, defaultCurrency: 'GBP' })).toBe(false);
+    expect(
+      isWalletTopUpAvailability({ ...AVAILABILITY, limits: { USD: AVAILABILITY.limits.USD } }),
+    ).toBe(false);
+    expect(isWalletTopUpAvailability({ ...AVAILABILITY, limits: { USD: {}, EUR: {} } })).toBe(
+      false,
+    );
+    expect(isWalletTopUpAvailability(null)).toBe(false);
+    expect(isWalletTopUpAvailability({ available: 'yes' })).toBe(false);
+  });
+
+  it('accepts a complete quote, with or without a fee', () => {
+    expect(isWalletTopUpQuoteResponse(QUOTE)).toBe(true);
+    expect(isWalletTopUpQuoteResponse({ ...QUOTE, quote: { ...QUOTE.quote, fee: null } })).toBe(
+      true,
+    );
+  });
+
+  it('refuses a quote missing what the review step or the checkout reads', () => {
+    const quoteWithout = (key: keyof WalletTopUpQuoteResponse['quote']) => {
+      const { [key]: _dropped, ...rest } = QUOTE.quote;
+      return { ...QUOTE, quote: rest };
+    };
+    expect(isWalletTopUpQuoteResponse({ ...QUOTE, quote: {} })).toBe(false);
+    expect(isWalletTopUpQuoteResponse(quoteWithout('destinationAmount'))).toBe(false);
+    expect(isWalletTopUpQuoteResponse(quoteWithout('sourceAmount'))).toBe(false);
+    expect(isWalletTopUpQuoteResponse(quoteWithout('expiresAtMs'))).toBe(false);
+    expect(
+      isWalletTopUpQuoteResponse({
+        ...QUOTE,
+        quote: { ...QUOTE.quote, destinationAmount: { currency: 'USDC' } },
+      }),
+    ).toBe(false);
+    expect(
+      isWalletTopUpQuoteResponse({ ...QUOTE, quote: { ...QUOTE.quote, fee: { amount: 1 } } }),
+    ).toBe(false);
+    expect(isWalletTopUpQuoteResponse({ ...QUOTE, checkoutToken: '' })).toBe(false);
+    expect(isWalletTopUpQuoteResponse({ ...QUOTE, estimationId: undefined })).toBe(false);
+    expect(isWalletTopUpQuoteResponse({ ...QUOTE, walletConfig: null })).toBe(false);
+    expect(isWalletTopUpQuoteResponse(undefined)).toBe(false);
+  });
+
+  const ok = (body: unknown) => ({ status: 200, json: async () => body }) as unknown as Response;
+
+  it('hands a complete body over as it came', async () => {
+    await expect(readWalletTopUpResponse(ok(QUOTE), isWalletTopUpQuoteResponse)).resolves.toBe(
+      QUOTE,
+    );
+  });
+
+  it('throws an incomplete body as a request error, which reads as ours', async () => {
+    const error = await readWalletTopUpResponse(
+      ok({ ...QUOTE, quote: {} }),
+      isWalletTopUpQuoteResponse,
+    ).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(WalletTopUpRequestError);
+    expect(error).toMatchObject({ status: 200, code: WALLET_TOPUP_INVALID_RESPONSE });
+    expect(getWalletTopUpQuoteErrorMessage(error, 'apple_pay')).toBe(
+      "We couldn't get a price right now. Try again.",
+    );
   });
 });
 

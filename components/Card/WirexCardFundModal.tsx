@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
@@ -188,24 +188,37 @@ export default function WirexCardFundModal({
     setStepState({ current: nextStep, previous: currentModalRef.current });
   }, []);
 
+  // Back to the options, with nothing of the last visit kept. Idempotent: a close
+  // through `handleOpenChange` runs it twice.
+  const resetFlow = useCallback(() => {
+    setStepState({ current: 'options', previous: CLOSE_STATE });
+    setBuyCryptoModal(null);
+    setWalletTopUpModal(null);
+    // Drops a quote's checkout token along with everything else of the top-up.
+    useWalletTopUpStore.getState().reset();
+    setDepositAddress(undefined);
+    setSelectedChainId(undefined);
+    setRhinoSelection(undefined);
+    setSelectedHolding(undefined);
+  }, []);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!isControlled) setIsOpenState(open);
       onOpenChange?.(open);
-      if (!open) {
-        setStepState({ current: 'options', previous: CLOSE_STATE });
-        setBuyCryptoModal(null);
-        setWalletTopUpModal(null);
-        // Drops a quote's checkout token along with everything else of the top-up.
-        useWalletTopUpStore.getState().reset();
-        setDepositAddress(undefined);
-        setSelectedChainId(undefined);
-        setRhinoSelection(undefined);
-        setSelectedHolding(undefined);
-      }
+      if (!open) resetFlow();
     },
-    [isControlled, onOpenChange],
+    [isControlled, onOpenChange, resetFlow],
   );
+
+  // A parent that closes the controlled modal never calls `handleOpenChange`, so
+  // reset on the way to closed too, whoever closed it. Only on that transition: a
+  // closed instance mounting must not reset a top-up the deposit modal is running.
+  const wasOpenRef = useRef(isOpen);
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) resetFlow();
+    wasOpenRef.current = isOpen;
+  }, [isOpen, resetFlow]);
 
   const navigateBuyCrypto = useCallback(
     (nextModal: DepositModal) => {

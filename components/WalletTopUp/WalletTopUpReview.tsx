@@ -53,8 +53,9 @@ const ReviewRow = ({ label, value, last }: { label: string; value: string; last?
  */
 export const WalletTopUpReview = () => {
   const navigate = useWalletTopUpNavigation();
-  const { availability } = useWalletTopUpAvailability();
-  const sdk = availability?.sdk;
+  // Not `availability`, which fails closed for the entry row: a failed refetch
+  // must not unmount a checkout the user is paying through.
+  const { checkoutSdk: sdk, refetch: refetchAvailability } = useWalletTopUpAvailability();
 
   const method = useWalletTopUpStore(state => state.method);
   const source = useWalletTopUpStore(state => state.source);
@@ -186,7 +187,16 @@ export const WalletTopUpReview = () => {
     goToStatus('handoff');
   }, [goToStatus, handoffStatus]);
 
-  if (!checkout || !sdk) return null;
+  if (!checkout) return null;
+
+  // No SDK config (the backend stopped offering the top-up) leaves no checkout to
+  // show: say so, with the retry, rather than an empty step.
+  const shownError = error ?? (sdk ? null : `We couldn't load ${label} right now.`);
+
+  const handleRetry = () => {
+    if (!sdk) void refetchAvailability();
+    refreshQuote('retry', true);
+  };
 
   const { destinationAmount, fee } = checkout.quote;
 
@@ -224,14 +234,14 @@ export const WalletTopUpReview = () => {
         </View>
       ) : null}
 
-      {error ? (
+      {shownError || !sdk ? (
         <View className="gap-3 rounded-[15px] bg-[#1C1C1C] p-4">
-          <Text className="text-sm text-red-500">{error}</Text>
+          <Text className="text-sm text-red-500">{shownError}</Text>
           <Button
             className="h-12 rounded-full"
             variant="secondary"
             disabled={isRequoting}
-            onPress={() => refreshQuote('retry', true)}
+            onPress={handleRetry}
           >
             <Text className="text-base font-semibold text-white">Try again</Text>
           </Button>

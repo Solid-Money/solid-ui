@@ -38,7 +38,12 @@ import {
   WirexBankTransferExecuteRequest,
   WirexWalletLinkChallengeDto,
 } from '@/lib/types/wirex-bank';
-import { toWalletTopUpRequestError } from '@/lib/walletTopUp';
+import {
+  isWalletTopUpAvailability,
+  isWalletTopUpQuoteResponse,
+  readWalletTopUpResponse,
+  toWalletTopUpRequestError,
+} from '@/lib/walletTopUp';
 import { useUserStore } from '@/store/useUserStore';
 
 import {
@@ -1932,7 +1937,8 @@ export const getWalletTopUpAvailability = async (): Promise<WalletTopUpAvailabil
 
   if (!response.ok) throw response;
 
-  return response.json();
+  // An incomplete "yes" fails like a request would, so the row stays hidden.
+  return readWalletTopUpResponse(response, isWalletTopUpAvailability);
 };
 
 /**
@@ -1954,7 +1960,8 @@ export const createWalletTopUpQuote = async (
 
   if (!response.ok) throw await toWalletTopUpRequestError(response);
 
-  return response.json();
+  // An incomplete quote fails here, under the amount, rather than in the review step.
+  return readWalletTopUpResponse(response, isWalletTopUpQuoteResponse);
 };
 
 /** One of the user's top-ups, refreshed from Wirex while it is still moving. */

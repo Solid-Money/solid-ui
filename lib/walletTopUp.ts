@@ -1,5 +1,8 @@
+import { parseUnits } from 'viem';
+
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
+import { formatTokenUnits } from '@/lib/utils/tokenUnits';
 
 import type { DepositModal } from '@/lib/types';
 import type {
@@ -8,7 +11,9 @@ import type {
   WalletTopUpErrorBody,
   WalletTopUpLimit,
   WalletTopUpMethod,
+  WalletTopUpMoney,
   WalletTopUpPlatform,
+  WalletTopUpQuoteResponse,
   WalletTopUpStatus,
   WalletTopUpToken,
 } from '@/lib/types/wallet-topup';
@@ -164,10 +169,16 @@ export const formatWalletTopUpMoney = (amount: string | number, currency: string
   return symbol ? `${symbol}${formatDecimal(value)}` : `${formatDecimal(value)} ${currency}`;
 };
 
-/** `100.00 USDC`. */
-export const formatWalletTopUpTokenAmount = (amount: string | number, token: string): string => {
-  const value = Number(amount);
-  return `${Number.isFinite(value) ? formatDecimal(value) : amount} ${token}`;
+/**
+ * `100.00 USDC`, `1,234.57 EURC`: two decimals, rounded half up. The decimal text
+ * is read into bigint units at its own precision, never through a float. Text that
+ * is not a plain decimal comes back as it is.
+ */
+export const formatWalletTopUpTokenAmount = (amount: string, token: string): string => {
+  const text = amount.trim();
+  if (!/^\d+(\.\d*)?$/.test(text)) return `${amount} ${token}`;
+  const decimals = text.split('.')[1]?.length ?? 0;
+  return `${formatTokenUnits({ raw: parseUnits(text, decimals), decimals }, 2, 2)} ${token}`;
 };
 
 // -----------------------------------------------------------------------------
@@ -291,6 +302,79 @@ export const getWalletTopUpQuoteErrorMessage = (
   }
   if (status === 429) return "You've reached your top-up limit for now. Try again later.";
   return "We couldn't get a price right now. Try again.";
+};
+
+// -----------------------------------------------------------------------------
+// Responses
+// -----------------------------------------------------------------------------
+
+/** The `code` of the `WalletTopUpRequestError` for a 2xx body missing what the flow reads. */
+export const WALLET_TOPUP_INVALID_RESPONSE = 'invalid_response';
+
+/**
+ * A successful response's body, checked before anything reads it: an incomplete
+ * one throws a `WalletTopUpRequestError`, so it takes the same error path as a
+ * refused request instead of failing later in a screen.
+ */
+export const readWalletTopUpResponse = async <T>(
+  response: Response,
+  isValid: (body: unknown) => body is T,
+): Promise<T> => {
+  const body: unknown = await response.json();
+  if (!isValid(body)) {
+    throw new WalletTopUpRequestError(response.status, '', WALLET_TOPUP_INVALID_RESPONSE);
+  }
+  return body;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isMoney = (value: unknown): value is WalletTopUpMoney =>
+  isRecord(value) && typeof value.amount === 'string' && typeof value.currency === 'string';
+
+const isLimit = (value: unknown): value is WalletTopUpLimit =>
+  isRecord(value) && typeof value.min === 'string' && typeof value.max === 'string';
+
+/**
+ * Whether an availability answer carries what the row and the amount step read.
+ * A "no" needs nothing more; a "yes" needs the SDK config, its currencies (the
+ * default among them) and each one's limits.
+ */
+export const isWalletTopUpAvailability = (body: unknown): body is WalletTopUpAvailability => {
+  if (!isRecord(body) || typeof body.available !== 'boolean') return false;
+  if (!body.available) return true;
+  const { sdk, currencies, defaultCurrency, limits } = body;
+  return (
+    isRecord(sdk) &&
+    typeof sdk.webEnvironment === 'string' &&
+    typeof sdk.mobileEnvironment === 'string' &&
+    Array.isArray(currencies) &&
+    currencies.length > 0 &&
+    currencies.includes(defaultCurrency) &&
+    isRecord(limits) &&
+    currencies.every(currency => isLimit(limits[currency]))
+  );
+};
+
+/** Whether a quote carries what the review step shows and Wirex's checkout is armed with. */
+export const isWalletTopUpQuoteResponse = (body: unknown): body is WalletTopUpQuoteResponse => {
+  if (!isRecord(body)) return false;
+  const { quote } = body;
+  return (
+    typeof body.estimationId === 'string' &&
+    !!body.estimationId &&
+    typeof body.provider === 'string' &&
+    isRecord(body.walletConfig) &&
+    typeof body.checkoutToken === 'string' &&
+    !!body.checkoutToken &&
+    isRecord(quote) &&
+    typeof quote.estimationId === 'string' &&
+    isMoney(quote.sourceAmount) &&
+    isMoney(quote.destinationAmount) &&
+    (quote.fee == null || isMoney(quote.fee)) &&
+    typeof quote.expiresAtMs === 'number'
+  );
 };
 
 // -----------------------------------------------------------------------------

@@ -29,9 +29,12 @@ export const useWalletDeviceAvailability = (
   const walletConfig = availability?.walletConfig;
   const canProbe = !!environment && !!clientId && !!walletConfig;
 
+  // The provider's block is in the key because the probe answers for it: a new one
+  // asks again. React Query hashes it by value, and its structural sharing keeps
+  // the object's identity while a refetch returns the same block.
   const queryKey = useMemo(
-    () => [WALLET_DEVICE_QUERY_KEY, environment, clientId, provider],
-    [clientId, environment, provider],
+    () => [WALLET_DEVICE_QUERY_KEY, environment, clientId, provider, walletConfig],
+    [clientId, environment, provider, walletConfig],
   );
 
   const probe = useCallback(

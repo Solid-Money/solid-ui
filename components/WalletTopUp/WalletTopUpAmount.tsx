@@ -163,9 +163,11 @@ export const WalletTopUpAmount = () => {
             <Text className="text-3xl font-semibold text-white/50">
               {CURRENCY_SYMBOLS[activeCurrency]}
             </Text>
+            {/* Held while quoting, so the quote that lands is for what is on screen. */}
             <TextInput
               accessibilityLabel={`Amount in ${CURRENCY_NAMES[activeCurrency]}`}
               value={amount}
+              editable={!isQuoting}
               onChangeText={handleAmountChange}
               keyboardType="decimal-pad"
               placeholder="0.00"
@@ -177,7 +179,7 @@ export const WalletTopUpAmount = () => {
           <Pressable
             accessibilityRole={canSwitchCurrency ? 'button' : undefined}
             accessibilityLabel={canSwitchCurrency ? `Get ${token}. Change currency` : undefined}
-            disabled={!canSwitchCurrency}
+            disabled={!canSwitchCurrency || isQuoting}
             onPress={handleSwitchCurrency}
             className="h-12 shrink-0 flex-row items-center gap-[7px] rounded-full bg-white/10 px-3 active:opacity-80"
           >
