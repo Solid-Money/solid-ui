@@ -17,6 +17,16 @@ jest.mock('@/components/DepositOption/DepositCashOptions', () => ({
 }));
 jest.mock('@/components/DepositOption/DepositIconCluster', () => 'DepositIconCluster');
 jest.mock('@/components/DepositOption/DepositMethodRow', () => 'DepositMethodRow');
+jest.mock('@/components/WalletTopUp/WalletTopUpIcon', () => 'WalletTopUpIcon');
+jest.mock('@/components/WalletTopUp/WalletTopUpProbe', () => 'WalletTopUpProbe');
+// What the backend and the device answer is the hook's own business (and its own
+// test's); here only whether the row is there, and where it leads.
+jest.mock('@/hooks/useCanWalletTopUp', () => ({
+  useWalletTopUpEntry: (_source: string, open: () => void) => ({
+    ...mockWalletTopUp,
+    onPress: open,
+  }),
+}));
 jest.mock('@/hooks/useDimension', () => ({
   useDimension: () => ({ isDesktop: false, isScreenMedium: false }),
 }));
@@ -35,6 +45,7 @@ jest.mock('@/store/useDepositStore', () => ({
   }),
 }));
 
+const mockWalletTopUp = { visible: false, method: 'apple_pay', needsCard: false };
 const mockSelectSavingsToken = jest.fn();
 const mockOpenBuyFuse = jest.fn();
 const mockDeposit = {
@@ -58,6 +69,8 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
   mockDeposit.upgradeTopUp = undefined;
+  mockWalletTopUp.visible = false;
+  mockWalletTopUp.method = 'apple_pay';
   Platform.OS = 'android';
 });
 
@@ -113,4 +126,35 @@ it('preserves the existing Savings deposit route for Crypto from a soFUSE top up
   expect(mockSelectSavingsToken).toHaveBeenCalledWith('WFUSE');
   expect(mockDeposit.setModal).not.toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
   act(() => root.unmount());
+});
+
+describe('Apple Pay / Google Pay top-up', () => {
+  it('puts the row first, and opens the top-up amount step', () => {
+    mockWalletTopUp.visible = true;
+    const root = render();
+    const rows = root.root.findAllByType('DepositMethodRow');
+    expect(rows.map((row: any) => row.props.title)).toEqual(['Apple Pay', 'Crypto', 'Cash']);
+    expect(rows[0].props.subtitle).toBe('Top up instantly from a card in Apple Wallet');
+    act(() => rows[0].props.onPress());
+    expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_WALLET_TOPUP_AMOUNT);
+    act(() => root.unmount());
+  });
+
+  it('names Google Pay and Google Wallet where that is what the device pays with', () => {
+    mockWalletTopUp.visible = true;
+    mockWalletTopUp.method = 'google_pay';
+    const root = render();
+    const row = root.root.findAllByType('DepositMethodRow')[0];
+    expect(row.props.title).toBe('Google Pay');
+    expect(row.props.subtitle).toBe('Top up instantly from a card in Google Wallet');
+    act(() => root.unmount());
+  });
+
+  it('leaves the row out when it is not offered', () => {
+    const root = render();
+    const titles = root.root.findAllByType('DepositMethodRow').map((row: any) => row.props.title);
+    expect(titles).not.toContain('Apple Pay');
+    expect(titles).not.toContain('Google Pay');
+    act(() => root.unmount());
+  });
 });

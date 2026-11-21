@@ -40,3 +40,28 @@ describe('Wirex bank transaction types', () => {
     expect(TransactionType.WIREX_BANK_PAYOUT).not.toBe(TransactionType.BANK_TRANSFER);
   });
 });
+
+/**
+ * An Apple Pay / Google Pay top-up through Wirex. The backend records it as its
+ * own type, and it reads like a Wirex bank deposit: money coming in.
+ */
+describe('Wirex wallet top-up transaction type', () => {
+  it('matches the type the backend writes', () => {
+    expect(TransactionType.WIREX_WALLET_TOPUP).toBe('wirex_wallet_topup');
+  });
+
+  it('shows a top-up as money coming in, like a Wirex bank deposit', () => {
+    expect(TRANSACTION_DETAILS[TransactionType.WIREX_WALLET_TOPUP]).toEqual(
+      TRANSACTION_DETAILS[TransactionType.WIREX_BANK_DEPOSIT],
+    );
+    expect(TRANSACTION_DETAILS[TransactionType.WIREX_WALLET_TOPUP].sign).toBe(
+      TransactionDirection.IN,
+    );
+  });
+
+  it('resolves a category, so it never falls back to "Unknown"', () => {
+    expect(getTransactionCategory(TransactionType.WIREX_WALLET_TOPUP)).toBe(
+      TransactionCategory.BANK_DEPOSIT,
+    );
+  });
+});

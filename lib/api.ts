@@ -23,6 +23,12 @@ import { TIER_MEMBERSHIP_PAYMENT_MODES } from '@/lib/tierUpgrade';
 import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import {
+  WalletTopUpAvailability,
+  WalletTopUpQuoteRequest,
+  WalletTopUpQuoteResponse,
+  WalletTopUpRecord,
+} from '@/lib/types/wallet-topup';
+import {
   WirexBankAccountType,
   WirexBankOverviewDto,
   WirexBankRailStatusDto,
@@ -32,6 +38,12 @@ import {
   WirexBankTransferExecuteRequest,
   WirexWalletLinkChallengeDto,
 } from '@/lib/types/wirex-bank';
+import {
+  isWalletTopUpAvailability,
+  isWalletTopUpQuoteResponse,
+  readWalletTopUpResponse,
+  toWalletTopUpRequestError,
+} from '@/lib/walletTopUp';
 import { useUserStore } from '@/store/useUserStore';
 
 import {
@@ -1894,6 +1906,74 @@ export const getWirexBankTransfers = async (limit?: number): Promise<WirexBankTr
   const response = await fetch(`${WIREX_BANK_BASE}/transfers${query}`, {
     credentials: 'include',
     headers: wirexBankHeaders(),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// -----------------------------------------------------------------------------
+// Wallet top-up — Apple Pay / Google Pay through Wirex's hosted checkout
+// -----------------------------------------------------------------------------
+
+const WALLET_TOPUP_BASE = `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wallet-topup`;
+
+const walletTopUpHeaders = (withBody = false) => {
+  const jwt = getJWTToken();
+  return {
+    ...(withBody ? { 'Content-Type': 'application/json' } : {}),
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/**
+ * Whether this user is offered the top-up, and what the checkout needs to load.
+ *
+ * Always 200: an unavailable user comes back as `available: false` with the
+ * reason. The cohort and kill-switch checks answer without a Wirex call.
+ */
+export const getWalletTopUpAvailability = async (): Promise<WalletTopUpAvailability> => {
+  const response = await fetch(`${WALLET_TOPUP_BASE}/availability`, {
+    credentials: 'include',
+    headers: walletTopUpHeaders(),
+  });
+
+  if (!response.ok) throw response;
+
+  // An incomplete "yes" fails like a request would, so the row stays hidden.
+  return readWalletTopUpResponse(response, isWalletTopUpAvailability);
+};
+
+/**
+ * Price a top-up and mint the checkout token Wirex's checkout executes it with.
+ *
+ * Throws a `WalletTopUpRequestError` carrying the backend's `{ message, code }`:
+ * the amount step shows a 400's and a 429's message (they name the limit), and
+ * a Response body can only be read once.
+ */
+export const createWalletTopUpQuote = async (
+  body: WalletTopUpQuoteRequest,
+): Promise<WalletTopUpQuoteResponse> => {
+  const response = await fetch(`${WALLET_TOPUP_BASE}/quote`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: walletTopUpHeaders(true),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) throw await toWalletTopUpRequestError(response);
+
+  // An incomplete quote fails here, under the amount, rather than in the review step.
+  return readWalletTopUpResponse(response, isWalletTopUpQuoteResponse);
+};
+
+/** One of the user's top-ups, refreshed from Wirex while it is still moving. */
+export const getWalletTopUp = async (estimationId: string): Promise<WalletTopUpRecord> => {
+  const response = await fetch(`${WALLET_TOPUP_BASE}/${encodeURIComponent(estimationId)}`, {
+    credentials: 'include',
+    headers: walletTopUpHeaders(),
   });
 
   if (!response.ok) throw response;

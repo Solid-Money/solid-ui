@@ -22,6 +22,8 @@ jest.mock('lucide-react-native', () => ({
   Zap: 'Zap',
 }));
 jest.mock('@/assets/images/apple-pay-circle', () => 'ApplePayCircle');
+// Its Google mark reaches `lib/assets`, which does not load under jest-expo.
+jest.mock('@/components/WalletTopUp/WalletTopUpIcon', () => 'WalletTopUpIcon');
 jest.mock('@/assets/images/fund-external-wallet', () => 'FundExternalWallet');
 jest.mock('@/assets/images/fund-move-savings', () => 'FundMoveSavings');
 jest.mock('@/components/Card/CardFund/CardFundGroup', () => 'CardFundGroup');
@@ -200,6 +202,49 @@ describe('crypto', () => {
     withBitcoin();
     const root = render({ sections: WIREX_CARD_FUND_SECTIONS, onLocalCurrencyPress: jest.fn() });
     expect(titlesOf(root)).not.toContain('BTC');
+    act(() => root.unmount());
+  });
+});
+
+describe('Apple Pay / Google Pay top-up', () => {
+  const WALLET_TOP_UP = { method: 'apple_pay' as const, needsCard: false, onPress: jest.fn() };
+
+  it('puts the row first for Wirex when it is passed', () => {
+    const onPress = jest.fn();
+    const root = render({
+      sections: WIREX_CARD_FUND_SECTIONS,
+      onLocalCurrencyPress: jest.fn(),
+      walletTopUp: { ...WALLET_TOP_UP, onPress },
+    });
+    const row = rowsOf(root)[0];
+    expect(row.props.title).toBe('Apple Pay');
+    expect(row.props.subtitle).toBe('Top up instantly from a card in Apple Wallet');
+    act(() => row.props.onPress());
+    expect(onPress).toHaveBeenCalled();
+    act(() => root.unmount());
+  });
+
+  it('names Google Wallet for Google Pay', () => {
+    const root = render({
+      sections: WIREX_CARD_FUND_SECTIONS,
+      walletTopUp: { ...WALLET_TOP_UP, method: 'google_pay' },
+    });
+    expect(rowTitled(root, 'Google Pay').props.subtitle).toBe(
+      'Top up instantly from a card in Google Wallet',
+    );
+    act(() => root.unmount());
+  });
+
+  it('leaves the row out where the device or the backend said no', () => {
+    const root = render({ sections: WIREX_CARD_FUND_SECTIONS });
+    expect(titlesOf(root)).not.toContain('Apple Pay');
+    expect(titlesOf(root)).not.toContain('Google Pay');
+    act(() => root.unmount());
+  });
+
+  it('never offers it on a Rain card, whose spend does not come from the Safe', () => {
+    const root = render({ ...RAIN_PROPS, walletTopUp: WALLET_TOP_UP });
+    expect(titlesOf(root)).not.toContain('Apple Pay');
     act(() => root.unmount());
   });
 });

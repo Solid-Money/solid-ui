@@ -19,6 +19,7 @@ const INCOMING_BADGE_TYPES = new Set<TransactionType>([
   TransactionType.BRIDGE_TRANSFER,
   TransactionType.BANK_TRANSFER,
   TransactionType.WIREX_BANK_DEPOSIT,
+  TransactionType.WIREX_WALLET_TOPUP,
   TransactionType.MERCURYO_TRANSACTION,
   TransactionType.RESCUE_TOKEN,
 ]);
