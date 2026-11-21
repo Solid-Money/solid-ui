@@ -88,11 +88,14 @@ export const WalletTopUpReview = () => {
     [endCheckout, navigate],
   );
 
-  /** A fresh quote with its own checkout token, which re-arms the checkout in place. */
+  /**
+   * A fresh quote with its own checkout token. The checkout is hidden while it
+   * is fetched (nothing can be paid on the old estimation), and an error on
+   * screen stays, its retry disabled, until the new quote is in.
+   */
   const refreshQuote = useCallback(
     (reason: string, remount = false) => {
       if (!currency) return;
-      setError(null);
       requote(
         {
           amount: toWalletTopUpWireAmount(amount),
@@ -103,6 +106,7 @@ export const WalletTopUpReview = () => {
         {
           onSuccess: next => {
             track(TRACKING_EVENTS.WALLET_TOPUP_QUOTE_REFRESHED, { ...analytics, reason });
+            setError(null);
             setQuote(next);
             if (remount) setCheckoutKey(key => key + 1);
           },
@@ -246,7 +250,7 @@ export const WalletTopUpReview = () => {
             <Text className="text-base font-semibold text-white">Try again</Text>
           </Button>
         </View>
-      ) : (
+      ) : isRequoting ? null : (
         <WalletCheckout key={checkoutKey} sdk={sdk} checkout={checkout} handlers={handlers} />
       )}
 

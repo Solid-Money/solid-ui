@@ -168,4 +168,28 @@ describe('WalletTopUpReview', () => {
       expect.anything(),
     );
   });
+
+  it('hides the checkout while a fresh quote is on its way, so the old one cannot be paid', () => {
+    mockQuote.isPending = true;
+    render(<WalletTopUpReview />);
+
+    expect(root.root.findAllByType('WalletCheckout')).toHaveLength(0);
+    expect(texts()).toContain('Getting a new price…');
+  });
+
+  it('keeps the error until the new quote is in, then shows the checkout again', () => {
+    render(<WalletTopUpReview />);
+    act(() => root.root.findByType('WalletCheckout').props.handlers.onLoadFailed('timeout'));
+    expect(texts()).toContain("We couldn't load Apple Pay right now.");
+
+    act(() => root.root.findByType('Button').props.onPress());
+    // Still on the error, not on a checkout for the old quote.
+    expect(texts()).toContain("We couldn't load Apple Pay right now.");
+    expect(root.root.findAllByType('WalletCheckout')).toHaveLength(0);
+
+    const [, { onSuccess }] = mockQuote.mutate.mock.calls[0];
+    act(() => onSuccess(QUOTE));
+    expect(texts()).not.toContain("We couldn't load Apple Pay right now.");
+    expect(root.root.findAllByType('WalletCheckout')).toHaveLength(1);
+  });
 });
