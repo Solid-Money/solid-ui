@@ -73,7 +73,10 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });
 
-/** Like the SDK: an answer cached per frame, whatever block it is asked with, unless forced. */
+/**
+ * Like the SDK's persisted answer: one slot per frame origin, so whatever client
+ * or block it is asked with (every test here is one environment), unless forced.
+ */
 const sdkWithCache = (initial?: { applePay: boolean; googlePay: boolean }) => {
   let cached = initial;
   mockCheck.mockImplementation(async (_init, options) => {
@@ -132,7 +135,7 @@ it('probes again, with the new block, when the provider’s config changes', asy
   expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
 });
 
-const mountWith = async (config: Record<string, unknown>) => {
+const mountWith = async (config: Record<string, unknown>, clientId?: string) => {
   const devices: unknown[] = [];
   const Probe = ({ value }: { value: WalletTopUpAvailability }) => {
     devices.push(useWalletDeviceAvailability(value).device);
@@ -141,13 +144,15 @@ const mountWith = async (config: Record<string, unknown>) => {
   await act(async () => {
     root = create(
       <QueryClientProvider client={client}>
-        <Probe value={availability(config)} />
+        <Probe value={availability(config, clientId)} />
       </QueryClientProvider>,
     );
   });
   await settle();
   return devices;
 };
+
+const lastForce = () => mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]?.force;
 
 /** A reload: a fresh query cache and React tree, while the SDK's cache and storage survive. */
 const reload = async () => {
@@ -181,4 +186,35 @@ it('uses the SDK cache after a reload only for the block it answered for', async
   devices = await mountWith({ google_pay: { merchantId: 'm-2' } });
   expect(mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]).toMatchObject({ force: true });
   expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
+
+  // A change is remembered as unknown (the SDK may still be revalidating the
+  // old block): the next load forces once more, and the one after trusts it.
+  await reload();
+  await mountWith({ google_pay: { merchantId: 'm-2' } });
+  expect(lastForce()).toBe(true);
+  await reload();
+  devices = await mountWith({ google_pay: { merchantId: 'm-2' } });
+  expect(lastForce()).toBe(false);
+  expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
+});
+
+it('never serves one client the answer another client probed on the same origin', async () => {
+  sdkWithCache();
+  const configA = { google_pay: { merchantId: 'm-1' } };
+  const configB = { google_pay: { merchantId: 'm-2' } };
+
+  // Client A probes and is remembered…
+  await mountWith(configA, 'client-a');
+  // …then client B, on the same frame origin, replaces the SDK's one answer.
+  await reload();
+  let devices = await mountWith(configB, 'client-b');
+  expect(lastForce()).toBe(true);
+  expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
+
+  // Back on client A after a reload: the SDK's slot holds B's answer, so A
+  // must be probed afresh, not served from it.
+  await reload();
+  devices = await mountWith(configA, 'client-a');
+  expect(lastForce()).toBe(true);
+  expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
 });

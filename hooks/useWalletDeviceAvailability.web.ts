@@ -7,30 +7,35 @@ import type { WalletDeviceAvailability } from '@/lib/walletTopUp';
 import type { CheckWalletAvailabilityOptions } from '@wirexapp/card-wallet-topup-web';
 
 const WALLET_DEVICE_QUERY_KEY = 'walletTopUpDevice';
-const LAST_PROBED_CONFIG_PREFIX = 'walletTopUpDevice.config:';
+const LAST_PROBE_KEY = 'walletTopUpDevice.lastProbe';
 
 /**
- * The provider block the SDK last probed for this environment and client, kept
- * in localStorage beside the SDK's own cache. The SDK caches its answer per
- * frame (and the last real one in localStorage), not per block, so its cache
- * is trusted only when we know it answered for this very block: a different
- * block, or no record at all (a browser that cached an answer before this was
- * remembered, or storage that can't be read), forces a fresh probe. Failing
- * storage costs a probe, never a stale answer.
+ * What the SDK's cached answer in this browser was probed for: environment,
+ * client and provider block, in ONE slot. The SDK keeps one answer per frame
+ * origin in localStorage (and one per frame URL in memory), whatever the client
+ * or block, so its cache is trusted only when this holds exactly the current
+ * three. Anything else, or no record (an answer cached before this was kept,
+ * storage that can't be read), forces a fresh probe.
+ *
+ * A change is probed fresh and then remembered as unknown, not as the new
+ * identity: whenever the SDK serves a cached answer it revalidates it in the
+ * background, and that probe — for the identity before the change — can land
+ * after ours and put the old answer back in its slot. The next load probes
+ * fresh again and records the identity. Failing storage costs a probe, never
+ * a stale answer.
  */
-const lastProbedConfig = {
-  key: (environment?: string, clientId?: string | null) =>
-    `${LAST_PROBED_CONFIG_PREFIX}${environment ?? ''}:${clientId ?? ''}`,
-  read(key: string): string | null {
+const lastProbe = {
+  read(): string | null {
     try {
-      return globalThis.localStorage?.getItem(key) ?? null;
+      return globalThis.localStorage?.getItem(LAST_PROBE_KEY) ?? null;
     } catch {
       return null;
     }
   },
-  write(key: string, value: string) {
+  write(identity: string | null) {
     try {
-      globalThis.localStorage?.setItem(key, value);
+      if (identity === null) globalThis.localStorage?.removeItem(LAST_PROBE_KEY);
+      else globalThis.localStorage?.setItem(LAST_PROBE_KEY, identity);
     } catch {
       // Not remembered: the next probe forces past the SDK's cache.
     }
@@ -88,12 +93,12 @@ export const useWalletDeviceAvailability = (
 
   const { data, isError } = useQuery({
     queryKey,
-    // The SDK's cache only for the block we know it answered for.
+    // The SDK's cache only for what we know it answered for.
     queryFn: async () => {
-      const storageKey = lastProbedConfig.key(environment, clientId);
-      const current = JSON.stringify(walletConfig ?? null);
-      const answer = await probe(lastProbedConfig.read(storageKey) !== current);
-      lastProbedConfig.write(storageKey, current);
+      const identity = JSON.stringify([environment, clientId, walletConfig]);
+      const last = lastProbe.read();
+      const answer = await probe(last !== identity);
+      lastProbe.write(last === null || last === identity ? identity : null);
       return answer;
     },
     enabled: canProbe,
