@@ -45,12 +45,47 @@ const settle = () =>
 let client: QueryClient;
 let root: any;
 
+/** localStorage as the browser keeps it: outlives the query cache, so a "reload" keeps it. */
+const storage = new Map<string, string>();
+const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => void storage.set(key, String(value)),
+      removeItem: (key: string) => void storage.delete(key),
+      clear: () => storage.clear(),
+    },
+  });
+});
+
+afterAll(() => {
+  if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+  else delete (globalThis as any).localStorage;
+});
+
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
-  globalThis.localStorage?.clear();
+  storage.clear();
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });
+
+/** Like the SDK: an answer cached per frame, whatever block it is asked with, unless forced. */
+const sdkWithCache = (initial?: { applePay: boolean; googlePay: boolean }) => {
+  let cached = initial;
+  mockCheck.mockImplementation(async (_init, options) => {
+    if (!options?.force && cached) return cached as any;
+    const fresh = {
+      applePay: false,
+      googlePay: (options?.config as any)?.google_pay?.merchantId === 'm-1',
+    };
+    cached = fresh;
+    return fresh as any;
+  });
+};
 
 // Here rather than in the test, so a failed expectation cannot leave timers running.
 afterEach(async () => {
@@ -91,52 +126,59 @@ it('probes again, with the new block, when the provider’s config changes', asy
   await act(async () => root.update(tree(availability(second))));
   await settle();
   expect(mockCheck).toHaveBeenCalledTimes(2);
-  // The first ask uses the SDK's cache; the changed block forces past it.
-  expect(mockCheck.mock.calls[0][1]).toMatchObject({ config: first, force: false });
+  // No record of an earlier block: the first ask forces too; so does the change.
+  expect(mockCheck.mock.calls[0][1]).toMatchObject({ config: first, force: true });
   expect(mockCheck.mock.calls[1][1]).toMatchObject({ config: second, force: true });
   expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
 });
 
-it('skips the SDK cache after a reload when the block changed meanwhile', async () => {
-  // Like the SDK: an answer cached per frame, whatever block it is asked with,
-  // unless forced.
-  let cached: { applePay: boolean; googlePay: boolean } | undefined;
-  mockCheck.mockImplementation(async (_init, options) => {
-    if (!options?.force && cached) return cached as any;
-    const fresh = {
-      applePay: false,
-      googlePay: (options?.config as any)?.google_pay?.merchantId === 'm-1',
-    };
-    cached = fresh;
-    return fresh as any;
-  });
-
+const mountWith = async (config: Record<string, unknown>) => {
   const devices: unknown[] = [];
   const Probe = ({ value }: { value: WalletTopUpAvailability }) => {
     devices.push(useWalletDeviceAvailability(value).device);
     return null;
   };
-  const mount = async (config: Record<string, unknown>) => {
-    await act(async () => {
-      root = create(
-        <QueryClientProvider client={client}>
-          <Probe value={availability(config, 'client-2')} />
-        </QueryClientProvider>,
-      );
-    });
-    await settle();
-  };
+  await act(async () => {
+    root = create(
+      <QueryClientProvider client={client}>
+        <Probe value={availability(config)} />
+      </QueryClientProvider>,
+    );
+  });
+  await settle();
+  return devices;
+};
 
-  await mount({ google_pay: { merchantId: 'm-1' } });
+/** A reload: a fresh query cache and React tree, while the SDK's cache and storage survive. */
+const reload = async () => {
+  await act(async () => root.unmount());
+  root = undefined;
+  client.clear();
+};
+
+it('never trusts an SDK answer cached before the block was remembered', async () => {
+  // A browser that probed with an older build: the SDK holds an answer, we hold no block.
+  sdkWithCache({ applePay: false, googlePay: false });
+
+  const devices = await mountWith({ google_pay: { merchantId: 'm-1' } });
+
+  expect(mockCheck.mock.calls[0][1]).toMatchObject({ force: true });
+  expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
+});
+
+it('uses the SDK cache after a reload only for the block it answered for', async () => {
+  sdkWithCache();
+  await mountWith({ google_pay: { merchantId: 'm-1' } });
+
+  // Same block after a reload: the remembered block matches, the SDK cache is fine.
+  await reload();
+  let devices = await mountWith({ google_pay: { merchantId: 'm-1' } });
+  expect(mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]).toMatchObject({ force: false });
   expect(devices[devices.length - 1]).toMatchObject({ googlePay: true });
 
-  // "Reload": a fresh query cache, while the SDK's cache and storage survive.
-  await act(async () => root.unmount());
-  client.clear();
-  await mount({ google_pay: { merchantId: 'm-2' } });
-
-  expect(mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]).toMatchObject({
-    force: true,
-  });
+  // A new block after a reload: read back from storage, it forces past the SDK cache.
+  await reload();
+  devices = await mountWith({ google_pay: { merchantId: 'm-2' } });
+  expect(mockCheck.mock.calls[mockCheck.mock.calls.length - 1][1]).toMatchObject({ force: true });
   expect(devices[devices.length - 1]).toMatchObject({ googlePay: false });
 });

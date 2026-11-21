@@ -10,19 +10,18 @@ const WALLET_DEVICE_QUERY_KEY = 'walletTopUpDevice';
 const LAST_PROBED_CONFIG_PREFIX = 'walletTopUpDevice.config:';
 
 /**
- * The provider block the SDK last probed for this environment and client. The
- * SDK caches its answer per frame (and the last real one in localStorage), not
- * per block, so a changed block must skip that cache: we remember the block we
- * last asked with, across reloads like the SDK's own cache. Storage failing
- * only costs a cached answer, never a wrong "changed".
+ * The provider block the SDK last probed for this environment and client, kept
+ * in localStorage beside the SDK's own cache. The SDK caches its answer per
+ * frame (and the last real one in localStorage), not per block, so its cache
+ * is trusted only when we know it answered for this very block: a different
+ * block, or no record at all (a browser that cached an answer before this was
+ * remembered, or storage that can't be read), forces a fresh probe. Failing
+ * storage costs a probe, never a stale answer.
  */
-const probedThisSession = new Map<string, string>();
 const lastProbedConfig = {
   key: (environment?: string, clientId?: string | null) =>
     `${LAST_PROBED_CONFIG_PREFIX}${environment ?? ''}:${clientId ?? ''}`,
   read(key: string): string | null {
-    const inSession = probedThisSession.get(key);
-    if (inSession !== undefined) return inSession;
     try {
       return globalThis.localStorage?.getItem(key) ?? null;
     } catch {
@@ -30,11 +29,10 @@ const lastProbedConfig = {
     }
   },
   write(key: string, value: string) {
-    probedThisSession.set(key, value);
     try {
       globalThis.localStorage?.setItem(key, value);
     } catch {
-      // Remembered for this session only.
+      // Not remembered: the next probe forces past the SDK's cache.
     }
   },
 };
@@ -90,12 +88,11 @@ export const useWalletDeviceAvailability = (
 
   const { data, isError } = useQuery({
     queryKey,
-    // A block other than the one the SDK last answered for skips its cache.
+    // The SDK's cache only for the block we know it answered for.
     queryFn: async () => {
       const storageKey = lastProbedConfig.key(environment, clientId);
       const current = JSON.stringify(walletConfig ?? null);
-      const previous = lastProbedConfig.read(storageKey);
-      const answer = await probe(previous !== null && previous !== current);
+      const answer = await probe(lastProbedConfig.read(storageKey) !== current);
       lastProbedConfig.write(storageKey, current);
       return answer;
     },
