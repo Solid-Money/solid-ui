@@ -7,18 +7,17 @@ import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useAiApiOverview } from '@/hooks/useAiApi';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { useAiApiRevealStore } from '@/store/useAiApiRevealStore';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import AiApiCreateKeySheet from './AiApiCreateKeySheet';
 import AiApiDashboard from './AiApiDashboard';
+import AiApiFundModal from './AiApiFundModal';
 import AiApiHeader, { AiApiInfoButton } from './AiApiHeader';
 import AiApiIntro, { AiApiIntroFooter } from './AiApiIntro';
 import AiApiKeySheet, { type AiApiKeySheetView } from './AiApiKeySheet';
@@ -68,10 +67,10 @@ export default function AiApiScreen() {
   } = useAiApiOverview();
   const reveal = useAiApiRevealStore(state => state.reveal);
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
-  const setDepositModal = useDepositStore(state => state.setModal);
-  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  /** "Add funds": send crypto from anywhere, or swap what is already in Solid. */
+  const [isFundOpen, setIsFundOpen] = useState(false);
   const [isKeySheetOpen, setIsKeySheetOpen] = useState(false);
   const [keySheetView, setKeySheetView] = useState<AiApiKeySheetView>('details');
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
@@ -202,21 +201,10 @@ export default function AiApiScreen() {
         onOpenSetup={openSetup}
         onOpenHowItWorks={() => setIsIntroOpen(true)}
         onOpenModels={() => setIsModelsOpen(true)}
-        onAddFunds={() => {
-          // Straight to the address that funds AI API charges — USDC on the
-          // billing chain, Base — rather than the deposit chooser, whose
-          // default lands money in savings, which a charge cannot draw on.
-          // `toSafe`: the Safe itself, even for a Wirex cardholder, whose
-          // stablecoins would otherwise get the card's address and be bridged
-          // to Fuse, out of reach of the charge.
-          setWalletDeposit({
-            symbol: 'USDC',
-            chainId: overview.billing.chainId,
-            isChangingToken: false,
-            toSafe: true,
-          });
-          setDepositModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
-        }}
+        // Its own funding sheet rather than the deposit chooser, whose default
+        // lands money in savings, which a charge cannot draw on: every way in
+        // it offers ends as USDC in the Wallet on Base (see `AiApiFundModal`).
+        onAddFunds={() => setIsFundOpen(true)}
       />
     );
   }
@@ -264,6 +252,12 @@ export default function AiApiScreen() {
               cashbackTiers={overview.cashbackTiers}
               cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
             />
+            <AiApiFundModal
+              isOpen={isFundOpen}
+              onOpenChange={setIsFundOpen}
+              shortfallUsd={overview.billing.walletShortfallUsd}
+            />
+            {/* USDC on Base hands over to the Wallet's own address, in here. */}
             <LazyDepositOptionModal trigger={null} />
           </>
         ) : null

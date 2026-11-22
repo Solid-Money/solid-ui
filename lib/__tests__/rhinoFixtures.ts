@@ -171,6 +171,32 @@ export const RHINO_ASSETS_WITH_BASE_USDT_ROUTES: RhinoDepositAssetsResponse = {
   ),
 };
 
+/** Everything sent for the AI API is paid to the Safe on Base as USDC. */
+const aiApi = rhinoRoute('AI_API', 'USDC');
+
+/** Whether the backend's AI API route takes this token sent on this chain. */
+const takesForAiApi = (chain: string, symbol: string): boolean =>
+  chain !== 'FUSE' &&
+  (symbol === 'USDC' || symbol === 'ETH' || (symbol === 'USDT' && chain !== 'BASE'));
+
+/**
+ * The same answer from a backend with the AI API route: USDC, USDT and ETH
+ * from every chain rhino.fi takes them on, paid out as USDC on Base. Not USDT
+ * sent on Base, which our own pipeline keeps, and never EURC or WBTC, which the
+ * AI API cannot charge.
+ */
+export const RHINO_ASSETS_WITH_AI_API: RhinoDepositAssetsResponse = {
+  ...RHINO_ASSETS,
+  chains: RHINO_ASSETS.chains.map(chain => ({
+    ...chain,
+    tokens: chain.tokens.map(token =>
+      takesForAiApi(chain.chain, token.symbol)
+        ? { ...token, routes: [...token.routes, aiApi] }
+        : token,
+    ),
+  })),
+};
+
 /** Native BTC, sent on Bitcoin: WBTC to the Safe on Base, USDC to the card. */
 const nativeBitcoin: RhinoDepositToken = {
   symbol: 'BTC',

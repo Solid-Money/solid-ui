@@ -74,9 +74,11 @@ const RhinoDepositAddress = ({
 
   // rhino.fi pays out to the same savings / card destination a direct transfer
   // goes to, where the regular pipeline credits it. Its detection is what hands
-  // the user to the activity, exactly as on the direct-deposit address.
+  // the user to the activity, exactly as on the direct-deposit address. A payout
+  // into the Safe (the wallet's, the AI API's) has no such detection to wait for.
+  const { destinationType } = selection;
   const detectedDestination =
-    selection.destinationType === 'WALLET' ? undefined : selection.destinationType;
+    destinationType === 'WALLET' || destinationType === 'AI_API' ? undefined : destinationType;
   const handleDetected = useCallback(
     (deposit: DetectedDirectDepositResponse) => {
       if (deposit.clientTxId) onDepositDetected?.(deposit.clientTxId);

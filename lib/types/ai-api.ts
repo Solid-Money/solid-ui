@@ -66,6 +66,12 @@ export interface AiApiBilling {
    * refused until funds arrive, without the account being paused.
    */
   walletShort: boolean;
+  /**
+   * How much the Wallet must receive, in USD, for agents to run again, rounded
+   * up to the cent: 0 when nothing is missing, null when the balance could not
+   * be read. Absent from a backend that predates it.
+   */
+  walletShortfallUsd?: number | null;
 }
 
 /** One model on the price list. Prices are USD per million tokens. */

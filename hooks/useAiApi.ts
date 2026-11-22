@@ -56,6 +56,19 @@ const asSelectedAccount = <T>(send: () => Promise<T>) => {
       : Promise.reject(new Error('Your account changed. Please try again.'));
 };
 
+/**
+ * How often the dashboard asks again while its agents wait for money, so the
+ * banner moves on by itself once a deposit or a swap lands. The backend holds a
+ * Wallet's balance for about as long, so asking more often reads the same one.
+ */
+const AI_API_FUNDS_POLL_MS = 30 * 1000;
+
+/** Whether the agents are stopped for want of money in the Wallet. */
+export const isAiApiWaitingForFunds = (overview: AiApiOverview | undefined): boolean =>
+  !!overview &&
+  (overview.billing.walletShort ||
+    (!!overview.account?.paused && overview.account.pausedReason === 'wallet_empty'));
+
 /** The AI API dashboard: keys, this month's spend and cashback, billing state. */
 export const useAiApiOverview = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
@@ -64,6 +77,8 @@ export const useAiApiOverview = ({ enabled = true }: { enabled?: boolean } = {})
     queryFn: () => withRefreshToken(() => fetchAiApiOverview()),
     enabled: enabled && !!userId,
     staleTime: 30 * 1000,
+    refetchInterval: query =>
+      isAiApiWaitingForFunds(query.state.data) ? AI_API_FUNDS_POLL_MS : false,
   });
 };
 
