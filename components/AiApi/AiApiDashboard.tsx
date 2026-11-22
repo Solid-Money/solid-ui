@@ -82,6 +82,20 @@ const SectionHeading = ({ title, action }: { title: string; action?: ReactNode }
   </View>
 );
 
+/** A section heading's action: "New key", "Add funds". */
+const HeadingAction = ({ label, onPress }: { label: string; onPress: () => void }) => (
+  <Pressable
+    accessibilityRole="button"
+    accessibilityLabel={label}
+    onPress={onPress}
+    hitSlop={8}
+    className="flex-row items-center gap-1.5 rounded-full bg-card px-3 py-[7px] active:opacity-70 web:hover:bg-[#262626]"
+  >
+    <Plus size={14} color="white" strokeWidth={AI_API_ICON_STROKE} />
+    <Text className="text-[13px] font-medium text-white">{label}</Text>
+  </Pressable>
+);
+
 /**
  * The one notice the dashboard leads with, most serious first: every key
  * stopped (and why), then charges that will fail, then one key at its limit.
@@ -146,7 +160,7 @@ const StatusBanner = ({
         isLoading={retry.isPending}
         onAction={() => {
           if (covered) return startAgain();
-          track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED);
+          track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED, { source: 'banner' });
           onAddFunds();
         }}
       />
@@ -192,7 +206,7 @@ const StatusBanner = ({
         )} Add funds and they start again within a minute.`}
         actionLabel="Add funds"
         onAction={() => {
-          track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED);
+          track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED, { source: 'banner' });
           onAddFunds();
         }}
       />
@@ -282,51 +296,54 @@ const AiApiDashboard = ({
         />
       </View>
 
-      <AiApiGroup>
-        <AiApiRow
-          icon={<Wallet {...ICON} />}
-          title="Paid from"
-          subtitle={
-            billing.billingTokens.length > 0
-              ? `${formatAiApiPaidFrom(billing.billingTokens)} on Base`
-              : undefined
-          }
-          value={
-            billing.walletBalanceUsd === null
-              ? 'Wallet'
-              : `Wallet · ${formatAiApiUsd(billing.walletBalanceUsd)}`
+      {/* Always offered, not only once the Wallet runs short: topping up
+          ahead keeps the agents from stopping at all. */}
+      <View className="gap-3">
+        <SectionHeading
+          title="Billing"
+          action={
+            <HeadingAction
+              label="Add funds"
+              onPress={() => {
+                track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED, { source: 'dashboard' });
+                onAddFunds();
+              }}
+            />
           }
         />
-        <AiApiDivider />
-        <AiApiRow
-          icon={<Percent {...ICON} />}
-          title="Cashback this month"
-          subtitle={`${overview.cashbackTier} · ${formatAiApiRate(overview.cashbackRate)} back${
-            overview.cashbackMonthlyCapUsd > 0
-              ? `, up to ${formatAiApiLimit(overview.cashbackMonthlyCapUsd)} a month`
-              : ''
-          }`}
-          value={formatAiApiCashback(month.cashbackUsd)}
-        />
-      </AiApiGroup>
+        <AiApiGroup>
+          <AiApiRow
+            icon={<Wallet {...ICON} />}
+            title="Paid from"
+            subtitle={
+              billing.billingTokens.length > 0
+                ? `${formatAiApiPaidFrom(billing.billingTokens)} on Base`
+                : undefined
+            }
+            value={
+              billing.walletBalanceUsd === null
+                ? 'Wallet'
+                : `Wallet · ${formatAiApiUsd(billing.walletBalanceUsd)}`
+            }
+          />
+          <AiApiDivider />
+          <AiApiRow
+            icon={<Percent {...ICON} />}
+            title="Cashback this month"
+            subtitle={`${overview.cashbackTier} · ${formatAiApiRate(overview.cashbackRate)} back${
+              overview.cashbackMonthlyCapUsd > 0
+                ? `, up to ${formatAiApiLimit(overview.cashbackMonthlyCapUsd)} a month`
+                : ''
+            }`}
+            value={formatAiApiCashback(month.cashbackUsd)}
+          />
+        </AiApiGroup>
+      </View>
 
       <View className="gap-3">
         <SectionHeading
           title="API keys"
-          action={
-            canCreateKey ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="New key"
-                onPress={onNewKey}
-                hitSlop={8}
-                className="flex-row items-center gap-1.5 rounded-full bg-card px-3 py-[7px] active:opacity-70 web:hover:bg-[#262626]"
-              >
-                <Plus size={14} color="white" strokeWidth={AI_API_ICON_STROKE} />
-                <Text className="text-[13px] font-medium text-white">New key</Text>
-              </Pressable>
-            ) : null
-          }
+          action={canCreateKey ? <HeadingAction label="New key" onPress={onNewKey} /> : null}
         />
         <AiApiGroup>
           {keys.map((key, index) => {
