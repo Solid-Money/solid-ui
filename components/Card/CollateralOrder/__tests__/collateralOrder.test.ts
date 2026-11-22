@@ -69,6 +69,7 @@ const instance = (
   fullyPriced: true,
   creditLineUsd: 0n,
   creditHeadroomUsd: 0n,
+  availableToBorrowUsd: 0n,
   borrowApyPerSecond: 0n,
   collateral,
   unhealthySince: 0,

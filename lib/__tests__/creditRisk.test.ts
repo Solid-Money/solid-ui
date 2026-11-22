@@ -1,3 +1,5 @@
+import { findAdditionalCollateral } from '@/components/Card/Credit/collateralDiscovery';
+import { loanSafetyStatus, summarizeLoanSafety } from '@/components/Card/Credit/loanSafety';
 import {
   buildLoan,
   debtAtUnlock,
@@ -83,6 +85,7 @@ const position = (
     fullyPriced: true,
     creditLineUsd: 0n,
     creditHeadroomUsd: 0n,
+    availableToBorrowUsd: 0n,
     borrowApyPerSecond: 0n,
     collateral,
     unhealthySince: 0,
@@ -117,6 +120,28 @@ const sixAssets = () => {
   return { assets, position: position(880, assets) };
 };
 
+describe('additional collateral', () => {
+  it('excludes assets held on any instance and deduplicates unheld eligible assets', () => {
+    const heldOnFuse = asset('soUSD', 20, 0.9, 0.95, { chainId: 122 });
+    const emptyOnBase = asset('soUSD', 0, 0.9, 0.95);
+    const weth = asset('WETH', 0, 0.6, 0.7);
+    const emptyOnFuse = asset('WETH', 0, 0.6, 0.7, { chainId: 122 });
+    const ethYield = asset('soETH', 0, 0.6, 0.7);
+
+    expect(
+      findAdditionalCollateral([emptyOnBase, weth, heldOnFuse, emptyOnFuse, ethYield]),
+    ).toEqual([weth, ethYield]);
+  });
+
+  it('excludes paused, delisted and zero-LTV assets', () => {
+    const paused = asset('AAVE', 0, 0.5, 0.6, { countsTowardPower: false });
+    const delisted = asset('cbZEC', 0, 0.5, 0.6, { listedAsCollateral: false });
+    const zeroLtv = asset('SOL', 0, 0, 0.6);
+
+    expect(findAdditionalCollateral([paused, delisted, zeroLtv])).toEqual([]);
+  });
+});
+
 describe('statusOf', () => {
   it('is Healthy at and above 1.05, Getting close below it, At risk only under 1.0', () => {
     expect(statusOf(wad(1.11), usd(100))).toBe('healthy');
@@ -128,6 +153,45 @@ describe('statusOf', () => {
 
   it('never reports a loan with nothing owed', () => {
     expect(statusOf(wad(0.5), 0n)).toBe('healthy');
+  });
+});
+
+describe('Credit page loan safety', () => {
+  it('shows an early red warning while keeping actual sales below 1.0', () => {
+    const atHealth = (health: number) =>
+      buildLoan(designLoan({ healthFactorWad: wad(health) }), NOW);
+    expect(loanSafetyStatus(atHealth(1.05))).toBe('healthy');
+    expect(loanSafetyStatus(atHealth(1.02))).toBe('caution');
+    const near = atHealth(1.01);
+    expect(loanSafetyStatus(near)).toBe('at-risk');
+    expect(near.sale).toBeNull();
+    expect(atHealth(0.99).sale).toEqual({ kind: 'unrecorded' });
+  });
+
+  it('uses the worst warning and keeps each active loan’s own status in chain order', () => {
+    const fuse = buildLoan(position(400, [asset('soUSD', 440, 0.9, 0.95)], { chainId: 122 }), NOW);
+    const base = buildLoan(designLoan({ healthFactorWad: wad(1.01) }), NOW);
+    const repaid = buildLoan(position(0, [asset('soEUR', 50, 0.9, 0.95)]), NOW);
+
+    expect(summarizeLoanSafety([base, repaid, fuse], false)).toEqual({
+      status: 'at-risk',
+      affectedLoan: base,
+      positions: [
+        { loan: fuse, status: 'caution' },
+        { loan: base, status: 'at-risk' },
+      ],
+    });
+    expect(summarizeLoanSafety([repaid], false).positions).toEqual([]);
+  });
+
+  it('withholds a safe banner when a read or a price is unavailable', () => {
+    const healthy = buildLoan(designLoan(), NOW);
+    const unpriced = buildLoan(
+      designLoan({ collateral: [bitcoin(930.23, { priceInBand: false })] }),
+      NOW,
+    );
+    expect(summarizeLoanSafety([healthy], true).status).toBe('unknown');
+    expect(summarizeLoanSafety([unpriced], false).positions[0].status).toBe('unknown');
   });
 });
 

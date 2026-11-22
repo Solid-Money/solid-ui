@@ -2,7 +2,7 @@ import { DEVICE_DIGITAL_WALLET } from '@/constants/digital-wallet';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
-import { useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { DeclinedPaymentPrompt, useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
 import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { useWalletEligibility } from '@/hooks/useWalletEligibility';
@@ -34,10 +34,10 @@ interface UseHomePromptParams {
  * reach yet — the one exception being the terminal `cashback` banner, which has
  * no ✕ and therefore never snoozes (see `HomePromptKey`).
  */
-export function useHomePrompt({
-  hasCard,
-  depositCompleted,
-}: UseHomePromptParams): HomePromptKey | null {
+export function useHomePrompt({ hasCard, depositCompleted }: UseHomePromptParams): {
+  promptKey: HomePromptKey | null;
+  declinedPayment: DeclinedPaymentPrompt | null;
+} {
   const dismissedAt = useHomePromptStore(state => state.dismissedAt);
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const kycStartedAt = useKycStore(state => (userId ? state.kycStartedAt[userId] : undefined));
@@ -80,6 +80,8 @@ export function useHomePrompt({
     holdsUnreachableBase: isWirexCardholder && unreachableBase.usd > 0,
   });
 
-  if (!key || isHomePromptSnoozed(dismissedAt, key)) return null;
-  return key;
+  return {
+    promptKey: !key || isHomePromptSnoozed(dismissedAt, key) ? null : key,
+    declinedPayment,
+  };
 }

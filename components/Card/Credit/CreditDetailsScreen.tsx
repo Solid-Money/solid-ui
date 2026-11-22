@@ -8,28 +8,34 @@ import {
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { router, useFocusEffect } from 'expo-router';
-import { ChevronRight, CircleCheck, Percent, TriangleAlert } from 'lucide-react-native';
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
+import { CommonActions } from '@react-navigation/native';
 import { base, fuse } from 'viem/chains';
 
+import { AdditionalCollateral } from '@/components/Card/Credit/AdditionalCollateral';
 import CreditSheet, { type CreditSheetRoute } from '@/components/Card/Credit/CreditSheet';
 import {
-  AssetLogo,
   assetName,
   CREDIT_COLORS,
+  CreditSectionHelp,
   formatTokenUnits,
   PillButton,
-  STATUS_STYLE,
-  StatusChip,
 } from '@/components/Card/Credit/creditUi';
 import LoanCard, { SaleNotice } from '@/components/Card/Credit/LoanCard';
+import { summarizeLoanSafety } from '@/components/Card/Credit/loanSafety';
+import {
+  CreditCollateralMark,
+  CreditGlyph,
+  LoanSafetyBanner,
+  loanSafetyCopy,
+} from '@/components/Card/Credit/loanSafetyUi';
 import { useCreditDetails } from '@/components/Card/Credit/useCreditDetails';
 import { explorerTxUrl } from '@/components/Card/Credit/useLoanRepay';
 import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
+import { CREDIT_SOURCE_SPEND_MODE, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import {
   isSamePendingUnlock,
@@ -40,33 +46,24 @@ import {
 import { SALE_LOOKBACK_SECONDS } from '@/hooks/useLoanSales';
 import { track } from '@/lib/analytics';
 import { valueOf } from '@/lib/creditRisk';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 import type { LoanModel } from '@/lib/creditRisk';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { ParamListBase } from '@react-navigation/native';
 import type { Address } from 'viem';
 
-/** What the loans block says about itself, by the worse loan. */
-const loansHeading = (status: LoanModel['status'], count: number) => {
-  const one = count === 1;
-  switch (status) {
-    case 'healthy':
-      return one ? 'Your loan is safe' : 'Your loans are safe';
-    case 'caution':
-      return one ? 'Your loan needs attention' : 'One loan needs attention';
-    case 'at-risk':
-      return one ? 'Your loan can be sold soon' : 'A loan can be sold soon';
-  }
-};
-
 /**
- * The Credit page (Figma "Credit details", corrected): what is owed and what is left to spend;
- * each loan — Fuse and Base are separate, each covered only by its own collateral — with how
- * close it is to a sale and the ways out; every asset that backs or could back a loan; interest.
+ * The Credit overview and its Loan safety screen share the live position data and action sheets.
  *
  * Opened from "View Credit details" on the spend-mode sheet, from the borrow-position card, and
  * from the portfolio. Every figure is read from the chain; the page re-reads every 30 seconds so
  * a countdown or a pending unlock moves while it is open.
  */
-const CreditDetailsScreen = () => {
+const CreditDetailsScreen = ({ showsLoanSafety = false }: { showsLoanSafety?: boolean }) => {
+  const navigation = useNavigation();
+  const { source } = useLocalSearchParams<{ source?: string }>();
+  const isSpendModeOpen = useCardPaneStore(state => state.isSpendModeOpen);
   const details = useCreditDetails();
   const fuseUnlock = useCollateralUnlock(fuse.id);
   const baseUnlock = useCollateralUnlock(base.id);
@@ -76,16 +73,16 @@ const CreditDetailsScreen = () => {
   >;
   const [stack, setStack] = useState<CreditSheetRoute[]>([]);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const { loans, format, now } = details;
+  const { loans, format, formatBalance, now } = details;
 
   // Once per visit, after the first read, so the funnel can be split by what the cardholder saw.
   const worst = details.status;
   const hasTracked = useRef(false);
   useEffect(() => {
-    if (hasTracked.current || details.isLoading) return;
+    if (showsLoanSafety || hasTracked.current || details.isLoading) return;
     hasTracked.current = true;
     track(TRACKING_EVENTS.CARD_CREDIT_DETAILS_VIEWED, { status: worst, loans: loans.length });
-  }, [details.isLoading, loans.length, worst]);
+  }, [details.isLoading, loans.length, showsLoanSafety, worst]);
 
   const open = useCallback((route: CreditSheetRoute) => setStack([route]), []);
 
@@ -165,6 +162,29 @@ const CreditDetailsScreen = () => {
   // Until every chain has answered, a total would leave out a loan still loading.
   const isFirstLoad = details.isLoading;
 
+  const fallbackHref = showsLoanSafety ? path.CARD_CREDIT : path.CARD_DETAILS;
+  const returnsToSpendMode =
+    !showsLoanSafety && source === CREDIT_SOURCE_SPEND_MODE && isSpendModeOpen;
+  const goBack = useCallback(() => {
+    if (returnsToSpendMode) {
+      // The drawer lives on Home. The Card tab can already have its own stack,
+      // so go back at the tab level when Home is the previous tab.
+      const tabs = navigation.getParent<BottomTabNavigationProp<ParamListBase>>();
+      const state = tabs?.getState();
+      const previousKey = state?.history?.at(-2)?.key;
+      if (
+        tabs &&
+        state?.type === 'tab' &&
+        state.routes.some(route => route.name === 'index' && route.key === previousKey)
+      ) {
+        tabs.dispatch({ ...CommonActions.goBack(), target: state.key });
+      } else {
+        router.navigate(path.HOME);
+      }
+    } else if (router.canGoBack()) router.back();
+    else router.replace(fallbackHref);
+  }, [fallbackHref, navigation, returnsToSpendMode]);
+
   // Android Back: this screen's own handler, added on focus so it runs before the card pane's
   // (still open underneath) — closing a sheet first, then leaving the page on the first press.
   useFocusEffect(
@@ -172,30 +192,44 @@ const CreditDetailsScreen = () => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
         if (stack.length) setStack([]);
         else if (isHelpOpen) setIsHelpOpen(false);
-        else if (router.canGoBack()) router.back();
-        else router.replace(path.CARD_DETAILS);
+        else goBack();
         return true;
       });
       return () => subscription.remove();
-    }, [isHelpOpen, stack.length]),
+    }, [goBack, isHelpOpen, stack.length]),
   );
   const owes = details.totalDebtUsd > 0n;
-  const closedLoanSales = [fuse.id, base.id]
-    .filter(chainId => !loans.some(loan => loan.chainId === chainId))
-    .flatMap(chainId => {
-      const sale = details.sales[chainId]?.find(
-        event => now - event.timestamp < SALE_LOOKBACK_SECONDS,
-      );
-      return sale ? [{ chainId, sale }] : [];
-    });
-  const heading = STATUS_STYLE[worst];
+  const safety = summarizeLoanSafety(loans, details.isError);
+  const safetyCopy = loanSafetyCopy(safety);
+  const safetyTitle = owes || details.isError ? safetyCopy.title : 'Nothing borrowed';
+  const safetyDescription =
+    safetyCopy.description ??
+    (owes
+      ? 'Assets can be sold if a loan falls below its sell point. Repaying moves it further away.'
+      : undefined);
+  const recentSales = showsLoanSafety
+    ? []
+    : [fuse.id, base.id].flatMap(chainId => {
+        const sale = details.sales[chainId]?.find(
+          event => now - event.timestamp < SALE_LOOKBACK_SECONDS,
+        );
+        return sale ? [{ chainId, sale }] : [];
+      });
+  const openSafety = () => router.push(path.CARD_LOAN_SAFETY);
 
   return (
-    <PageLayout desktopOnly scrollable={false}>
+    <PageLayout className="bg-[#111111]" desktopOnly scrollable={false}>
       <View className="mx-auto w-full max-w-[600px] flex-1">
         <View style={styles.header}>
-          <BackButton variant="header" fallbackHref={path.CARD_DETAILS} />
-          <Text className="text-[20px] font-semibold text-white">Credit</Text>
+          <BackButton
+            variant="header"
+            className="my-0 !h-[44px] !w-[44px]"
+            onPress={goBack}
+            icon={<CreditGlyph name="back" />}
+          />
+          <Text className="text-[18px] font-semibold text-white">
+            {showsLoanSafety ? 'Loan safety' : 'Credit'}
+          </Text>
           <Pressable
             accessibilityLabel="How collateral works"
             accessibilityRole="button"
@@ -215,15 +249,17 @@ const CreditDetailsScreen = () => {
             </View>
           ) : (
             <>
-              <View style={styles.summary}>
-                <Text className="text-[16px] font-medium text-white/70">You owe</Text>
-                <Text className="text-[34px] font-semibold text-white">
-                  {format(details.totalDebtUsd)}
-                </Text>
-                {owes ? <StatusChip status={worst} /> : null}
-              </View>
-
-              {owes ? <PillButton label="Repay" kind="primary" onPress={openRepay} /> : null}
+              {!showsLoanSafety ? (
+                <>
+                  <View style={styles.summary}>
+                    <Text className="text-[16px] font-medium text-white/70">Total borrowed</Text>
+                    <Text className="text-[34px] font-semibold text-white">
+                      {details.isError && !owes ? '—' : formatBalance(details.totalDebtUsd)}
+                    </Text>
+                  </View>
+                  {owes ? <PillButton label="Repay" kind="primary" onPress={openRepay} /> : null}
+                </>
+              ) : null}
 
               {details.isError ? (
                 <Pressable
@@ -238,182 +274,216 @@ const CreditDetailsScreen = () => {
                 </Pressable>
               ) : null}
 
-              <View style={[styles.card, styles.padded]}>
-                <View style={styles.between}>
-                  <Text className="text-[16px] text-white/70">Available to spend</Text>
-                  <Text className="text-[16px] font-semibold text-white">
-                    {details.availableToSpend}
-                  </Text>
-                </View>
-                <View style={styles.usage}>
-                  <View
-                    style={[styles.usageFill, { width: `${details.borrowedProgress * 100}%` }]}
-                  />
-                </View>
-                <Text className="text-[14px] text-white/50">
-                  {`You’ve used ${details.borrowed} of your ${details.creditLimit} limit`}
-                </Text>
-              </View>
-
-              {/* A sale on a loan since repaid in full: that loan has no card to carry it. */}
-              {closedLoanSales.map(({ chainId, sale }) => (
-                <SaleNotice
-                  key={sale.transactionHash}
-                  sale={sale}
-                  loan={null}
-                  knownAssets={details.positions[chainId]?.collateral ?? []}
-                  format={format}
-                  explorerTxUrl={explorerTxUrl(chainId)}
-                />
-              ))}
-
-              {loans.length ? (
-                <View style={[styles.card, styles.loans]}>
-                  <View style={styles.loansHead}>
-                    {worst === 'healthy' ? (
-                      <CircleCheck color={heading.color} size={22} />
-                    ) : (
-                      <TriangleAlert color={heading.color} size={22} />
-                    )}
-                    <Text className="text-[18px] font-semibold text-white">
-                      {owes
-                        ? loansHeading(worst, details.owingChainIds.length)
-                        : 'Nothing borrowed'}
+              {showsLoanSafety ? (
+                <>
+                  <View style={styles.safetySummary}>
+                    <Text className="text-center text-[24px] font-semibold text-white">
+                      {safetyTitle}
                     </Text>
+                    {safetyDescription ? (
+                      <Text className="text-center text-[14px] leading-[20px] text-white/70">
+                        {safetyDescription}
+                      </Text>
+                    ) : null}
                   </View>
-                  {loans.length > 1 ? (
-                    <Text className="px-4 text-[14px] leading-[20px] text-white/60">
-                      Each loan is covered only by its own collateral, so a fall in one can’t touch
-                      the other.
-                    </Text>
-                  ) : null}
-                  {loans.map((loan, index) => {
-                    const unlock = unlocks[loan.chainId];
-                    const sale = details.sales[loan.chainId]?.find(
-                      event => now - event.timestamp < SALE_LOOKBACK_SECONDS,
-                    );
-                    return (
-                      <View key={loan.chainId}>
-                        {index ? <View style={styles.divider} /> : null}
-                        <LoanCard
-                          loan={loan}
-                          now={now}
-                          knownAssets={details.positions[loan.chainId]?.collateral ?? []}
-                          sale={sale}
-                          explorerTxUrl={explorerTxUrl(loan.chainId)}
-                          format={format}
-                          onRepay={() => open({ view: 'repay', chainId: loan.chainId })}
-                          onUnlock={() =>
-                            loan.assets.length > 1
-                              ? open({ view: 'pick-asset', chainId: loan.chainId })
-                              : open({
-                                  view: 'unlock',
+                  {loans.length > 0 ? (
+                    <View style={styles.card}>
+                      {loans.map((loan, index) => {
+                        const unlock = unlocks[loan.chainId];
+                        return (
+                          <View key={loan.chainId}>
+                            {index ? <View style={styles.divider} /> : null}
+                            <LoanCard
+                              loan={loan}
+                              now={now}
+                              format={format}
+                              formatBalance={formatBalance}
+                              onRepay={() => open({ view: 'repay', chainId: loan.chainId })}
+                              onUnlock={() =>
+                                loan.assets.length > 1
+                                  ? open({ view: 'pick-asset', chainId: loan.chainId })
+                                  : open({
+                                      view: 'unlock',
+                                      chainId: loan.chainId,
+                                      token: loan.assets[0].token,
+                                    })
+                              }
+                              onUnlockAll={() => void unlockAll(loan)}
+                              onPayDown={token =>
+                                open({
+                                  view: 'repay',
                                   chainId: loan.chainId,
-                                  token: loan.assets[0].token,
+                                  sourceId: `collateral:${token}`,
                                 })
-                          }
-                          onUnlockAll={() => void unlockAll(loan)}
-                          onPayDown={token =>
-                            open({
-                              view: 'repay',
-                              chainId: loan.chainId,
-                              sourceId: `collateral:${token}`,
-                            })
-                          }
-                          onAsset={token => openAsset(loan.chainId, token)}
-                          onBreakdown={() => open({ view: 'breakdown', chainId: loan.chainId })}
-                          onCancelUnlock={() => void cancelUnlock(loan)}
-                          onFinishUnlock={() => void finishUnlock(loan)}
-                          isCancelling={unlock.isCancelling}
-                          isFinishing={unlock.isFinishing}
-                          isUnlockingAll={unlock.isWithdrawingAll}
-                          finishBlocked={
-                            unlock.finishBlocked?.error.reason === 'needs-more-cover' &&
-                            isSamePendingUnlock(unlock.finishBlocked.for, loan.pendingUnlock)
-                              ? unlock.finishBlocked.error.message
-                              : null
-                          }
-                        />
-                      </View>
-                    );
-                  })}
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button"
-                    className="active:opacity-70"
-                    onPress={() => setIsHelpOpen(true)}
-                    style={styles.link}
-                  >
-                    <Text className="text-[14px] text-white/50">How it works</Text>
-                    <ChevronRight color="rgba(255,255,255,0.4)" size={16} />
-                  </Pressable>
-                </View>
+                              }
+                              onAsset={token => openAsset(loan.chainId, token)}
+                              onBreakdown={() => open({ view: 'breakdown', chainId: loan.chainId })}
+                              onCancelUnlock={() => void cancelUnlock(loan)}
+                              onFinishUnlock={() => void finishUnlock(loan)}
+                              isCancelling={unlock.isCancelling}
+                              isFinishing={unlock.isFinishing}
+                              isUnlockingAll={unlock.isWithdrawingAll}
+                              finishBlocked={
+                                unlock.finishBlocked?.error.reason === 'needs-more-cover' &&
+                                isSamePendingUnlock(unlock.finishBlocked.for, loan.pendingUnlock)
+                                  ? unlock.finishBlocked.error.message
+                                  : null
+                              }
+                            />
+                          </View>
+                        );
+                      })}
+                      <View style={styles.divider} />
+                      <Pressable
+                        accessibilityRole="button"
+                        className="active:opacity-70"
+                        onPress={() => setIsHelpOpen(true)}
+                        style={styles.link}
+                      >
+                        <Text className="text-[14px] text-white/50">How it works</Text>
+                        <CreditGlyph name="next" />
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </>
               ) : (
-                <View style={[styles.card, styles.padded]}>
-                  <Text className="text-[16px] font-semibold text-white">Nothing borrowed</Text>
-                  <Text className="text-[14px] leading-[20px] text-white/60">
-                    When a purchase is paid on credit, the loan, what backs it and how safe it is
-                    show here.
-                  </Text>
-                </View>
-              )}
+                <>
+                  {owes ? (
+                    <LoanSafetyBanner
+                      summary={safety}
+                      format={format}
+                      formatBalance={formatBalance}
+                      onPress={openSafety}
+                    />
+                  ) : loans.length > 0 ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      className="active:opacity-70"
+                      onPress={openSafety}
+                      style={[styles.card, styles.row]}
+                    >
+                      <Text className="flex-1 text-[16px] font-semibold text-white">
+                        Manage locked collateral
+                      </Text>
+                      <CreditGlyph name="next" />
+                    </Pressable>
+                  ) : null}
 
-              {details.collateral.length ? (
-                <View style={styles.section}>
-                  <Text className="text-[16px] text-white/50">Collateral</Text>
-                  <View style={styles.card}>
-                    {details.collateral.map((entry, index) => (
-                      <View key={entry.key}>
-                        {index ? <View style={styles.divider} /> : null}
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`${entry.name}, ${entry.value}, ${entry.locked}`}
-                          className="active:opacity-70"
-                          onPress={() => openAsset(entry.chainId, entry.asset.token)}
-                          style={styles.row}
-                        >
-                          <AssetLogo symbol={entry.asset.symbol} />
-                          <View style={styles.grow}>
-                            <Text className="text-[16px] font-semibold text-white">
-                              {entry.name}
-                            </Text>
-                            <Text className="text-[14px] text-white/60">{entry.terms}</Text>
-                          </View>
-                          <View style={styles.rowRight}>
-                            <Text className="text-right text-[16px] font-semibold text-white">
-                              {entry.value}
-                            </Text>
-                            <Text className="text-right text-[14px] text-white/60">
-                              {entry.locked}
-                            </Text>
-                          </View>
-                          <ChevronRight color="rgba(255,255,255,0.4)" size={16} />
-                        </Pressable>
+                  {recentSales.map(({ chainId, sale }) => (
+                    <SaleNotice
+                      key={`${chainId}:${sale.transactionHash}`}
+                      sale={sale}
+                      loan={loans.find(loan => loan.chainId === chainId) ?? null}
+                      knownAssets={details.positions[chainId]?.collateral ?? []}
+                      format={format}
+                      explorerTxUrl={explorerTxUrl(chainId)}
+                    />
+                  ))}
+
+                  <View style={[styles.card, styles.padded]}>
+                    <View style={styles.between}>
+                      <Text className="text-[16px] text-white/70">Available to spend</Text>
+                      <Text className="text-[16px] font-semibold text-white">
+                        {details.availableToSpend}
+                      </Text>
+                    </View>
+                    <View style={styles.usage}>
+                      <View
+                        style={[styles.usageFill, { width: `${details.borrowedProgress * 100}%` }]}
+                      />
+                    </View>
+                    <Text className="text-[14px] text-white/50">
+                      {`You’ve used ${details.borrowed} of your ${details.creditLimit} limit`}
+                    </Text>
+                  </View>
+
+                  {details.collateral.length || details.canEditCollateralOrder ? (
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeading}>
+                        <Text className="text-[16px] text-white/50">Collateral</Text>
+                        <CreditSectionHelp
+                          label="Help with collateral"
+                          onPress={() => setIsHelpOpen(true)}
+                        />
+                        {details.canEditCollateralOrder ? (
+                          <Pressable
+                            accessibilityLabel="Edit collateral order"
+                            accessibilityRole="button"
+                            className="ml-auto rounded-full bg-white/[0.12] px-3 py-1.5 active:opacity-80"
+                            onPress={() => router.push(path.CARD_COLLATERAL_ORDER)}
+                          >
+                            <Text className="text-[14px] font-semibold text-white">Edit order</Text>
+                          </Pressable>
+                        ) : null}
                       </View>
-                    ))}
-                  </View>
-                  <Text className="text-[14px] leading-[20px] text-white/50">
-                    {`Only what you spend gets locked, Yield assets first, then crypto. It comes back when you repay ${
-                      details.owingChainIds.length > 1 ? 'that' : 'the'
-                    } loan. Tap an asset to unlock some of it early.`}
-                  </Text>
-                </View>
-              ) : null}
+                      {details.collateral.length > 0 ? (
+                        <>
+                          <View style={styles.card}>
+                            {details.collateral.map((entry, index) => (
+                              <View key={entry.key}>
+                                {index ? <View style={styles.divider} /> : null}
+                                <Pressable
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`${entry.name}, ${entry.value}, ${entry.locked}`}
+                                  className="active:opacity-70"
+                                  onPress={() => openAsset(entry.chainId, entry.asset.token)}
+                                  style={styles.row}
+                                >
+                                  <CreditCollateralMark symbol={entry.asset.symbol} />
+                                  <View style={styles.grow}>
+                                    <Text className="text-[16px] font-semibold text-white">
+                                      {entry.name}
+                                    </Text>
+                                    <Text className="text-[14px] text-white/60">{entry.terms}</Text>
+                                  </View>
+                                  <View style={styles.rowRight}>
+                                    <Text className="text-right text-[16px] font-semibold text-white">
+                                      {entry.value}
+                                    </Text>
+                                    <Text className="text-right text-[14px] text-white/60">
+                                      {entry.locked}
+                                    </Text>
+                                  </View>
+                                </Pressable>
+                              </View>
+                            ))}
+                          </View>
+                          <Text className="text-[14px] leading-[20px] text-white/50">
+                            Only what you spend gets locked. Repay a loan to release its collateral,
+                            or tap an asset to see what you can unlock early.
+                          </Text>
+                        </>
+                      ) : null}
+                    </View>
+                  ) : null}
 
-              {owes ? (
-                <View style={styles.section}>
-                  <Text className="text-[16px] text-white/50">Interest</Text>
-                  <View style={[styles.card, styles.row]}>
-                    <View style={styles.iconCircle}>
-                      <Percent color="#FFFFFF" size={18} />
+                  <AdditionalCollateral
+                    assets={details.additionalCollateral}
+                    heldAssets={details.collateral
+                      .filter(entry => entry.asset.amount > 0n)
+                      .map(entry => entry.asset)}
+                    baseCollateralPreview={details.baseCollateralPreview}
+                    isIncomplete={details.isCollateralDiscoveryIncomplete}
+                    onHelpPress={() => setIsHelpOpen(true)}
+                    onRetry={details.refetch}
+                  />
+
+                  {owes ? (
+                    <View style={styles.section}>
+                      <Text className="text-[16px] text-white/50">Interest</Text>
+                      <View style={[styles.card, styles.row]}>
+                        <View style={styles.iconCircle}>
+                          <CreditGlyph name="interest" />
+                        </View>
+                        <View style={styles.grow}>
+                          <Text className="text-[16px] font-semibold text-white">{`${details.borrowApy} APY`}</Text>
+                          <Text className="text-[14px] text-white/60">{`Fixed · about ${details.monthlyInterest} a month`}</Text>
+                        </View>
+                      </View>
                     </View>
-                    <View style={styles.grow}>
-                      <Text className="text-[16px] font-semibold text-white">{`${details.borrowApy} APY`}</Text>
-                      <Text className="text-[14px] text-white/60">{`Fixed · about ${details.monthlyInterest} a month`}</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : null}
+                  ) : null}
+                </>
+              )}
             </>
           )}
         </ScrollView>
@@ -431,7 +501,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingTop: 24,
   },
   help: {
     alignItems: 'center',
@@ -444,6 +514,7 @@ const styles = StyleSheet.create({
   content: { gap: 24, paddingBottom: 48, paddingHorizontal: 16, paddingTop: 24 },
   loading: { alignItems: 'center', paddingVertical: 80 },
   summary: { alignItems: 'center', gap: 6 },
+  safetySummary: { alignItems: 'center', gap: 8, paddingHorizontal: 16 },
   errorBar: {
     alignItems: 'center',
     backgroundColor: 'rgba(245, 181, 71, 0.1)',
@@ -462,8 +533,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   usageFill: { backgroundColor: CREDIT_COLORS.green, borderRadius: 4, height: 8 },
-  loans: { gap: 4, paddingTop: 16 },
-  loansHead: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
   divider: { backgroundColor: '#2A2A2A', height: 1 },
   link: {
     alignItems: 'center',
@@ -473,6 +542,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   section: { gap: 12 },
+  sectionHeading: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   row: {
     alignItems: 'center',
     flexDirection: 'row',

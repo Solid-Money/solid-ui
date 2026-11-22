@@ -26,6 +26,7 @@ import type { CardBottomSheetProps } from './CardBottomSheet.types';
  */
 const CardBottomSheet = ({
   isOpen,
+  isSuspended = false,
   onOpenChange,
   designTop,
   designBottom,
@@ -40,15 +41,40 @@ const CardBottomSheet = ({
   const [session, setSession] = useState(0);
 
   useEffect(() => {
-    if (isOpen) {
-      setSession(current => current + 1);
-      sheetRef.current?.present();
-    } else {
-      sheetRef.current?.dismiss();
-    }
+    if (isOpen) setSession(current => current + 1);
   }, [isOpen]);
 
-  const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const shouldPresent = isOpen && !isSuspended;
+  const wantsPresentation = useRef(false);
+  const presentationRequested = useRef(false);
+  const suspending = useRef(false);
+  const present = useCallback(() => {
+    presentationRequested.current = true;
+    sheetRef.current?.present();
+  }, []);
+
+  useEffect(() => {
+    wantsPresentation.current = shouldPresent;
+    if (shouldPresent) {
+      if (!suspending.current) present();
+    } else if (presentationRequested.current) {
+      presentationRequested.current = false;
+      suspending.current = isOpen;
+      sheetRef.current?.dismiss(isOpen ? { duration: 0 } : undefined);
+    }
+  }, [isOpen, present, shouldPresent]);
+
+  const dismiss = useCallback(() => {
+    if (suspending.current) {
+      // Gorhom reports a programmatic dismissal asynchronously. If Back already
+      // restored focus, wait for the old portal to be removed before presenting.
+      suspending.current = false;
+      if (wantsPresentation.current) present();
+      return;
+    }
+    presentationRequested.current = false;
+    onOpenChange(false);
+  }, [onOpenChange, present]);
 
   const renderBackdrop = useCallback(
     (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (

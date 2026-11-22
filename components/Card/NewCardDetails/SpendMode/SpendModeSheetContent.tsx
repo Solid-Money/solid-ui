@@ -26,8 +26,7 @@ import {
   balancePanelHasTitle,
   balancePanelHeight,
   BORROWED_PANEL_HEIGHT,
-  creditPanelHasCollateral,
-  creditPanelHeight,
+  CREDIT_PANEL_HEIGHT,
   SPEND_MODE_NOTICE_HEIGHT,
   SpendModeBalancePanel,
   SpendModeBorrowedPanel,
@@ -72,7 +71,7 @@ const SUBTITLE_TO_CONTROL = 30;
 const CONTROL_TO_CAPTION = 19;
 /** Figma 29120:9364: the caption ends at 245, the balance panel starts at 277. */
 const CAPTION_TO_BALANCE_PANEL = 32;
-/** The Credit frame with collateral (Figma 29123:9389) starts its panel closer: 246 → 276. */
+/** The Credit panel starts at 276, 30 below its caption. */
 const CAPTION_TO_CREDIT_PANEL = 30;
 const CAPTION_TO_NOTICE = 17;
 const NOTICE_TO_PANEL = 42;
@@ -86,26 +85,23 @@ export const SPEND_MODE_SHEET_BOTTOM = 57;
 /** A card in the stack: one of the mode's panels. */
 type SheetCard = SpendModePanel;
 
-/** What sizes the cards: the rows the balance and Credit panels list. */
+/** The balance rows determine the size of their panel. */
 interface StackSizes {
   balanceRows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[];
   /** The balance panel draws its title (rows, or "Edit order" with none). */
   balanceHasTitle: boolean;
-  collateralRows: number;
-  /** The Credit panel draws its collateral block (rows, or "Edit order" with none). */
-  hasCollateral: boolean;
 }
 
 /** The cards a mode stacks under its caption. */
 const cardsFor = (mode: SpendMode): SheetCard[] => [...SPEND_MODE_COPY[mode].panels];
 
-/** A card's height; the balance and Credit panels grow with the rows they list. */
+/** A card's height. Only the balance panel grows with its rows. */
 const cardHeight = (card: SheetCard, sizes: StackSizes) =>
   card === 'balance'
     ? balancePanelHeight(sizes.balanceRows, sizes.balanceHasTitle)
     : card === 'borrowed'
       ? BORROWED_PANEL_HEIGHT
-      : creditPanelHeight(sizes.collateralRows, sizes.hasCollateral);
+      : CREDIT_PANEL_HEIGHT;
 
 /** Space from the caption to the first card's top, without any notice. */
 const captionToCard = (first: SheetCard | undefined) =>
@@ -118,8 +114,7 @@ const leadHeight = (mode: SpendMode, cards: readonly SheetCard[], noticeHeight: 
     : captionToCard(cards[0]);
 
 /**
- * Room held below the caption: the tallest stack among the modes the picker offers —
- * Credit's panel and its collateral rows while Smart is hidden, Smart's two cards when shown.
+ * Room held below the caption for the tallest stack among the modes the picker offers.
  *
  * Without it the sheet changed height on every tap — the modes stack different cards — so
  * the drawer and its button jumped under the thumb that was browsing. Held at the tallest
@@ -149,6 +144,7 @@ interface SpendModeSheetContentProps {
    * button into a plain dismissal rather than a "Change to …".
    */
   activeMode: SpendMode;
+  initialMode?: SpendMode;
   /** Every figure the panels and the control show. */
   figures: SpendModeFigures;
   /**
@@ -175,18 +171,11 @@ interface SpendModeSheetContentProps {
   onDismiss: () => void;
   /** The "?" beside the caption and beside "Spends in this order": the spend-mode intro. */
   onHelpPress: () => void;
-  /** The "?" beside "Collateral assets" on the Credit panel: "How collateral works". */
-  onCollateralHelpPress: () => void;
   /** "View Credit details" at the foot of the Credit panel: the borrow position. */
   onViewCreditDetails: () => void;
   onAddFunds?: () => void;
   /** "Edit order" on the Cash panel: the Spend order screen. */
   onEditOrder?: () => void;
-  /**
-   * "Edit order" on the Credit panel: the Collateral order screen. Offered only when the card can
-   * lock two or more kinds of collateral.
-   */
-  onEditCollateralOrder?: () => void;
   /** Space above the heading; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
   /** The desktop modal adds a close button to the heading row and drops the side inset. */
@@ -206,6 +195,7 @@ interface SpendModeSheetContentProps {
  */
 const SpendModeSheetContent = ({
   activeMode,
+  initialMode = activeMode,
   figures,
   credit,
   balance,
@@ -215,17 +205,15 @@ const SpendModeSheetContent = ({
   error,
   onDismiss,
   onHelpPress,
-  onCollateralHelpPress,
   onViewCreditDetails,
   onAddFunds,
   onEditOrder,
-  onEditCollateralOrder,
   topPadding = SPEND_MODE_SHEET_TOP,
   presentation = 'sheet',
 }: SpendModeSheetContentProps) => {
   // The direction of travel is kept with the selection rather than derived on
   // render, so the swap animation always matches the tap that caused it.
-  const [selection, setSelection] = useState({ mode: activeMode, isForward: true });
+  const [selection, setSelection] = useState({ mode: initialMode, isForward: true });
   const { mode: selected, isForward } = selection;
   const modes = useMemo(() => offeredSpendModes(activeMode), [activeMode]);
   // The notice's real height, which a narrow sheet raises by wrapping it to a third line.
@@ -235,21 +223,12 @@ const SpendModeSheetContent = ({
     (event: LayoutChangeEvent) => setNoticeHeight(event.nativeEvent.layout.height),
     [],
   );
-  // Two or more kinds of collateral, for a cardholder offered "Edit order": the order they lock in
-  // is worth naming and editing. Everyone else keeps "Collateral assets" and "Keeps earning".
-  const locksInOrder = !!onEditCollateralOrder && credit.collateralKeys.length > 1;
   const sizes = useMemo<StackSizes>(
     () => ({
       balanceRows: balance.rows,
       balanceHasTitle: balancePanelHasTitle(balance.rows.length, !!onEditOrder),
-      collateralRows: credit.collateral.length,
-      hasCollateral: creditPanelHasCollateral(
-        credit.collateral.length,
-        locksInOrder,
-        !!onEditCollateralOrder,
-      ),
     }),
-    [balance.rows, credit.collateral.length, locksInOrder, onEditOrder, onEditCollateralOrder],
+    [balance.rows, onEditOrder],
   );
   const panelsStyle = useMemo(
     () => ({ minHeight: panelsMinHeight(modes, noticeHeight, sizes) }),
@@ -266,8 +245,8 @@ const SpendModeSheetContent = ({
   const notice = SPEND_MODE_COPY[selected].notice;
 
   useEffect(() => {
-    setSelection({ mode: activeMode, isForward: true });
-  }, [activeMode, session]);
+    setSelection({ mode: initialMode, isForward: true });
+  }, [initialMode, session]);
 
   const handleSelect = useCallback((next: SpendMode) => {
     setSelection(current =>
@@ -411,12 +390,8 @@ const SpendModeSheetContent = ({
                   creditLimit={credit.creditLimit}
                   borrowApy={credit.borrowApy}
                   borrowedProgress={credit.borrowedProgress}
-                  collateral={credit.collateral}
-                  locksInOrder={locksInOrder}
-                  onEditOrder={onEditCollateralOrder}
                   risk={credit.risk}
                   hasDebt={credit.hasDebt}
-                  onHelpPress={onCollateralHelpPress}
                   onViewDetails={onViewCreditDetails}
                 />
               ) : (

@@ -9,6 +9,9 @@ import { DigitalWalletType } from '@/constants/digital-wallet';
  */
 export const CARD_INFO_SCREEN = 'card-info';
 
+/** Identifies a Credit page opened from the Spend mode drawer on Home. */
+export const CREDIT_SOURCE_SPEND_MODE = 'spend-mode';
+
 /**
  * Name of the query param that, alongside `screen=card-info`, opens the
  * "Add to Wallet" guide on the card details pane with the right tab selected —
@@ -77,8 +80,9 @@ type Path = {
    */
   CARD_3DS: Href;
   CARD_MAIN_CURRENCY: Href;
-  /** The credit page: each loan, what backs it, how close it is to a sale, and the ways out. */
+  /** The credit page: total borrowed, loan statuses, available spending, collateral and interest. */
   CARD_CREDIT: Href;
+  CARD_LOAN_SAFETY: Href;
   /** The order a Wirex card spends balances in, from "Edit order" on the Cash panel. */
   CARD_SPEND_ORDER: Href;
   /** The order a Wirex card locks collateral in, from "Edit order" on the Credit panel. */
@@ -170,6 +174,7 @@ export const path: Path = {
   CARD_3DS: '/card/3ds' as Href,
   CARD_MAIN_CURRENCY: '/card/main-currency' as Href,
   CARD_CREDIT: '/card/credit' as Href,
+  CARD_LOAN_SAFETY: '/card/credit/loan-safety' as Href,
   CARD_SPEND_ORDER: '/card/spend-order' as Href,
   CARD_COLLATERAL_ORDER: '/card/collateral-order' as Href,
   CARD_ACTIVATE: '/card/activate',

@@ -8,7 +8,7 @@ import { describeRhinoArrival, formatRhinoUsdLimits, getRhinoChainNote } from '@
 
 import type { RhinoDestinationType } from '@/lib/types';
 
-type RhinoDepositDetailsProps = {
+export type RhinoDepositDetailsProps = {
   tokenSymbol: string;
   /** rhino.fi's chain id (`BITCOIN`), for anything to know about sending on it. */
   chain?: string;
@@ -21,6 +21,10 @@ type RhinoDepositDetailsProps = {
   minimumUsd?: number;
   maximumUsd?: number;
 };
+
+export const DEPOSIT_TOKEN_WARNING =
+  'Sending any other token, or on any other network, may result in permanent loss of funds.';
+export const RHINO_OUTSIDE_LIMITS_WARNING = 'Deposits outside these limits can’t be processed';
 
 /**
  * What to send to a rhino.fi address and what comes of it: the one token and
@@ -50,7 +54,7 @@ const RhinoDepositDetails = ({
           {`Send only ${tokenSymbol} on ${chainName}`}
         </Text>
         <TooltipPopover
-          text="Sending any other token, or on any other network, may result in permanent loss of funds."
+          text={DEPOSIT_TOKEN_WARNING}
           analyticsContext="rhino_deposit_warning"
           side="top"
         />
@@ -71,9 +75,7 @@ const RhinoDepositDetails = ({
       ) : null}
       {chainNote ? <Text className="text-center text-sm text-white/70">{chainNote}</Text> : null}
       {limits ? (
-        <Text className="text-center text-sm text-white/50">
-          Deposits outside these limits can’t be processed
-        </Text>
+        <Text className="text-center text-sm text-white/50">{RHINO_OUTSIDE_LIMITS_WARNING}</Text>
       ) : null}
     </View>
   );

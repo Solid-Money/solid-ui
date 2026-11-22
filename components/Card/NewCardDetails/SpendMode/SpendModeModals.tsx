@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 
-import CollateralHelpSheet from '@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet';
 import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
-import { path } from '@/constants/path';
+import { CREDIT_SOURCE_SPEND_MODE, path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCollateralOrder } from '@/hooks/useCollateralOrder';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useSpendOrder } from '@/hooks/useSpendOrder';
 import { CardStatus } from '@/lib/types';
@@ -31,6 +30,7 @@ const SpendModeModals = ({
   figures: Pick<SpendModeFigures, 'mode' | 'canChangeMode'>;
 }) => {
   const isOpen = useCardPaneStore(state => state.isSpendModeOpen);
+  const isFocused = useIsFocused();
   const openSpendMode = useCardPaneStore(state => state.openSpendMode);
   const closeSpendMode = useCardPaneStore(state => state.closeSpendMode);
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
@@ -39,8 +39,8 @@ const SpendModeModals = ({
   );
   const markHelpShown = useSpendModeHelpStore(state => state.markShown);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isCollateralHelpOpen, setIsCollateralHelpOpen] = useState(false);
   const [isFundOpen, setIsFundOpen] = useState(false);
+  const [restoreCreditPreview, setRestoreCreditPreview] = useState(false);
   const { data: cardDetails } = useCardDetails();
   const { data: customer } = useCustomer();
   const { provider } = useCardProvider();
@@ -54,7 +54,7 @@ const SpendModeModals = ({
   useEffect(() => {
     if (!isOpen || !figures.canChangeMode) {
       setIsHelpOpen(false);
-      setIsCollateralHelpOpen(false);
+      setRestoreCreditPreview(false);
       if (isOpen) closeSpendMode();
       return;
     }
@@ -65,17 +65,17 @@ const SpendModeModals = ({
     }
   }, [isOpen, figures.canChangeMode, selectedUserId, hasShownHelp, markHelpShown, closeSpendMode]);
 
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !isOpen) return;
-    // Dismiss the selector before a hardware Back can close the card pane beneath it, and the
-    // collateral explainer before the selector it was opened from.
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isCollateralHelpOpen) setIsCollateralHelpOpen(false);
-      else closeSpendMode();
-      return true;
-    });
-    return () => subscription.remove();
-  }, [isOpen, isCollateralHelpOpen, closeSpendMode]);
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android' || !isOpen) return;
+      // The selector owns Back while its Home screen is focused.
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        closeSpendMode();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [isOpen, closeSpendMode]),
+  );
 
   const onOpenChange = useCallback(
     (open: boolean) => (open ? openSpendMode() : closeSpendMode()),
@@ -83,54 +83,39 @@ const SpendModeModals = ({
   );
   const openFunds = useCallback(() => {
     // Close the selector first so finishing the funding flow returns to its origin.
-    setIsCollateralHelpOpen(false);
     closeSpendMode();
     setIsFundOpen(true);
   }, [closeSpendMode]);
   const openCreditDetails = useCallback(() => {
-    // Handed over like funding: the Credit page has its own steps and sheets, and the selector
-    // left open behind it would be one more thing to back out of.
-    setIsCollateralHelpOpen(false);
-    closeSpendMode();
-    router.push(path.CARD_CREDIT);
-  }, [closeSpendMode]);
+    setRestoreCreditPreview(true);
+    router.push({ pathname: '/card/credit', params: { source: CREDIT_SOURCE_SPEND_MODE } });
+  }, []);
 
-  // "Edit order" is offered to the internal-team cohort only (backend `canEdit`); everyone else
-  // keeps the panels as they were, and spends and locks in the default order.
+  // The backend's `canEdit` gates the Spend order entry.
   const { canEdit: canEditSpendOrder } = useSpendOrder();
-  const { canEdit: canEditCollateralOrder } = useCollateralOrder();
 
   const openSpendOrder = useCallback(() => {
     // Closed first, like funding, so backing out of the screen lands on the card, not the sheet.
-    setIsCollateralHelpOpen(false);
     closeSpendMode();
     router.push(path.CARD_SPEND_ORDER);
-  }, [closeSpendMode]);
-
-  const openCollateralOrder = useCallback(() => {
-    // The same hand-over as the spend order: back from the screen lands on the card.
-    setIsCollateralHelpOpen(false);
-    closeSpendMode();
-    router.push(path.CARD_COLLATERAL_ORDER);
   }, [closeSpendMode]);
 
   return (
     <>
       <SpendModeSheet
         isOpen={isOpen && figures.canChangeMode}
+        isSuspended={!isFocused}
         onOpenChange={onOpenChange}
         activeMode={figures.mode}
+        initialMode={restoreCreditPreview ? 'credit' : figures.mode}
         onHelpPress={() => setIsHelpOpen(true)}
-        onCollateralHelpPress={() => setIsCollateralHelpOpen(true)}
         onViewCreditDetails={openCreditDetails}
         onAddFunds={canAddFunds ? openFunds : undefined}
         onEditOrder={canEditSpendOrder ? openSpendOrder : undefined}
-        onEditCollateralOrder={canEditCollateralOrder ? openCollateralOrder : undefined}
       />
-      <SpendModeHelpModal isOpen={isOpen && isHelpOpen} onClose={() => setIsHelpOpen(false)} />
-      <CollateralHelpSheet
-        isOpen={isOpen && isCollateralHelpOpen}
-        onOpenChange={setIsCollateralHelpOpen}
+      <SpendModeHelpModal
+        isOpen={isOpen && isFocused && isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
       <WirexCardFundModal isOpen={isFundOpen} onOpenChange={setIsFundOpen} />
     </>

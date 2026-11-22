@@ -1,4 +1,4 @@
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 
@@ -62,37 +62,10 @@ export const balancePanelHeight = (
 /** Figma 25961:3504. Fixed, so the sheet can reserve room for any stack of these. */
 export const BORROWED_PANEL_HEIGHT = 126;
 
-/**
- * Figma 30394:14715, which grows a 58pt row per collateral asset: the borrowed block and the
- * divider take 120, the collateral title 18 + 20 + 8 above the rows, and 12 is left below them.
- * Under all of it, a divider and the 52pt "View Credit details" row. Fixed per row count, so the
- * sheet can still reserve room for the panel before it renders. Past three and a half rows the
- * list scrolls, as the balance panel's does. With no row but an "Edit order" to offer, the title
- * stands alone: 18 above it, 20 below.
- */
+/** Figma 31143:15608. The summary, its divider and the Credit details link. */
 const CREDIT_BORROWED_HEIGHT = 119;
-const CREDIT_PANEL_BASE_HEIGHT = CREDIT_BORROWED_HEIGHT + 1 + 18 + 28 + 12;
-const COLLATERAL_ROW_HEIGHT = 58;
-const MAX_COLLATERAL_LIST_HEIGHT = 3.5 * COLLATERAL_ROW_HEIGHT;
-const CREDIT_DETAILS_LINK_HEIGHT = 52;
-const collateralListHeight = (collateralRows: number) =>
-  Math.min(COLLATERAL_ROW_HEIGHT * collateralRows, MAX_COLLATERAL_LIST_HEIGHT);
-/**
- * Whether the Credit panel draws its collateral block: over its rows, or with none listed while
- * the card locks in an order and "Edit order" is offered, so the Collateral order screen (which
- * lists $0 collateral too) stays reachable.
- */
-export const creditPanelHasCollateral = (
-  rowCount: number,
-  locksInOrder: boolean,
-  canEditOrder: boolean,
-) => rowCount > 0 || (locksInOrder && canEditOrder);
-export const creditPanelHeight = (collateralRows: number, hasCollateral = collateralRows > 0) =>
-  (hasCollateral
-    ? CREDIT_PANEL_BASE_HEIGHT + collateralListHeight(collateralRows)
-    : BORROWED_PANEL_HEIGHT) +
-  1 +
-  CREDIT_DETAILS_LINK_HEIGHT;
+const CREDIT_DETAILS_LINK_HEIGHT = 48;
+export const CREDIT_PANEL_HEIGHT = CREDIT_BORROWED_HEIGHT + 1 + CREDIT_DETAILS_LINK_HEIGHT;
 /**
  * Figma 26974:14829, at its two-line wrap on the 419pt artboard. Not fixed like the panels:
  * a narrower sheet wraps the message to a third line, so the sheet measures the real one.
@@ -119,7 +92,8 @@ const COLLATERAL_ICON = {
     height: 18,
   },
 } as const;
-const CREDIT_DETAILS_CHEVRON = getAsset('images/spend-mode-credit-details-chevron.svg');
+
+const CREDIT_DETAILS_CHEVRON = require('@/assets/images/credit-safety/next.svg');
 
 /**
  * The crypto Base takes as collateral, drawn with the marks the deposit screen uses. WETH takes
@@ -451,7 +425,8 @@ export const BorrowedSummary = ({
   creditLimit,
   borrowApy,
   borrowedProgress,
-}: BorrowedSummaryFigures) => (
+  trackStyle,
+}: BorrowedSummaryFigures & { trackStyle?: ViewStyle }) => (
   <>
     <Text className="px-5 text-[18px] font-medium leading-[18px] text-white">Borrowed</Text>
     <View style={styles.borrowedRow}>
@@ -462,7 +437,7 @@ export const BorrowedSummary = ({
         at {borrowApy} APY
       </Text>
     </View>
-    <View style={styles.track}>
+    <View style={[styles.track, trackStyle]}>
       {/* Clamped upstream, so this can only ever be 0–100%. */}
       <View style={[styles.fill, { width: `${borrowedProgress * 100}%` }]} />
     </View>
@@ -503,31 +478,17 @@ export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
 );
 
 interface CreditPanelProps extends BorrowedSummaryFigures {
-  /** The listed rows, in the order the card locks them. */
-  collateral: CreditModeFigures['collateral'];
-  /**
-   * The card can lock two or more kinds of collateral, so the order they lock in is worth naming:
-   * the title reads "Locks in this order" and "Edit order" can be offered.
-   */
-  locksInOrder?: boolean;
-  /**
-   * "Edit order": opens the Collateral order screen. Drawn only with {@link locksInOrder}, and
-   * not drawn without one.
-   */
-  onEditOrder?: () => void;
   /** The closest any loan is to liquidation, for the chip beside "Borrowed". */
   risk: CreditModeFigures['risk'];
   /** Whether anything is borrowed: with nothing, there is no health to report. */
   hasDebt: boolean;
-  /** The "?" beside "Collateral assets": opens "How collateral works". */
-  onHelpPress?: () => void;
-  /** "View Credit details" at the foot: opens the borrow position. */
+  /** Opens the full Credit page. */
   onViewDetails: () => void;
 }
 
 /**
  * The chip beside "Borrowed" (Figma 30396:14678): green "Healthy", amber "Getting close", red
- * "At risk" — the same bands as the Credit page's loans. Left out with nothing borrowed.
+ * "At risk" for loans with a balance.
  */
 const RISK_CHIP = {
   none: { label: 'Healthy', text: 'text-[#94F27F]', background: 'rgba(148, 242, 127, 0.15)' },
@@ -540,126 +501,22 @@ const RISK_CHIP = {
   'at-risk': { label: 'At risk', text: 'text-[#D96167]', background: 'rgba(217, 97, 103, 0.15)' },
 } as const;
 
-/**
- * The Credit panel (Figma 30394:14715): the borrowed block with its health chip over the assets
- * that back it, each with its own LTV, on every instance the card borrows on — soUSD on Fuse and,
- * once Base spending is enabled, soUSD, soETH, soEUR and the crypto collateral (cbBTC, WETH, SOL,
- * AAVE, cbZEC) on Base — and "View Credit details" at the foot. A euro asset reads in euros with its dollar
- * value under it, because the line it backs is in dollars.
- */
+/** Figma 31143:15608. The borrowed summary and a link to the full Credit page. */
 export const SpendModeCreditPanel = ({
-  collateral,
-  locksInOrder = false,
-  onEditOrder,
   risk,
   hasDebt,
-  onHelpPress,
   onViewDetails,
   ...borrowed
-}: CreditPanelProps) => {
-  const hasCollateral = creditPanelHasCollateral(collateral.length, locksInOrder, !!onEditOrder);
-  return (
-    <View style={[styles.panel, { height: creditPanelHeight(collateral.length, hasCollateral) }]}>
-      {/* Without a row to list or an order to edit — a Safe the lens cannot read yet, or one on
-        v1 — the borrowed block stands alone, as before, rather than a collateral title over
-        nothing. */}
-      <View
-        style={[
-          styles.creditBorrowed,
-          { height: hasCollateral ? CREDIT_BORROWED_HEIGHT : BORROWED_PANEL_HEIGHT },
-        ]}
-      >
-        <BorrowedSummary {...borrowed} />
-      </View>
-      {hasCollateral ? <View style={styles.divider} /> : null}
-      {hasCollateral ? (
-        <View style={styles.collateral}>
-          <View style={styles.collateralTitle}>
-            <View style={styles.collateralTitleLeft}>
-              <Text className="text-[18px] font-medium leading-[18px] text-white">
-                {locksInOrder ? 'Locks in this order' : 'Collateral assets'}
-              </Text>
-              {onHelpPress ? (
-                <Pressable
-                  accessibilityLabel="How collateral works"
-                  accessibilityRole="button"
-                  className="active:opacity-80"
-                  hitSlop={12}
-                  onPress={onHelpPress}
-                >
-                  <HelpBadge />
-                </Pressable>
-              ) : (
-                <HelpBadge />
-              )}
-            </View>
-            {locksInOrder ? (
-              onEditOrder ? (
-                <Pressable
-                  accessibilityLabel="Edit collateral order"
-                  accessibilityRole="button"
-                  className="transition-all active:scale-95 active:opacity-80"
-                  hitSlop={8}
-                  onPress={onEditOrder}
-                  style={[styles.editOrder, styles.editCollateralOrder]}
-                >
-                  <Text className="text-[14px] font-semibold text-white">Edit order</Text>
-                </Pressable>
-              ) : null
-            ) : collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
-              // With nothing to order (Fuse locks soUSD alone), the line it had before. True of
-              // the yield shares only: Bitcoin locked as collateral earns nothing.
-              <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
-                Keeps earning
-              </Text>
-            ) : null}
-          </View>
-          {collateral.length ? (
-            <PanelList
-              height={collateralListHeight(collateral.length)}
-              overflows={COLLATERAL_ROW_HEIGHT * collateral.length > MAX_COLLATERAL_LIST_HEIGHT}
-            >
-              {collateral.map(row => (
-                <View key={row.key} style={styles.collateralRow}>
-                  <CollateralLogo icon={row.icon} />
-                  {/* Figma 30396:14672: the label over the token's own LTV, inside the 58pt row. */}
-                  <View style={styles.collateralLabel}>
-                    <Text className="text-[16px] font-medium leading-[20px] text-white">
-                      {row.label}
-                    </Text>
-                    {row.ltv ? (
-                      <Text className="text-[14px] font-normal leading-[18px] text-white/50">
-                        {row.ltv}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View style={styles.collateralValue}>
-                    <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-                      {row.value}
-                    </Text>
-                    {row.usdEquivalent ? (
-                      <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                        {row.usdEquivalent}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-              ))}
-            </PanelList>
-          ) : null}
-        </View>
-      ) : null}
-      <View style={styles.divider} />
-      <Pressable
-        accessibilityLabel="View Credit details"
-        accessibilityRole="button"
-        className="active:opacity-80"
-        onPress={onViewDetails}
-        style={styles.detailsLink}
-      >
-        <Text className="text-[16px] font-medium text-[#94F27F]">View Credit details</Text>
-        <Image accessible={false} source={CREDIT_DETAILS_CHEVRON} style={styles.detailsChevron} />
-      </Pressable>
+}: CreditPanelProps) => (
+  <Pressable
+    accessibilityLabel="View Credit details"
+    accessibilityRole="button"
+    className="active:opacity-80"
+    onPress={onViewDetails}
+    style={[styles.panel, styles.creditPanel]}
+  >
+    <View style={styles.creditBorrowed}>
+      <BorrowedSummary {...borrowed} trackStyle={styles.creditTrack} />
       {hasDebt ? (
         <View style={[styles.riskChip, { backgroundColor: RISK_CHIP[risk].background }]}>
           <Text className={`text-[14px] font-medium ${RISK_CHIP[risk].text}`}>
@@ -668,8 +525,13 @@ export const SpendModeCreditPanel = ({
         </View>
       ) : null}
     </View>
-  );
-};
+    <View style={styles.divider} />
+    <View style={styles.detailsLink}>
+      <Text className="text-[14px] text-white/50">View Credit details</Text>
+      <Image accessible={false} source={CREDIT_DETAILS_CHEVRON} style={styles.detailsChevron} />
+    </View>
+  </Pressable>
+);
 
 const styles = StyleSheet.create({
   panel: { backgroundColor: '#2B2B2B', borderRadius: 20, overflow: 'hidden' },
@@ -712,8 +574,6 @@ const styles = StyleSheet.create({
     right: 0,
     top: 1,
   },
-  // The same pill on the Credit panel's 20pt title row: centred on it, so 5 above its top.
-  editCollateralOrder: { top: -5 },
   assetRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   assetLeft: { flex: 1, gap: 2 },
   assetRight: { alignItems: 'flex-end', gap: 2 },
@@ -763,9 +623,9 @@ const styles = StyleSheet.create({
   },
   fill: { backgroundColor: '#94F27F', borderRadius: 5, height: 10 },
 
-  // The borrowed block ends with its track at 99; the divider sits 20 under it, at 119 — or,
-  // with no collateral to list, at the bare borrowed panel's 126.
-  creditBorrowed: { paddingTop: 23 },
+  creditPanel: { height: CREDIT_PANEL_HEIGHT },
+  creditBorrowed: { height: CREDIT_BORROWED_HEIGHT, paddingTop: 23 },
+  creditTrack: { marginLeft: 18, marginRight: 20 },
   // Figma 30396:14678: 19 down, its right edge on the figures' 365 of 385.
   riskChip: {
     borderRadius: 100,
@@ -775,7 +635,6 @@ const styles = StyleSheet.create({
     right: 20,
     top: 19,
   },
-  // Figma 30985:15442: the full width, 52 tall, the label and its chevron centred 6 apart.
   detailsLink: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -785,21 +644,6 @@ const styles = StyleSheet.create({
   },
   detailsChevron: { height: 16, width: 16 },
   divider: { backgroundColor: 'rgba(255, 255, 255, 0.08)', height: 1 },
-  collateral: { paddingBottom: 12, paddingLeft: 20, paddingRight: 25, paddingTop: 18 },
-  collateralTitle: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: 20,
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  collateralTitleLeft: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  collateralRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    height: COLLATERAL_ROW_HEIGHT,
-  },
   // 32 × 31.4 in Figma, the glyph centred in it at its own size.
   collateralIcon: {
     alignItems: 'center',
@@ -812,8 +656,6 @@ const styles = StyleSheet.create({
   collateralLogo: { borderRadius: 16, height: 32, width: 32 },
   // soETH: the ETH Yield icon carries its own circle, at the collateral circle's size.
   collateralEthIcon: { height: 31.396, width: 32 },
-  collateralLabel: { flex: 1, gap: 2 },
-  collateralValue: { alignItems: 'flex-end', gap: 4 },
 
   // Figma places the badge at 15, the message at 50.5 and 12 from the top, and leaves 15
   // under it and 17.5 after it — all from the outer edge. Padding here starts inside the

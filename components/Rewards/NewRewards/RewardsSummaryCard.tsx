@@ -151,7 +151,9 @@ const RewardsSummaryCard = ({
 
       <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
-          trigger={<SummaryStat label="Cashback" value={cashbackDetails.monthlyCashbackLabel} />}
+          trigger={
+            <SummaryStat label="Cashback" value={cashbackDetails.monthlyCashbackLabel ?? '—'} />
+          }
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />

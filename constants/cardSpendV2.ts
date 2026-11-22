@@ -155,8 +155,8 @@ export const healthFactorToNumber = (wad: bigint): number | null => {
 /**
  * How close a position is to liquidation, for the chips and the "At risk" panel.
  *
- * The same bands as the Credit page's loans (`statusOf` in `lib/creditRisk`), so the chip on the
- * spend-mode sheet and the loan it summarises never disagree:
+ * The spend-mode sheet uses the base bands from `statusOf` in `lib/creditRisk`.
+ * The Credit page starts the red warning earlier.
  *
  *  - **At risk** — under 1.0. The module can sell part of the loan here (after its grace period),
  *    so this is the only band where "at risk" is literally true.
@@ -170,7 +170,6 @@ export const healthFactorToNumber = (wad: bigint): number | null => {
 export type BorrowRisk = 'none' | 'caution' | 'at-risk';
 
 export const borrowRisk = (healthFactorWad: bigint, debtUsd: bigint): BorrowRisk => {
-  // One classifier for both surfaces; this only maps its names onto the chip's.
   const status = statusOf(healthFactorWad, debtUsd);
   return status === 'healthy' ? 'none' : status;
 };

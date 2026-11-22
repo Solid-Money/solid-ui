@@ -5,9 +5,7 @@ import { ChevronRight, Clock3, TriangleAlert } from 'lucide-react-native';
 import {
   AssetLogo,
   assetName,
-  backedByLine,
   ButtonRow,
-  CollateralStack,
   CREDIT_COLORS,
   formatTokenUnits,
   joinNames,
@@ -15,8 +13,9 @@ import {
   Note,
   penaltyText,
   PillButton,
-  StatusChip,
 } from '@/components/Card/Credit/creditUi';
+import { type LoanSafetyStatus, loanSafetyStatus } from '@/components/Card/Credit/loanSafety';
+import { LoanPosition } from '@/components/Card/Credit/loanSafetyUi';
 import { Text } from '@/components/ui/text';
 import {
   formatClock,
@@ -75,11 +74,15 @@ const formatWhen = (at: number): string =>
 const percent = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
 /** The sentence under a loan's header: what would have to happen for part of it to be sold. */
-export const riskSentence = (loan: LoanModel, format: (usd: bigint) => string): Segment[] => {
+const riskSentence = (
+  loan: LoanModel,
+  format: (usd: bigint) => string,
+  safetyStatus: LoanSafetyStatus,
+): Segment[] => {
   const penalty = penaltyText(loan);
   const { risk } = loan;
 
-  if (risk.kind === 'unpriced') {
+  if (risk.kind === 'unpriced' || safetyStatus === 'unknown') {
     return [
       'Some prices in this loan are unavailable right now, so its sell point can’t be shown.',
     ];
@@ -216,11 +219,8 @@ const SaleBlock = ({
 interface LoanCardProps {
   loan: LoanModel;
   now: number;
-  /** Every asset the instance knows, to name one a sale took entirely. */
-  knownAssets: readonly CreditCollateralAsset[];
-  sale?: LoanSaleEvent;
-  explorerTxUrl?: (hash: string) => string | undefined;
   format: (usd: bigint) => string;
+  formatBalance: (usd: bigint) => string;
   onRepay: () => void;
   onUnlock: () => void;
   onUnlockAll: () => void;
@@ -243,10 +243,8 @@ interface LoanCardProps {
 const LoanCard = ({
   loan,
   now,
-  knownAssets,
-  sale,
-  explorerTxUrl,
   format,
+  formatBalance,
   onRepay,
   onUnlock,
   onUnlockAll,
@@ -261,7 +259,8 @@ const LoanCard = ({
   finishBlocked,
 }: LoanCardProps) => {
   const owes = loan.debtUsd > 0n;
-  const payDown = loan.status !== 'healthy' ? loan.payDown : null;
+  const safetyStatus = loanSafetyStatus(loan);
+  const payDown = safetyStatus === 'caution' || safetyStatus === 'at-risk' ? loan.payDown : null;
   const pending = loan.pendingUnlock;
   const shownChips = loan.assets.slice(0, 3);
   const hiddenChips = loan.assets.length - shownChips.length;
@@ -269,17 +268,12 @@ const LoanCard = ({
 
   return (
     <View style={styles.loan}>
-      <View style={styles.header}>
-        <CollateralStack assets={loan.assets} />
-        <View style={styles.headerText}>
-          <Text className="text-[16px] font-semibold text-white">
-            {owes ? format(loan.debtUsd) : 'Nothing'}{' '}
-            <Text className="text-[14px] font-normal text-white/60">borrowed</Text>
-          </Text>
-          <Text className="text-[14px] text-white/60">{backedByLine(loan, format)}</Text>
-        </View>
-        {owes ? <StatusChip status={loan.status} /> : null}
-      </View>
+      <LoanPosition
+        loan={loan}
+        status={safetyStatus}
+        format={format}
+        formatBalance={formatBalance}
+      />
 
       {!owes ? (
         // Nothing locked either: only a pending unlock keeps this card, and it carries the Cancel.
@@ -300,7 +294,7 @@ const LoanCard = ({
       ) : (
         <>
           <SaleBlock loan={loan} now={now} format={format} />
-          <Sentence segments={riskSentence(loan, format)} />
+          <Sentence segments={riskSentence(loan, format, safetyStatus)} />
           {loan.assets.length > 2 || volatileCount > 1 ? (
             <Pressable
               accessibilityRole="button"
@@ -312,9 +306,9 @@ const LoanCard = ({
               <ChevronRight color="rgba(255,255,255,0.4)" size={16} />
             </Pressable>
           ) : null}
-          {loan.valueUsd > 0n ? (
+          {loan.valueUsd > 0n && safetyStatus !== 'unknown' ? (
             <>
-              <LtvBar ltv={loan.ltv} soldAt={loan.soldAt} status={loan.status} />
+              <LtvBar ltv={loan.ltv} soldAt={loan.soldAt} status={safetyStatus} />
               <View style={styles.legend}>
                 <Text className="text-[14px] font-medium text-white">LTV {percent(loan.ltv)}</Text>
                 <Text className="text-[14px]" style={{ color: CREDIT_COLORS.red }}>
@@ -354,16 +348,6 @@ const LoanCard = ({
           ) : null}
         </>
       )}
-
-      {sale ? (
-        <SaleNotice
-          sale={sale}
-          loan={loan}
-          knownAssets={knownAssets}
-          format={format}
-          explorerTxUrl={explorerTxUrl}
-        />
-      ) : null}
 
       {loan.assets.length > 0 ? (
         <View style={styles.locked}>
@@ -561,7 +545,6 @@ export const SaleNotice = ({
     knownAssets.find(candidate => candidate.token.toLowerCase() === sale.token.toLowerCase());
   const name = asset ? assetName(asset) : 'collateral';
   const sold = `${formatWhen(sale.timestamp)}: we sold ${asset ? `${formatTokenUnits(sale.seized, asset.decimals)} ${name}` : name}`;
-  const which = loan ? 'this' : 'your';
   // The penalty as the sale's own block had it; today's terms may differ, so without that read
   // only the recorded figures are shown.
   const taken =
@@ -575,21 +558,19 @@ export const SaleNotice = ({
           ? [
               `${sold} to cover `,
               { bold: format(sale.repaidUsd) },
-              ` of ${which} loan, plus a penalty.`,
+              ' of your loan, plus a penalty.',
             ]
           : [
               `${sold}, about `,
               { bold: format(taken) },
-              `, to cover ${format(sale.repaidUsd)} of ${which} loan. ${format(taken - sale.repaidUsd)} of that was the penalty.`,
+              `, to cover ${format(sale.repaidUsd)} of your loan. ${format(taken - sale.repaidUsd)} of that was the penalty.`,
             ]
       }
     />
   );
   return (
     <Note tone="bad">
-      <Text className="text-[14px] font-semibold text-white">
-        {loan ? 'Part of this loan was sold' : 'Part of a loan you’ve since repaid was sold'}
-      </Text>
+      <Text className="text-[14px] font-semibold text-white">Assets sold to repay your loan</Text>
       {body}
       {link ? (
         <Pressable
@@ -616,7 +597,6 @@ export const SaleNotice = ({
 
 const styles = StyleSheet.create({
   loan: { gap: 12, padding: 16 },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   headerText: { flex: 1, gap: 2 },
   pendingActions: { flexDirection: 'row', gap: 8 },
   saleTitle: { alignItems: 'center', flexDirection: 'row', gap: 8 },

@@ -32,6 +32,8 @@ export interface CardSheetBody {
 
 export interface CardBottomSheetProps {
   isOpen: boolean;
+  /** Temporarily withdraws the presentation while retaining the open session. */
+  isSuspended?: boolean;
   onOpenChange: (open: boolean) => void;
   /** Distinguishes this sheet in `ResponsiveModal`'s animation bookkeeping. */
   contentKey: string;

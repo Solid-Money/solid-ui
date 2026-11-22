@@ -147,6 +147,34 @@ describe('declinedPaymentFigures', () => {
       payment: { amount: 18.75, currency: 'EUR' },
     });
   });
+
+  it('uses the USD authorization value for credit and displays credit in the main currency', () => {
+    const figures = declinedPaymentFigures(
+      {
+        amount: '364.90',
+        currency: 'ILS',
+        usd_amount: '110.96',
+        spend_details: { card_amount: '100.42', card_currency: 'EUR' },
+      },
+      { available: { amount: '0', currency: 'usd' } },
+      { mode: 'credit', availableUsd: 32.4, displayUsdPerEur: 1.1657 },
+    );
+
+    expect(figures.payment).toEqual({ amount: 100.42, currency: 'EUR' });
+    expect(figures.available).toEqual({ amount: 27.79, currency: 'EUR' });
+    expect(figures.comparable).toMatchObject({ payment: 110.96, available: 32.4 });
+  });
+
+  it.each([5, 20])('chooses one Smart path with $%s credit', availableUsd => {
+    const figures = declinedPaymentFigures({ amount: '32', currency: 'USD' }, EUR_SPENDABLE, {
+      mode: 'smart',
+      availableUsd,
+    });
+
+    expect(figures.available).toEqual({ amount: Math.max(14.46, availableUsd), currency: 'USD' });
+    expect(figures.comparable?.available).toBeLessThan(32);
+    expect(figures.cashComparable?.available).toBe(14.46);
+  });
 });
 
 describe('chooseDeclineFix', () => {

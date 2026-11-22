@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { useCardSpendable } from '@/hooks/useCardSpendable';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useDeclineSpendable } from '@/hooks/useDeclineSpendable';
 import { CardTransaction, CardTransactionCategory } from '@/lib/types';
-import { declinedPaymentFigures, Money } from '@/lib/utils/cardCurrency';
 import { isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
 import { useHomePromptStore } from '@/store/useHomePromptStore';
+
+import type { Money } from '@/lib/utils/cardCurrency';
 
 /** How recent a decline has to be for Home to bring it up. */
 const DECLINE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -44,14 +45,14 @@ export const useDeclinedPaymentPrompt = (enabled: boolean): DeclinedPaymentPromp
   const dismissedDeclines = useHomePromptStore(state => state.dismissedDeclines);
   // Same query keys the wallet screen already reads, so these are cache hits.
   const { data: transactions } = useCardTransactions({ enabled });
-  const { data: spendable } = useCardSpendable({ enabled });
+  const { figuresFor } = useDeclineSpendable({ enabled });
   // When the decline on show left its day, set the moment it does. Home can stay mounted for
   // longer than that with nothing refetching, and the banner must not outlive its window just
   // because the data it was picked from did not change.
   const [checkedAt, setCheckedAt] = useState(0);
 
   const shown = useMemo(() => {
-    if (!enabled || !spendable) return null;
+    if (!enabled) return null;
 
     const now = Math.max(Date.now(), checkedAt);
     const purchases = (transactions?.pages ?? [])
@@ -70,7 +71,7 @@ export const useDeclinedPaymentPrompt = (enabled: boolean): DeclinedPaymentPromp
     );
     if (!declined) return null;
 
-    const { payment, available, comparable } = declinedPaymentFigures(declined, spendable);
+    const { payment, available, comparable } = figuresFor(declined);
     if (!available || !comparable || comparable.available >= comparable.payment) return null;
 
     return {
@@ -82,7 +83,7 @@ export const useDeclinedPaymentPrompt = (enabled: boolean): DeclinedPaymentPromp
       },
       expiresAt: timeOf(declined) + DECLINE_WINDOW_MS,
     };
-  }, [enabled, spendable, transactions?.pages, dismissedDeclines, checkedAt]);
+  }, [enabled, figuresFor, transactions?.pages, dismissedDeclines, checkedAt]);
 
   const expiresAt = shown?.expiresAt;
   useEffect(() => {

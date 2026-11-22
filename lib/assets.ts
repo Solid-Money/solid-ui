@@ -36,7 +36,7 @@ export const ASSETS = {
   },
   'animations/credit-help-two-ways.mp4': {
     module: require('@/assets/animations/credit-help-two-ways.mp4'),
-    hash: 'b78d365a',
+    hash: 'e50cea14',
   },
   'animations/figma-credit-help-source/figma-credit-help-keep-earning.mp4': {
     module: require('@/assets/animations/figma-credit-help-source/figma-credit-help-keep-earning.mp4'),
@@ -454,6 +454,22 @@ export const ASSETS = {
   'images/cbbtc.png': { module: require('@/assets/images/cbbtc.png'), hash: '7524ef4e' },
   'images/celo.png': { module: require('@/assets/images/celo.png'), hash: '2a6d4d98' },
   'images/checkmark.tsx': { module: require('@/assets/images/checkmark.tsx'), hash: '66caebb4' },
+  'images/coin-earn/chevron-right-slim.svg': {
+    module: require('@/assets/images/coin-earn/chevron-right-slim.svg'),
+    hash: '70815d2a',
+  },
+  'images/coin-earn/chevron-right.svg': {
+    module: require('@/assets/images/coin-earn/chevron-right.svg'),
+    hash: '4e3c7b28',
+  },
+  'images/coin-earn/trending-up-slim.svg': {
+    module: require('@/assets/images/coin-earn/trending-up-slim.svg'),
+    hash: 'e5599538',
+  },
+  'images/coin-earn/trending-up.svg': {
+    module: require('@/assets/images/coin-earn/trending-up.svg'),
+    hash: '9b6c78eb',
+  },
   'images/collateral-help-locked.svg': {
     module: require('@/assets/images/collateral-help-locked.svg'),
     hash: '084f6d5d',

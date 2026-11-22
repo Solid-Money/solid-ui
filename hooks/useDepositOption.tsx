@@ -618,7 +618,11 @@ const useDepositOption = ({
       return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:!px-0 md:!pt-0';
     }
 
-    // The chooser, its two branches and the deposit address are designed at phone
+    if (isPublicAddress) {
+      return 'md:max-w-[480px]';
+    }
+
+    // The chooser and its two branches are designed at phone
     // width. 480px keeps the desktop card in proportion without squeezing it: at
     // the 420px the card flow uses, the 40px desktop inset left less room for
     // content than a phone has, and rows wrapped tighter on the wider screen.
@@ -630,8 +634,7 @@ const useDepositOption = ({
       isDepositCash ||
       isDepositToken ||
       isDepositCoin ||
-      isDepositUsdMethod ||
-      isPublicAddress
+      isDepositUsdMethod
     ) {
       return 'md:max-w-[480px] md:pb-6';
     }
@@ -1153,14 +1156,14 @@ const useDepositOption = ({
   const needsWalletProvider =
     isWalletConnector || isNetworks || (isFormAndAddress && !depositFromSolid) || isTokenSelector;
 
-  // The virtual account details screen owns its ScrollView so it can overlay the
-  // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
+  // These screens own their scroll areas so controls and fades can stay fixed.
   const disableScroll =
     (Platform.OS !== 'web' && isDepositDirectlyAddress && !isDepositDirectlyRhinoAddress) ||
     isWalletConnector ||
+    isPublicAddress ||
     isVirtualAccountDetails ||
     isVirtualAccountApply;
-  const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
+  const fillViewportHeight = isPublicAddress || isVirtualAccountDetails || isVirtualAccountApply;
   // The chooser draws its own grab handle and centred title, and offers "Close"
   // as a button, so it needs none of the modal's back/close chrome.
   const hideHeader = isVirtualAccountApply || isDepositTypeSelection;
@@ -1176,6 +1179,7 @@ const useDepositOption = ({
     needsWalletProvider,
     disableScroll,
     fillViewportHeight,
+    wideScreenHeight: isPublicAddress ? 720 : undefined,
     hideHeader,
     actionButton,
     shouldAnimate,
