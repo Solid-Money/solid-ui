@@ -91,12 +91,18 @@ const EarnBannerRow = ({ vault, symbol, balance, balanceUsd }: EarnOffer) => {
     ? (balanceUsd * Number(apyText)) / 100 >= 1
     : yearlyYield.raw >= 10n ** BigInt(yearlyYield.decimals);
 
+  // Someone who already holds this Yield product reads the idle amount itself.
+  const idleAmount = Number(formatUnits(balance.raw, balance.decimals));
+  const idleLabel = isEth
+    ? `${formatTokenAmount(idleAmount)} ETH`
+    : formatYieldAmount(idleAmount, vault.type);
+
   let subtitle = `Put it in ${name}`;
   if (savings) {
     subtitle =
       savings.balance > 0
-        ? `Add it to your ${formatYieldAmount(savings.balance, vault.type)} in ${name}`
-        : `Add it to ${name}`;
+        ? `Move it to ${name}, with your ${formatYieldAmount(savings.balance, vault.type)}`
+        : `Move it to ${name}`;
   } else if (apyLabel && meetsEstimateMinimum) {
     subtitle += isEth
       ? ` · ~${formatTokenAmount(Number(formatUnits(yearlyYield.raw, yearlyYield.decimals)))} ETH a year`
@@ -145,7 +151,7 @@ const EarnBannerRow = ({ vault, symbol, balance, balanceUsd }: EarnOffer) => {
           ) : (
             (apyLabel ?? 'yield')
           )}
-          {savings ? ` on this ${symbol} too` : `${apyLabel ? ' a year' : ''} on your ${symbol}`}
+          {`${apyLabel ? ' a year' : ''} on ${savings ? `this ${idleLabel}` : `your ${symbol}`}`}
         </Text>
         {!slim && <Text className="text-[14px] leading-5 text-white/[0.65]">{subtitle}</Text>}
       </View>
