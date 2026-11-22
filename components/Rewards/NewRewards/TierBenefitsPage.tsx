@@ -24,6 +24,7 @@ import { formatTierCashbackRate } from '@/lib/tierCashback';
 import {
   RewardsTier,
   type TierBenefits,
+  type TierCardFx,
   type TierFees,
   type TierMembershipContracts,
   type TierOffer,
@@ -42,9 +43,11 @@ import {
   TIER_LABELS,
   TIER_PRESENTATION,
   tierOfferRows,
+  type TierPerk,
   tierPresentationContent,
   tierPresentationFees,
 } from './tierBenefitsPresentation';
+import { CARD_FX_FOOTNOTE, cardFxPerk, withCardFxRow } from './tierCardFx';
 import TierStar from './TierHero/TierStar';
 
 const ART = {
@@ -107,6 +110,11 @@ const regular = (s: number) => ({
   lineHeight: 16 * s,
   color: 'rgba(255,255,255,0.7)',
 });
+/** The accent green, and the fill behind it on the "New" tag and a fee this tier pays less of. */
+const GREEN = '#94F27F';
+const GREEN_FILL = 'rgba(148,242,127,0.16)';
+/** The notes under the panels: 14px at a 1.1 line height. */
+const footnote = (s: number) => [regular(s), { marginHorizontal: 17 * s, lineHeight: 15.4 * s }];
 
 /** One overscanned backdrop, driven by the same UI-thread position as the pager. */
 export function TierBenefitsBackground({
@@ -304,11 +312,14 @@ function ValuePill({
   value,
   s,
   locked = false,
+  highlight = false,
   struckValue,
 }: {
   value: string;
   s: number;
   locked?: boolean;
+  /** Green, for a fee this tier pays less of than Core. */
+  highlight?: boolean;
   /** A regular price, drawn struck through before `value` while a sale runs. */
   struckValue?: string;
 }) {
@@ -321,7 +332,11 @@ function ValuePill({
         paddingHorizontal: 14 * s,
         minHeight: 36 * s,
         borderRadius: 100,
-        backgroundColor: locked ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)',
+        backgroundColor: locked
+          ? 'rgba(255,255,255,0.06)'
+          : highlight
+            ? GREEN_FILL
+            : 'rgba(255,255,255,0.1)',
       }}
     >
       {locked && (
@@ -346,7 +361,13 @@ function ValuePill({
           {struckValue}
         </Text>
       ) : null}
-      <Text style={[medium(s), locked && { fontSize: 15 * s, color: 'rgba(255,255,255,0.45)' }]}>
+      <Text
+        style={[
+          medium(s),
+          locked && { fontSize: 15 * s, color: 'rgba(255,255,255,0.45)' },
+          highlight && { color: GREEN },
+        ]}
+      >
         {value}
       </Text>
     </View>
@@ -498,6 +519,14 @@ function PerkIcon({
             <CoreGlobePerkIcon />
           )}
         </View>
+      ) : icon === 'fx' ? (
+        <Image
+          source={getAsset('images/rewards-tiers/v4/fx.svg')}
+          contentFit="contain"
+          transition={0}
+          accessible={false}
+          style={{ position: 'absolute', left: 12 * s, top: 12 * s, width: 26 * s, height: 26 * s }}
+        />
       ) : icon === 'airline' ? (
         <Image
           source={getAsset('images/rewards-tiers/v4/airline.svg')}
@@ -546,21 +575,50 @@ function PerkIcon({
   );
 }
 
+function PerkBadge({ label, s }: { label: string; s: number }) {
+  return (
+    <View
+      style={{
+        paddingHorizontal: 6 * s,
+        paddingVertical: 1 * s,
+        borderRadius: 100,
+        backgroundColor: GREEN_FILL,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: 'MonaSans_500Medium',
+          fontSize: 11 * s,
+          lineHeight: 14 * s,
+          color: GREEN,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 function PerksPanel({
   tier,
   s,
   benefits,
+  cardFx,
 }: {
   tier: RewardsTier;
   s: number;
   benefits?: TierBenefits;
+  /** This tier's card FX price, when this user is shown it. Leads the card as its own perk. */
+  cardFx?: TierCardFx;
 }) {
   const content = tierPresentationContent(tier, benefits);
+  const fxPerk = cardFxPerk(cardFx);
+  const perks: TierPerk[] = fxPerk ? [fxPerk, ...content.perks] : content.perks;
 
   return (
     <Panel s={s}>
       <View style={{ paddingHorizontal: 19 * s }}>
-        {content.perks.map((perk, index) => (
+        {perks.map((perk, index) => (
           <View key={perk.title}>
             {index > 0 && (
               <View style={[styles.divider, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
@@ -576,7 +634,14 @@ function PerksPanel({
             >
               <PerkIcon icon={perk.icon} s={s} subscriptionRate={content.subscriptionRate} />
               <View style={{ flex: 1, gap: 3 * s }}>
-                <Text style={medium(s)}>{perk.title}</Text>
+                {perk.badge ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 * s }}>
+                    <Text style={[medium(s), { flexShrink: 1 }]}>{perk.title}</Text>
+                    <PerkBadge label={perk.badge} s={s} />
+                  </View>
+                ) : (
+                  <Text style={medium(s)}>{perk.title}</Text>
+                )}
                 <Text style={regular(s)}>{perk.description}</Text>
               </View>
             </View>
@@ -806,6 +871,7 @@ export function TierBenefitsPage({
   offer,
   contracts,
   showUpgradeSpace,
+  showCardFx,
 }: {
   tier: RewardsTier;
   active: boolean;
@@ -827,11 +893,36 @@ export function TierBenefitsPage({
   /** The membership's contracts, which decide whether the cash price is one that can be paid. */
   contracts?: Pick<TierMembershipContracts, 'billingTokenAddress' | 'revenueTreasuryAddress'>;
   showUpgradeSpace: boolean;
+  /**
+   * Whether this user is quoted the card FX price — the perk, the Fees & Caps
+   * row and the footnote. Off for Rain cardholders, who keep Rain's own fee;
+   * see `showsCardFxPricing`.
+   */
+  showCardFx: boolean;
 }) {
   const s = scaleFor(width);
   const table = tierPresentationFees(tier, fees);
-  const visibleFeeLines = table.lines.filter(line => line.key !== 'fx');
+  const cardFx = showCardFx ? fees?.cardFx : undefined;
+  // `fx` is the on-top FX fee product, which is off; the card FX price that
+  // replaces it on Wirex is its own row, from `fees.cardFx`.
+  const visibleFeeLines = withCardFxRow(
+    table.lines.filter(line => line.key !== 'fx'),
+    cardFx,
+  );
   const offers = tierOfferRows(offer, contracts);
+  const showsOffers = tier !== RewardsTier.CORE && offers.length > 0;
+  const cardFxFootnote = cardFx ? (
+    <Text
+      style={[
+        footnote(s),
+        // Directly under Fees & Caps when an offer panel follows it; after the
+        // asterisk note at the foot of the page when nothing does.
+        showsOffers ? { marginTop: 16 * s, marginBottom: 5 * s } : { marginTop: 6 * s },
+      ]}
+    >
+      {CARD_FX_FOOTNOTE}
+    </Text>
+  ) : null;
   const focused = useIsFocused();
   const reduceMotion = useReducedMotion();
   const entrance = useSharedValue(reduceMotion ? 1 : 0);
@@ -915,7 +1006,7 @@ export function TierBenefitsPage({
       </View>
       <Animated.View testID={`tier-benefits-content-${tier}`} style={contentMotion}>
         <StatsBand tier={tier} s={s} benefits={benefits} />
-        <PerksPanel tier={tier} s={s} benefits={benefits} />
+        <PerksPanel tier={tier} s={s} benefits={benefits} cardFx={cardFx} />
         <CashbackPanel tier={tier} s={s} benefits={benefits} allBenefits={allBenefits} />
         <Panel title="Fees & Caps" s={s}>
           <View style={{ paddingHorizontal: 19 * s, paddingVertical: 8 * s }}>
@@ -945,6 +1036,7 @@ export function TierBenefitsPage({
                 <ValuePill
                   value={line.key === 'virtual_card' ? `${line.value}*` : line.value}
                   s={s}
+                  highlight={line.highlight}
                 />
               </View>
             ))}
@@ -964,7 +1056,8 @@ export function TierBenefitsPage({
             </View>
           </View>
         </Panel>
-        {tier !== RewardsTier.CORE && offers.length > 0 && (
+        {showsOffers && cardFxFootnote}
+        {showsOffers && (
           <Panel title={`Get ${TIER_LABELS[tier]}`} s={s}>
             <View style={{ paddingHorizontal: 20 * s, paddingTop: 4 * s, paddingBottom: 8 * s }}>
               {offers.map(row => (
@@ -987,19 +1080,10 @@ export function TierBenefitsPage({
             </View>
           </Panel>
         )}
-        <Text
-          style={[
-            regular(s),
-            {
-              marginHorizontal: 17 * s,
-              marginTop: 23 * s,
-              lineHeight: 15.4 * s,
-              color: 'rgba(255,255,255,0.5)',
-            },
-          ]}
-        >
+        <Text style={[footnote(s), { marginTop: 23 * s }]}>
           * Some charges apply for select countries
         </Text>
+        {!showsOffers && cardFxFootnote}
       </Animated.View>
     </View>
   );
