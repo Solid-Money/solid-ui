@@ -4,9 +4,9 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { EUR_VAULT } from '@/constants/vaults';
+import { formatCashbackFigures } from '@/lib/formatMonthlyCashback';
 import { CashbackCurrency } from '@/lib/types';
-import { cn, formatBalance, formatNumber, formatWholeDollars } from '@/lib/utils';
-import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
+import { cn, formatNumber, formatWholeDollars } from '@/lib/utils';
 import { formatCurrencyAmount } from '@/lib/vaultCurrency';
 
 import RewardsDiamondIcon from './RewardsDiamondIcon';
@@ -37,13 +37,28 @@ const Divider = () => <View className="h-px bg-white/10" />;
 const formatWhole = (value: number, currency: CashbackCurrency): string =>
   currency === 'EUR' ? formatCurrencyAmount(value || 0, 'EUR', 0, 0) : formatWholeDollars(value);
 
+/**
+ * Lifetime cashback in each currency, side by side and never added together
+ * ("€12.40 + $150.00"). In cents, the same figure as the rewards card that
+ * opens this sheet: it includes escrow, so a new cardholder's first purchase
+ * reads here as it does on the card rather than rounding to $0.
+ */
+const LifetimeCashbackValue = ({
+  lifetimeCashback,
+}: Pick<CashbackDetailsData, 'lifetimeCashback'>) => (
+  <Text className="max-w-[55%] text-right text-lg font-medium text-white">
+    {formatCashbackFigures(lifetimeCashback)}
+  </Text>
+);
+
 const CashbackDetailsContent = ({
   cashbackRate,
   currency = 'USD',
   monthlyCashbackLabel,
   maxCashbackMonthly,
   tierMonthlyCap,
-  allTimeCashback,
+  lifetimeCashback,
+  lifetimeCashbackIsPartial,
   onGetMoreCashback,
   animationSession,
   isSheet = true,
@@ -110,19 +125,22 @@ const CashbackDetailsContent = ({
         </StatRow>
       )}
       <Divider />
-      {/* Each currency in its own figure, side by side ("€12 + $150"): euro
-          and dollar cashback are never added together or converted. */}
-      <StatRow label="All time cashback">
-        <Text className="max-w-[55%] text-right text-lg font-medium text-white">
-          {allTimeCashback
-            .map(({ value, currency }) =>
-              value > 0 && value < 1
-                ? formatBalance(value, CURRENCY_SYMBOLS[currency])
-                : formatWhole(value, currency),
-            )
-            .join(' + ')}
-        </Text>
-      </StatRow>
+      {lifetimeCashbackIsPartial ? (
+        // The app's own lower bound, not the backend's complete total (an
+        // older backend, or one that couldn't read it): said so, rather than
+        // passed off as the whole lifetime.
+        <View className="gap-0.5 px-[19px] py-3">
+          <View className="flex-row items-center gap-x-2">
+            <Text className="flex-1 text-base font-medium text-white/70">Lifetime cashback</Text>
+            <LifetimeCashbackValue lifetimeCashback={lifetimeCashback} />
+          </View>
+          <Text className="text-xs text-white/50">Some recent cashback may not show here yet.</Text>
+        </View>
+      ) : (
+        <StatRow label="Lifetime cashback">
+          <LifetimeCashbackValue lifetimeCashback={lifetimeCashback} />
+        </StatRow>
+      )}
     </View>
 
     <Text

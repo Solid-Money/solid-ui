@@ -14,8 +14,8 @@ import { useRewardsUserData } from '@/hooks/useRewards';
 import {
   CASHBACK_EARNED_COLOR,
   monthlyCashbackCap,
-  resolveAllTimeCashback,
   resolveCashbackMonth,
+  resolveLifetimeCashback,
 } from '@/lib/cashbackProgress';
 import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
@@ -142,7 +142,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
           monthlyCashbackLabel={monthlyCashbackLabel}
           maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
           tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-          allTimeCashback={resolveAllTimeCashback(rewardsData, cardDetails?.cashback)}
+          {...resolveLifetimeCashback(rewardsData, cardDetails?.cashback)}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           trigger={
             <Pressable

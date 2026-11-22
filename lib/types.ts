@@ -2463,6 +2463,22 @@ export interface RewardsUserData {
    */
   cashbackPendingThisMonth?: number;
   /**
+   * All the dollar cashback this cardholder has earned, in USD: everything
+   * paid on any card they have held, plus what is still in escrow, held to the
+   * monthly caps. The "Lifetime cashback" figure — read it through
+   * `resolveLifetimeCashback`, which falls back when this is absent (an older
+   * backend, or a paid total the backend couldn't read). Euro cashback has its
+   * own, in `cashbackLifetimeEur`.
+   */
+  cashbackLifetime?: number;
+  /**
+   * All the euro cashback this cardholder has earned, in EUR: paid on any card,
+   * plus euro escrow for a euro cardholder. Reported whatever the currency now,
+   * so euros earned before a switch to dollars still count. Never added to
+   * `cashbackLifetime`. Absent on older backends.
+   */
+  cashbackLifetimeEur?: number;
+  /**
    * The monthly cap of the tier the user holds now — what the tier advertises.
    * For "how much can this month pay", read `monthlyCashbackCap` instead.
    */

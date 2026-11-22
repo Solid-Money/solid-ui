@@ -10,6 +10,7 @@ import Svg, {
 } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
+import { formatCashbackFigures } from '@/lib/formatMonthlyCashback';
 import { formatBalance } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
@@ -74,7 +75,13 @@ const RewardsGradient = () => (
 );
 
 interface RewardsSummaryCardProps {
+  /** Everything earned from referrals so far. */
   referrals: number;
+  /**
+   * What the cashback sheet shows. The card's own figure is its
+   * `lifetimeCashback`, formatted the same way as the sheet's row, so the card
+   * and the sheet it opens can't disagree.
+   */
   cashbackDetails: CashbackDetailsData;
   onGetMoreCashback: () => void;
   onReferralsPress: () => void;
@@ -111,6 +118,9 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
     style={Platform.OS === 'web' ? { minHeight: 96 } : undefined}
   >
     <Text
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.8}
       className="text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 20 }}
     >
@@ -127,7 +137,14 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
 );
 
 /**
- * "Rewards" summary card: Cashback and Referrals split into two columns.
+ * "Rewards" summary card: Lifetime cashback and Referrals split into two
+ * columns.
+ *
+ * Both are totals over everything earned so far, so the two columns measure the
+ * same thing. The cashback figure counts what is still in escrow alongside what
+ * has been paid — see `resolveLifetimeCashback`, which the caller applies — and
+ * is the same figure as the sheet's "Lifetime cashback" row. Cashback in the
+ * cardholder's other currency is printed beside it, never added in.
  */
 const RewardsSummaryCard = ({
   referrals,
@@ -151,7 +168,12 @@ const RewardsSummaryCard = ({
 
       <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
-          trigger={<SummaryStat label="Cashback" value={cashbackDetails.monthlyCashbackLabel} />}
+          trigger={
+            <SummaryStat
+              label="Lifetime cashback"
+              value={formatCashbackFigures(cashbackDetails.lifetimeCashback)}
+            />
+          }
           {...cashbackDetails}
           onGetMoreCashback={onGetMoreCashback}
         />
