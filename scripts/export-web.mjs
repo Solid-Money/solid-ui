@@ -7,6 +7,7 @@
  */
 import { spawnSync } from 'node:child_process';
 
+import { patchInvitePreview } from './invite-link-preview.mjs';
 import { resolveRelease } from './release.mjs';
 
 const release = resolveRelease();
@@ -16,5 +17,7 @@ const result = spawnSync('npx', ['expo', 'export', '-p', 'web', '--source-maps']
   stdio: 'inherit',
   env: { ...process.env, EXPO_PUBLIC_SENTRY_RELEASE: release },
 });
+
+if (result.status === 0) patchInvitePreview('dist');
 
 process.exit(result.status ?? 1);
