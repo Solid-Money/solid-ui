@@ -214,9 +214,11 @@ const isKeptUnlisted = (chainId: number, address: string) =>
  */
 const CARRY_OVER_MAX_AGE_MS = 5 * 60 * 1000;
 
-/** When each chain's token list, and each token's price, was last actually read. */
+/** When each chain's token list, native balance and each token's price were last actually read. */
 interface ReadTimes {
   chainReadAt?: Record<number, number>;
+  /** Separate from `chainReadAt`: a chain's native balance is its own read. */
+  nativeReadAt?: Record<number, number>;
   priceReadAt?: Record<string, number>;
 }
 
@@ -388,6 +390,7 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   // Carried values keep the time of the read they came from, never this poll's, so a run of
   // failures ages them out however many polls pass.
   const chainReadAt: Record<number, number> = {};
+  const nativeReadAt: Record<number, number> = {};
   const priceReadAt: Record<string, number> = {};
   const isFresh = (readAt: number | undefined): readAt is number =>
     readAt !== undefined && now - readAt <= CARRY_OVER_MAX_AGE_MS;
@@ -398,12 +401,16 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   // still names the chain, so nothing reads the carried rows as a confirmed answer. Past
   // CARRY_OVER_MAX_AGE_MS the chain reads as empty again.
   const carriedPriceKeys = new Set<string>();
-  const lastKnownTokens = (chainId: number): TokenBalance[] => {
-    const readAt = previous?.chainReadAt?.[chainId];
+  const carryOver = (
+    chainId: number,
+    type: TokenType,
+    readAt: number | undefined,
+    stamps: Record<number, number>,
+  ): TokenBalance[] => {
     if (!isFresh(readAt)) return [];
-    chainReadAt[chainId] = readAt;
+    stamps[chainId] = readAt;
     return (previous?.tokens ?? [])
-      .filter(token => token.chainId === chainId && token.type === TokenType.ERC20)
+      .filter(token => token.chainId === chainId && token.type === type)
       .map(token => {
         const key = priceKey(token);
         if (isFresh(previous?.priceReadAt?.[key])) {
@@ -414,6 +421,12 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
         return { ...token, quoteRate: 0 };
       });
   };
+  const lastKnownTokens = (chainId: number) =>
+    carryOver(chainId, TokenType.ERC20, previous?.chainReadAt?.[chainId], chainReadAt);
+  // The same for a chain's native coin, on its own read time: a read past its budget (or one
+  // that failed) no longer takes the ETH or POL balance out of the total for that poll.
+  const lastKnownNative = (chainId: number) =>
+    carryOver(chainId, TokenType.NATIVE, previous?.nativeReadAt?.[chainId], nativeReadAt);
 
   // Process soUSD rate (soUSD → USD, 6 decimals)
   if (soUSDRate.status === PromiseStatus.FULFILLED) {
@@ -636,6 +649,7 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
       .map(item => convertBlockscoutToTokenBalance(item, OPTIMISM_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Optimism balances:', optimismResponse.reason);
+    optimismTokens = lastKnownTokens(OPTIMISM_CHAIN_ID);
   }
 
   // Process native token balances
@@ -784,6 +798,22 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
       commonId: optimismEthTokenFromList?.commonId,
       tokenId: optimismEthTokenFromList?.tokenId,
     });
+  }
+
+  // A native balance read that failed or ran past its budget keeps the last good read for a
+  // while, like the ERC-20s above. A read that answered zero is a real zero: it carries nothing,
+  // and its time is still stamped so a later failure doesn't bring back an older balance.
+  for (const [chainId, result, rows] of [
+    [ETHEREUM_CHAIN_ID, ethBalance, ethereumTokens],
+    [FUSE_CHAIN_ID, fuseBalance, fuseTokens],
+    [BASE_CHAIN_ID, baseBalance, baseTokens],
+    [ARBITRUM_CHAIN_ID, arbitrumBalance, arbitrumTokens],
+    [BSC_CHAIN_ID, bscBalance, bscTokens],
+    [POLYGON_CHAIN_ID, polygonBalance, polygonTokens],
+    [OPTIMISM_CHAIN_ID, optimismBalance, optimismTokens],
+  ] as const) {
+    if (result.status === PromiseStatus.FULFILLED) nativeReadAt[chainId] = now;
+    else rows.push(...lastKnownNative(chainId));
   }
 
   let allTokens = [
@@ -1020,6 +1050,7 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     [POLYGON_CHAIN_ID, polygonResponse],
     [ARBITRUM_CHAIN_ID, arbitrumResponse],
     [BSC_CHAIN_ID, bscResponse],
+    [OPTIMISM_CHAIN_ID, optimismResponse],
   ] as const) {
     if (response.status === PromiseStatus.FULFILLED) chainReadAt[chainId] = now;
   }
@@ -1069,6 +1100,7 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   return {
     ...totals,
     chainReadAt,
+    nativeReadAt,
     priceReadAt,
     failedChainIds,
     ethereumTokens: ethereumTokensFinal,

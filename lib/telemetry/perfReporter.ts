@@ -298,11 +298,13 @@ export const flushPerfSamples = async (): Promise<void> => {
           .map(entry => ({ ...entry, attempts: entry.attempts + 1 }))
           .filter(entry => entry.attempts < MAX_ATTEMPTS);
         queue = [...again, ...queue].slice(-MAX_QUEUED);
-        if (again.length > 0) schedule();
         break;
       }
     }
   } finally {
     flushing = false;
+    // Whatever is left: retries, the rest after a failed batch, and samples that arrived while
+    // this flush ran (their own flush returned early). Attempts stay capped per sample.
+    if (queue.length > 0) schedule();
   }
 };

@@ -83,6 +83,17 @@ let lastWriteAt = 0;
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+/** Absent, or a string with an optional string under it: anything else would reach a <Text>. */
+const isAmountLines = (value: unknown): boolean => {
+  if (value === undefined) return true;
+  const lines = value as HomeSnapshotAsset['amountLines'];
+  return (
+    !!lines &&
+    typeof lines.primary === 'string' &&
+    (lines.secondary === undefined || typeof lines.secondary === 'string')
+  );
+};
+
 const isAsset = (value: unknown): value is HomeSnapshotAsset => {
   const asset = value as HomeSnapshotAsset;
   return (
@@ -94,6 +105,7 @@ const isAsset = (value: unknown): value is HomeSnapshotAsset => {
     (asset.subtitle === undefined || typeof asset.subtitle === 'string') &&
     !!asset.icon &&
     typeof asset.icon.type === 'string' &&
+    isAmountLines(asset.amountLines) &&
     asset.href !== undefined
   );
 };

@@ -226,10 +226,12 @@ export const buildStartupTimingPayload = ({
     !isWeb && [nativeStartup, jsToFirstLayout, total, gatingMs].some(implausible);
   // The wait the user saw: from when the app was first in front (a pre-warmed or
   // push-woken launch runs long before that) until balances. 0 when they were ready first.
+  // Ready while the app had never been in front (pre-warmed, woken by a push): the user
+  // found balances already there.
   const visibleToReady =
-    firstActive === undefined || ready === undefined
+    ready === undefined
       ? undefined
-      : ready <= firstActive
+      : firstActive === undefined || ready <= firstActive
         ? 0
         : span(firstActive, ready);
 

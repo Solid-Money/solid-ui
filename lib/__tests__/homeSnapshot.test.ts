@@ -89,6 +89,22 @@ describe('home snapshot', () => {
     expect(load().readHomeSnapshot('u1')).toBeNull();
   });
 
+  it('drops a copy whose amount lines are not text, instead of rendering them', () => {
+    const { saveHomeSnapshot } = load();
+    saveHomeSnapshot({
+      ...INPUT,
+      assets: [
+        { ...INPUT.assets[0], amountLines: { primary: '€1,200.00', secondary: '≈ $1,300' } },
+      ],
+    });
+    const stored = JSON.parse(mockDisk.get(DISK_KEY)!);
+    expect(load().readHomeSnapshot('u1')?.assets[0].amountLines?.primary).toBe('€1,200.00');
+
+    stored.assets[0].amountLines = { primary: { amount: 1200 } };
+    mockDisk.set(DISK_KEY, JSON.stringify(stored));
+    expect(load().readHomeSnapshot('u1')).toBeNull();
+  });
+
   it('leaves out figures JSON cannot carry rather than refusing the whole snapshot', () => {
     const { saveHomeSnapshot } = load();
     saveHomeSnapshot({

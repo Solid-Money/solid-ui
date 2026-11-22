@@ -132,6 +132,21 @@ describe('buildStartupTimingPayload across clocks', () => {
     expect(payload.visible_to_home_ready_ms).toBe(0);
   });
 
+  it('counts the visible wait as 0 when balances were ready before the app was ever in front', () => {
+    const payload = buildStartupTimingPayload({
+      marks: { splashHidden: 100, homeContentReady: 900 },
+      native: null,
+      queries: [],
+      launchKind: 'cold',
+      backgrounded: true,
+      isWeb: false,
+      jsStart: 0,
+      firstActive: undefined,
+      startedInBackground: true,
+    });
+    expect(payload.visible_to_home_ready_ms).toBe(0);
+  });
+
   it('reports why the cache was or was not restored, and what the launch waited on', () => {
     const payload = buildStartupTimingPayload({
       marks: { splashHidden: 1_000, homeContentReady: 49_100 },
