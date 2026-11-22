@@ -92,6 +92,29 @@ const PAYOUT_CHAIN_BY_DESTINATION: Readonly<Partial<Record<RhinoDestinationType,
 export const isOwnPayoutChain = (destinationType: RhinoDestinationType, chainId: number): boolean =>
   PAYOUT_CHAIN_BY_DESTINATION[destinationType] === chainId;
 
+/**
+ * Where a route that pays out a single token does, as that token: the AI API's,
+ * USDC on Base. A USDC deposit sent on Base is already what pays for it, so our
+ * own address (the Safe) takes it, known without rhino.fi's routes like the
+ * wallet's and card's Base rows. Its other Base rows (ETH) are not: rhino.fi
+ * converts those to USDC on the way.
+ */
+const PAYOUT_TOKEN_BY_DESTINATION: Readonly<
+  Partial<Record<RhinoDestinationType, { chainId: number; symbol: string }>>
+> = {
+  AI_API: { chainId: base.id, symbol: 'USDC' },
+};
+
+/** Whether a row is the very token, on the very chain, its route pays out. */
+export const isOwnPayoutToken = (
+  destinationType: RhinoDestinationType,
+  chainId: number,
+  symbol: string,
+): boolean => {
+  const payout = PAYOUT_TOKEN_BY_DESTINATION[destinationType];
+  return payout?.chainId === chainId && payout.symbol === symbol;
+};
+
 /** The destinations `OWN_PIPELINE_TOKEN_CHAINS` applies to: the wallet's and the card's. */
 const OWN_PIPELINE_DESTINATIONS: ReadonlySet<RhinoDestinationType> = new Set<RhinoDestinationType>([
   'WALLET',
@@ -409,6 +432,7 @@ export const resolveRhinoRow = (state: RhinoAssetsState, row: RhinoRowFilter): R
     isOwnPipelineChain(row.chainId) ||
     isOwnPipelineToken(row.symbol, row.destinationType, row.chainId) ||
     isOwnPayoutChain(row.destinationType, row.chainId) ||
+    isOwnPayoutToken(row.destinationType, row.chainId, row.symbol) ||
     // rhino.fi is off: our own pipeline serves every row, as before rhino.fi.
     state.status === 'disabled'
   ) {
@@ -607,6 +631,10 @@ export const describeRhinoArrival = ({
       const lead = isConverted ? `Converted to ${receiveSymbol}` : `Arrives as ${receiveSymbol}`;
       return `${lead} in your savings${vault ? ` (${vault})` : ''}`;
     }
+    case 'AI_API': {
+      const lead = isConverted ? `Converted to ${receiveSymbol}` : `Arrives as ${receiveSymbol}`;
+      return `${lead} in your wallet${chainName ? ` on ${chainName}` : ''}, which pays for your AI agents`;
+    }
     case 'WALLET':
     default: {
       const lead = isConverted ? `Converted to ${receiveSymbol}` : `Arrives as ${receiveSymbol}`;
@@ -650,7 +678,8 @@ export type RhinoDepositStatusView = {
 
 /**
  * Whether rhino.fi's payout is the end of the deposit: a wallet deposit paid
- * into the Safe itself (USDC, EURC, WBTC; USDT as USDC; BTC as WBTC). The
+ * into the Safe itself (USDC, EURC, WBTC; USDT as USDC; BTC as WBTC), and
+ * everything sent for the AI API, which is paid into the Safe as USDC. The
  * wallet's ETH is paid to the user's wallet deposit address instead, where our
  * pipeline wraps it for the Safe, and the card's and savings' payouts go on
  * through our pipeline too, so for those an executed payout is only rhino.fi's
@@ -658,7 +687,9 @@ export type RhinoDepositStatusView = {
  */
 export const isRhinoPayoutFinal = (
   deposit: Pick<RhinoDeposit, 'destinationType' | 'receiveSymbol'>,
-): boolean => deposit.destinationType === 'WALLET' && deposit.receiveSymbol !== 'ETH';
+): boolean =>
+  deposit.destinationType === 'AI_API' ||
+  (deposit.destinationType === 'WALLET' && deposit.receiveSymbol !== 'ETH');
 
 /**
  * Whether the deposit is done for good: rhino.fi has paid out, and its payout is

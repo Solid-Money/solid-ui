@@ -2,7 +2,11 @@ import React from 'react';
 import { arbitrum, base, fuse, polygon } from 'viem/chains';
 
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
-import { RHINO_ASSETS, RHINO_ASSETS_WITH_BITCOIN } from '@/lib/__tests__/rhinoFixtures';
+import {
+  RHINO_ASSETS,
+  RHINO_ASSETS_WITH_AI_API,
+  RHINO_ASSETS_WITH_BITCOIN,
+} from '@/lib/__tests__/rhinoFixtures';
 import { CardProvider } from '@/lib/types';
 
 import type { OfferedRhinoDepositAssets } from '@/hooks/useRhinoDepositAssets';
@@ -41,6 +45,9 @@ jest.mock('@/components/DepositOption/RhinoDeposit/useRhinoExtraNetworkRows', ()
     },
   };
 });
+// `cardFunding`'s vault lookups reach wagmi's ESM build, which does not load
+// under jest-expo; nothing here touches a chain.
+jest.mock('@/lib/wagmi', () => ({}));
 // Its barrel reaches wagmi's ESM build, which does not load under jest-expo.
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
@@ -328,5 +335,54 @@ describe('CardFundNetworks', () => {
 
     render('USDC', CardProvider.RAIN);
     expect(titles()).toEqual(['Base', 'Fuse']);
+  });
+});
+
+// The AI API's funding flow lists the same networks for its own route, and
+// takes nothing at an address of ours but USDC on Base, which is already what
+// pays for it.
+describe('CardFundNetworks for the AI API', () => {
+  const NETWORKS = [
+    { chainId: polygon.id, name: 'Polygon', icon: { uri: 'polygon' } },
+    { chainId: base.id, name: 'Base', icon: { uri: 'base' } },
+    { chainId: arbitrum.id, name: 'Arbitrum', icon: { uri: 'arbitrum' } },
+    // The real flow never lists Fuse; here to show an own row it can't use stays out.
+    { chainId: fuse.id, name: 'Fuse', icon: { uri: 'fuse' } },
+  ];
+  const renderForAiApi = (symbol: string) => {
+    act(() => {
+      root = create(
+        <CardFundNetworks
+          symbol={symbol}
+          destinationType="AI_API"
+          networks={NETWORKS}
+          isOwnRowOffered={chainId => chainId === base.id && symbol === 'USDC'}
+          onSelect={jest.fn()}
+          onSelectRhino={jest.fn()}
+        />,
+      );
+    });
+  };
+
+  it('matches rows against the AI API route, with Base’s USDC at our own address', () => {
+    mockRhino.current = { ...READY, assets: RHINO_ASSETS_WITH_AI_API };
+    renderForAiApi('USDC');
+    expect(titles()).toEqual(['Polygon', 'Base', 'Arbitrum']);
+  });
+
+  it('offers no USDT on Base, and no own row the AI API cannot use', () => {
+    mockRhino.current = { ...READY, assets: RHINO_ASSETS_WITH_AI_API };
+    renderForAiApi('USDT');
+    expect(titles()).toEqual(['Polygon', 'Arbitrum']);
+  });
+
+  it('offers only USDC on Base while rhino.fi is off', () => {
+    mockRhino.current = { status: 'disabled', retry: mockRetry };
+    renderForAiApi('USDC');
+    expect(titles()).toEqual(['Base']);
+    act(() => root.unmount());
+
+    renderForAiApi('ETH');
+    expect(titles()).toEqual([]);
   });
 });

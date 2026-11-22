@@ -148,9 +148,11 @@ export interface DepositAssetsResponse {
 /**
  * Where a rhino.fi deposit is paid out: the same strings the direct-deposit
  * session takes as `destinationType` (`PROTOCOL` is savings, `RAIN_CARD` the
- * card), plus `WALLET` for the user's Safe.
+ * card), plus `WALLET` for the user's Safe, and `AI_API` for the same Safe as
+ * USDC on Base only, which is what AI API charges are paid from: whatever is
+ * sent for it (USDC, USDT, ETH, BTC) is converted to USDC on the way.
  */
-export type RhinoDestinationType = 'WALLET' | 'PROTOCOL' | 'RAIN_CARD';
+export type RhinoDestinationType = 'WALLET' | 'PROTOCOL' | 'RAIN_CARD' | 'AI_API';
 
 /** The address format a rhino.fi chain uses. Only `EVM` is a 0x address. */
 export type RhinoAddressType = 'EVM' | 'TRON' | 'SOL' | 'BTC';

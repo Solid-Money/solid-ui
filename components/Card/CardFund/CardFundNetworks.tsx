@@ -6,6 +6,7 @@ import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import {
   CARD_FUND_ESTIMATED_TIME,
+  CardFundNetwork,
   getCardFundNetworks,
   getCardFundRhinoDestination,
 } from '@/components/Card/CardFund/constants';
@@ -17,8 +18,9 @@ import {
   getRhinoListNotice,
   isOfferedRhinoRow,
   RhinoDepositSelection,
+  RhinoRowState,
 } from '@/lib/rhinoDeposit';
-import { CardProvider } from '@/lib/types';
+import { CardProvider, RhinoDestinationType } from '@/lib/types';
 
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -27,9 +29,24 @@ type CardFundNetworksProps = {
   symbol: string;
   /**
    * The issuer the flow is for, which decides the rhino.fi route the rows are
-   * matched against (see `getCardFundRhinoDestination`).
+   * matched against (see `getCardFundRhinoDestination`). Not needed when
+   * `destinationType` names the route itself.
    */
-  cardProvider: CardProvider;
+  cardProvider?: CardProvider;
+  /**
+   * The rhino.fi destination the rows are matched against, for a flow that is
+   * not funding the card (the AI API's), in place of the one `cardProvider`
+   * decides.
+   */
+  destinationType?: RhinoDestinationType;
+  /** The list's own chains, in place of the card's for `symbol` (`getCardFundNetworks`). */
+  networks?: CardFundNetwork[];
+  /**
+   * Whether a row our own pipeline serves may be offered. Every one is, unless
+   * this says otherwise: a flow whose own rows would land money where it can't
+   * be used (the AI API's, on Fuse) lists them as rhino.fi's unrouted rows are.
+   */
+  isOwnRowOffered?: (chainId: number) => boolean;
   /**
    * One of the rows listed, which always has an address: rhino.fi's on every
    * chain but Base and Fuse, our own session on Base and Fuse. Every host shows the address of the row picked, and nothing else.
@@ -51,16 +68,37 @@ type CardFundNetworksProps = {
  * rather than an address of ours. After them, in the same list: the chains the
  * app has no row for that rhino.fi takes the token from (Tron, Solana, …).
  */
+const NOT_ROUTED: RhinoRowState = { kind: 'none' };
+
 const CardFundNetworks = ({
   symbol,
   cardProvider,
+  destinationType: destinationTypeProp,
+  networks: networksProp,
+  isOwnRowOffered,
   onSelect,
   onSelectRhino,
   loadingChainId,
 }: CardFundNetworksProps) => {
-  const networks = useMemo(() => getCardFundNetworks(symbol), [symbol]);
-  const destinationType = getCardFundRhinoDestination(symbol, cardProvider);
-  const { rows, retry } = useRhinoNetworkRows({ destinationType, symbol }, networks);
+  const networks = useMemo(
+    () => networksProp ?? getCardFundNetworks(symbol),
+    [networksProp, symbol],
+  );
+  const destinationType = destinationTypeProp ?? getCardFundRhinoDestination(symbol, cardProvider);
+  const { rows: resolvedRows, retry } = useRhinoNetworkRows({ destinationType, symbol }, networks);
+  // An own row the flow cannot use is not offered, and is worded as one
+  // rhino.fi has no route for, so an all-own list still says it is empty.
+  const rows = useMemo(
+    () =>
+      isOwnRowOffered
+        ? resolvedRows.map(entry =>
+            entry.state.kind === 'own' && !isOwnRowOffered(entry.row.chainId)
+              ? { ...entry, state: NOT_ROUTED }
+              : entry,
+          )
+        : resolvedRows,
+    [isOwnRowOffered, resolvedRows],
+  );
   const { status: rhinoStatus } = useOfferedRhinoDepositAssets();
   const extraRows = useRhinoExtraNetworkRows({
     destinationType,

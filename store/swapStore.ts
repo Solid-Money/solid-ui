@@ -97,6 +97,8 @@ export type SwapEntryPoint =
   | 'dashboard'
   | 'card_fund'
   | 'not_enough_to_pay'
+  /** "Add funds" on the AI API screen: anything held in Solid, into USDC on Base. */
+  | 'ai_api'
   | 'unknown';
 
 /** A swap the new flow made, as its outcome screens show it. */
