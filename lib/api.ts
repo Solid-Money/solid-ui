@@ -5598,11 +5598,19 @@ export const verifyRecoveryOtp = async (
   return data;
 };
 
+/**
+ * The swap list is part of every wallet balance read (it decides which tokens show), and the
+ * global axios has no timeout: a hung request held the whole read, and the home balances behind
+ * it, until the OS gave up. Without the list the read degrades as it already does on a failure.
+ */
+const TOKEN_LIST_TIMEOUT_MS = 10_000;
+
 export const fetchTokenList = async (params: SwapTokenRequest) => {
   const response = await axios.get<SwapTokenResponse[]>(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/swap-tokens`,
     {
       params,
+      timeout: TOKEN_LIST_TIMEOUT_MS,
     },
   );
   return response.data;

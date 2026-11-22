@@ -13,7 +13,9 @@ import {
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
+import { ReadBudgetExceededError, withBudget, withinBudgetOr } from '@/lib/readBudget';
 import { isSoBtcConfigured, SOBTC_ADDRESSES, SOBTC_DECIMALS } from '@/lib/soBtc';
+import { noteTokenFetchTiming } from '@/lib/telemetry/tokenFetchTiming';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import {
   isSoETHBase,
@@ -223,9 +225,41 @@ type PreviousBalances = Pick<BalanceData, 'tokens'> & ReadTimes;
 const priceKey = (token: TokenBalance) =>
   `${token.chainId}:${token.type}:${token.contractAddress?.toLowerCase()}`;
 
+/**
+ * The longest any one read may hold up the whole balance result. Without it the
+ * result waited on the slowest of ~28 sources, and an unreachable RPC or a hung
+ * explorer request (viem retries a hung call three times, ten seconds each) kept
+ * the home screen on skeletons for 40 seconds or more. A read past its budget is
+ * handled exactly like a failed one: its chain keeps the last good read for a
+ * while (`lastKnownTokens`) and is named in `failedChainIds`. The request itself
+ * keeps running, so a slow source still warms caches for the next poll.
+ */
+export const READ_BUDGET_MS = 15_000;
+/** The same for each of the first two price lookups (asked together), then the symbol lookup. */
+export const PRICING_BUDGET_MS = 8_000;
+export const SYMBOL_PRICING_BUDGET_MS = 5_000;
+
+const elapsed = (since: number) => Math.round(Date.now() - since);
+
 // Fetch function for token balances. `previous` is the result already in the cache, used
 // only to stand in for a read that failed this time — see `lastKnownTokens`.
 const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalances) => {
+  const startedAt = Date.now();
+  // How long each chain's token list took, to name the slowest one in the timing report.
+  const chainReadMs: Record<number, number> = {};
+  let timedOutReads = 0;
+  const budget = <T>(read: Promise<T>): Promise<T> =>
+    withBudget(read, READ_BUDGET_MS).catch(error => {
+      if (error instanceof ReadBudgetExceededError) timedOutReads += 1;
+      throw error;
+    });
+  const chainTokens = (chainId: number) => {
+    const readStartedAt = Date.now();
+    return budget(fetchTokenBalancesWithFallback(chainId, safeAddress)).finally(() => {
+      chainReadMs[chainId] = elapsed(readStartedAt);
+    });
+  };
+
   const [
     baseResponse,
     ethereumResponse,
@@ -260,82 +294,80 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     // Blockscout fallback). Fuse (122) skips Alchemy entirely. BSC (56)
     // is Alchemy-only — Blockscout has no BSC instance and returns [] on
     // Alchemy failure.
-    fetchTokenBalancesWithFallback(BASE_CHAIN_ID, safeAddress),
-    fetchTokenBalancesWithFallback(ETHEREUM_CHAIN_ID, safeAddress),
-    fetchTokenBalancesWithFallback(FUSE_CHAIN_ID, safeAddress),
-    fetchTokenBalancesWithFallback(POLYGON_CHAIN_ID, safeAddress),
-    fetchTokenBalancesWithFallback(ARBITRUM_CHAIN_ID, safeAddress),
-    fetchTokenBalancesWithFallback(BSC_CHAIN_ID, safeAddress),
-    fetchTokenBalancesWithFallback(OPTIMISM_CHAIN_ID, safeAddress),
-    readContract(publicClient(mainnet.id), {
-      address: ADDRESSES.ethereum.accountant,
-      abi: ACCOUNTANT_ABI,
-      functionName: 'getRate',
-    }),
+    chainTokens(BASE_CHAIN_ID),
+    chainTokens(ETHEREUM_CHAIN_ID),
+    chainTokens(FUSE_CHAIN_ID),
+    chainTokens(POLYGON_CHAIN_ID),
+    chainTokens(ARBITRUM_CHAIN_ID),
+    chainTokens(BSC_CHAIN_ID),
+    chainTokens(OPTIMISM_CHAIN_ID),
+    budget(
+      readContract(publicClient(mainnet.id), {
+        address: ADDRESSES.ethereum.accountant,
+        abi: ACCOUNTANT_ABI,
+        functionName: 'getRate',
+      }),
+    ),
     // soUSD on Base redeems through the Base queue, which prices shares off the
     // Base accountant, not Ethereum's.
     ADDRESSES.base.accountant !== zeroAddress
-      ? readContract(publicClient(base.id), {
-          address: ADDRESSES.base.accountant,
-          abi: ACCOUNTANT_ABI,
-          functionName: 'getRate',
-        })
+      ? budget(
+          readContract(publicClient(base.id), {
+            address: ADDRESSES.base.accountant,
+            abi: ACCOUNTANT_ABI,
+            functionName: 'getRate',
+          }),
+        )
       : Promise.reject(new Error('No soUSD accountant on Base in this build')),
-    readContract(publicClient(fuse.id), {
-      address: ADDRESSES.fuse.fuseAccountant,
-      abi: ACCOUNTANT_ABI,
-      functionName: 'getRate',
-    }),
+    budget(
+      readContract(publicClient(fuse.id), {
+        address: ADDRESSES.fuse.fuseAccountant,
+        abi: ACCOUNTANT_ABI,
+        functionName: 'getRate',
+      }),
+    ),
     // One soETH rate for every chain the share sits on (Ethereum, Fuse, Base),
     // read from the Ethereum accountant — the same source the savings screen
     // uses. The backend writes the same rate to every chain's accountant.
-    readContract(publicClient(mainnet.id), {
-      address: ADDRESSES.ethereum.soEthAccountant,
-      abi: ACCOUNTANT_ABI,
-      functionName: 'getRate',
-    }),
-    getBalance(publicClient(mainnet.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(fuse.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(base.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(arbitrum.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(bsc.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(polygon.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(optimism.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    NATIVE_PRICE_FETCHERS[mainnet.id](),
-    NATIVE_PRICE_FETCHERS[fuse.id](),
-    NATIVE_PRICE_FETCHERS[base.id](),
-    NATIVE_PRICE_FETCHERS[arbitrum.id](),
-    NATIVE_PRICE_FETCHERS[bsc.id](),
-    NATIVE_PRICE_FETCHERS[polygon.id](),
-    NATIVE_PRICE_FETCHERS[optimism.id](),
-    fetchTokenList({
-      isActive: true,
-    }),
+    budget(
+      readContract(publicClient(mainnet.id), {
+        address: ADDRESSES.ethereum.soEthAccountant,
+        abi: ACCOUNTANT_ABI,
+        functionName: 'getRate',
+      }),
+    ),
+    budget(getBalance(publicClient(mainnet.id), { address: safeAddress as `0x${string}` })),
+    budget(getBalance(publicClient(fuse.id), { address: safeAddress as `0x${string}` })),
+    budget(getBalance(publicClient(base.id), { address: safeAddress as `0x${string}` })),
+    budget(getBalance(publicClient(arbitrum.id), { address: safeAddress as `0x${string}` })),
+    budget(getBalance(publicClient(bsc.id), { address: safeAddress as `0x${string}` })),
+    budget(getBalance(publicClient(polygon.id), { address: safeAddress as `0x${string}` })),
+    budget(getBalance(publicClient(optimism.id), { address: safeAddress as `0x${string}` })),
+    budget(NATIVE_PRICE_FETCHERS[mainnet.id]()),
+    budget(NATIVE_PRICE_FETCHERS[fuse.id]()),
+    budget(NATIVE_PRICE_FETCHERS[base.id]()),
+    budget(NATIVE_PRICE_FETCHERS[arbitrum.id]()),
+    budget(NATIVE_PRICE_FETCHERS[bsc.id]()),
+    budget(NATIVE_PRICE_FETCHERS[polygon.id]()),
+    budget(NATIVE_PRICE_FETCHERS[optimism.id]()),
+    budget(
+      fetchTokenList({
+        isActive: true,
+      }),
+    ),
     // One soBTC rate for both chains, from the Base accountant: the backend writes the same rate
     // to the Ethereum one.
     isSoBtcConfigured
-      ? readContract(publicClient(base.id), {
-          address: SOBTC_ADDRESSES.base.accountant,
-          abi: ACCOUNTANT_ABI,
-          functionName: 'getRate',
-        })
+      ? budget(
+          readContract(publicClient(base.id), {
+            address: SOBTC_ADDRESSES.base.accountant,
+            abi: ACCOUNTANT_ABI,
+            functionName: 'getRate',
+          }),
+        )
       : Promise.reject(new Error('soBTC is not configured in this build')),
     isSoBtcConfigured
-      ? fetchBtcPriceUsd()
+      ? budget(fetchBtcPriceUsd())
       : Promise.reject(new Error('soBTC is not configured in this build')),
   ]);
 
@@ -764,10 +796,12 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     ...optimismTokens,
   ];
 
+  const readsDoneAt = Date.now();
+
   // Fallback 1: Alchemy Prices by contract address. Alchemy's token balances
   // carry no exchange rate (only Blockscout's do), so every ERC-20 on an
-  // Alchemy-served chain lands here at 0. Runs ahead of the coin-id and symbol
-  // lookups below because an address names a token exactly, and needs no
+  // Alchemy-served chain lands here at 0. Its answer wins over the coin-id and
+  // symbol lookups below because an address names a token exactly, and needs no
   // swaptokens entry to resolve — a token missing from the curated list still
   // gets a price.
   const addressPriceTokens = allTokens.filter(
@@ -777,53 +811,57 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
       t.contractAddress &&
       !isUnderlyingPricedShare(t.contractAddress),
   );
-  if (addressPriceTokens.length > 0) {
-    try {
-      const priceByAddress = await fetchTokenPricesByAddress(
-        addressPriceTokens.map(t => ({ chainId: t.chainId, address: t.contractAddress })),
-      );
-      allTokens = allTokens.map(t => {
-        if (
-          !isZeroRate(t.quoteRate) ||
-          t.type === TokenType.NATIVE ||
-          isUnderlyingPricedShare(t.contractAddress)
-        )
-          return t;
-        const usd = priceByAddress[`${t.chainId}:${t.contractAddress?.toLowerCase()}`];
-        if (usd != null && usd > 0) return { ...t, quoteRate: usd };
-        return t;
-      });
-    } catch (e) {
-      console.warn('Alchemy by-address price lookup failed:', e);
-    }
-  }
-
   // Fallback 2: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for
-  // native), from the backend's shared cache: the app holds no CoinGecko key.
-  const zeroRateTokens = allTokens.filter(
-    t => isZeroRate(t.quoteRate) && !isUnderlyingPricedShare(t.contractAddress),
-  );
+  // native), from the backend's shared cache: the app holds no CoinGecko key. Asked
+  // alongside the address lookup rather than after it, so a token neither prices
+  // costs one round trip instead of two; the address price still wins where both answer.
   const coinIds = [
     ...new Set(
-      zeroRateTokens
+      allTokens
+        .filter(t => isZeroRate(t.quoteRate) && !isUnderlyingPricedShare(t.contractAddress))
         .map(t => (t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId))
         .filter((id): id is string => !!id),
     ),
   ];
-  if (coinIds.length > 0) {
-    try {
-      const priceById = await fetchCoinPricesById(coinIds);
-      allTokens = allTokens.map(t => {
-        if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
-        const id = t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
-        const usd = id ? priceById[id] : undefined;
-        if (usd != null && usd > 0) return { ...t, quoteRate: usd };
-        return t;
-      });
-    } catch (e) {
-      console.warn('CoinGecko fallback price failed:', e);
-    }
-  }
+  const noPrices: Record<string, number> = {};
+  const [priceByAddress, priceById] = await Promise.all([
+    addressPriceTokens.length > 0
+      ? withinBudgetOr(
+          fetchTokenPricesByAddress(
+            addressPriceTokens.map(t => ({ chainId: t.chainId, address: t.contractAddress })),
+          ),
+          PRICING_BUDGET_MS,
+          noPrices,
+        ).catch(e => {
+          console.warn('Alchemy by-address price lookup failed:', e);
+          return noPrices;
+        })
+      : noPrices,
+    coinIds.length > 0
+      ? withinBudgetOr(fetchCoinPricesById(coinIds), PRICING_BUDGET_MS, noPrices).catch(e => {
+          console.warn('CoinGecko fallback price failed:', e);
+          return noPrices;
+        })
+      : noPrices,
+  ]);
+  allTokens = allTokens.map(t => {
+    if (
+      !isZeroRate(t.quoteRate) ||
+      t.type === TokenType.NATIVE ||
+      isUnderlyingPricedShare(t.contractAddress)
+    )
+      return t;
+    const usd = priceByAddress[`${t.chainId}:${t.contractAddress?.toLowerCase()}`];
+    if (usd != null && usd > 0) return { ...t, quoteRate: usd };
+    return t;
+  });
+  allTokens = allTokens.map(t => {
+    if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
+    const id = t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
+    const usd = id ? priceById[id] : undefined;
+    if (usd != null && usd > 0) return { ...t, quoteRate: usd };
+    return t;
+  });
 
   // Fallback 3: Alchemy by symbol for tokens still at 0 (no tokenId). One
   // request carries up to 25 symbols; this used to be a request per symbol.
@@ -835,7 +873,11 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
   );
   const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
   if (symbolsToFetch.length > 0) {
-    const symbolToPrice = await fetchTokenPricesBySymbol(symbolsToFetch);
+    const symbolToPrice = await withinBudgetOr(
+      fetchTokenPricesBySymbol(symbolsToFetch),
+      SYMBOL_PRICING_BUDGET_MS,
+      noPrices,
+    );
     allTokens = allTokens.map(t => {
       if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
       const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
@@ -843,6 +885,8 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
       return t;
     });
   }
+
+  const pricingDoneAt = Date.now();
 
   // Prices read this poll are stamped now. A carried chain's rows still hold the price of the
   // read they came from, so they keep that read's stamp.
@@ -980,32 +1024,53 @@ const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalanc
     if (response.status === PromiseStatus.FULFILLED) chainReadAt[chainId] = now;
   }
 
+  const failedChainIds = Array.from(
+    new Set(
+      [
+        [BASE_CHAIN_ID, baseResponse],
+        [ETHEREUM_CHAIN_ID, ethereumResponse],
+        [FUSE_CHAIN_ID, fuseResponse],
+        [POLYGON_CHAIN_ID, polygonResponse],
+        [ARBITRUM_CHAIN_ID, arbitrumResponse],
+        [BSC_CHAIN_ID, bscResponse],
+        [OPTIMISM_CHAIN_ID, optimismResponse],
+        [ETHEREUM_CHAIN_ID, ethBalance],
+        [FUSE_CHAIN_ID, fuseBalance],
+        [BASE_CHAIN_ID, baseBalance],
+        [ARBITRUM_CHAIN_ID, arbitrumBalance],
+        [BSC_CHAIN_ID, bscBalance],
+        [POLYGON_CHAIN_ID, polygonBalance],
+        [OPTIMISM_CHAIN_ID, optimismBalance],
+      ]
+        .filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
+        .map(([chainId]) => chainId as number),
+    ),
+  );
+
+  // Where the time went, for launch/resume timing and the slow-read report (lib/telemetry).
+  const slowestChain = Object.entries(chainReadMs).sort(([, a], [, b]) => b - a)[0];
+  noteTokenFetchTiming({
+    totalMs: elapsed(startedAt),
+    readsMs: readsDoneAt - startedAt,
+    pricingMs: pricingDoneAt - readsDoneAt,
+    tokenCount: allTokens.length,
+    unpricedCount: allTokens.filter(
+      t =>
+        isZeroRate(t.quoteRate) &&
+        !isUnderlyingPricedShare(t.contractAddress) &&
+        Number(t.balance) > 0,
+    ).length,
+    timedOutReads,
+    failedChains: failedChainIds,
+    slowestChain: slowestChain ? Number(slowestChain[0]) : undefined,
+    slowestChainMs: slowestChain?.[1],
+  });
+
   return {
     ...totals,
     chainReadAt,
     priceReadAt,
-    failedChainIds: Array.from(
-      new Set(
-        [
-          [BASE_CHAIN_ID, baseResponse],
-          [ETHEREUM_CHAIN_ID, ethereumResponse],
-          [FUSE_CHAIN_ID, fuseResponse],
-          [POLYGON_CHAIN_ID, polygonResponse],
-          [ARBITRUM_CHAIN_ID, arbitrumResponse],
-          [BSC_CHAIN_ID, bscResponse],
-          [OPTIMISM_CHAIN_ID, optimismResponse],
-          [ETHEREUM_CHAIN_ID, ethBalance],
-          [FUSE_CHAIN_ID, fuseBalance],
-          [BASE_CHAIN_ID, baseBalance],
-          [ARBITRUM_CHAIN_ID, arbitrumBalance],
-          [BSC_CHAIN_ID, bscBalance],
-          [POLYGON_CHAIN_ID, polygonBalance],
-          [OPTIMISM_CHAIN_ID, optimismBalance],
-        ]
-          .filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
-          .map(([chainId]) => chainId as number),
-      ),
-    ),
+    failedChainIds,
     ethereumTokens: ethereumTokensFinal,
     fuseTokens: fuseTokensFinal,
     polygonTokens: polygonTokensFinal,

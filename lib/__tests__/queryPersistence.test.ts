@@ -3,9 +3,11 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 
 import {
+  getQueryCacheRestoreInfo,
   isPersistedQueryKey,
   persistQueryCache,
   QUERY_CACHE_VERSION,
+  QUERY_FAMILY_VERSIONS,
   restoreQueryCache,
 } from '@/lib/queryPersistence';
 import { useUserStore } from '@/store/useUserStore';
@@ -90,6 +92,8 @@ describe('isPersistedQueryKey', () => {
     expect(isPersistedQueryKey(['analytics', 'apys'])).toBe(true);
     expect(isPersistedQueryKey(['rewards', 'userData', 'u1'])).toBe(true);
     expect(isPersistedQueryKey(['cardSpendDeployments', 'u1'])).toBe(true);
+    // Gates the savings total of every soBTC holder.
+    expect(isPersistedQueryKey(['btcPriceUsd'])).toBe(true);
 
     expect(isPersistedQueryKey(['vault', 'balanceSoFuseWei', SAFE])).toBe(false);
     expect(isPersistedQueryKey(['analytics', 'historicalAPY', '7', 'usdc'])).toBe(false);
@@ -174,15 +178,64 @@ describe('persist then restore', () => {
 
     mockDisk.set(DISK_KEY, JSON.stringify({ ...stored, version: QUERY_CACHE_VERSION + 1 }));
     expect(restoreQueryCache(newClient())).toBe(0);
+    expect(getQueryCacheRestoreInfo().outcome).toBe('cache_version');
 
     mockDisk.set(DISK_KEY, JSON.stringify({ ...stored, appVersion: '2.0.1' }));
     expect(restoreQueryCache(newClient())).toBe(0);
+    expect(getQueryCacheRestoreInfo().outcome).toBe('app_version');
+  });
+
+  it('drops only the family whose data version changed, and keeps the rest', () => {
+    writeSession();
+    const stored = JSON.parse(mockDisk.get(DISK_KEY)!);
+    expect(stored.families).toEqual({ tokenBalances: 1, vault: 1, cardDetails: 1, cardStatus: 1 });
+
+    // Written under an older tokenBalances shape.
+    mockDisk.set(
+      DISK_KEY,
+      JSON.stringify({ ...stored, families: { ...stored.families, tokenBalances: 0 } }),
+    );
+    const restored = newClient();
+    expect(restoreQueryCache(restored)).toBe(3);
+    expect(restored.getQueryData(['tokenBalances', SAFE])).toBeUndefined();
+    expect(restored.getQueryData(['vault', 'balance', SAFE, 'USDC'])).toBe(100);
+    expect(getQueryCacheRestoreInfo()).toMatchObject({
+      outcome: 'restored',
+      restored: 3,
+      droppedFamilies: ['tokenBalances'],
+    });
+  });
+
+  it('reads a cache written before family versions existed as the versions of that time', () => {
+    writeSession();
+    const { families: _families, ...legacy } = JSON.parse(mockDisk.get(DISK_KEY)!);
+    mockDisk.set(DISK_KEY, JSON.stringify(legacy));
+
+    expect(QUERY_FAMILY_VERSIONS.tierMembership).toBe(2);
+    expect(restoreQueryCache(newClient())).toBe(4);
+    expect(getQueryCacheRestoreInfo().droppedFamilies).toEqual([]);
+  });
+
+  it('reports why nothing was restored', () => {
+    signIn('u1');
+    expect(restoreQueryCache(newClient())).toBe(0);
+    expect(getQueryCacheRestoreInfo().outcome).toBe('empty');
+
+    // Stopped first, so the switch below doesn't wipe the copy on its own.
+    writeSession('u1').stop();
+    signIn('u2');
+    restoreQueryCache(newClient());
+    expect(getQueryCacheRestoreInfo().outcome).toBe('other_user');
   });
 
   it('drops data older than a week', () => {
     writeSession();
     jest.setSystemTime(Date.now() + 8 * 24 * 60 * 60 * 1000);
     expect(restoreQueryCache(newClient())).toBe(0);
+    expect(getQueryCacheRestoreInfo()).toMatchObject({
+      outcome: 'nothing_usable',
+      droppedExpired: 4,
+    });
   });
 
   it('drops a balances entry the screens could not read', () => {

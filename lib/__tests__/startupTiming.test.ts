@@ -5,6 +5,8 @@ import { QueryClient } from '@tanstack/react-query';
 import { buildStartupTimingPayload, collectResolvedQueries } from '@/lib/startupTiming';
 
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/lib/telemetry/perfReporter', () => ({ reportPerfSample: jest.fn() }));
+jest.mock('@/lib/homeLoadTiming', () => ({ takeStartupLoadDetails: jest.fn() }));
 jest.mock('@/lib/mmvkStorage', () => () => ({
   getItem: () => null,
   setItem: () => {},
@@ -88,6 +90,104 @@ describe('buildStartupTimingPayload', () => {
     expect(payload.total_to_home_ready_ms).toBeUndefined();
     expect(payload.splash_to_home_ready_ms).toBe(1_000);
     expect(payload.backgrounded_during_startup).toBe(true);
+  });
+});
+
+describe('buildStartupTimingPayload across clocks', () => {
+  it('drops spans that crossed clocks instead of reporting a days-long launch', () => {
+    // iOS: the native start times are on another base than performance.now().
+    const payload = buildStartupTimingPayload({
+      marks: { firstLayout: 334_308_000, splashHidden: 334_308_100, homeContentReady: 334_326_800 },
+      native: { startTime: 0, executeJavaScriptBundleEntryPointStart: 0 },
+      queries: [],
+      launchKind: 'cold',
+      backgrounded: true,
+      isWeb: false,
+      jsStart: 334_300_000,
+      firstActive: 334_307_900,
+      startedInBackground: true,
+    });
+
+    expect(payload.total_to_home_ready_ms).toBeUndefined();
+    expect(payload.js_to_first_layout_ms).toBeUndefined();
+    expect(payload.native_timing_invalid).toBe(true);
+    // Same-clock spans are kept.
+    expect(payload.splash_to_home_ready_ms).toBe(18_700);
+    expect(payload.js_to_home_ready_ms).toBe(26_800);
+    expect(payload.visible_to_home_ready_ms).toBe(18_900);
+    expect(payload.started_in_background).toBe(true);
+  });
+
+  it('counts the visible wait as 0 when balances were ready before the app came to the front', () => {
+    const payload = buildStartupTimingPayload({
+      marks: { splashHidden: 100, homeContentReady: 900 },
+      native: null,
+      queries: [],
+      launchKind: 'cold',
+      backgrounded: false,
+      isWeb: false,
+      jsStart: 0,
+      firstActive: 5_000,
+    });
+    expect(payload.visible_to_home_ready_ms).toBe(0);
+  });
+
+  it('reports why the cache was or was not restored, and what the launch waited on', () => {
+    const payload = buildStartupTimingPayload({
+      marks: { splashHidden: 1_000, homeContentReady: 49_100 },
+      native: null,
+      queries: [],
+      launchKind: 'cold',
+      backgrounded: false,
+      isWeb: false,
+      jsStart: 0,
+      cacheInfo: {
+        outcome: 'restored',
+        restored: 26,
+        droppedFamilies: ['tierMembership'],
+        droppedExpired: 0,
+        newestAgeMs: 3_600_000,
+      },
+      load: {
+        skeletonShown: false,
+        snapshotShown: true,
+        snapshotAgeMs: 3_600_000,
+        gateWaits: [
+          { gate: 'tokens', ms: 48_100 },
+          { gate: 'card', ms: 900 },
+        ],
+        slowestGate: 'tokens',
+        slowQueries: [{ key: 'tokenBalances', ms: 47_000, failed: false }],
+        tokenFetch: {
+          totalMs: 47_000,
+          readsMs: 40_000,
+          pricingMs: 7_000,
+          tokenCount: 28,
+          unpricedCount: 2,
+          timedOutReads: 1,
+          failedChains: [137],
+          slowestChain: 8453,
+          slowestChainMs: 15_000,
+        },
+        authRefreshMs: 140,
+        startedAt: 0,
+      },
+      updateId: 'abc-123',
+    });
+
+    expect(payload).toMatchObject({
+      cache_outcome: 'restored',
+      cache_dropped_families: 'tierMembership',
+      snapshot_shown: true,
+      skeleton_shown: false,
+      slowest_gate: 'tokens',
+      gate_waits: { tokens: 48_100, card: 900 },
+      slow_queries: 'tokenBalances:47000',
+      token_fetch_ms: 47_000,
+      token_failed_chains: '137',
+      auth_refresh_ms: 140,
+      update_id: 'abc-123',
+    });
   });
 });
 

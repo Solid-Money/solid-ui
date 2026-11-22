@@ -14,6 +14,8 @@ import {
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
 } from '@/lib/config';
 import { readAccountSuspended } from '@/lib/errors/accountSuspended';
+import { noteAuthRefresh } from '@/lib/telemetry/authTiming';
+import { perfNow } from '@/lib/telemetry/perfClock';
 import { AuthTokens, CardProvider, CardResponse, RainContractResponseDto, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -216,6 +218,7 @@ export const refreshSessionTokens = async (): Promise<void> => {
     const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
     // Read in the same tick as refreshToken() reads the token it sends.
     const sender = isNative ? refreshingAccount() : null;
+    const startedAt = perfNow();
     refreshTokenPromise = refreshToken()
       .then(async response => {
         const data: { tokens: AuthTokens } = await response.json();
@@ -231,6 +234,11 @@ export const refreshSessionTokens = async (): Promise<void> => {
       .finally(() => {
         refreshTokenPromise = null;
       });
+    // How long launches and returns to the app waited on the session (lib/homeLoadTiming).
+    refreshTokenPromise.then(
+      () => noteAuthRefresh(startedAt, true),
+      () => noteAuthRefresh(startedAt, false),
+    );
   } else {
     console.warn('[TokenRefresh] Reusing in-flight token refresh');
   }

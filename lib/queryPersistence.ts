@@ -24,18 +24,43 @@ import type {
  * thrown away when it was written for another user, by another app version or
  * {@link QUERY_CACHE_VERSION}, or is older than {@link MAX_AGE_MS}, and is wiped
  * as soon as the selected account changes or the in-memory cache is cleared
- * (every sign-out and account switch calls `queryClient.clear()`).
+ * (every sign-out and account switch calls `queryClient.clear()`). A query
+ * family whose {@link QUERY_FAMILY_VERSIONS} entry changed is dropped on its own.
  */
 
 /**
- * Bump when the data a persisted query returns changes shape in a way the
- * screens reading it can't handle, so older cached copies are dropped instead
- * of rendered.
+ * The version of the envelope itself ({@link PersistedCache}). Bump only when
+ * that changes shape: it drops every family at once, and a launch with nothing
+ * restored is the one that sits on skeletons while a dozen sources are fetched.
+ * When one query's data changes shape, bump that family in
+ * {@link QUERY_FAMILY_VERSIONS} instead.
  *
- * 2: `tierMembership` is fetched with `?paymentModes=transfer` and its offers
- * carry the first-year price and payment mode.
+ * 2: written before family versions existed; such a cache is read with
+ * {@link LEGACY_FAMILY_VERSIONS}.
  */
 export const QUERY_CACHE_VERSION = 2;
+
+/**
+ * Bump a family when the data its query returns changes shape in a way the
+ * screens reading it can't handle: only that family's cached copy is dropped,
+ * and every other figure still draws on the first frame. A family not listed
+ * here is version 1.
+ *
+ * tierMembership 2: fetched with `?paymentModes=transfer`; its offers carry the
+ * first-year price and payment mode.
+ */
+export const QUERY_FAMILY_VERSIONS: Readonly<Record<string, number>> = {
+  tierMembership: 2,
+};
+
+/**
+ * What a cache written before family versions existed holds: the global
+ * version 2 meant `tierMembership` 2 and every other family 1.
+ */
+const LEGACY_FAMILY_VERSIONS: Readonly<Record<string, number>> = { tierMembership: 2 };
+
+const familyVersion = (family: string, versions: Readonly<Record<string, number>>) =>
+  versions[family] ?? 1;
 
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // Polled queries succeed every few seconds; batch their writes.
@@ -56,6 +81,9 @@ const PERSISTED_QUERIES: Record<string, (queryKey: QueryKey) => boolean> = {
   vaultExchangeRate: () => true,
   fusePriceUsd: () => true,
   ethPriceUsd: () => true,
+  // Gates the savings total for anyone holding soBTC; without it every launch of theirs
+  // waited on a BTC price lookup before showing a balance.
+  btcPriceUsd: () => true,
   tierMembership: () => true,
   portfolioCustody: () => true,
   cardStatus: () => true,
@@ -111,7 +139,34 @@ type PersistedCache = {
   version: number;
   appVersion: string;
   userId: string;
+  /** The {@link QUERY_FAMILY_VERSIONS} each written family was written under. */
+  families?: Record<string, number>;
   state: DehydratedState;
+};
+
+/**
+ * Why the last {@link restoreQueryCache} restored what it did. Reported with the
+ * launch timing: a launch with nothing restored is the one that shows skeletons.
+ */
+export type QueryCacheRestoreOutcome =
+  | 'restored'
+  | 'empty'
+  | 'cache_version'
+  | 'app_version'
+  | 'no_user'
+  | 'other_user'
+  | 'unreadable'
+  | 'nothing_usable';
+
+export type QueryCacheRestoreInfo = {
+  outcome: QueryCacheRestoreOutcome;
+  restored: number;
+  /** Families left out because their data version changed since they were written. */
+  droppedFamilies: string[];
+  /** Queries left out because they were older than a week. */
+  droppedExpired: number;
+  /** Age of the newest restored query, in ms. */
+  newestAgeMs?: number;
 };
 
 // JSON has no bigint. None of the persisted queries should hold one, but a
@@ -184,9 +239,21 @@ export const clearPersistedQueryCacheOnFatalError = () => {
 };
 
 let restoredQueryCount = 0;
+let restoreInfo: QueryCacheRestoreInfo = {
+  outcome: 'empty',
+  restored: 0,
+  droppedFamilies: [],
+  droppedExpired: 0,
+};
 
 /** How many queries the last {@link restoreQueryCache} put back; reported with startup timing. */
 export const getRestoredQueryCount = () => restoredQueryCount;
+
+/** What the last {@link restoreQueryCache} did, and why; reported with startup timing. */
+export const getQueryCacheRestoreInfo = (): QueryCacheRestoreInfo => restoreInfo;
+
+const familyOf = (queryKey: QueryKey) =>
+  typeof queryKey[0] === 'string' ? queryKey[0] : undefined;
 
 /**
  * Put the persisted queries back into the cache. Synchronous (MMKV), so it runs
@@ -194,42 +261,70 @@ export const getRestoredQueryCount = () => restoredQueryCount;
  */
 export const restoreQueryCache = (queryClient: QueryClient): number => {
   restoredQueryCount = 0;
+  const finish = (outcome: QueryCacheRestoreOutcome, extra?: Partial<QueryCacheRestoreInfo>) => {
+    restoreInfo = { outcome, restored: 0, droppedFamilies: [], droppedExpired: 0, ...extra };
+    return restoreInfo.restored;
+  };
   try {
     const raw = getStorage()?.getItem(STORAGE_KEY);
-    if (!raw) return 0;
+    if (!raw) return finish('empty');
 
     const cache = JSON.parse(raw, reviver) as PersistedCache;
     const userId = selectedUserId();
-    if (
-      cache?.version !== QUERY_CACHE_VERSION ||
-      cache.appVersion !== appVersion() ||
-      !userId ||
-      cache.userId !== userId ||
-      !Array.isArray(cache.state?.queries)
-    ) {
+    const rejected: QueryCacheRestoreOutcome | null =
+      cache?.version !== QUERY_CACHE_VERSION
+        ? 'cache_version'
+        : cache.appVersion !== appVersion()
+          ? 'app_version'
+          : !userId
+            ? 'no_user'
+            : cache.userId !== userId
+              ? 'other_user'
+              : !Array.isArray(cache.state?.queries)
+                ? 'unreadable'
+                : null;
+    if (rejected) {
       removePersisted();
-      return 0;
+      return finish(rejected);
     }
 
     const now = Date.now();
+    const writtenUnder = cache.families ?? LEGACY_FAMILY_VERSIONS;
+    const droppedFamilies = new Set<string>();
+    let droppedExpired = 0;
     const queries = cache.state.queries
-      .filter(
-        query =>
-          isPersistedQueryKey(query.queryKey) &&
-          query.state.status === 'success' &&
-          now - query.state.dataUpdatedAt < MAX_AGE_MS &&
-          isReadable(query.queryKey, query.state.data),
-      )
+      .filter(query => {
+        const family = familyOf(query.queryKey);
+        if (!family || !isPersistedQueryKey(query.queryKey)) return false;
+        if (familyVersion(family, writtenUnder) !== familyVersion(family, QUERY_FAMILY_VERSIONS)) {
+          droppedFamilies.add(family);
+          return false;
+        }
+        if (now - query.state.dataUpdatedAt >= MAX_AGE_MS) {
+          droppedExpired += 1;
+          return false;
+        }
+        return query.state.status === 'success' && isReadable(query.queryKey, query.state.data);
+      })
       // Stale on arrival: whatever reads it fetches the live value straight away.
       .map(query => ({ ...query, state: { ...query.state, isInvalidated: true } }));
 
     hydrate(queryClient, { mutations: [], queries });
     restoredQueryCount = queries.length;
-    return queries.length;
+    const newest = queries.reduce(
+      (latest, query) => Math.max(latest, query.state.dataUpdatedAt),
+      0,
+    );
+    return finish(queries.length > 0 ? 'restored' : 'nothing_usable', {
+      restored: queries.length,
+      droppedFamilies: [...droppedFamilies],
+      droppedExpired,
+      newestAgeMs: newest > 0 ? Math.max(0, now - newest) : undefined,
+    });
   } catch (error) {
     console.warn('Discarding unreadable query cache:', error);
     removePersisted();
-    return 0;
+    return finish('unreadable');
   }
 };
 
@@ -273,10 +368,17 @@ export const persistQueryCache = (queryClient: QueryClient): (() => void) => {
       writtenData.clear();
       state.queries.forEach(query => writtenData.set(query.queryHash, query.state.data));
 
+      const families: Record<string, number> = {};
+      state.queries.forEach(query => {
+        const family = familyOf(query.queryKey);
+        if (family) families[family] = familyVersion(family, QUERY_FAMILY_VERSIONS);
+      });
+
       const cache: PersistedCache = {
         version: QUERY_CACHE_VERSION,
         appVersion: appVersion(),
         userId,
+        families,
         state: {
           mutations: [],
           queries: state.queries.map(query => ({

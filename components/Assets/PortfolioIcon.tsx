@@ -25,6 +25,7 @@ export default function PortfolioIcon({
   locked = false,
   token,
   symbol,
+  logoUrl,
 }: {
   kind?: PortfolioIconKind;
   locked?: boolean;
@@ -32,6 +33,8 @@ export default function PortfolioIcon({
   token?: TokenBalance;
   /** A logo by symbol alone, for holdings with no wallet token (escrowed shares, the lock). */
   symbol?: string;
+  /** With `symbol`: the token's logo, when there is no wallet token to read it from. */
+  logoUrl?: string;
 }) {
   return (
     <View style={{ width: 40.7692, height: 40 }}>
@@ -59,7 +62,7 @@ export default function PortfolioIcon({
       ) : token || symbol ? (
         <RenderTokenIcon
           tokenIcon={getTokenIcon({
-            logoUrl: token?.logoUrl,
+            logoUrl: token?.logoUrl ?? logoUrl,
             tokenSymbol: token?.contractTickerSymbol ?? symbol,
             size: 40,
           })}
