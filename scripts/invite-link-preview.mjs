@@ -31,7 +31,11 @@ function setMeta(html, key, value) {
 
 /** The invite page's HTML with its own title, description and image. */
 export function withInvitePreview(html, preview = INVITE_PREVIEW) {
-  let out = html.replace(/<title>[^<]*<\/title>/g, `<title>${escape(preview.title)}</title>`);
+  // The page title comes from expo-router's Head, empty in the exported file
+  // (`<title data-rh="true"></title>`) and filled in once the app runs.
+  const title = /(<title\b[^>]*>)[^<]*(<\/title>)/g;
+  if (!title.test(html)) throw new Error('invite link preview: no <title>');
+  let out = html.replace(title, `$1${escape(preview.title)}$2`);
   out = setMeta(out, 'description', preview.description);
   for (const key of ['og:title', 'twitter:title']) out = setMeta(out, key, preview.title);
   for (const key of ['og:description', 'twitter:description']) {

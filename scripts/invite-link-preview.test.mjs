@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { INVITE_PREVIEW, patchInvitePreview, withInvitePreview } from './invite-link-preview.mjs';
 
 // The head as app/+html.tsx and the root layout render it.
-const SITE_HEAD = `<html><head><title>Solid - The Savings Super-App</title>
+const SITE_HEAD = `<html><head><title data-rh="true"></title>
 <meta name="description" content="Solid is the savings super-app"/>
 <meta property="og:title" content="Solid - The Savings Super-App"/>
 <meta property="og:description" content="Solid is a yield-bearing account"/>
@@ -21,7 +21,7 @@ const SITE_HEAD = `<html><head><title>Solid - The Savings Super-App</title>
 
 test('the invite page gets its own title, description and image', () => {
   const html = withInvitePreview(SITE_HEAD);
-  assert.match(html, /<title>You're invited to Solid<\/title>/);
+  assert.match(html, /<title data-rh="true">You're invited to Solid<\/title>/);
   assert.match(html, /property="og:title" content="You're invited to Solid"/);
   assert.match(html, /name="twitter:title" content="You're invited to Solid"/);
   for (const key of ['description', 'og:description', 'twitter:description']) {
@@ -33,7 +33,11 @@ test('the invite page gets its own title, description and image', () => {
 });
 
 test('a missing tag fails the build instead of shipping the old preview', () => {
-  assert.throws(() => withInvitePreview('<html><head></head></html>'), /no <meta>/);
+  assert.throws(() => withInvitePreview('<html><head></head></html>'), /no <title>/);
+  const noTitle = SITE_HEAD.replace('<title data-rh="true"></title>', '');
+  assert.throws(() => withInvitePreview(noTitle), /no <title>/);
+  const noImage = SITE_HEAD.replace(/<meta property="og:image"[^>]*>/, '');
+  assert.throws(() => withInvitePreview(noImage), /no <meta> for og:image/);
 });
 
 test('only the invite page is rewritten, and nothing happens without it', () => {
