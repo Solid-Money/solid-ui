@@ -58,6 +58,11 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.BANK_WITHDRAWAL,
   },
+  // Shown like a Wirex bank deposit: money in, from outside Solid.
+  [TransactionType.WIREX_WALLET_TOPUP]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.BANK_DEPOSIT,
+  },
   [TransactionType.CASH_OUT]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.BANK_WITHDRAWAL,

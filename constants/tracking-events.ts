@@ -285,6 +285,31 @@ export const TRACKING_EVENTS = {
   ORCHESTRA_ERROR_VIEWED: 'orchestra_error_viewed',
   ORCHESTRA_ERROR_ACTION_PRESSED: 'orchestra_error_action_pressed',
 
+  // Deposit Method: Apple Pay / Google Pay top-up through Wirex's hosted checkout.
+  // `source` says which row it came from (`deposit` or `card_fund`); never the
+  // checkout token.
+  /** The row was offered: the backend and the device both said yes. */
+  WALLET_TOPUP_ROW_VIEWED: 'wallet_topup_row_viewed',
+  WALLET_TOPUP_AMOUNT_SUBMITTED: 'wallet_topup_amount_submitted',
+  /** `during`: `amount` (Continue) or `refresh` (re-arming an expired quote). */
+  WALLET_TOPUP_QUOTE_FAILED: 'wallet_topup_quote_failed',
+  /** A quote ran out on screen, or was refused at execute, and a fresh one armed the checkout. */
+  WALLET_TOPUP_QUOTE_REFRESHED: 'wallet_topup_quote_refreshed',
+  /** Wirex's checkout did not load; `kind` says how. */
+  WALLET_TOPUP_CHECKOUT_FAILED: 'wallet_topup_checkout_failed',
+  WALLET_TOPUP_SHEET_OPENED: 'wallet_topup_sheet_opened',
+  WALLET_TOPUP_CANCELLED: 'wallet_topup_cancelled',
+  /** The sheet opened but produced nothing; `reason` is Wirex's slug. */
+  WALLET_TOPUP_ATTEMPT_FAILED: 'wallet_topup_attempt_failed',
+  /** Desktop web: the QR handed the payment to a phone. */
+  WALLET_TOPUP_HANDOFF_STARTED: 'wallet_topup_handoff_started',
+  WALLET_TOPUP_EXECUTED: 'wallet_topup_executed',
+  /** `reason` is Wirex's slug; `action` is what the app did about it. */
+  WALLET_TOPUP_EXECUTE_FAILED: 'wallet_topup_execute_failed',
+  WALLET_TOPUP_COMPLETED: 'wallet_topup_completed',
+  /** Fired for failed, expired and held-for-review alike; `status` says which. */
+  WALLET_TOPUP_FAILED: 'wallet_topup_failed',
+
   // Deposit Bonus Banner Events
   DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',
   DEPOSIT_BONUS_BANNER_INFLUENCED: 'deposit_bonus_banner_influenced',

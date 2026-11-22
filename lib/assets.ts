@@ -745,7 +745,7 @@ export const ASSETS = {
   'images/gnosis.png': { module: require('@/assets/images/gnosis.png'), hash: '45d981b5' },
   'images/google-pay-circle.tsx': {
     module: require('@/assets/images/google-pay-circle.tsx'),
-    hash: 'c87a29c8',
+    hash: '315b524b',
   },
   'images/google_pay.png': { module: require('@/assets/images/google_pay.png'), hash: '78c91f8f' },
   'images/gray_onboarding_bg.png': {

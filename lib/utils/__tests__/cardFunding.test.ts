@@ -211,6 +211,12 @@ describe('card fund sections', () => {
     expect(WIREX_CARD_FUND_SECTIONS.externalWallet).toBe(false);
   });
 
+  it('offers the Apple Pay / Google Pay top-up to Wirex cards only', () => {
+    // It pays into the Safe, which a Wirex card spends from and a Rain card does not.
+    expect(WIREX_CARD_FUND_SECTIONS.walletTopUp).toBe(true);
+    expect(RAIN_CARD_FUND_SECTIONS.walletTopUp).toBe(false);
+  });
+
   it('does not promise Wirex cardholders they can move savings', () => {
     // A Wirex card settles from soUSD on Fuse directly, so savings is already
     // spendable — there is nothing there to move, and saying otherwise sends the

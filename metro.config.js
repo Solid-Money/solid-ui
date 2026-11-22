@@ -24,7 +24,10 @@ config.resolver = {
     events: 'events',
   },
   resolveRequest: (context, moduleName, platform) => {
-    // Block browser-specific modules when building for native platforms
+    // Block browser-specific modules when building for native platforms.
+    // Wirex's web checkout is only imported from `.web` files (the apps use
+    // @wirexapp/mobile-sdk); this keeps a stray import from bundling an iframe
+    // SDK into the app.
     if (
       platform !== 'web' &&
       (moduleName === '@turnkey/sdk-browser' ||
@@ -32,7 +35,9 @@ config.resolver = {
         moduleName === 'hpke-js' ||
         moduleName === 'ws' ||
         moduleName === 'react-use-intercom' ||
-        moduleName === 'recharts')
+        moduleName === 'recharts' ||
+        moduleName === '@wirexapp/card-wallet-topup-web' ||
+        moduleName === '@wirexapp/card-sdk-core')
     ) {
       // Return an empty module for these packages on native platforms
       return {

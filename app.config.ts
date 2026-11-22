@@ -309,6 +309,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     ['@didit-protocol/sdk-react-native'],
+    // Wirex's Apple Pay / Google Pay checkout (wallet top-up). Adds the Android
+    // `<queries>` Google Pay needs on Android 11+, and raises the iOS deployment
+    // target and Android minSdk only where they are below the SDK's — ours (iOS
+    // 16, minSdk 26, from expo-build-properties above) are already higher. A
+    // native module: shipping it takes a store build, not an update.
+    '@wirexapp/mobile-sdk',
     // MeaWallet MPP: bundle mea_config (add meawallet/mea_config from MeaWallet for MPP)
     ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
     ['./meawallet/configIos.js', { meaConfig: 'meawallet/mea_config' }],
