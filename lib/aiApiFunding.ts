@@ -1,6 +1,6 @@
-import { arbitrum, base, bsc, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, mainnet, optimism, polygon } from 'viem/chains';
 
-import { getRhinoChainsForDestination } from '@/lib/rhinoDeposit';
+import { getRhinoChainsForDestination, isRhinoExtraChain } from '@/lib/rhinoDeposit';
 
 import type { RhinoDepositAssetsResponse, RhinoDestinationType } from '@/lib/types';
 
@@ -31,18 +31,30 @@ export const AI_API_RHINO_DESTINATION: RhinoDestinationType = 'AI_API';
 export const AI_API_FUND_TOKENS: readonly string[] = ['USDC', 'USDT', 'ETH', 'BTC'];
 
 /**
- * The app's own networks the AI API's address step lists, in the wallet's
- * order. Not Fuse: rhino.fi does not take it, and money on Fuse cannot pay for
- * the AI API (the swap moves it). The chains rhino.fi serves that the app has
- * no row for (Tron, Solana, Bitcoin, …) follow these, as "More networks".
+ * The app's own networks the AI API's address step lists, in the app's order:
+ * every one of them but Fuse. Optimism included, which the wallet only holds
+ * tokens on: as one of the app's own networks it is never under "More
+ * networks", so without a row of its own here its route could not be picked.
+ * Not Fuse: rhino.fi does not take it, and money on Fuse cannot pay for the AI
+ * API (the swap moves it). The chains rhino.fi serves that the app has no row
+ * for (Tron, Solana, Bitcoin, …) follow these, as "More networks".
  */
 export const AI_API_FUND_CHAIN_IDS: readonly number[] = [
   mainnet.id,
   polygon.id,
   base.id,
   arbitrum.id,
+  optimism.id,
   bsc.id,
 ];
+
+/**
+ * Whether the AI API's address step can show a rhino.fi chain: as one of its
+ * own rows (`AI_API_FUND_CHAIN_IDS`), or under "More networks".
+ */
+const isAiApiFundChain = (chain: { chain: string; chainId?: number }): boolean =>
+  (chain.chainId !== undefined && AI_API_FUND_CHAIN_IDS.includes(chain.chainId)) ||
+  isRhinoExtraChain(chain);
 
 /**
  * Whether one of those networks may be served by our own address instead of
@@ -57,8 +69,9 @@ export const isAiApiOwnRow = (chainId: number, symbol: string): boolean =>
 /**
  * The networks a token row names: the first two, then a "+N" for the rest, so
  * the row stays one line. Every chain rhino.fi's AI API route takes the token
- * from, Base's own USDC row included, by the app's own name for it where it
- * has one.
+ * from that the next step shows (`isAiApiFundChain`), Base's own USDC row
+ * included, by the app's own name for it where it has one: never a network the
+ * step cannot offer.
  */
 export const getAiApiFundChips = (
   assets: RhinoDepositAssetsResponse | undefined,
@@ -68,7 +81,9 @@ export const getAiApiFundChips = (
   const names = getRhinoChainsForDestination(assets, {
     destinationType: AI_API_RHINO_DESTINATION,
     symbol,
-  }).map(chain => (chain.chainId !== undefined && appChainName(chain.chainId)) || chain.name);
+  })
+    .filter(isAiApiFundChain)
+    .map(chain => (chain.chainId !== undefined && appChainName(chain.chainId)) || chain.name);
   const visible = names.slice(0, 2);
   const remaining = names.length - visible.length;
   return remaining > 0 ? [...visible, `+${remaining}`] : visible;

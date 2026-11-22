@@ -1,4 +1,4 @@
-import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { RHINO_ASSETS, RHINO_ASSETS_WITH_AI_API } from '@/lib/__tests__/rhinoFixtures';
 import {
@@ -43,6 +43,16 @@ describe('what can be sent for the AI API', () => {
   it('lists no Fuse row: rhino.fi does not take it, and money there cannot pay', () => {
     expect(AI_API_FUND_CHAIN_IDS).not.toContain(fuse.id);
     expect(AI_API_FUND_CHAIN_IDS).toContain(base.id);
+  });
+
+  // One of the app's own networks, so never under "More networks": without a
+  // row here, its AI API route could not be picked at all.
+  it('lists Optimism as a row of its own', () => {
+    expect(AI_API_FUND_CHAIN_IDS).toContain(optimism.id);
+    expect(row(optimism.id, 'ETH')).toMatchObject({
+      kind: 'rhino',
+      selection: { chain: 'OPTIMISM', destinationType: 'AI_API' },
+    });
   });
 });
 
@@ -111,6 +121,16 @@ describe('getAiApiFundChips', () => {
   it('never names Fuse', () => {
     const chips = getAiApiFundChips(RHINO_ASSETS_WITH_AI_API, 'USDT', appChainName);
     expect(chips).not.toContain('Fuse');
+  });
+
+  it('counts exactly the networks the next step offers: its own rows, then "More networks"', () => {
+    // USDC: Ethereum, Polygon, Base, Arbitrum, Optimism, BNB, then Solana,
+    // Avalanche and Arc under "More networks". Fuse is not one of them.
+    expect(getAiApiFundChips(RHINO_ASSETS_WITH_AI_API, 'USDC', appChainName)).toEqual([
+      'Ethereum',
+      'Polygon',
+      '+7',
+    ]);
   });
 
   it('names nothing before rhino.fi’s routes are in', () => {
