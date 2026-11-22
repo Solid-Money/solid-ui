@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { onlineManager, useQuery } from '@tanstack/react-query';
 
 import { useWhatsNew } from '@/hooks/useWhatsNew';
@@ -41,7 +41,12 @@ describe('useWhatsNew auto-open', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockStorage.clear();
-    useWhatsNewStore.setState({ whatsNew: announcement, isVisible: false });
+    useWhatsNewStore.setState({
+      whatsNew: announcement,
+      isVisible: false,
+      failedIds: [],
+      request: null,
+    });
     (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
   });
 
@@ -65,6 +70,36 @@ describe('useWhatsNew auto-open', () => {
 
     act(() => jest.advanceTimersByTime(1));
     expect(useWhatsNewStore.getState().isVisible).toBe(true);
+    act(() => renderer!.unmount());
+  });
+
+  it("doesn't retry a popup whose image failed this session", async () => {
+    useWhatsNewStore.setState({ failedIds: [announcement._id] });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+
+    act(() => jest.advanceTimersByTime(10000));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
+  it("holds back while a link's ask is being answered", async () => {
+    // A push tapped on a cold start: the link's refresh is still out when Home
+    // is ready, and it opens the popup on the page it names.
+    useWhatsNewStore.setState({ request: { id: announcement._id, step: 2 } });
+    (useQuery as jest.Mock).mockReturnValue({
+      data: undefined,
+      refetch: jest.fn(() => new Promise(() => {})),
+    });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+
+    act(() => jest.advanceTimersByTime(10000));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
     act(() => renderer!.unmount());
   });
 
@@ -181,6 +216,28 @@ describe('useWhatsNew opening a linked page', () => {
     act(() => renderer.unmount());
   });
 
+  it('opens a single image or video as it is, whatever page the link named', async () => {
+    const single: WhatsNew = {
+      ...active,
+      format: 'single',
+      presentation: 'popup',
+      media: { type: 'image', url: 'https://cdn.test/a.png', width: 1080, height: 1350, alt: '' },
+      steps: [],
+    };
+    serverHas(single);
+
+    const renderer = await render();
+    await request(ID, 2);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: single,
+      isVisible: true,
+      initialStep: 0,
+      request: null,
+    });
+    act(() => renderer.unmount());
+  });
+
   it('opens nothing when no announcement is active', async () => {
     serverHas(null);
     useWhatsNewStore.setState({ whatsNew: null });
@@ -198,7 +255,34 @@ describe('useWhatsNew opening a linked page', () => {
     const renderer = await render();
     await request(ID, 1);
 
-    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, request: null });
+    // Dropped, so the auto-open can't show it once the ask is cleared either.
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: null,
+      isVisible: false,
+      request: null,
+    });
+    act(() => renderer.unmount());
+  });
+
+  it('closes an open popup the server has switched off', async () => {
+    // Open on a linked page when another link's ask finds nothing active.
+    useWhatsNewStore.setState({ isVisible: true, initialStep: 2 });
+    serverHas(null);
+
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: null,
+      isVisible: false,
+      initialStep: 0,
+      request: null,
+    });
+
+    // The next announcement waits for the auto-open instead of appearing at once.
+    const next: WhatsNew = { ...active, _id: 'ffffffffffffffffffffffff' };
+    act(() => useWhatsNewStore.setState({ whatsNew: next }));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
     act(() => renderer.unmount());
   });
 
@@ -279,6 +363,50 @@ describe('useWhatsNew opening a linked page', () => {
     act(() => seen[seen.length - 1].closeWhatsNew());
 
     expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: false, initialStep: 0 });
+    act(() => renderer!.unmount());
+  });
+});
+
+describe('useWhatsNew abandon', () => {
+  const captured: { hook?: ReturnType<typeof useWhatsNew> } = {};
+  const Capture = () => {
+    const hook = useWhatsNew();
+    useEffect(() => {
+      captured.hook = hook;
+    });
+    return null;
+  };
+
+  beforeEach(() => {
+    mockStorage.clear();
+    useWhatsNewStore.setState({ whatsNew: announcement, isVisible: true, failedIds: [] });
+    (useQuery as jest.Mock).mockReturnValue({ data: undefined, refetch: jest.fn() });
+  });
+
+  it('hides a popup that never showed without marking it seen', async () => {
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Capture />);
+    });
+
+    act(() => captured.hook!.abandonWhatsNew());
+
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    expect(useWhatsNewStore.getState().failedIds).toEqual([announcement._id]);
+    expect(mockStorage.get('seen_popup_ids')).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
+
+  it('marks a closed popup as seen', async () => {
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Capture />);
+    });
+
+    act(() => captured.hook!.closeWhatsNew());
+
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    expect(JSON.parse(mockStorage.get('seen_popup_ids')!)).toEqual([announcement._id]);
     act(() => renderer!.unmount());
   });
 });
