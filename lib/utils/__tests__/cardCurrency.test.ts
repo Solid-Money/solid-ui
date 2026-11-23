@@ -9,6 +9,7 @@ import {
   shortfallOf,
   spendableDisplay,
   usdToEur,
+  withTileAvailable,
 } from '@/lib/utils/cardCurrency';
 
 const EUR_SPENDABLE = {
@@ -275,5 +276,55 @@ describe('euro main currency', () => {
   it('formats euros like dollars: cents only when there are any', () => {
     expect(formatEur(211.45)).toBe('€211.45');
     expect(formatEur(1000)).toBe('€1,000');
+  });
+});
+
+describe('withTileAvailable', () => {
+  // T-174: the banner said €10.02 under a tile reading €36.54. The backend counts cash only; in
+  // Credit mode the tile counts the credit line.
+  const CASH_ONLY = {
+    available: { amount: '11.38', currency: 'usd' as const },
+    available_in_card_currency: { ...EUR_SPENDABLE.available_in_card_currency, amount: '10.02' },
+  };
+
+  it("puts the tile's euro figure in place of the backend's, to the cent", () => {
+    const onTile = withTileAvailable(CASH_ONLY, { usd: 41.5, eur: 36.54 });
+
+    expect(onTile.available).toEqual({ amount: '41.5', currency: 'usd' });
+    expect(onTile.available_in_card_currency).toEqual({
+      ...CASH_ONLY.available_in_card_currency,
+      amount: '36.54',
+    });
+  });
+
+  it("makes the declined receipt quote the tile's number", () => {
+    const figures = declinedPaymentFigures(
+      {
+        amount: '149',
+        currency: 'ILS',
+        spend_details: { card_amount: '39.80', card_currency: 'EUR' },
+      },
+      withTileAvailable(CASH_ONLY, { usd: 41.5, eur: 36.54 }),
+    );
+
+    expect(figures.available).toEqual({ amount: 36.54, currency: 'EUR' });
+    expect(figures.comparable).toMatchObject({ payment: 39.8, available: 36.54, currency: 'EUR' });
+  });
+
+  it("converts at the card's quote, rounded down, when the tile shows dollars", () => {
+    // 41.5 / 1.1358 = 36.538…
+    const onTile = withTileAvailable(CASH_ONLY, { usd: 41.5 });
+
+    expect(onTile.available_in_card_currency?.amount).toBe('36.53');
+  });
+
+  it('stays in dollars when there is no card-currency quote', () => {
+    const onTile = withTileAvailable(
+      { available: { amount: '11.38', currency: 'usd' } },
+      { usd: 41.5, eur: 36.54 },
+    );
+
+    expect(onTile.available).toEqual({ amount: '41.5', currency: 'usd' });
+    expect(onTile.available_in_card_currency).toBeUndefined();
   });
 });

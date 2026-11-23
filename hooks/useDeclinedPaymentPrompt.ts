@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { useCardSpendable } from '@/hooks/useCardSpendable';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useTileSpendable } from '@/hooks/useTileSpendable';
 import { CardTransaction, CardTransactionCategory } from '@/lib/types';
 import { declinedPaymentFigures, Money } from '@/lib/utils/cardCurrency';
 import { isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
@@ -15,7 +15,10 @@ export interface DeclinedPaymentPrompt {
   /** Card transaction id — what the banner's "Fix it" opens. */
   transactionId: string;
   payment: Money;
-  /** What the card can spend now, live — less than {@link payment}, or there is no banner. */
+  /**
+   * What the card can spend now, live — the Available to spend tile's own number. Less than
+   * {@link payment}, or there is no banner.
+   */
   available: Money;
   merchantName?: string;
 }
@@ -44,7 +47,8 @@ export const useDeclinedPaymentPrompt = (enabled: boolean): DeclinedPaymentPromp
   const dismissedDeclines = useHomePromptStore(state => state.dismissedDeclines);
   // Same query keys the wallet screen already reads, so these are cache hits.
   const { data: transactions } = useCardTransactions({ enabled });
-  const { data: spendable } = useCardSpendable({ enabled });
+  // The tile's number, not the backend's cash-only one: the banner sits right under the tile.
+  const { data: spendable } = useTileSpendable({ enabled });
   // When the decline on show left its day, set the moment it does. Home can stay mounted for
   // longer than that with nothing refetching, and the banner must not outlive its window just
   // because the data it was picked from did not change.

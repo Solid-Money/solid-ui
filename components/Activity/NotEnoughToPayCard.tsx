@@ -12,8 +12,8 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useCardSpendable } from '@/hooks/useCardSpendable';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useTileSpendable } from '@/hooks/useTileSpendable';
 import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { track } from '@/lib/analytics';
@@ -80,7 +80,8 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   // cardholder who is done. Once the read lands, the receipt says what that balance says.
   const [turnedOnBase, setTurnedOnBase] = useState(false);
 
-  const { data: spendable, refetch: refetchSpendable } = useCardSpendable({
+  // The home tile's number, as the banner that opens this receipt quotes it.
+  const { data: spendable, refetch: refetchSpendable } = useTileSpendable({
     refetchInterval: covered ? false : UNCOVERED_POLL_MS,
   });
   const { eurc } = useUnusableEurc();

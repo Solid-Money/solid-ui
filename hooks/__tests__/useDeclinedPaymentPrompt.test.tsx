@@ -13,6 +13,13 @@ jest.mock('@/hooks/useCardTransactions', () => ({
 jest.mock('@/hooks/useCardSpendable', () => ({
   useCardSpendable: () => ({ data: mockSpendable }),
 }));
+let mockTile: { availableUsd: number | null; isLoading: boolean };
+jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () => ({
+  useSpendModeFigures: () => mockTile,
+}));
+jest.mock('@/hooks/useMainCurrency', () => ({
+  useCardDisplayCurrency: () => ({ inEuros: false, toDisplayAmount: (usd: number) => usd }),
+}));
 jest.mock('@/store/useHomePromptStore', () => ({
   useHomePromptStore: (select: (state: any) => any) => select({ dismissedDeclines: {} }),
 }));
@@ -44,6 +51,7 @@ describe('useDeclinedPaymentPrompt', () => {
   beforeEach(() => {
     jest.useFakeTimers({ now: NOW });
     mockSpendable = { available: { amount: '0', currency: 'usd' } };
+    mockTile = { availableUsd: 0, isLoading: false };
   });
 
   afterEach(() => {
@@ -75,5 +83,54 @@ describe('useDeclinedPaymentPrompt', () => {
     });
 
     expect(prompt).toBeNull();
+  });
+
+  describe("the Available to spend tile's number (T-174)", () => {
+    beforeEach(() => {
+      mockTransactions = { pages: [{ data: [declined(new Date(NOW.getTime() - 2 * HOUR_MS))] }] };
+      // Cash only, as the backend counts it.
+      mockSpendable = { available: { amount: '5', currency: 'usd' } };
+    });
+
+    it('is what the banner quotes, not the cash-only figure', () => {
+      // Credit mode: the tile counts the credit line.
+      mockTile = { availableUsd: 12.5, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt?.available).toEqual({ amount: 12.5, currency: 'USD' });
+    });
+
+    it('hides the banner once it covers the payment', () => {
+      mockTile = { availableUsd: 20, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt).toBeNull();
+    });
+
+    it('waits for the tile rather than show one number and then another', () => {
+      mockTile = { availableUsd: null, isLoading: true };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt).toBeNull();
+    });
+
+    it('falls back to the cash figure when the tile cannot say', () => {
+      mockTile = { availableUsd: null, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt?.available).toEqual({ amount: 5, currency: 'USD' });
+    });
   });
 });
