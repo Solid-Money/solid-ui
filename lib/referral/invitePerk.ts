@@ -44,8 +44,12 @@ export function readInvitePerk(raw: unknown): InvitePerk | null {
   if (!raw || typeof raw !== 'object') return null;
   const perk = raw as Partial<InvitePerk>;
   const tierDiscountPct = isCount(perk.tierDiscountPct) ? Math.round(perk.tierDiscountPct) : 0;
-  const sepaFreeMonths = isCount(perk.sepaFreeMonths) ? Math.round(perk.sepaFreeMonths) : 0;
-  const sepaFreeCapUsd = isCount(perk.sepaFreeCapUsd) ? perk.sepaFreeCapUsd : 0;
+  // Free months always come with a cap above zero; without a readable one
+  // the SEPA part is not offered, rather than offered without a limit.
+  const capUsd = isCount(perk.sepaFreeCapUsd) ? perk.sepaFreeCapUsd : 0;
+  const months = isCount(perk.sepaFreeMonths) ? Math.round(perk.sepaFreeMonths) : 0;
+  const sepaFreeMonths = capUsd > 0 ? months : 0;
+  const sepaFreeCapUsd = sepaFreeMonths > 0 ? capUsd : 0;
   if (tierDiscountPct <= 0 && sepaFreeMonths <= 0) return null;
   return {
     tierDiscountPct,

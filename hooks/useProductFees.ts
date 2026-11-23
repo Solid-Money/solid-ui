@@ -93,11 +93,13 @@ export const useEurDepositPromotion = () => {
  * The user's KOL invite perk, or null — none, not loaded yet, or a failed
  * load (the screen then simply doesn't advertise it). Polled like the fee
  * promotions, so a deposit that uses up the cap reaches an open screen.
+ * A failed refresh hides it too: the perk it last read may since have run
+ * out, and a later refresh that succeeds shows it again.
  */
 export const useKolPerk = () => {
   const userId = useSelectedUserId();
 
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: [PRODUCT_FEES, 'kolPerk', userId],
     queryFn: async () => readUserKolPerk(await withRefreshToken(() => fetchKolPerk())),
     staleTime: secondsToMilliseconds(60),
@@ -107,7 +109,7 @@ export const useKolPerk = () => {
     enabled: Boolean(userId),
     retry: false,
   });
-  return data ?? null;
+  return isError ? null : (data ?? null);
 };
 
 /**

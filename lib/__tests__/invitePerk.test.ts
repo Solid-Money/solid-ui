@@ -38,6 +38,20 @@ describe('readInvitePerk', () => {
       endsAt: '',
     });
   });
+
+  it('never offers free SEPA months without a readable cap', () => {
+    for (const sepaFreeCapUsd of ['10000', null, -5, 0, undefined]) {
+      // Only the SEPA part: no perk at all.
+      expect(readInvitePerk({ sepaFreeMonths: 1, sepaFreeCapUsd })).toBeNull();
+      // With a discount: the discount alone.
+      expect(readInvitePerk({ tierDiscountPct: 50, sepaFreeMonths: 1, sepaFreeCapUsd })).toEqual({
+        tierDiscountPct: 50,
+        sepaFreeMonths: 0,
+        sepaFreeCapUsd: 0,
+        endsAt: '',
+      });
+    }
+  });
 });
 
 describe('readUserKolPerk', () => {
