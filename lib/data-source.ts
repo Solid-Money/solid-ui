@@ -4,6 +4,7 @@ import { arbitrum, base, fuse, mainnet, optimism, polygon } from 'viem/chains';
 import { isAlchemyChain } from '@/constants/alchemy';
 import { explorerUrls } from '@/constants/explorers';
 import { fetchAlchemyTokenBalances, fetchAlchemyTokenTransfers } from '@/lib/alchemy';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { BlockscoutTransactions } from '@/lib/types';
 
 import type { BlockscoutTokenBalance } from '@/hooks/useBalances';
@@ -24,19 +25,30 @@ const BLOCKSCOUT_URLS: Record<number, string> = {
 
 const blockscoutUrlForChain = (chainId: number): string | undefined => BLOCKSCOUT_URLS[chainId];
 
+/**
+ * The fallback is only asked when the primary already failed, so the wallet has
+ * waited once already; a hung explorer must not hold the balances any longer.
+ * Covers reading the body too.
+ */
+export const BLOCKSCOUT_BALANCES_TIMEOUT_MS = 10_000;
+
 const fetchBlockscoutTokenBalances = async (
   chainId: number,
   address: string,
 ): Promise<BlockscoutTokenBalance[]> => {
   const url = blockscoutUrlForChain(chainId);
   if (!url) throw new Error(`No balance fallback available for chain ${chainId}`);
-  const response = await fetch(`${url}/api/v2/addresses/${address}/token-balances`, {
-    headers: { accept: 'application/json' },
-  });
-  if (!response.ok) {
-    throw new Error(`Blockscout token-balances ${response.status} for chain ${chainId}`);
-  }
-  return (await response.json()) as BlockscoutTokenBalance[];
+  return fetchWithTimeout(
+    `${url}/api/v2/addresses/${address}/token-balances`,
+    { headers: { accept: 'application/json' } },
+    BLOCKSCOUT_BALANCES_TIMEOUT_MS,
+    async response => {
+      if (!response.ok) {
+        throw new Error(`Blockscout token-balances ${response.status} for chain ${chainId}`);
+      }
+      return (await response.json()) as BlockscoutTokenBalance[];
+    },
+  );
 };
 
 const fetchBlockscoutTokenTransfers = async ({

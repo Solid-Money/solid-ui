@@ -39,3 +39,16 @@ it('propagates a failed backup source instead of reporting an empty wallet', asy
   mockFetch.mockResolvedValue({ ok: false, status: 503 });
   await expect(fetchTokenBalancesWithFallback(1, '0xabc')).rejects.toThrow('503');
 });
+it('gives up on a Blockscout fallback that hangs, instead of holding the balances', async () => {
+  jest.useFakeTimers();
+  try {
+    mockAlchemy.mockRejectedValue(new Error('primary unavailable'));
+    mockFetch.mockImplementation(() => new Promise(() => {}));
+    const read = fetchTokenBalancesWithFallback(1, '0xabc');
+    const settled = expect(read).rejects.toThrow('timed out');
+    await jest.advanceTimersByTimeAsync(10_000);
+    await settled;
+  } finally {
+    jest.useRealTimers();
+  }
+});

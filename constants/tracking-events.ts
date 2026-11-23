@@ -601,6 +601,13 @@ export const TRACKING_EVENTS = {
 
   // One per launch: how long until the home screen showed real balances, by phase
   APP_STARTUP_TIMING: 'app_startup_timing',
+  // One per return to the app after 30s+ away (fast ones sampled): how long until
+  // balances were on screen and refreshed, and what held them up (lib/homeLoadTiming)
+  APP_RESUME_TIMING: 'app_resume_timing',
+  // A balance query that took 5s+ to settle, by query family (lib/homeLoadTiming)
+  SLOW_QUERY: 'slow_query',
+  // A wallet balance read that took 8s+, with its chain/pricing breakdown (hooks/useBalances)
+  TOKEN_BALANCES_SLOW: 'token_balances_slow',
 
   // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',

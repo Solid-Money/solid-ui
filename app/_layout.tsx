@@ -68,6 +68,8 @@ import {
   handleQueryError,
   handleQuerySuccess,
 } from '@/lib/errors/queryErrors';
+import { installHomeLoadTiming } from '@/lib/homeLoadTiming';
+import { guardHomeSnapshotOwner } from '@/lib/homeSnapshot';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import { pushNotificationData } from '@/lib/pushNotificationData';
 import {
@@ -276,6 +278,11 @@ export const queryClient = new QueryClient({
 restoreQueryCache(queryClient);
 persistQueryCache(queryClient);
 clearPersistedQueryCacheOnFatalError();
+// The last balances home showed, drawn while live ones load; dropped when the account changes.
+guardHomeSnapshotOwner();
+// Times how long home waits for balances on launches and returns to the app, and what it
+// waits on (lib/homeLoadTiming).
+installHomeLoadTiming(queryClient);
 
 // Start renewing an expired session now, while the bundle finishes loading, so
 // the first requests go out with a valid token instead of failing with 401.

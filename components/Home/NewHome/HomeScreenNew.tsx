@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/
 import RainClosingHomeBanner from '@/components/Card/RainSunset/RainClosingHomeBanner';
 import { RainClosingSheet } from '@/components/Card/RainSunset/RainClosingSheet';
 import EuroLaunchPopup from '@/components/Home/NewHome/EuroLaunchPopup';
-import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
+import HomeAssetsCard, { buildHomeAssets } from '@/components/Home/NewHome/HomeAssetsCard';
 import HomeBalancePills from '@/components/Home/NewHome/HomeBalancePills';
 import HomeIncidentNotice, {
   IncidentNoticeSheet,
@@ -42,6 +42,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomeLinkAction } from '@/hooks/useHomeLinkAction';
+import { useHomeLoadTracking } from '@/hooks/useHomeLoadTracking';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -50,6 +51,7 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { readHomeSnapshot, saveHomeSnapshot } from '@/lib/homeSnapshot';
 import { useIntercom } from '@/lib/intercom';
 import { markStartup, reportHomeContentReady } from '@/lib/startupTiming';
 import { CardProvider } from '@/lib/types';
@@ -222,6 +224,26 @@ export default function HomeScreenNew() {
     isTotalSavingsLoading ||
     isCardBalanceLoading ||
     portfolio.isLoading;
+  // While the live figures load, the ones this screen showed last time (lib/homeSnapshot),
+  // marked as updating, instead of skeletons. Null when there are none for this user.
+  const lastKnown = useMemo(
+    () => (isBalanceSectionLoading ? readHomeSnapshot(user?.userId) : null),
+    [isBalanceSectionLoading, user?.userId],
+  );
+  const isShowingSkeleton = isBalanceSectionLoading && !lastKnown;
+
+  // Times each part of the loading gate, for launches and returns to the app alike, so a
+  // slow load says which part held it up (lib/homeLoadTiming).
+  useHomeLoadTracking({
+    gates: {
+      tokens: isLoadingTokens,
+      vaultBalance: isBalanceLoading,
+      savings: isTotalSavingsLoading,
+      card: isCardBalanceLoading,
+      portfolio: portfolio.isLoading,
+    },
+    lastKnownSavedAt: lastKnown?.savedAt,
+  });
 
   useEffect(() => {
     markStartup('homeMounted');
@@ -267,10 +289,45 @@ export default function HomeScreenNew() {
     userHasCard,
     cardHoldsOwnBalance,
   });
-  const walletTitle =
-    isBalanceSectionLoading || displayTotal === undefined
+  const walletTitle = lastKnown
+    ? formatBalance(lastKnown.balance.amount, lastKnown.balance.symbol)
+    : isBalanceSectionLoading || displayTotal === undefined
       ? null
       : formatBalance(displayTotal, displaySymbol);
+
+  // Remember complete figures for the next launch or return to the app. Never partial ones
+  // (still loading, or some balance missing or unpriced): those would be drawn as the
+  // user's balance before anything loads. The ref keeps the effect to the fields it reads.
+  const portfolioRef = useRef(portfolio);
+  portfolioRef.current = portfolio;
+  useEffect(() => {
+    if (isBalanceSectionLoading || portfolio.isError) return;
+    if (!user?.userId || displayTotal === undefined) return;
+    saveHomeSnapshot({
+      userId: user.userId,
+      balance: { amount: displayTotal, symbol: displaySymbol },
+      hasFunds,
+      hasCard: userHasCard,
+      assets: buildHomeAssets(portfolioRef.current).map(asset => asset.snapshot),
+    });
+  }, [
+    isBalanceSectionLoading,
+    portfolio.isError,
+    user?.userId,
+    displayTotal,
+    displaySymbol,
+    hasFunds,
+    userHasCard,
+    portfolio.earnAssets,
+    portfolio.stableAssets,
+    portfolio.cryptoAssets,
+    portfolio.eurYield,
+    portfolio.lockedTotal,
+    portfolio.nextUnlockAt,
+    portfolio.pendingWithdrawals,
+    portfolio.hasCardBalance,
+    portfolio.cardBalance,
+  ]);
   // Which rung of the card funnel belongs under the card, if any — null once the
   // user is done or has snoozed the current one. See `resolveHomePromptStep`.
   const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
@@ -321,14 +378,19 @@ export default function HomeScreenNew() {
             <HeroExit spec={HERO_EXIT.balance}>
               <TabSummaryHeadline
                 label={
-                  isBalanceSectionLoading ? (
+                  isShowingSkeleton ? (
                     <Skeleton className="h-6 w-28 rounded-md" />
                   ) : (
                     <Text className={TAB_SUMMARY_LABEL}>Balance</Text>
                   )
                 }
                 value={
-                  isBalanceSectionLoading ? (
+                  lastKnown ? (
+                    <BalanceAmount
+                      balance={lastKnown.balance.amount}
+                      symbol={lastKnown.balance.symbol}
+                    />
+                  ) : isBalanceSectionLoading ? (
                     <Skeleton className="h-[54px] w-48 rounded-xl" />
                   ) : displayTotal === undefined ? (
                     <Text className="font-semibold" style={BALANCE_VALUE_STYLE}>
@@ -339,7 +401,15 @@ export default function HomeScreenNew() {
                   )
                 }
                 badge={
-                  isBalanceSectionLoading ? null : displayTotal === undefined ? (
+                  lastKnown ? (
+                    <Text
+                      className="text-sm text-white/50"
+                      accessibilityLabel="Balances updating"
+                      accessibilityState={{ busy: true }}
+                    >
+                      Updating…
+                    </Text>
+                  ) : isBalanceSectionLoading ? null : displayTotal === undefined ? (
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel="Retry balances"
@@ -364,7 +434,9 @@ export default function HomeScreenNew() {
           }
           actions={
             <HeroExit spec={HERO_EXIT.actions}>
-              {isBalanceSectionLoading ? (
+              {lastKnown ? (
+                <WalletActions hasFunds={lastKnown.hasFunds} hasCard={lastKnown.hasCard} />
+              ) : isBalanceSectionLoading ? (
                 <TabSummaryActionSkeleton count={3} />
               ) : (
                 <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
@@ -422,7 +494,7 @@ export default function HomeScreenNew() {
         </View>
 
         <HeroExit spec={HERO_EXIT.belowCard}>
-          <HomeAssetsCard portfolio={portfolio} />
+          <HomeAssetsCard portfolio={portfolio} lastKnown={lastKnown?.assets} />
         </HeroExit>
 
         <HeroExit spec={HERO_EXIT.belowCard}>
