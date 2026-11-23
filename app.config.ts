@@ -314,6 +314,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // target and Android minSdk only where they are below the SDK's — ours (iOS
     // 16, minSdk 26, from expo-build-properties above) are already higher. A
     // native module: shipping it takes a store build, not an update.
+    //
+    // Pinned to 0.3.15 in package.json: the iOS binding needs the
+    // `WirexMobileSDK` pod at `~> <its own version>` from CocoaPods trunk, and
+    // Wirex published 0.3.16 to npm and Maven but not to trunk (which stops at
+    // 0.3.15), so `pod install` cannot resolve it. 0.3.16 changes only the
+    // Android card reveal/collect modules, which this app does not use. Bump
+    // only once `pod trunk info WirexMobileSDK` lists the new version.
     '@wirexapp/mobile-sdk',
     // MeaWallet MPP: bundle mea_config (add meawallet/mea_config from MeaWallet for MPP)
     ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
