@@ -342,6 +342,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // vision DEPENDENCIES meta-data; merge them so the Android manifest merger
     // does not fail. See plugins/withMlkitVisionDependencies.js.
     './plugins/withMlkitVisionDependencies.js',
+    // Declares screen.portrait (inferred from `orientation: 'portrait'`) and
+    // wifi (inferred from netinfo's ACCESS_WIFI_STATE) as not required, so
+    // Google Play neither blocks review nor hides the app from devices without
+    // them. See plugins/withOptionalHardwareFeatures.js.
+    './plugins/withOptionalHardwareFeatures.js',
     // Sets SWIFT_ENABLE_EXPLICIT_MODULES=NO so the Swift pods (NitroModules,
     // RCTSwiftUI) don't fail the app target's "Emit Swift module" phase on
     // Xcode 16+. Vendored from @onramper/onramper-react-native's own plugin
