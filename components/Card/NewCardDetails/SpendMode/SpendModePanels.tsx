@@ -509,7 +509,13 @@ export const SpendModeCreditPanel = ({
   ...borrowed
 }: CreditPanelProps) => (
   <Pressable
-    accessibilityLabel="View Credit details"
+    accessibilityLabel={[
+      `Borrowed ${borrowed.borrowed} of ${borrowed.creditLimit} at ${borrowed.borrowApy} APY`,
+      hasDebt ? RISK_CHIP[risk].label : null,
+      'View Credit details',
+    ]
+      .filter(Boolean)
+      .join('. ')}
     accessibilityRole="button"
     className="active:opacity-80"
     onPress={onViewDetails}

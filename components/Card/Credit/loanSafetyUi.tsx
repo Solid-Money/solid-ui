@@ -97,7 +97,7 @@ export const LoanPosition = ({
 
 type LoanSafetySummary = ReturnType<typeof summarizeLoanSafety>;
 
-export const loanSafetyCopy = ({ status, affectedLoan }: LoanSafetySummary) => {
+export const loanSafetyCopy = ({ status, affectedLoan, positions }: LoanSafetySummary) => {
   switch (status) {
     case 'healthy':
       return { title: 'Your assets are safe' };
@@ -116,16 +116,20 @@ export const loanSafetyCopy = ({ status, affectedLoan }: LoanSafetySummary) => {
           : name
             ? `Your ${name} is at risk`
             : 'A loan is at risk';
-      const sale = affectedLoan?.sale;
+      const sale = affectedLoan
+        ? affectedLoan.sale
+        : (positions.find(({ loan }) => loan.sale && loan.sale.kind !== 'paused')?.loan.sale ??
+          positions.find(({ loan }) => loan.sale?.kind === 'paused')?.loan.sale);
+      const subject = affectedLoan ? 'This loan' : 'A loan';
       if (sale?.kind === 'paused')
         return {
           title,
-          description: 'This loan is below its sell point. Sales are currently paused.',
+          description: `${subject} is below its sell point. Sales are currently paused.`,
         };
       if (sale)
         return {
           title,
-          description: 'This loan has fallen below its sell point. Repay now to reduce your risk.',
+          description: `${subject} has fallen below its sell point. Repay now to reduce your risk.`,
         };
       const action =
         status === 'caution' ? 'Repay to move further away.' : 'Repay now to reduce your risk.';

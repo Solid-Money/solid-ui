@@ -14,9 +14,10 @@ export const useDeclineSpendable = ({
   enabled = true,
   refetchInterval,
 }: { enabled?: boolean; refetchInterval?: number } = {}) => {
-  const { registration, mode, position, isRegistered, isPaused } = useCardSpendRegistration({
-    refetchInterval: enabled ? refetchInterval : undefined,
-  });
+  const { registration, mode, position, isRegistered, isPaused, isLoading } =
+    useCardSpendRegistration({
+      refetchInterval: enabled ? refetchInterval : undefined,
+    });
   const { data: cash, refetch: refetchCash } = useCardSpendable({ enabled, refetchInterval });
   const hasMode = enabled && !!registration;
   const { base, readsBase, isBaseGateReady } = useCardCreditPositions({
@@ -38,15 +39,15 @@ export const useDeclineSpendable = ({
 
   const figuresFor = useCallback(
     (transaction: CardTransaction) => {
-      if (!hasMode) return declinedPaymentFigures(transaction);
-      if (mode === 'cash') return declinedPaymentFigures(transaction, cash);
+      if (!enabled || (!hasMode && isLoading)) return declinedPaymentFigures(transaction);
+      if (!hasMode || mode === 'cash') return declinedPaymentFigures(transaction, cash);
       return declinedPaymentFigures(transaction, cash, {
         mode,
         availableUsd,
         displayUsdPerEur: inEuros ? usdPerEur : undefined,
       });
     },
-    [hasMode, mode, cash, availableUsd, inEuros, usdPerEur],
+    [enabled, hasMode, isLoading, mode, cash, availableUsd, inEuros, usdPerEur],
   );
 
   return { mode, figuresFor, refetchCash };

@@ -46,33 +46,46 @@ const CardBottomSheet = ({
 
   const shouldPresent = isOpen && !isSuspended;
   const wantsPresentation = useRef(false);
-  const presentationRequested = useRef(false);
-  const suspending = useRef(false);
+  const isOpenRef = useRef(false);
+  const presentation = useRef<'idle' | 'presenting' | 'presented' | 'dismissing'>('idle');
   const present = useCallback(() => {
-    presentationRequested.current = true;
-    sheetRef.current?.present();
+    if (presentation.current !== 'idle' || !sheetRef.current) return;
+    presentation.current = 'presenting';
+    sheetRef.current.present();
+  }, []);
+
+  const dismissIfHidden = useCallback(() => {
+    if (wantsPresentation.current || presentation.current !== 'presented') return;
+    presentation.current = 'dismissing';
+    sheetRef.current?.dismiss(isOpenRef.current ? { duration: 0 } : undefined);
   }, []);
 
   useEffect(() => {
     wantsPresentation.current = shouldPresent;
-    if (shouldPresent) {
-      if (!suspending.current) present();
-    } else if (presentationRequested.current) {
-      presentationRequested.current = false;
-      suspending.current = isOpen;
-      sheetRef.current?.dismiss(isOpen ? { duration: 0 } : undefined);
-    }
-  }, [isOpen, present, shouldPresent]);
+    isOpenRef.current = isOpen;
+    if (shouldPresent) present();
+    else dismissIfHidden();
+  }, [dismissIfHidden, isOpen, present, shouldPresent]);
+
+  const onSheetIndex = useCallback(
+    (index: number) => {
+      // present() queues the mount. Gorhom can dismiss only once opening has started.
+      if (index < 0 || presentation.current !== 'presenting') return;
+      presentation.current = 'presented';
+      dismissIfHidden();
+    },
+    [dismissIfHidden],
+  );
 
   const dismiss = useCallback(() => {
-    if (suspending.current) {
+    const wasProgrammatic = presentation.current === 'dismissing';
+    presentation.current = 'idle';
+    if (wasProgrammatic) {
       // Gorhom reports a programmatic dismissal asynchronously. If Back already
       // restored focus, wait for the old portal to be removed before presenting.
-      suspending.current = false;
       if (wantsPresentation.current) present();
       return;
     }
-    presentationRequested.current = false;
     onOpenChange(false);
   }, [onOpenChange, present]);
 
@@ -98,6 +111,8 @@ const CardBottomSheet = ({
       // The repay step has a field. Without this the sheet stays lifted after the keyboard
       // is dismissed, floating over a gap where the keyboard used to be.
       keyboardBlurBehavior="restore"
+      onAnimate={(_, toIndex) => onSheetIndex(toIndex)}
+      onChange={onSheetIndex}
       onDismiss={dismiss}
       backdropComponent={renderBackdrop}
       backgroundStyle={{

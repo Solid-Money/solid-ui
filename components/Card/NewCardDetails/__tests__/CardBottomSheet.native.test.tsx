@@ -12,41 +12,47 @@ jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({
 jest.mock('@gorhom/bottom-sheet', () => {
   const { createElement, forwardRef, useImperativeHandle } = jest.requireActual('react');
   return {
-    BottomSheetModal: forwardRef(({ onDismiss, children }: any, ref: any) => {
+    BottomSheetModal: forwardRef(({ onAnimate, onChange, onDismiss, children }: any, ref: any) => {
       useImperativeHandle(ref, () => ({ present: mockPresent, dismiss: mockDismiss }));
-      return createElement('TestBottomSheet', { onDismiss }, children);
+      return createElement('TestBottomSheet', { onAnimate, onChange, onDismiss }, children);
     }),
     BottomSheetView: 'BottomSheetView',
   };
 });
 
-test('resumes after an interrupted native suspension without closing the drawer session', () => {
+beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  jest.clearAllMocks();
+});
+
+const sheet = (onOpenChange: (open: boolean) => void, isSuspended = false) => (
+  <CardBottomSheet
+    isOpen
+    isSuspended={isSuspended}
+    onOpenChange={onOpenChange}
+    contentKey="spend-mode"
+    designTop={50}
+    designBottom={57}
+  >
+    {({ session }) => createElement('SheetBody', { session })}
+  </CardBottomSheet>
+);
+
+test('resumes after an interrupted native suspension without closing the drawer session', () => {
   const onOpenChange = jest.fn();
-  const sheet = (isSuspended = false) => (
-    <CardBottomSheet
-      isOpen
-      isSuspended={isSuspended}
-      onOpenChange={onOpenChange}
-      contentKey="spend-mode"
-      designTop={50}
-      designBottom={57}
-    >
-      {({ session }) => createElement('SheetBody', { session })}
-    </CardBottomSheet>
-  );
 
   let tree: ReturnType<typeof create>;
   act(() => {
-    tree = create(sheet());
+    tree = create(sheet(onOpenChange));
   });
   try {
     expect(mockPresent).toHaveBeenCalledTimes(1);
+    act(() => tree.root.findByType('TestBottomSheet').props.onChange(0));
     const session = tree.root.findByType('SheetBody').props.session;
-    act(() => tree.update(sheet(true)));
+    act(() => tree.update(sheet(onOpenChange, true)));
     expect(mockDismiss).toHaveBeenCalledWith({ duration: 0 });
 
-    act(() => tree.update(sheet()));
+    act(() => tree.update(sheet(onOpenChange)));
     expect(mockPresent).toHaveBeenCalledTimes(1);
     const dismiss = () => act(() => tree.root.findByType('TestBottomSheet').props.onDismiss());
     dismiss();
@@ -56,6 +62,29 @@ test('resumes after an interrupted native suspension without closing the drawer 
 
     dismiss();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  } finally {
+    act(() => tree.unmount());
+  }
+});
+
+test('dismisses a deferred native presentation as soon as opening starts during suspension', () => {
+  const onOpenChange = jest.fn();
+  let tree: ReturnType<typeof create>;
+  act(() => {
+    tree = create(sheet(onOpenChange));
+  });
+  try {
+    act(() => tree.update(sheet(onOpenChange, true)));
+    expect(mockDismiss).not.toHaveBeenCalled();
+
+    act(() => tree.root.findByType('TestBottomSheet').props.onAnimate(-1, 0));
+    expect(mockDismiss).toHaveBeenCalledWith({ duration: 0 });
+    act(() => tree.root.findByType('TestBottomSheet').props.onDismiss());
+    expect(mockPresent).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    act(() => tree.update(sheet(onOpenChange)));
+    expect(mockPresent).toHaveBeenCalledTimes(2);
   } finally {
     act(() => tree.unmount());
   }

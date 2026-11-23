@@ -46,7 +46,10 @@ const declined = (at: Date) => ({
 
 let prompt: DeclinedPaymentPrompt | null;
 const Probe = () => {
-  prompt = useDeclinedPaymentPrompt(true);
+  const currentPrompt = useDeclinedPaymentPrompt(true);
+  React.useEffect(() => {
+    prompt = currentPrompt;
+  }, [currentPrompt]);
   return null;
 };
 
@@ -121,6 +124,7 @@ describe('useDeclinedPaymentPrompt', () => {
   it('waits for the active mode and for enabled Base credit before showing a balance', () => {
     mockTransactions = { pages: [{ data: [declined(new Date(NOW.getTime() - HOUR_MS))] }] };
     mockRegistration.registration = null;
+    mockRegistration.isLoading = true;
     act(() => {
       root = create(<Probe />);
     });
@@ -135,6 +139,17 @@ describe('useDeclinedPaymentPrompt', () => {
     mockBaseCredit.readsBase = true;
     act(() => root.update(<Probe />));
     expect(prompt).toBeNull();
+  });
+
+  it('keeps the cash prompt when the registration read fails', () => {
+    mockTransactions = { pages: [{ data: [declined(new Date(NOW.getTime() - HOUR_MS))] }] };
+    mockRegistration = { registration: null, mode: 'cash', isLoading: false };
+
+    act(() => {
+      root = create(<Probe />);
+    });
+
+    expect(prompt?.available).toEqual({ amount: 0, currency: 'USD' });
   });
 
   it('lets the banner go when its day is up, though Home stayed mounted and nothing refetched', () => {

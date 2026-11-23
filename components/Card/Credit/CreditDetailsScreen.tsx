@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import { base, fuse } from 'viem/chains';
 
 import { AdditionalCollateral } from '@/components/Card/Credit/AdditionalCollateral';
@@ -76,13 +76,17 @@ const CreditDetailsScreen = ({ showsLoanSafety = false }: { showsLoanSafety?: bo
   const { loans, format, formatBalance, now } = details;
 
   // Once per visit, after the first read, so the funnel can be split by what the cardholder saw.
-  const worst = details.status;
+  const safety = summarizeLoanSafety(loans, details.isError);
+  const displayedStatus = safety.status;
   const hasTracked = useRef(false);
   useEffect(() => {
     if (showsLoanSafety || hasTracked.current || details.isLoading) return;
     hasTracked.current = true;
-    track(TRACKING_EVENTS.CARD_CREDIT_DETAILS_VIEWED, { status: worst, loans: loans.length });
-  }, [details.isLoading, loans.length, showsLoanSafety, worst]);
+    track(TRACKING_EVENTS.CARD_CREDIT_DETAILS_VIEWED, {
+      status: displayedStatus,
+      loans: loans.length,
+    });
+  }, [details.isLoading, displayedStatus, loans.length, showsLoanSafety]);
 
   const open = useCallback((route: CreditSheetRoute) => setStack([route]), []);
 
@@ -171,7 +175,12 @@ const CreditDetailsScreen = ({ showsLoanSafety = false }: { showsLoanSafety?: bo
       // so go back at the tab level when Home is the previous tab.
       const tabs = navigation.getParent<BottomTabNavigationProp<ParamListBase>>();
       const state = tabs?.getState();
+      const cardStack = navigation.getState();
       const previousKey = state?.history?.at(-2)?.key;
+      if (cardStack?.type === 'stack') {
+        const action = cardStack.index > 0 ? StackActions.pop() : StackActions.replace('index');
+        navigation.dispatch({ ...action, target: cardStack.key });
+      }
       if (
         tabs &&
         state?.type === 'tab' &&
@@ -199,7 +208,6 @@ const CreditDetailsScreen = ({ showsLoanSafety = false }: { showsLoanSafety?: bo
     }, [goBack, isHelpOpen, stack.length]),
   );
   const owes = details.totalDebtUsd > 0n;
-  const safety = summarizeLoanSafety(loans, details.isError);
   const safetyCopy = loanSafetyCopy(safety);
   const safetyTitle = owes || details.isError ? safetyCopy.title : 'Nothing borrowed';
   const safetyDescription =
@@ -254,7 +262,7 @@ const CreditDetailsScreen = ({ showsLoanSafety = false }: { showsLoanSafety?: bo
                   <View style={styles.summary}>
                     <Text className="text-[16px] font-medium text-white/70">Total borrowed</Text>
                     <Text className="text-[34px] font-semibold text-white">
-                      {details.isError && !owes ? '—' : formatBalance(details.totalDebtUsd)}
+                      {details.isError ? '—' : formatBalance(details.totalDebtUsd)}
                     </Text>
                   </View>
                   {owes ? <PillButton label="Repay" kind="primary" onPress={openRepay} /> : null}

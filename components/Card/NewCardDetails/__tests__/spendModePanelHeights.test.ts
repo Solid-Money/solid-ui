@@ -67,7 +67,7 @@ describe('credit panel', () => {
           .map((node: { children: string[] }) => node.children.join('')),
       ).toEqual(['Borrowed', '$400 / $1,000', 'at 4.00% APY', 'Healthy', 'View Credit details']);
       const detailsButton = tree.root.findAllByProps({
-        accessibilityLabel: 'View Credit details',
+        accessibilityLabel: 'Borrowed $400 of $1,000 at 4.00% APY. Healthy. View Credit details',
       })[0];
       expect(detailsButton.props.accessibilityRole).toBe('button');
       expect(StyleSheet.flatten(detailsButton.props.style).height).toBe(CREDIT_PANEL_HEIGHT);

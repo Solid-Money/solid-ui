@@ -240,7 +240,9 @@ export const declinedPaymentFigures = (
 
   const { payment } = cash;
   const { availableUsd, displayUsdPerEur } = credit;
-  if (availableUsd === undefined) return { payment };
+  if (availableUsd === undefined) {
+    return credit.mode === 'smart' ? { ...cash, cashComparable: cash.comparable } : { payment };
+  }
 
   const available: Money = displayUsdPerEur
     ? { amount: usdToEur(availableUsd, displayUsdPerEur), currency: 'EUR' }
@@ -262,14 +264,13 @@ export const declinedPaymentFigures = (
 
   // Smart can use either path. Compare the gaps in USD, since the two paths can use different FX.
   const cashUsd = Number(spendable?.available?.amount);
-  if (!Number.isFinite(cashUsd)) return { payment };
   const cashMarginUsd = cash.comparable
     ? (cash.comparable.available - cash.comparable.payment) * cash.comparable.rateToUsd
     : undefined;
   const preferCredit =
     comparable && cashMarginUsd !== undefined
       ? comparable.available - comparable.payment > cashMarginUsd
-      : availableUsd > cashUsd;
+      : !Number.isFinite(cashUsd) || availableUsd > cashUsd;
   return preferCredit
     ? { payment, available, comparable, cashComparable: cash.comparable }
     : { ...cash, cashComparable: cash.comparable };

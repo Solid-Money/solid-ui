@@ -117,7 +117,7 @@ afterEach(async () => {
 it('watches the selected Safe, ignores unrelated receipts, and detects a matching live receipt once', async () => {
   const activity = receipt();
   const unrelated = [
-    receipt({ timestamp: String(Math.floor(OPENED_AT / 1000)) }),
+    receipt({ timestamp: String(Math.floor(OPENED_AT / 1000) - 1) }),
     receipt({ chainId: mainnet.id }),
     receipt({ metadata: { tokenAddress: contract('EURC') } }),
     receipt({ toAddress: SENDER }),
@@ -125,6 +125,7 @@ it('watches the selected Safe, ignores unrelated receipts, and detects a matchin
     receipt({ type: TransactionType.SEND }),
     receipt({ status: TransactionStatus.PROCESSING }),
     receipt({ amount: '0' }),
+    receipt({ amount: 'invalid' }),
     receipt({ deleted: true }),
     receipt({ metadata: { ...activity.metadata, transferContext: { kind: 'card_refund' } } }),
   ];
@@ -141,6 +142,23 @@ it('watches the selected Safe, ignores unrelated receipts, and detects a matchin
   expect(onDetected).toHaveBeenCalledTimes(1);
 
   act(() => useActivityStore.getState().setEvents(USER_ID, [{ ...activity, amount: '26' }]));
+  expect(onDetected).toHaveBeenCalledTimes(1);
+});
+
+it('detects a new receipt in the opening second while ignoring a known confirmed receipt', async () => {
+  const timestamp = String(Math.floor(OPENED_AT / 1000));
+  const known = receipt({ timestamp });
+  useActivityStore.getState().setEvents(USER_ID, [known]);
+  fetchPage.mockResolvedValue(activityPage([known]));
+
+  await act(async () => {
+    root = create(fixture());
+  });
+  await flushQueries();
+  expect(onDetected).not.toHaveBeenCalled();
+
+  const incoming = receipt({ timestamp, hash: '0xnew', amount: '0.000001' });
+  act(() => useActivityStore.getState().setEvents(USER_ID, [incoming, known]));
   expect(onDetected).toHaveBeenCalledTimes(1);
 });
 

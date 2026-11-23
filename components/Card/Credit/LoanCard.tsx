@@ -260,7 +260,7 @@ const LoanCard = ({
 }: LoanCardProps) => {
   const owes = loan.debtUsd > 0n;
   const safetyStatus = loanSafetyStatus(loan);
-  const payDown = safetyStatus === 'caution' || safetyStatus === 'at-risk' ? loan.payDown : null;
+  const payDown = loan.status !== 'healthy' ? loan.payDown : null;
   const pending = loan.pendingUnlock;
   const shownChips = loan.assets.slice(0, 3);
   const hiddenChips = loan.assets.length - shownChips.length;

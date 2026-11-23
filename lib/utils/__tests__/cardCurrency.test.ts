@@ -175,6 +175,23 @@ describe('declinedPaymentFigures', () => {
     expect(figures.comparable?.available).toBeLessThan(32);
     expect(figures.cashComparable?.available).toBe(14.46);
   });
+
+  it('keeps the cash balance in Smart mode while credit is unavailable', () => {
+    const figures = declinedPaymentFigures({ amount: '12', currency: 'USD' }, EUR_SPENDABLE, {
+      mode: 'smart',
+    });
+    expect(figures.comparable?.available).toBe(14.46);
+    expect(figures.cashComparable).toEqual(figures.comparable);
+  });
+
+  it('keeps the credit balance in Smart mode while cash is unavailable', () => {
+    const figures = declinedPaymentFigures({ amount: '50', currency: 'USD' }, undefined, {
+      mode: 'smart',
+      availableUsd: 100,
+    });
+    expect(figures.comparable?.available).toBe(100);
+    expect(figures.cashComparable).toBeUndefined();
+  });
 });
 
 describe('chooseDeclineFix', () => {

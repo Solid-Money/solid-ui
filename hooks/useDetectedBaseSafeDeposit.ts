@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { parseUnits } from 'viem';
 import { base } from 'viem/chains';
 
 import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
@@ -14,18 +15,27 @@ import { selectSelectedUser, useUserStore } from '@/store/useUserStore';
 
 const POLL_INTERVAL_MS = 5000;
 const LIVE_POLL_INTERVAL_MS = 15000;
+const BASE_STABLECOIN_DECIMALS = 6;
 
 type DepositWatch = {
   userId: string;
   safeAddress: string;
   tokenAddress: string;
-  since: number;
+  startedAt: number;
+  knownHashes: ReadonlySet<string>;
+};
+
+const hasPositiveAmount = (amount: string): boolean => {
+  try {
+    return parseUnits(amount, BASE_STABLECOIN_DECIMALS) > 0n;
+  } catch {
+    return false;
+  }
 };
 
 const matchesDeposit = (activity: ActivityEvent, watch: DepositWatch): boolean => {
   const tokenAddress = activity.metadata?.tokenAddress;
-  const amount = Number(activity.amount);
-  const timestamp = Number(activity.timestamp) * 1000;
+  const timestamp = Number(activity.timestamp);
   return (
     !activity.deleted &&
     activity.type === TransactionType.RECEIVE &&
@@ -37,11 +47,24 @@ const matchesDeposit = (activity: ActivityEvent, watch: DepositWatch): boolean =
     activity.fromAddress.toLowerCase() !== watch.safeAddress &&
     typeof tokenAddress === 'string' &&
     tokenAddress.toLowerCase() === watch.tokenAddress &&
-    Number.isFinite(amount) &&
-    amount > 0 &&
     Number.isFinite(timestamp) &&
-    timestamp >= watch.since &&
-    !getTransferContext(activity)
+    timestamp >= Math.floor(watch.startedAt / 1000) &&
+    !watch.knownHashes.has(activity.hash.toLowerCase()) &&
+    !getTransferContext(activity) &&
+    hasPositiveAmount(activity.amount)
+  );
+};
+
+const knownDepositHashes = (userId: string): ReadonlySet<string> => {
+  const events = useActivityStore.getState().events[userId] ?? [];
+  return new Set(
+    events.flatMap(event =>
+      event?.hash &&
+      event.type === TransactionType.RECEIVE &&
+      event.status === TransactionStatus.SUCCESS
+        ? [event.hash.toLowerCase()]
+        : [],
+    ),
   );
 };
 
@@ -61,13 +84,17 @@ export function useDetectedBaseSafeDeposit({
   const token = WALLET_DEPOSIT_TOKENS.find(token => token.symbol === symbol);
   const tokenAddress = token?.contracts[base.id]?.toLowerCase();
   const isSelectedSafe = !!address && address.toLowerCase() === safeAddress;
-  const watch = useMemo<DepositWatch | undefined>(
-    () =>
-      isSelectedSafe && userId && safeAddress && tokenAddress
-        ? { userId, safeAddress, tokenAddress, since: Date.now() }
-        : undefined,
-    [isSelectedSafe, userId, safeAddress, tokenAddress],
-  );
+  const watch = useMemo<DepositWatch | undefined>(() => {
+    if (!isSelectedSafe || !userId || !safeAddress || !tokenAddress) return undefined;
+
+    return {
+      userId,
+      safeAddress,
+      tokenAddress,
+      startedAt: Date.now(),
+      knownHashes: knownDepositHashes(userId),
+    };
+  }, [isSelectedSafe, userId, safeAddress, tokenAddress]);
   const firedWatch = useRef<DepositWatch>(undefined);
 
   const liveDeposit = useActivityStore(state =>
@@ -82,7 +109,7 @@ export function useDetectedBaseSafeDeposit({
       watch?.userId,
       watch?.safeAddress,
       watch?.tokenAddress,
-      watch?.since,
+      watch?.startedAt,
     ],
     queryFn: async () => {
       if (!watch) return null;
