@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { DeclinedPaymentPrompt, useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useDeclineSpendable } from '@/hooks/useDeclineSpendable';
 import { CardTransactionCategory } from '@/lib/types';
 
 const { act, create } = jest.requireActual('react-test-renderer');
@@ -13,8 +14,22 @@ let mockDisplayCurrency: any;
 jest.mock('@/hooks/useCardTransactions', () => ({
   useCardTransactions: () => ({ data: mockTransactions }),
 }));
+let mockSpendableLoading: boolean;
+const mockRefetchSpendable = jest.fn();
 jest.mock('@/hooks/useCardSpendable', () => ({
-  useCardSpendable: () => ({ data: mockSpendable }),
+  useCardSpendable: () => ({
+    data: mockSpendable,
+    isLoading: mockSpendableLoading,
+    refetch: mockRefetchSpendable,
+  }),
+}));
+let mockBalancesRefresh: any;
+const mockRefetchBalances = jest.fn();
+jest.mock('@/hooks/useBalances', () => ({
+  useBalancesRefresh: (options: any) => {
+    mockBalancesRefresh = options;
+    return { refetch: mockRefetchBalances };
+  },
 }));
 let mockTile: { availableUsd: number | null; isLoading: boolean };
 jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () => ({
@@ -63,6 +78,9 @@ describe('useDeclinedPaymentPrompt', () => {
   beforeEach(() => {
     jest.useFakeTimers({ now: NOW });
     mockSpendable = { available: { amount: '0', currency: 'usd' } };
+    mockSpendableLoading = false;
+    mockRefetchSpendable.mockReset();
+    mockRefetchBalances.mockReset();
     mockRegistration = { registration: {}, mode: 'cash', isRegistered: true };
     mockBaseCredit = { base: {}, readsBase: false, isBaseGateReady: true };
     mockDisplayCurrency = { inEuros: false };
@@ -237,6 +255,49 @@ describe('useDeclinedPaymentPrompt', () => {
       });
 
       expect(prompt).toBeNull();
+    });
+
+    it('still quotes the tile, in dollars, when the backend cash read failed', () => {
+      mockSpendable = undefined;
+      mockTile = { availableUsd: 12.5, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt?.available).toEqual({ amount: 12.5, currency: 'USD' });
+    });
+
+    it('waits for the backend cash read while it is still loading', () => {
+      mockSpendable = undefined;
+      mockSpendableLoading = true;
+      mockTile = { availableUsd: 12.5, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt).toBeNull();
+    });
+
+    it("re-reads the tile's balances with the receipt's poll and its refresh", async () => {
+      let refetchCash: (() => Promise<unknown>) | undefined;
+      const Receipt = () => {
+        const { refetchCash: current } = useDeclineSpendable({ refetchInterval: 15_000 });
+        React.useEffect(() => {
+          refetchCash = current;
+        }, [current]);
+        return null;
+      };
+
+      act(() => {
+        root = create(<Receipt />);
+      });
+      expect(mockBalancesRefresh).toEqual({ enabled: true, refetchInterval: 15_000 });
+
+      await refetchCash?.();
+      expect(mockRefetchSpendable).toHaveBeenCalledTimes(1);
+      expect(mockRefetchBalances).toHaveBeenCalledTimes(1);
     });
 
     it('falls back to the cash figure when the tile cannot say', () => {

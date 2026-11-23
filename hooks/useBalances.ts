@@ -1222,3 +1222,28 @@ export const useBalancesPolling = (): void => {
     notifyOnChangeProps: [],
   });
 };
+
+/**
+ * A faster re-read of the same balances for a screen that is waiting on a top-up: the declined
+ * receipt, whose Cash figure is the Available to spend tile's and so comes from these balances.
+ * The app-wide timer above can be a minute apart; this one runs at the screen's own pace, and only
+ * while that screen asks. Renders nothing. `refetch` reads them at once.
+ */
+export const useBalancesRefresh = ({
+  enabled = true,
+  refetchInterval,
+}: { enabled?: boolean; refetchInterval?: number } = {}) => {
+  const { user } = useUser();
+  const options = tokenBalancesQueryOptions(user?.safeAddress);
+
+  const { refetch } = useQuery({
+    ...options,
+    ...balancesObserverOptions,
+    enabled: options.enabled && enabled && !!refetchInterval,
+    refetchInterval,
+    refetchIntervalInBackground: false,
+    notifyOnChangeProps: [],
+  });
+
+  return { refetch };
+};
