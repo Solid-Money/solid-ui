@@ -11,6 +11,7 @@ export default function CardLayout() {
       <Stack.Screen name="new-card" />
       <Stack.Screen name="closing-withdraw" />
       <Stack.Screen name="credit" />
+      <Stack.Screen name="credit/loan-safety" />
       {/* No screen animation: the card hero overlay plus the screen's own staggered
           entrance are the only motion, so the details screen swaps in instantly
           (opaque) while the card flies to it, instead of a fade competing with it. */}

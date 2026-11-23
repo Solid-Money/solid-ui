@@ -101,8 +101,8 @@ function ConnectingLine({ completed }: { completed: boolean }) {
 
   return (
     <View
-      className="my-1 rounded-full bg-white/50"
-      style={{ width: 1.5, height: 12, marginLeft: (CIRCLE_SIZE - 1.5) / 2 }}
+      className="my-1 min-h-3 flex-1 overflow-hidden rounded-full bg-white/50"
+      style={{ width: 1.5 }}
     >
       <Animated.View style={[{ flex: 1, backgroundColor: BRAND }, animatedStyle]} />
     </View>
@@ -115,28 +115,27 @@ function DepositStepperInner({ rows, className }: DepositStepperProps) {
   return (
     <View className={cn('rounded-twice bg-card px-5 py-4', className)}>
       {rows.map((row, index) => {
-        const isLast = index === rows.length - 1;
         const nextRow = rows[index + 1];
 
         return (
-          <View key={row.key}>
-            <View className="flex-row items-center gap-3">
+          <View key={row.key} className="flex-row items-stretch gap-3">
+            <View className="items-center">
               <StepCircle state={row.state} />
-              <Text
-                className={cn(
-                  'flex-1 text-base font-medium',
-                  row.state === 'failed'
-                    ? 'text-red-400'
-                    : row.state === 'pending'
-                      ? 'text-white/50'
-                      : 'text-white',
-                )}
-              >
-                {row.label}
-              </Text>
+              {nextRow && <ConnectingLine completed={nextRow.state !== 'pending'} />}
             </View>
-
-            {!isLast && <ConnectingLine completed={nextRow?.state !== 'pending'} />}
+            <Text
+              className={cn(
+                'flex-1 text-base font-medium',
+                nextRow && 'mb-5',
+                row.state === 'failed'
+                  ? 'text-red-400'
+                  : row.state === 'pending'
+                    ? 'text-white/50'
+                    : 'text-white',
+              )}
+            >
+              {row.label}
+            </Text>
           </View>
         );
       })}

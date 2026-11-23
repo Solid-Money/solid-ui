@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
 import { fuse as fuseChain } from 'viem/chains';
 
+import {
+  collateralDiscoveryKey,
+  findAdditionalCollateral,
+} from '@/components/Card/Credit/collateralDiscovery';
 import { assetName } from '@/components/Card/Credit/creditUi';
 import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import { borrowApyPercent, combinedBorrowRate, formatApy } from '@/constants/cardSpendV2';
 import {
+  type BaseCollateralPreview,
   type CreditCollateralAsset,
   type CreditInstancePosition,
   useCardCreditPositions,
@@ -20,6 +25,7 @@ import {
   WAD,
   worstStatus,
 } from '@/lib/creditRisk';
+import { collateralAssetKeyOf, sortByCollateralOrder } from '@/lib/utils/collateralOrder';
 
 /** How often the page re-reads the chain: countdowns and pending unlocks move on their own. */
 const REFRESH_MS = 30_000;
@@ -34,7 +40,7 @@ export interface CollateralEntry {
   value: string;
   /** "$467.84 locked", "All locked", "Not locked". */
   locked: string;
-  /** "Borrow up to 90% · keeps earning". */
+  /** "LTV 90% · keeps earning". */
   terms: string;
 }
 
@@ -61,8 +67,14 @@ export interface CreditDetails {
   /** "about $3.33 a month", from today's debt and rate. */
   monthlyInterest: string;
   collateral: CollateralEntry[];
+  additionalCollateral: CreditCollateralAsset[];
+  baseCollateralPreview?: BaseCollateralPreview;
+  isCollateralDiscoveryIncomplete: boolean;
+  canEditCollateralOrder: boolean;
   sales: Record<number, LoanSaleEvent[]>;
   format: (usd: bigint) => string;
+  /** Balances shown with cents in the overview and on each loan's header. */
+  formatBalance: (usd: bigint) => string;
 }
 
 /** Ticks every `intervalMs`, so a countdown or an unlock's wait stays current. */
@@ -88,10 +100,7 @@ const formatEuro = (amount: bigint) =>
     maximumFractionDigits: 2,
   });
 
-/**
- * Whether an asset gets a row: Solid's yield shares always (they are what the line is built on),
- * everything else only when held, as the spend-mode sheet lists them.
- */
+/** Held balances and the default Yield rows. Discovery takes eligible zero-balance rows below. */
 const listsAsset = (asset: CreditCollateralAsset): boolean =>
   asset.amount > 0n ||
   // soUSD on Base only when held: otherwise a second "$0.00" USD Yield row beside Fuse's.
@@ -121,7 +130,7 @@ const collateralEntry = (
           : `${lockedValue} locked`,
     terms:
       asset.ltvWad > 0n && asset.countsTowardPower
-        ? `Borrow up to ${percentOf(asset.ltvWad)}${STEADY_SYMBOLS.includes(asset.symbol) ? ' · keeps earning' : ''}`
+        ? `LTV ${percentOf(asset.ltvWad)}${STEADY_SYMBOLS.includes(asset.symbol) ? ' · keeps earning' : ''}`
         : 'Not used for borrowing',
   };
 };
@@ -142,12 +151,18 @@ export const useCreditDetails = (): CreditDetails => {
   const positionsQuery = useCardCreditPositions({ enabled: true, refetchInterval: REFRESH_MS });
   const figures = useCreditModeFigures({ enabled: true });
   const sales = useLoanSales({ enabled: true });
-  const { formatMicroUsd } = useCardDisplayCurrency();
+  const { formatMicroUsd, formatUsdAmount } = useCardDisplayCurrency();
+  const formatBalance = useCallback(
+    (usd: bigint) => formatUsdAmount(Number(formatUnits(usd, 6))),
+    [formatUsdAmount],
+  );
   const now = useNow(1_000);
   // Loans are rebuilt on each read, not each second: only the countdown text needs the clock.
   const [builtAt, setBuiltAt] = useState(() => Math.floor(Date.now() / 1000));
   const {
     data: { fuse, base },
+    baseCollateralPreview,
+    readsBase,
     isLoading,
     isError,
     refetch,
@@ -189,6 +204,17 @@ export const useCreditDetails = (): CreditDetails => {
         sum + (position.debtUsd * position.borrowApyPerSecond * SECONDS_PER_MONTH) / WAD,
       0n,
     );
+    const collateral = sortByCollateralOrder(
+      instances.flatMap(position => position.collateral),
+      asset => collateralAssetKeyOf(asset.symbol),
+      figures.collateralKeys,
+    );
+    // A failed or unanswered position read can hide a holding on the other instance.
+    const isCollateralDiscoveryIncomplete = isError || (readsBase && !base);
+    const additionalCollateral = isCollateralDiscoveryIncomplete
+      ? []
+      : findAdditionalCollateral(collateral);
+    const additionalKeys = new Set(additionalCollateral.map(collateralDiscoveryKey));
 
     return {
       isLoading,
@@ -206,15 +232,33 @@ export const useCreditDetails = (): CreditDetails => {
       borrowedProgress: figures.borrowedProgress,
       borrowApy: formatApy(borrowApyPercent(rate)),
       monthlyInterest: formatMicroUsd(monthly),
-      collateral: instances
-        .flatMap(position => position.collateral)
-        .filter(listsAsset)
+      collateral: collateral
+        .filter(asset => listsAsset(asset) && !additionalKeys.has(collateralDiscoveryKey(asset)))
         .map(asset => collateralEntry(asset, formatMicroUsd)),
+      additionalCollateral,
+      baseCollateralPreview,
+      isCollateralDiscoveryIncomplete,
+      canEditCollateralOrder: figures.canEditCollateralOrder,
       sales,
       format: formatMicroUsd,
+      formatBalance,
     };
     // Rebuilt per read and per minute, not per second: only countdown text needs the clock.
-  }, [fuse, base, builtAt, minute, figures, sales, formatMicroUsd, isLoading, isError, refetch]);
+  }, [
+    fuse,
+    base,
+    baseCollateralPreview,
+    readsBase,
+    builtAt,
+    minute,
+    figures,
+    sales,
+    formatMicroUsd,
+    formatBalance,
+    isLoading,
+    isError,
+    refetch,
+  ]);
 
   return { ...details, now };
 };

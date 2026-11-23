@@ -19,7 +19,6 @@ import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import CardLivePopup from '@/components/Card/CardLivePopup';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
-import CardCashbackCard from '@/components/Card/NewCardDetails/CardCashbackCard';
 import CardDetailsHeader from '@/components/Card/NewCardDetails/CardDetailsHeader';
 import {
   getCardHeroDestination,
@@ -39,7 +38,6 @@ import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardP
 import RainClosingCardNotice from '@/components/Card/RainSunset/RainClosingCardNotice';
 import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
-import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { formatUsd, onChainToUsd } from '@/constants/cardSpendModule';
 import { isCardSpendV2Configured } from '@/constants/cardSpendV2';
 import { DEVICE_DIGITAL_WALLET, DigitalWalletType } from '@/constants/digital-wallet';
@@ -57,15 +55,7 @@ import { useCustomer } from '@/hooks/useCustomer';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRainSunset } from '@/hooks/useRainSunset';
-import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import {
-  monthlyCashbackCap,
-  resolveAllTimeCashback,
-  resolveCashbackMonth,
-} from '@/lib/cashbackProgress';
-import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
-import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardProvider, CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
@@ -124,7 +114,6 @@ const CardDetailsPane = () => {
   const { sunset: rainSunset } = useRainSunset();
   const showsClosingNotice = Boolean(rainSunset?.notice && rainSunset.hasRainCard);
   const { data: customer } = useCustomer();
-  const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
   // Either read: the status names the issuer from KYC on, so the card-live popup is never preceded
   // by a flash of Rain's while the card read catches up.
@@ -332,15 +321,6 @@ const CardDetailsPane = () => {
     }
   }, [isCardFrozen, refetch]);
 
-  const handleGetMoreCashback = useCallback(() => {
-    closePane();
-    router.push(path.REWARDS_BENEFITS);
-  }, [closePane]);
-
-  // In the cardholder's cashback currency — euros, euro caps and a euro
-  // lifetime for a euro cardholder, never mixed with dollars.
-  const cashbackMonth = resolveCashbackMonth(rewardsData);
-  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
   // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
   // while this absolute pane does not. Keep the pane on the measured card centre so
   // opening it never adds the resulting half-scrollbar horizontal drift.
@@ -466,19 +446,6 @@ const CardDetailsPane = () => {
               />
             </HeroEnter>
           ) : null}
-          <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
-            <CashbackDetailsSheet
-              trigger={<CardCashbackCard />}
-              triggerContainerClassName="w-full"
-              cashbackRate={resolveUserCashbackRate(rewardsData)}
-              currency={cashbackMonth?.currency}
-              monthlyCashbackLabel={formatMonthlyCashback(rewardsData)}
-              maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
-              tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-              allTimeCashback={allTimeCashback}
-              onGetMoreCashback={handleGetMoreCashback}
-            />
-          </HeroEnter>
           <HeroEnter spec={HERO_ENTER.links} style={styles.linksList}>
             <CardLinksList />
           </HeroEnter>
@@ -599,7 +566,6 @@ const styles = StyleSheet.create({
   spendModeCard: { marginTop: 53 },
   realTimeFundingCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
-  cashbackCard: { marginTop: 20 },
   linksList: { marginTop: 20 },
 });
 

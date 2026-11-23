@@ -22,6 +22,7 @@ const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
  */
 const CardBottomSheet = ({
   isOpen,
+  isSuspended = false,
   onOpenChange,
   contentKey,
   designTop,
@@ -34,6 +35,8 @@ const CardBottomSheet = ({
   useEffect(() => {
     if (isOpen) setSession(current => current + 1);
   }, [isOpen]);
+
+  if (isSuspended) return null;
 
   if (isScreenMedium) {
     return (

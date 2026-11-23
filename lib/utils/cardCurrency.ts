@@ -131,6 +131,23 @@ export interface DeclinedPaymentFigures {
     /** USD per one unit of `currency`, to size a swap or a top-up in dollars. */
     rateToUsd: number;
   };
+  /** In Smart mode, the cash path may need a larger top-up than the credit shortfall. */
+  cashComparable?: DeclinedPaymentFigures['comparable'];
+}
+
+type DeclinedPayment = Pick<CardTransaction, 'amount' | 'currency' | 'usd_amount'> & {
+  spend_details?: Pick<CardSpendDetails, 'card_amount' | 'card_currency' | 'usd_amount'>;
+};
+
+interface DeclineCreditAvailability {
+  mode: 'credit' | 'smart';
+  availableUsd?: number;
+  displayUsdPerEur?: number;
+  /**
+   * `availableUsd` is the home Available to spend tile's own number — in Smart, already the larger
+   * of cash and credit — so it is quoted as it is rather than weighed against the cash path again.
+   */
+  isTileFigure?: boolean;
 }
 
 /**
@@ -150,10 +167,8 @@ export interface DeclinedPaymentFigures {
  * the design draws (€18.75 against €0.00). Dollars when the payment was in
  * dollars, or when only a dollar value of it is known.
  */
-export const declinedPaymentFigures = (
-  transaction: Pick<CardTransaction, 'amount' | 'currency' | 'usd_amount'> & {
-    spend_details?: Pick<CardSpendDetails, 'card_amount' | 'card_currency' | 'usd_amount'>;
-  },
+const cashPaymentFigures = (
+  transaction: DeclinedPayment,
   spendable?: CardSpendableResponse | null,
 ): DeclinedPaymentFigures => {
   const billed = Number(transaction.spend_details?.card_amount);
@@ -228,6 +243,9 @@ export const declinedPaymentFigures = (
  * beside a tile reading €36.54. The banner and the receipt take this, so all three quote one
  * number.
  *
+ * For the cash path. In Credit and Smart the tile's number goes to `declinedPaymentFigures` as the
+ * credit figure instead (`isTileFigure`).
+ *
  * `usd` is the tile's figure in dollars. `eur` is what the tile shows when it shows euros: used as
  * it is for a euro card, so the two match to the cent; otherwise the dollars are converted at the
  * card's own quote and rounded down, as the backend's figure is. The quote itself is kept.
@@ -258,6 +276,57 @@ export const withTileAvailable = (
   };
 };
 
+export const declinedPaymentFigures = (
+  transaction: DeclinedPayment,
+  spendable?: CardSpendableResponse | null,
+  credit?: DeclineCreditAvailability,
+): DeclinedPaymentFigures => {
+  const cash = cashPaymentFigures(transaction, spendable);
+  if (!credit) return cash;
+
+  const { payment } = cash;
+  const { availableUsd, displayUsdPerEur } = credit;
+  if (availableUsd === undefined) {
+    return credit.mode === 'smart' ? { ...cash, cashComparable: cash.comparable } : { payment };
+  }
+
+  const available: Money = displayUsdPerEur
+    ? { amount: usdToEur(availableUsd, displayUsdPerEur), currency: 'EUR' }
+    : { amount: availableUsd, currency: 'USD' };
+  const recordedUsd = Math.abs(
+    Number(transaction.spend_details?.usd_amount ?? transaction.usd_amount),
+  );
+  const paymentUsd =
+    payment.currency === 'USD'
+      ? payment.amount
+      : Number.isFinite(recordedUsd) && recordedUsd > 0
+        ? recordedUsd
+        : cash.comparable && cash.comparable.payment * cash.comparable.rateToUsd;
+  const comparable = paymentUsd
+    ? { payment: paymentUsd, available: availableUsd, currency: 'USD', rateToUsd: 1 }
+    : undefined;
+
+  if (credit.mode === 'credit') return { payment, available, comparable };
+  // The tile's Smart number: one figure for the banner, the receipt and the tile. A top-up still
+  // funds the cash path, so the cash comparison stays beside it.
+  if (credit.isTileFigure) {
+    return { payment, available, comparable, cashComparable: cash.comparable };
+  }
+
+  // Smart can use either path. Compare the gaps in USD, since the two paths can use different FX.
+  const cashUsd = Number(spendable?.available?.amount);
+  const cashMarginUsd = cash.comparable
+    ? (cash.comparable.available - cash.comparable.payment) * cash.comparable.rateToUsd
+    : undefined;
+  const preferCredit =
+    comparable && cashMarginUsd !== undefined
+      ? comparable.available - comparable.payment > cashMarginUsd
+      : !Number.isFinite(cashUsd) || availableUsd > cashUsd;
+  return preferCredit
+    ? { payment, available, comparable, cashComparable: cash.comparable }
+    : { ...cash, cashComparable: cash.comparable };
+};
+
 /** Up to the cent: the gap is never under-stated. */
 export const shortfallOf = (comparable: NonNullable<DeclinedPaymentFigures['comparable']>) =>
   Math.max(
@@ -266,10 +335,9 @@ export const shortfallOf = (comparable: NonNullable<DeclinedPaymentFigures['comp
   );
 
 /**
- * The one fix a declined receipt leads with — the push's `data.fix` vocabulary, plus `turn_on_base`,
- * which only the receipt works out so far.
+ * The action a declined receipt leads with. Cash actions can also appear in a decline push.
  */
-export type DeclineFix = 'turn_on_euro' | 'turn_on_base' | 'swap' | 'add_funds';
+export type DeclineFix = 'turn_on_euro' | 'turn_on_base' | 'swap' | 'add_funds' | 'view_spend_mode';
 
 /** Below this a holding is dust, not a fix — the swap form's own floor. */
 const MIN_SWAP_VALUE_USD = 1;

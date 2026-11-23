@@ -56,6 +56,7 @@ const instance = (overrides: Partial<CreditInstancePosition>): CreditInstancePos
   fullyPriced: true,
   creditLineUsd: 0n,
   creditHeadroomUsd: 0n,
+  availableToBorrowUsd: 0n,
   borrowApyPerSecond: RATE,
   collateral: [],
   unhealthySince: 0,

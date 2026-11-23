@@ -330,7 +330,7 @@ export default function HomeScreenNew() {
   ]);
   // Which rung of the card funnel belongs under the card, if any — null once the
   // user is done or has snoozed the current one. See `resolveHomePromptStep`.
-  const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
+  const { promptKey, declinedPayment } = useHomePrompt({ hasCard: userHasCard, depositCompleted });
   // "Fund your wallet" is the one banner a wrong `depositCompleted` would show
   // to the wrong user, so it is the only one that waits for that answer to
   // settle. The verification banners do not read it at all, and a brand-new user
@@ -479,6 +479,7 @@ export default function HomeScreenNew() {
             <HeroExit spec={HERO_EXIT.belowCard}>
               <HomePromptCard
                 promptKey={promptKey}
+                declined={declinedPayment}
                 depositCompleted={depositCompleted}
                 className="px-4"
               />

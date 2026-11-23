@@ -21,6 +21,7 @@ const DepositModalProvider = () => {
     needsWalletProvider,
     disableScroll,
     fillViewportHeight,
+    wideScreenHeight,
     hideHeader,
     mobilePresentation,
     actionButton,
@@ -62,6 +63,7 @@ const DepositModalProvider = () => {
         contentKey={getContentKey()}
         disableScroll={disableScroll}
         fillViewportHeight={fillViewportHeight}
+        wideScreenHeight={wideScreenHeight}
         hideHeader={hideHeader}
         mobilePresentation={mobilePresentation}
       >

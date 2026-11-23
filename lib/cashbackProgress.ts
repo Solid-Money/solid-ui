@@ -111,9 +111,10 @@ export type CashbackMonth = MonthlyCapFields &
  */
 export const resolveCashbackMonth = (
   rewards: RewardsUserData | undefined,
+  currency: CashbackCurrency = rewards?.cashbackCurrency ?? 'USD',
 ): CashbackMonth | undefined => {
   if (!rewards) return undefined;
-  if (rewards.cashbackCurrency === 'EUR' && rewards.cashbackEur) {
+  if (currency === 'EUR' && rewards.cashbackEur) {
     return { ...rewards.cashbackEur, currency: 'EUR' };
   }
   return {
@@ -148,6 +149,38 @@ export const cashbackFiguresByCurrency = (
   if (otherFigure.value === 0) return [ownFigure];
   if (ownFigure.value === 0) return [otherFigure];
   return [ownFigure, otherFigure];
+};
+
+/** Monthly earnings include the capped pending payout in each currency. */
+export const resolveMonthlyCashback = (rewards: RewardsUserData | undefined): CashbackFigure[] =>
+  cashbackFiguresByCurrency(
+    {
+      USD: monthlyCashbackTotal(rewards?.cashbackThisMonth, rewards?.cashbackPendingThisMonth),
+      EUR: monthlyCashbackTotal(
+        rewards?.cashbackEur?.cashbackThisMonth,
+        rewards?.cashbackEur?.cashbackPendingThisMonth,
+      ),
+    },
+    rewards?.cashbackCurrency ?? 'USD',
+  );
+
+/** Convert at full precision so the combined display total is rounded only once. */
+export const sumCashbackInCurrency = (
+  figures: CashbackFigure[],
+  currency: CashbackCurrency,
+  usdPerEur: number,
+): number | undefined => {
+  let total = 0;
+  for (const figure of figures) {
+    if (figure.value === 0) continue;
+    if (figure.currency === currency) {
+      total += figure.value;
+    } else {
+      if (!Number.isFinite(usdPerEur) || usdPerEur <= 0) return undefined;
+      total += currency === 'USD' ? figure.value * usdPerEur : figure.value / usdPerEur;
+    }
+  }
+  return total;
 };
 
 /**

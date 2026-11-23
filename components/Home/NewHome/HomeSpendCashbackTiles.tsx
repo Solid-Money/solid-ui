@@ -10,14 +10,9 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCashbackDetails } from '@/hooks/useCashbackDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
-import {
-  CASHBACK_EARNED_COLOR,
-  monthlyCashbackCap,
-  resolveAllTimeCashback,
-  resolveCashbackMonth,
-} from '@/lib/cashbackProgress';
-import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
+import { CASHBACK_EARNED_COLOR } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -61,10 +56,8 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
   const { data: rewardsData } = useRewardsUserData();
   const { data: cardDetails } = useCardDetails();
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
-  // In the cardholder's cashback currency: euros for a euro cardholder.
-  const cashbackMonth = resolveCashbackMonth(rewardsData);
-  const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
-  const monthlyCashbackLabel = formatMonthlyCashback(rewardsData);
+  const cashbackDetails = useCashbackDetails(rewardsData, cardDetails);
+  const { monthlyCashbackLabel } = cashbackDetails;
   // The Cash segment's empty-state text is "Add funds"; the home tile always
   // shows a balance. Credit and Smart use the same availability as the picker.
   const available =
@@ -138,11 +131,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
         <CashbackDetailsSheet
           triggerContainerClassName=""
           cashbackRate={rate}
-          currency={cashbackCurrency}
-          monthlyCashbackLabel={monthlyCashbackLabel}
-          maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
-          tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-          allTimeCashback={resolveAllTimeCashback(rewardsData, cardDetails?.cashback)}
+          {...cashbackDetails}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           trigger={
             <Pressable
@@ -183,7 +172,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
                   minimumFontScale={0.7}
                   style={[styles.amount, styles.cashbackAmount]}
                 >
-                  +{monthlyCashbackLabel}
+                  {monthlyCashbackLabel === undefined ? '—' : `+${monthlyCashbackLabel}`}
                 </Text>
                 <Text
                   numberOfLines={1}

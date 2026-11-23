@@ -9,11 +9,12 @@ import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
+import { homeLinkParamsFor } from '@/constants/homeLinkParams';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDeclineSpendable } from '@/hooks/useDeclineSpendable';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
-import { useTileSpendable } from '@/hooks/useTileSpendable';
 import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { track } from '@/lib/analytics';
@@ -23,7 +24,6 @@ import { CardTransaction } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import {
   chooseDeclineFix,
-  declinedPaymentFigures,
   DeclineFix,
   formatCardCurrency,
   roundUpShortfall,
@@ -60,9 +60,8 @@ interface NotEnoughToPayCardProps {
  * it (Figma 28823:9338, 28826:9271).
  *
  * The decline push opens this receipt, and the receipt is where the fix lives: there is no
- * separate sheet. It names the payment and what the card can spend now — live, re-read while the
- * payment is still not covered — in the currency the till charged, which is the comparison nobody
- * could make on Oct 15 with a dollar balance and a euro till.
+ * separate sheet. It names the payment and what the active spend mode can cover now, and
+ * refreshes the figures while the cardholder is still short.
  *
  * The fix is decided here, from what the cardholder holds now, rather than read off the push: the
  * receipt is also reached from the activity list, and what they hold may have changed since the
@@ -80,9 +79,8 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   // cardholder who is done. Once the read lands, the receipt says what that balance says.
   const [turnedOnBase, setTurnedOnBase] = useState(false);
 
-  // The home tile's number, as the banner that opens this receipt quotes it.
-  const { data: spendable, refetch: refetchSpendable } = useTileSpendable({
-    refetchInterval: covered ? false : UNCOVERED_POLL_MS,
+  const { mode, figuresFor, refetchCash } = useDeclineSpendable({
+    refetchInterval: covered ? undefined : UNCOVERED_POLL_MS,
   });
   const { eurc } = useUnusableEurc();
   const unreachableBase = useUnreachableBaseBalance();
@@ -90,10 +88,7 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   const router = useRouter();
   const { swappable } = useMovableHoldings();
 
-  const figures = useMemo(
-    () => declinedPaymentFigures(transaction, spendable),
-    [transaction, spendable],
-  );
+  const figures = useMemo(() => figuresFor(transaction), [transaction, figuresFor]);
   const { payment, available, comparable } = figures;
   const isCovered = !!comparable && comparable.available >= comparable.payment;
 
@@ -101,35 +96,41 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     setCovered(isCovered);
   }, [isCovered]);
 
-  // In the comparison's currency — the card's own for the usual euro payment.
   const shortfall = comparable ? shortfallOf(comparable) : undefined;
-  const target = comparable ? roundUpShortfall(shortfall ?? 0) : undefined;
-  const rateToUsd = comparable?.rateToUsd ?? 1;
+  const comparisonCurrency = comparable?.currency ?? payment.currency;
+  // A swap or top-up funds the cash path, including when Smart has more credit than cash.
+  const cash = mode === 'smart' ? figures.cashComparable : comparable;
+  const cashShortfall = cash ? shortfallOf(cash) : undefined;
+  const target = cashShortfall !== undefined ? roundUpShortfall(cashShortfall) : undefined;
+  const rateToUsd = cash?.rateToUsd ?? 1;
   const holding = swappable[0];
 
-  const fix: DeclineFix = chooseDeclineFix({
-    payment,
-    merchantCurrency: transaction.currency,
-    unusableEurc: eurc,
-    unreachableBaseUsd: unreachableBase.usd,
-    paymentUsd: comparable ? comparable.payment * rateToUsd : undefined,
-    swapValueUsd: holding?.valueUSD,
-    shortfallUsd: shortfall !== undefined ? shortfall * rateToUsd : undefined,
-  });
+  const fix: DeclineFix =
+    mode === 'credit'
+      ? 'view_spend_mode'
+      : chooseDeclineFix({
+          payment,
+          merchantCurrency: transaction.currency,
+          unusableEurc: eurc,
+          unreachableBaseUsd: unreachableBase.usd,
+          paymentUsd: cash ? cash.payment * rateToUsd : undefined,
+          swapValueUsd: holding?.valueUSD,
+          shortfallUsd: cashShortfall !== undefined ? cashShortfall * rateToUsd : undefined,
+        });
 
   // Once per receipt, and only once the live figure is in, so `covered` means what it says.
   const viewedRef = useRef(false);
   useEffect(() => {
-    if (viewedRef.current || !spendable) return;
+    if (viewedRef.current || !available) return;
     viewedRef.current = true;
     track(TRACKING_EVENTS.CARD_DECLINE_FIX_VIEWED, {
       transaction_id: transaction.id,
       fix,
       covered: isCovered,
-      currency: payment.currency,
+      currency: comparisonCurrency,
       shortfall,
     });
-  }, [spendable, fix, isCovered, payment.currency, shortfall, transaction.id]);
+  }, [available, fix, isCovered, comparisonCurrency, shortfall, transaction.id]);
 
   const trackPress = useCallback(
     (button: DeclineFix) =>
@@ -137,16 +138,21 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
         transaction_id: transaction.id,
         fix,
         button,
-        currency: payment.currency,
+        currency: comparisonCurrency,
         shortfall,
       }),
-    [fix, payment.currency, shortfall, transaction.id],
+    [fix, comparisonCurrency, shortfall, transaction.id],
   );
 
   const openAddFunds = useCallback(() => {
     trackPress('add_funds');
     setIsFundOpen(true);
   }, [trackPress]);
+
+  const openSpendMode = () => {
+    trackPress('view_spend_mode');
+    router.navigate({ pathname: '/', params: homeLinkParamsFor({ kind: 'spend-mode' }) });
+  };
 
   // Opens Main currency, where the one-time approval that lets the card pay with EURC is.
   const turnOnEuro = useCallback(() => {
@@ -162,14 +168,14 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
       if (!(await baseSpend.enableAsync('declined_receipt'))) return;
       setTurnedOnBase(true);
       try {
-        await refetchSpendable();
+        await refetchCash();
       } finally {
         setTurnedOnBase(false);
       }
     } catch (error) {
       void showErrorToast(error, { action: 'card_settings' });
     }
-  }, [baseSpend, refetchSpendable, trackPress]);
+  }, [baseSpend, refetchCash, trackPress]);
 
   const swapUsd = (target ?? 0) * rateToUsd;
   const swapInput = holding ? swapAmountFor(swapUsd, holding) : undefined;
@@ -190,7 +196,7 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   // What "Move from wallet" starts at: the gap, rounded up, in the dollars it moves.
   const suggestedAmountUsd = target ? Math.ceil(target * rateToUsd) : undefined;
 
-  const currency = comparable?.currency ?? payment.currency;
+  const currency = cash?.currency ?? payment.currency;
 
   return (
     <View className="gap-3 rounded-[20px] border border-white/[0.12] bg-card p-4">
@@ -216,7 +222,16 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
         <Text className="text-center text-[14px] text-white/60">
           Your card can now use your Base balance. Checking your balance…
         </Text>
-      ) : (
+      ) : fix === 'view_spend_mode' ? (
+        <>
+          <Pressable accessibilityRole="button" className={PRIMARY_BUTTON} onPress={openSpendMode}>
+            <Text className="text-[16px] font-semibold text-black">View spend mode</Text>
+          </Pressable>
+          <Text className="text-center text-[14px] text-white/60">
+            Add eligible collateral to increase your available credit.
+          </Text>
+        </>
+      ) : available ? (
         <>
           {fix === 'swap' && holding ? (
             <>
@@ -296,7 +311,7 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
             Then ask the shop to try your card again.
           </Text>
         </>
-      )}
+      ) : null}
 
       <WirexCardFundModal
         isOpen={isFundOpen}

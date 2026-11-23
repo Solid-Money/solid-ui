@@ -2,22 +2,22 @@ import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spend
 
 export interface SpendModeSheetProps {
   isOpen: boolean;
+  /** Temporarily hides the drawer while its Home screen is behind another route. */
+  isSuspended?: boolean;
   onOpenChange: (open: boolean) => void;
   /**
    * The mode currently in force. Drives the white pill and turns the button into a
    * plain dismissal rather than a "Change to …".
    */
   activeMode?: SpendMode;
+  /** The mode selected when the drawer body appears, including a restored preview. */
+  initialMode?: SpendMode;
   /** Opens the spend-mode explanation from within this sheet. */
   onHelpPress: () => void;
-  /** Opens "How collateral works", from the "?" beside "Collateral assets". */
-  onCollateralHelpPress: () => void;
-  /** Opens the borrow position, from "View Credit details" on the Credit panel. */
+  /** Opens the Credit page from the borrowed summary. */
   onViewCreditDetails: () => void;
   /** Opens the add-funds flow from the balance panel. */
   onAddFunds?: () => void;
   /** Opens the Spend order screen from "Edit order" on the Cash panel. */
   onEditOrder?: () => void;
-  /** Opens the Collateral order screen from "Edit order" on the Credit panel. */
-  onEditCollateralOrder?: () => void;
 }

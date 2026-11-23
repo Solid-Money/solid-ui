@@ -7,6 +7,9 @@ const { act, create } = jest.requireActual('react-test-renderer');
 
 let mockTransactions: any;
 let mockSpendable: any;
+let mockRegistration: any;
+let mockBaseCredit: any;
+let mockDisplayCurrency: any;
 jest.mock('@/hooks/useCardTransactions', () => ({
   useCardTransactions: () => ({ data: mockTransactions }),
 }));
@@ -17,8 +20,14 @@ let mockTile: { availableUsd: number | null; isLoading: boolean };
 jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () => ({
   useSpendModeFigures: () => mockTile,
 }));
+jest.mock('@/hooks/useCardSpendRegistration', () => ({
+  useCardSpendRegistration: () => mockRegistration,
+}));
+jest.mock('@/hooks/useCardCreditPositions', () => ({
+  useCardCreditPositions: () => mockBaseCredit,
+}));
 jest.mock('@/hooks/useMainCurrency', () => ({
-  useCardDisplayCurrency: () => ({ inEuros: false, toDisplayAmount: (usd: number) => usd }),
+  useCardDisplayCurrency: () => mockDisplayCurrency,
 }));
 jest.mock('@/store/useHomePromptStore', () => ({
   useHomePromptStore: (select: (state: any) => any) => select({ dismissedDeclines: {} }),
@@ -41,7 +50,10 @@ const declined = (at: Date) => ({
 
 let prompt: DeclinedPaymentPrompt | null;
 const Probe = () => {
-  prompt = useDeclinedPaymentPrompt(true);
+  const currentPrompt = useDeclinedPaymentPrompt(true);
+  React.useEffect(() => {
+    prompt = currentPrompt;
+  }, [currentPrompt]);
   return null;
 };
 
@@ -51,7 +63,11 @@ describe('useDeclinedPaymentPrompt', () => {
   beforeEach(() => {
     jest.useFakeTimers({ now: NOW });
     mockSpendable = { available: { amount: '0', currency: 'usd' } };
-    mockTile = { availableUsd: 0, isLoading: false };
+    mockRegistration = { registration: {}, mode: 'cash', isRegistered: true };
+    mockBaseCredit = { base: {}, readsBase: false, isBaseGateReady: true };
+    mockDisplayCurrency = { inEuros: false };
+    // The tile cannot say unless a test gives it a number: the hook's own figures stand.
+    mockTile = { availableUsd: null, isLoading: false };
   });
 
   afterEach(() => {
@@ -67,6 +83,79 @@ describe('useDeclinedPaymentPrompt', () => {
     });
 
     expect(prompt).toMatchObject({ transactionId: 'tx-declined', merchantName: 'Corner Market' });
+  });
+
+  it('shows credit in the main currency and clears the banner when credit covers the payment', () => {
+    mockTransactions = {
+      pages: [
+        {
+          data: [
+            {
+              ...declined(new Date(NOW.getTime() - HOUR_MS)),
+              amount: '364.90',
+              currency: 'ILS',
+              usd_amount: '110.96',
+            },
+          ],
+        },
+      ],
+    };
+    mockRegistration = {
+      ...mockRegistration,
+      mode: 'credit',
+      position: { availableToBorrowUsd: 11_000_000n },
+    };
+    mockBaseCredit = {
+      ...mockBaseCredit,
+      readsBase: true,
+      base: { data: { availableToBorrowUsd: 32_400_000n } },
+    };
+    mockDisplayCurrency = { inEuros: true, usdPerEur: 1.1657 };
+
+    act(() => {
+      root = create(<Probe />);
+    });
+    expect(prompt?.available).toEqual({ amount: 27.79, currency: 'EUR' });
+
+    // Together the two credit balances exceed the payment, but neither instance can pay it.
+    mockRegistration.position = { availableToBorrowUsd: 79_000_000n };
+    act(() => root.update(<Probe />));
+    expect(prompt?.available).toEqual({ amount: 67.77, currency: 'EUR' });
+
+    mockBaseCredit.base = { data: { availableToBorrowUsd: 111_000_000n } };
+    act(() => root.update(<Probe />));
+    expect(prompt).toBeNull();
+  });
+
+  it('waits for the active mode and for enabled Base credit before showing a balance', () => {
+    mockTransactions = { pages: [{ data: [declined(new Date(NOW.getTime() - HOUR_MS))] }] };
+    mockRegistration.registration = null;
+    mockRegistration.isLoading = true;
+    act(() => {
+      root = create(<Probe />);
+    });
+    expect(prompt).toBeNull();
+
+    mockRegistration = {
+      registration: {},
+      mode: 'credit',
+      isRegistered: true,
+      position: { availableToBorrowUsd: 10_000_000n },
+    };
+    mockBaseCredit.readsBase = true;
+    act(() => root.update(<Probe />));
+    expect(prompt).toBeNull();
+  });
+
+  it('keeps the cash prompt when the registration read fails', () => {
+    mockTransactions = { pages: [{ data: [declined(new Date(NOW.getTime() - HOUR_MS))] }] };
+    mockRegistration = { registration: null, mode: 'cash', isLoading: false };
+
+    act(() => {
+      root = create(<Probe />);
+    });
+
+    expect(prompt?.available).toEqual({ amount: 0, currency: 'USD' });
   });
 
   it('lets the banner go when its day is up, though Home stayed mounted and nothing refetched', () => {
@@ -93,7 +182,6 @@ describe('useDeclinedPaymentPrompt', () => {
     });
 
     it('is what the banner quotes, not the cash-only figure', () => {
-      // Credit mode: the tile counts the credit line.
       mockTile = { availableUsd: 12.5, isLoading: false };
 
       act(() => {
@@ -101,6 +189,34 @@ describe('useDeclinedPaymentPrompt', () => {
       });
 
       expect(prompt?.available).toEqual({ amount: 12.5, currency: 'USD' });
+    });
+
+    it('is what the banner quotes in Credit mode, in the main currency', () => {
+      // On its own the hook would say the larger single line, $11. The tile reads $43.40.
+      mockRegistration = {
+        ...mockRegistration,
+        mode: 'credit',
+        position: { availableToBorrowUsd: 11_000_000n },
+      };
+      mockBaseCredit = {
+        ...mockBaseCredit,
+        readsBase: true,
+        base: { data: { availableToBorrowUsd: 5_000_000n } },
+      };
+      mockDisplayCurrency = { inEuros: true, usdPerEur: 1.1657 };
+      mockTransactions = {
+        pages: [{ data: [{ ...declined(new Date(NOW.getTime() - HOUR_MS)), amount: '110.96' }] }],
+      };
+      mockTile = { availableUsd: 43.4, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+      expect(prompt?.available).toEqual({ amount: 37.23, currency: 'EUR' });
+
+      mockTile = { availableUsd: 111, isLoading: false };
+      act(() => root.update(<Probe />));
+      expect(prompt).toBeNull();
     });
 
     it('hides the banner once it covers the payment', () => {

@@ -129,6 +129,7 @@ export type EuroSpendEnableSource =
   | 'main_currency'
   | 'card_activation'
   | 'home_banner'
+  | 'credit_collateral'
   | 'declined_receipt';
 
 /**

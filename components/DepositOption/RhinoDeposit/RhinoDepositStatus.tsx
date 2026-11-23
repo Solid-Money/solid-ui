@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { Check } from 'lucide-react-native';
 
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
@@ -22,12 +23,9 @@ type RhinoDepositStatusProps = {
   addressType?: string;
   /** The destination the address is for: only its deposits show. */
   destinationType: RhinoDestinationType;
-  /**
-   * Told whether the deposit shown is complete (see `isRhinoDepositComplete`),
-   * whenever that changes, and `false` once this leaves the screen — so the host
-   * can swap its own button for one that closes.
-   */
-  onCompleteChange?: (complete: boolean) => void;
+  compact?: boolean;
+  /** Called when Rhino's payout completes the deposit (see `isRhinoDepositComplete`). */
+  onComplete?: () => void;
 };
 
 /**
@@ -69,7 +67,8 @@ const RhinoDepositStatus = ({
   chainName,
   addressType,
   destinationType,
-  onCompleteChange,
+  compact = false,
+  onComplete,
 }: RhinoDepositStatusProps) => {
   const { deposit } = useRhinoDeposits({
     enabled,
@@ -81,9 +80,8 @@ const RhinoDepositStatus = ({
 
   const isComplete = enabled && !!depositAddress && !!deposit && isRhinoDepositComplete(deposit);
   useEffect(() => {
-    onCompleteChange?.(isComplete);
-    return () => onCompleteChange?.(false);
-  }, [isComplete, onCompleteChange]);
+    if (isComplete) onComplete?.();
+  }, [isComplete, onComplete]);
 
   if (!enabled || !depositAddress) return null;
 
@@ -95,6 +93,25 @@ const RhinoDepositStatus = ({
     deposit,
     depositChainName(deposit.chain, { chain, chainName }, assets),
   );
+
+  if (compact && isComplete) {
+    return (
+      <View className="max-w-full flex-row items-center gap-x-1.5 self-center rounded-[18px] bg-[#282828] px-3.5 py-2">
+        <Image
+          accessible={false}
+          source={require('@/assets/images/deposit-confirmed-check.svg')}
+          style={{ width: 14, height: 14 }}
+          contentFit="contain"
+        />
+        <Text className="min-w-0 shrink text-[14px] font-medium leading-5 text-white">
+          {view.title}
+          <Text className="text-[14px] font-medium leading-5 text-white/70">
+            {` · ${deposit.receiveSymbol} in your wallet`}
+          </Text>
+        </Text>
+      </View>
+    );
+  }
 
   if (view.tone === 'error' || view.tone === 'neutral') {
     const isError = view.tone === 'error';

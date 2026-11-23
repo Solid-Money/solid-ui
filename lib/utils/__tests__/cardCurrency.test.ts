@@ -148,6 +148,65 @@ describe('declinedPaymentFigures', () => {
       payment: { amount: 18.75, currency: 'EUR' },
     });
   });
+
+  it('uses the USD authorization value for credit and displays credit in the main currency', () => {
+    const figures = declinedPaymentFigures(
+      {
+        amount: '364.90',
+        currency: 'ILS',
+        usd_amount: '110.96',
+        spend_details: { card_amount: '100.42', card_currency: 'EUR' },
+      },
+      { available: { amount: '0', currency: 'usd' } },
+      { mode: 'credit', availableUsd: 32.4, displayUsdPerEur: 1.1657 },
+    );
+
+    expect(figures.payment).toEqual({ amount: 100.42, currency: 'EUR' });
+    expect(figures.available).toEqual({ amount: 27.79, currency: 'EUR' });
+    expect(figures.comparable).toMatchObject({ payment: 110.96, available: 32.4 });
+  });
+
+  it.each([5, 20])('chooses one Smart path with $%s credit', availableUsd => {
+    const figures = declinedPaymentFigures({ amount: '32', currency: 'USD' }, EUR_SPENDABLE, {
+      mode: 'smart',
+      availableUsd,
+    });
+
+    expect(figures.available).toEqual({ amount: Math.max(14.46, availableUsd), currency: 'USD' });
+    expect(figures.comparable?.available).toBeLessThan(32);
+    expect(figures.cashComparable?.available).toBe(14.46);
+  });
+
+  it('keeps the cash balance in Smart mode while credit is unavailable', () => {
+    const figures = declinedPaymentFigures({ amount: '12', currency: 'USD' }, EUR_SPENDABLE, {
+      mode: 'smart',
+    });
+    expect(figures.comparable?.available).toBe(14.46);
+    expect(figures.cashComparable).toEqual(figures.comparable);
+  });
+
+  it("quotes the tile's Smart number as it is, and keeps the cash path for a top-up", () => {
+    // The tile reads the larger of cash and credit. Weighed against cash again, a near tie showed
+    // the backend's cash figure, cents off the tile.
+    const figures = declinedPaymentFigures({ amount: '32', currency: 'USD' }, EUR_SPENDABLE, {
+      mode: 'smart',
+      availableUsd: 14.4,
+      isTileFigure: true,
+    });
+
+    expect(figures.available).toEqual({ amount: 14.4, currency: 'USD' });
+    expect(figures.comparable).toMatchObject({ payment: 32, available: 14.4 });
+    expect(figures.cashComparable?.available).toBe(14.46);
+  });
+
+  it('keeps the credit balance in Smart mode while cash is unavailable', () => {
+    const figures = declinedPaymentFigures({ amount: '50', currency: 'USD' }, undefined, {
+      mode: 'smart',
+      availableUsd: 100,
+    });
+    expect(figures.comparable?.available).toBe(100);
+    expect(figures.cashComparable).toBeUndefined();
+  });
 });
 
 describe('chooseDeclineFix', () => {

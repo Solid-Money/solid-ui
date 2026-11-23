@@ -9,6 +9,7 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 const { act, create } = require('react-test-renderer');
 const mockOpenCashback = jest.fn();
 const mockSheetProps = jest.fn();
+const mockTokenPriceUsd = jest.fn();
 const USD_REWARDS = {
   cashbackRate: 4,
   cashbackThisMonth: 2.5,
@@ -17,12 +18,23 @@ const USD_REWARDS = {
 };
 let mockRewards: Record<string, unknown> = USD_REWARDS;
 let mockCardCashback: Record<string, unknown> = { totalUsdValue: 25 };
+let mockMainCurrency: 'USD' | 'EUR' | undefined;
+let mockUsdPerEur: number | undefined;
 
 jest.mock('@/hooks/useRewards', () => ({
   useRewardsUserData: () => ({ data: mockRewards }),
 }));
 jest.mock('@/hooks/useCardDetails', () => ({
-  useCardDetails: () => ({ data: { cashback: mockCardCashback } }),
+  useCardDetails: () => ({
+    data: {
+      cashback: mockCardCashback,
+      main_currency: mockMainCurrency,
+      balances: { available_in_eur: { usd_per_eur: mockUsdPerEur } },
+    },
+  }),
+}));
+jest.mock('@/hooks/useToken', () => ({
+  useTokenPriceUsd: (token: string) => ({ data: mockTokenPriceUsd(token) }),
 }));
 jest.mock('@/components/ui/skeleton', () => 'Skeleton');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
@@ -63,6 +75,9 @@ afterEach(() => {
   useCardPaneStore.getState().close();
   mockRewards = USD_REWARDS;
   mockCardCashback = { totalUsdValue: 25 };
+  mockMainCurrency = undefined;
+  mockUsdPerEur = undefined;
+  mockTokenPriceUsd.mockReset();
   jest.clearAllMocks();
 });
 
@@ -80,14 +95,16 @@ test('hands the cashback sheet dollar figures for a dollar cardholder', () => {
     expect.objectContaining({
       currency: 'USD',
       monthlyCashbackLabel: '$7.60',
-      maxCashbackMonthly: 100,
-      allTimeCashback: [{ value: 25, currency: 'USD' }],
+      monthlyCapLabel: '$100',
+      allTimeCashbackLabel: '$25.00',
     }),
   );
+  expect(mockTokenPriceUsd).toHaveBeenLastCalledWith('');
   act(() => tree.unmount());
 });
 
-test("shows a euro cardholder's cashback in euros, never added to dollars", () => {
+test('converts dollar cashback to euros and uses the configured euro cap', () => {
+  mockUsdPerEur = 1.25;
   mockRewards = {
     ...USD_REWARDS,
     cashbackCurrency: 'EUR',
@@ -103,55 +120,99 @@ test("shows a euro cardholder's cashback in euros, never added to dollars", () =
   mockCardCashback = { totalUsdValue: 25, currency: 'EUR', eur: { totalEurValue: 9 } };
 
   const tree = render();
-  expect(texts(tree)).toContain('+€2.00 + $7.60');
+  expect(texts(tree)).toContain('+€8.08');
   expect(mockSheetProps).toHaveBeenLastCalledWith(
     expect.objectContaining({
       currency: 'EUR',
-      monthlyCashbackLabel: '€2.00 + $7.60',
-      maxCashbackMonthly: 50,
-      tierMonthlyCap: 50,
-      allTimeCashback: [
-        { value: 9, currency: 'EUR' },
-        { value: 25, currency: 'USD' },
-      ],
+      monthlyCashbackLabel: '€8.08',
+      monthlyCapLabel: '€50',
+      tierMonthlyCapLabel: undefined,
+      allTimeCashbackLabel: '€29.00',
+    }),
+  );
+  expect(mockTokenPriceUsd).toHaveBeenLastCalledWith('');
+  act(() => tree.unmount());
+});
+
+test.each([
+  [3, '€2.40'],
+  [0, '€0.00'],
+] as const)('shows %s pending dollars on a euro card as %s', (pendingUsd, expected) => {
+  mockUsdPerEur = 1.25;
+  mockRewards = {
+    ...USD_REWARDS,
+    cashbackCurrency: 'EUR',
+    cashbackThisMonth: 0,
+    cashbackPendingThisMonth: pendingUsd,
+    cashbackEur: { cashbackThisMonth: 0, cashbackPendingThisMonth: 0, maxCashbackMonthly: 100 },
+  };
+  const tree = render();
+  expect(texts(tree)).toContain(`+${expected}`);
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      monthlyCashbackLabel: expected,
+      allTimeCashbackLabel: '€20.00',
     }),
   );
   act(() => tree.unmount());
 });
 
-test.each([
-  [3, '$3.00'],
-  [0, '€0.00'],
-] as const)(
-  'shows %s pending dollars on a euro card with no euro earnings as %s',
-  (pendingUsd, expected) => {
-    mockRewards = {
-      ...USD_REWARDS,
-      cashbackCurrency: 'EUR',
-      cashbackThisMonth: 0,
-      cashbackPendingThisMonth: pendingUsd,
-      cashbackEur: { cashbackThisMonth: 0, cashbackPendingThisMonth: 0, maxCashbackMonthly: 100 },
-    };
-    const tree = render();
-    expect(texts(tree)).toContain(`+${expected}`);
-    expect(mockSheetProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        monthlyCashbackLabel: expected,
-        allTimeCashback: [{ value: 25, currency: 'USD' }],
-      }),
-    );
-    act(() => tree.unmount());
-  },
-);
-
-test('lists dollars first after a switch from euros to dollars', () => {
+test('converts euro cashback to dollars immediately after switching the card to USD', () => {
+  mockMainCurrency = 'USD';
+  mockTokenPriceUsd.mockReturnValue('1.20');
+  mockCardCashback = { totalUsdValue: 25, eur: { totalEurValue: 9 } };
   mockRewards = {
     ...USD_REWARDS,
-    cashbackCurrency: 'USD',
-    cashbackEur: { cashbackThisMonth: 1, cashbackPendingThisMonth: 3 },
+    cashbackCurrency: 'EUR',
+    cashbackEur: { cashbackThisMonth: 1, cashbackPendingThisMonth: 3, maxCashbackMonthly: 50 },
   };
   const tree = render();
-  expect(texts(tree)).toContain('+$7.60 + €4.00');
+  expect(texts(tree)).toContain('+$12.40');
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      currency: 'USD',
+      monthlyCashbackLabel: '$12.40',
+      monthlyCapLabel: '$100',
+      allTimeCashbackLabel: '$35.80',
+    }),
+  );
+  expect(mockTokenPriceUsd).toHaveBeenLastCalledWith('EURC');
+  act(() => tree.unmount());
+});
+
+test('converts both caps when a euro card has only USD cap data', () => {
+  mockMainCurrency = 'EUR';
+  mockUsdPerEur = 1.2;
+  mockRewards = { ...USD_REWARDS, cashbackCapThisMonth: 150 };
+
+  const tree = render();
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      currency: 'EUR',
+      monthlyCapLabel: '€125',
+      tierMonthlyCapLabel: '€83.33',
+    }),
+  );
+  act(() => tree.unmount());
+});
+
+test('omits only figures that need an unavailable exchange rate', () => {
+  mockRewards = {
+    ...USD_REWARDS,
+    cashbackEur: { cashbackThisMonth: 0, cashbackPendingThisMonth: 3 },
+  };
+  mockUsdPerEur = 0;
+
+  const tree = render();
+  expect(texts(tree)).toContain('—');
+  expect(mockSheetProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      monthlyCashbackLabel: undefined,
+      monthlyCapLabel: '$100',
+      allTimeCashbackLabel: '$25.00',
+    }),
+  );
+  expect(mockTokenPriceUsd).toHaveBeenLastCalledWith('EURC');
   act(() => tree.unmount());
 });
 
