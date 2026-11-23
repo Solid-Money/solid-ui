@@ -7,11 +7,17 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      },
       "env": {
         "SENTRY_AUTH_TOKEN": "$SENTRY_AUTH_TOKEN",
         "SENTRY_ALLOW_FAILURE": "true"
@@ -22,6 +28,9 @@
       "channel": "production",
       "cache": {
         "disabled": true
+      },
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
       },
       "env": {
         "SENTRY_AUTH_TOKEN": "$SENTRY_AUTH_TOKEN",

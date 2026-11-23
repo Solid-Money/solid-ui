@@ -321,6 +321,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // 0.3.15), so `pod install` cannot resolve it. 0.3.16 changes only the
     // Android card reveal/collect modules, which this app does not use. Bump
     // only once `pod trunk info WirexMobileSDK` lists the new version.
+    //
+    // The iOS framework is built with Swift 6.3.2, and its module interface can
+    // be read only by that compiler or a later one, so Wirex requires Xcode
+    // 26.5+. Expo SDK 55's default EAS image is Xcode 26.2, so every build
+    // profile in eas.json pins `ios.image` to an Xcode 26.6 image. Keep that
+    // pin at or above the Xcode the SDK's release notes name when bumping it.
     '@wirexapp/mobile-sdk',
     // MeaWallet MPP: bundle mea_config (add meawallet/mea_config from MeaWallet for MPP)
     ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
