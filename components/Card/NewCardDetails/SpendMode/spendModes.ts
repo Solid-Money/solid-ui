@@ -33,8 +33,8 @@ export const offeredSpendModes = (activeMode: SpendMode): readonly SpendMode[] =
   SPEND_MODES.filter(mode => mode === activeMode || !HIDDEN_SPEND_MODES.includes(mode));
 
 /**
- * The cards the sheet stacks under the caption. `credit` is the borrowed block with the
- * collateral behind it; `borrowed` is the block alone.
+ * The cards below the caption. `credit` adds loan status and a Credit details link to the
+ * borrowed summary.
  */
 export type SpendModePanel = 'balance' | 'borrowed' | 'credit';
 
@@ -59,8 +59,6 @@ export const SPEND_MODE_COPY: Record<SpendMode, SpendModeCopy> = {
   credit: {
     label: 'Credit',
     caption: 'Spend without selling your assets',
-    // No "USD yield only" notice any more: the panel lists the assets that back the line —
-    // soUSD on Fuse, and soUSD, soETH, soEUR and the crypto on Base once Base spending is enabled.
     panels: ['credit'],
   },
   smart: {

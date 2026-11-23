@@ -203,7 +203,7 @@ const SwapAssetPicker = (props: SwapAssetPickerProps) => {
           autoCorrect={false}
           autoCapitalize="none"
           accessibilityLabel="Search coins"
-          className="min-w-0 flex-1 p-0 text-[15px] text-white web:focus:outline-none"
+          className="h-full min-w-0 flex-1 p-0 text-[15px] text-white web:focus:outline-none"
         />
       </View>
 

@@ -7,7 +7,7 @@ import SpendModeSheetContent, {
 } from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheetContent';
 import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import { useSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
-import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
@@ -24,18 +24,18 @@ import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spend
  */
 const SpendModeSheet = ({
   isOpen,
+  isSuspended,
   onOpenChange,
   onHelpPress,
-  onCollateralHelpPress,
   onViewCreditDetails,
   activeMode = 'cash',
+  initialMode = activeMode,
   onAddFunds,
   onEditOrder,
-  onEditCollateralOrder,
 }: SpendModeSheetProps) => {
   const figures = useSpendModeFigures();
-  // Fuse and Base together, with the collateral behind each — read only while the sheet is open.
-  const credit = useCreditModeFigures({ enabled: isOpen });
+  // The combined loan figures for Fuse and Base, read while the sheet is open.
+  const credit = useCreditModeFigures({ enabled: isOpen && !isSuspended });
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
   // The assets the balance is made of — EURC among them once it is on for the card.
   const assets = useSpendableAssetRows();
@@ -65,6 +65,7 @@ const SpendModeSheet = ({
   return (
     <CardBottomSheet
       isOpen={isOpen}
+      isSuspended={isSuspended}
       onOpenChange={onOpenChange}
       contentKey="spend-mode"
       designTop={SPEND_MODE_SHEET_TOP}
@@ -73,6 +74,7 @@ const SpendModeSheet = ({
       {({ session, topPadding, presentation }) => (
         <SpendModeSheetContent
           activeMode={activeMode}
+          initialMode={initialMode}
           figures={figures}
           credit={credit}
           balance={balance}
@@ -82,11 +84,9 @@ const SpendModeSheet = ({
           error={error}
           onDismiss={dismiss}
           onHelpPress={onHelpPress}
-          onCollateralHelpPress={onCollateralHelpPress}
           onViewCreditDetails={onViewCreditDetails}
           onAddFunds={onAddFunds}
           onEditOrder={onEditOrder}
-          onEditCollateralOrder={onEditCollateralOrder}
           topPadding={topPadding}
           presentation={presentation}
         />

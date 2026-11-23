@@ -23,6 +23,7 @@ import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useAiApiOverview } from '@/hooks/useAiApi';
+import { useCashbackDetails } from '@/hooks/useCashbackDetails';
 import {
   useOptInToRewards,
   useReferralSummary,
@@ -32,13 +33,7 @@ import {
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import {
-  monthlyCashbackCap,
-  resolveAllTimeCashback,
-  resolveCashbackMonth,
-} from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
-import { formatMonthlyCashback } from '@/lib/formatMonthlyCashback';
 import { isReferralV4Live } from '@/lib/referral/referralV4';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { isTierOnTrial, nextPurchasableTier } from '@/lib/tierUpgrade';
@@ -80,6 +75,7 @@ export default function RewardsScreenNew() {
   const { data: referralV4, isLoading: isReferralV4Loading } = useReferralV4Summary();
   const isReferralV4 = isReferralV4Live(referralV4);
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
+  const cashbackDetails = useCashbackDetails(rewardsData, cardDetails ?? undefined);
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
   const { data: aiApi } = useAiApiOverview();
@@ -240,18 +236,10 @@ export default function RewardsScreenNew() {
     );
   }
 
-  // In the cardholder's cashback currency: a euro cardholder's figures and caps
-  // are all in EUR — see `resolveCashbackMonth`.
-  const cashbackMonth = resolveCashbackMonth(rewardsData);
-  const cashbackCurrency = cashbackMonth?.currency ?? 'USD';
-  const monthlyCashbackLabel = formatMonthlyCashback(rewardsData);
   // v4's total already includes the legacy rewards paid, so it replaces today's figure.
   const referrals = isReferralV4
     ? (referralV4?.totals.earnedUsd ?? 0)
     : (referralSummary?.totalRewardedUsd ?? 0);
-  // All-time counts only what has actually been paid, so this month's escrowed
-  // part is deliberately not floored into it. Per currency, never summed.
-  const allTimeCashback = resolveAllTimeCashback(rewardsData, cardDetails?.cashback);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
   // cashback rate" row read this, so they can't disagree with each other.
   const cashbackRate = resolveUserCashbackRate(rewardsData, currentTier);
@@ -335,14 +323,7 @@ export default function RewardsScreenNew() {
 
         <RewardsSummaryCard
           referrals={referrals}
-          cashbackDetails={{
-            cashbackRate,
-            currency: cashbackCurrency,
-            monthlyCashbackLabel,
-            maxCashbackMonthly: monthlyCashbackCap(cashbackMonth),
-            tierMonthlyCap: cashbackMonth?.maxCashbackMonthly,
-            allTimeCashback,
-          }}
+          cashbackDetails={{ cashbackRate, ...cashbackDetails }}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           onReferralsPress={openReferral}
         />
@@ -353,11 +334,7 @@ export default function RewardsScreenNew() {
             actualSubscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
             subscriptionCategoryRates={rewardsData?.subscriptionCategoryRates}
             cashbackRate={cashbackRate}
-            currency={cashbackCurrency}
-            monthlyCashbackLabel={monthlyCashbackLabel}
-            maxCashbackMonthly={monthlyCashbackCap(cashbackMonth)}
-            tierMonthlyCap={cashbackMonth?.maxCashbackMonthly}
-            allTimeCashback={allTimeCashback}
+            {...cashbackDetails}
             {...benefitRates}
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}

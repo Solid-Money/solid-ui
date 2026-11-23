@@ -13,6 +13,7 @@ const { act, create } = require('react-test-renderer');
 let mockCardStatus = CardStatus.ACTIVE;
 let mockCustomerStatus = KycStatus.APPROVED;
 let mockProvider = CardProvider.WIREX;
+let mockIsFocused = true;
 
 jest.mock('@/hooks/useCardDetails', () => ({
   useCardDetails: () => ({ data: { status: mockCardStatus } }),
@@ -42,25 +43,27 @@ jest.mock('@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal', () =>
   __esModule: true,
   default: 'SpendModeHelpModal',
 }));
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
-jest.mock('@/components/Card/NewCardDetails/SpendMode/CollateralHelpSheet', () => ({
-  __esModule: true,
-  default: 'CollateralHelpSheet',
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn() },
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    const { useEffect } = jest.requireActual('react');
+    const isFocused = mockIsFocused;
+    useEffect(() => (isFocused ? effect() : undefined), [effect, isFocused]);
+  },
 }));
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => mockIsFocused }));
 jest.mock('@/components/Card/WirexCardFundModal', () => ({
   __esModule: true,
   default: 'WirexCardFundModal',
 }));
 // "Edit order" is cohort-gated through these reads; the selector tests here don't need them live.
 jest.mock('@/hooks/useSpendOrder', () => ({ useSpendOrder: () => ({ canEdit: true }) }));
-jest.mock('@/hooks/useCollateralOrder', () => ({ useCollateralOrder: () => ({ canEdit: true }) }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/Card/NewCardDetails/icons', () => ({ InlineChevronIcon: 'Chevron' }));
 
 let tree: any;
 const sheet = () => tree.root.findByType('SpendModeSheet').props;
 const help = () => tree.root.findByType('SpendModeHelpModal').props;
-const collateralHelp = () => tree.root.findByType('CollateralHelpSheet').props;
 const funds = () => tree.root.findByType('WirexCardFundModal').props;
 const render = (canChangeMode = true) => {
   act(() => {
@@ -68,12 +71,17 @@ const render = (canChangeMode = true) => {
   });
 };
 const open = () => act(() => useCardPaneStore.getState().openSpendMode());
+const setFocused = (focused: boolean) => {
+  mockIsFocused = focused;
+  act(() => tree.update(<SpendModeModals figures={{ mode: 'cash', canChangeMode: true }} />));
+};
 
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   mockCardStatus = CardStatus.ACTIVE;
   mockCustomerStatus = KycStatus.APPROVED;
   mockProvider = CardProvider.WIREX;
+  mockIsFocused = true;
   useCardPaneStore.setState({ isOpen: false, isSpendModeOpen: false, originRect: null });
   useSpendModeHelpStore.setState({ shownByUserId: {} });
 });
@@ -108,57 +116,33 @@ test('opens and dismisses over Home, with help only on the first opening', () =>
   expect(help().isOpen).toBe(true);
 });
 
-test('the "?" beside Collateral assets opens How collateral works, not the intro', () => {
-  useSpendModeHelpStore.getState().markShown('user-a');
-  render();
-  open();
-  expect(collateralHelp().isOpen).toBe(false);
-
-  act(() => sheet().onCollateralHelpPress());
-  expect(collateralHelp().isOpen).toBe(true);
-  expect(help().isOpen).toBe(false);
-  expect(sheet().isOpen).toBe(true);
-
-  act(() => collateralHelp().onOpenChange(false));
-  expect(collateralHelp().isOpen).toBe(false);
-  expect(sheet().isOpen).toBe(true);
-
-  // Closing the selector takes the explainer with it, and it stays shut on the next opening.
-  act(() => sheet().onCollateralHelpPress());
-  act(() => sheet().onOpenChange(false));
-  expect(collateralHelp().isOpen).toBe(false);
-  open();
-  expect(collateralHelp().isOpen).toBe(false);
-});
-
-test('View Credit details hands over from the selector to the Credit page', () => {
+test('View Credit details keeps the drawer open and restores the Credit preview on return', () => {
   const { router } = jest.requireMock('expo-router');
   router.push.mockClear();
   useSpendModeHelpStore.getState().markShown('user-a');
   render();
   open();
+  expect(sheet().initialMode).toBe('cash');
   expect(router.push).not.toHaveBeenCalled();
 
-  act(() => sheet().onCollateralHelpPress());
   act(() => sheet().onViewCreditDetails());
-  expect(router.push).toHaveBeenCalledWith('/card/credit');
-  expect(sheet().isOpen).toBe(false);
-  expect(collateralHelp().isOpen).toBe(false);
-});
-
-test('Android Back closes How collateral works before the selector under it', () => {
-  jest.replaceProperty(Platform, 'OS', 'android');
-  const addListener = jest
-    .spyOn(BackHandler, 'addEventListener')
-    .mockReturnValue({ remove: jest.fn() });
-  useSpendModeHelpStore.getState().markShown('user-a');
-  render();
-  open();
-  act(() => sheet().onCollateralHelpPress());
-  const back = addListener.mock.calls.at(-1)?.[1];
-  act(() => expect(back?.()).toBe(true));
-  expect(collateralHelp().isOpen).toBe(false);
+  expect(router.push).toHaveBeenCalledWith({
+    pathname: '/card/credit',
+    params: { source: 'spend-mode' },
+  });
+  setFocused(false);
   expect(sheet().isOpen).toBe(true);
+  expect(sheet().isSuspended).toBe(true);
+
+  setFocused(true);
+  expect(sheet().isOpen).toBe(true);
+  expect(sheet().isSuspended).toBe(false);
+  expect(sheet().activeMode).toBe('cash');
+  expect(sheet().initialMode).toBe('credit');
+
+  act(() => sheet().onOpenChange(false));
+  open();
+  expect(sheet().initialMode).toBe('cash');
 });
 
 test('leaves an already open card pane and its return position intact', () => {
@@ -244,9 +228,14 @@ test('Android Back dismisses the selector while retaining the card pane undernea
   useSpendModeHelpStore.getState().markShown('user-a');
   render();
   open();
+  setFocused(false);
+  expect(remove).toHaveBeenCalledTimes(1);
+  expect(sheet().isOpen).toBe(true);
+  setFocused(true);
+  expect(addListener).toHaveBeenCalledTimes(2);
   const back = addListener.mock.calls.at(-1)?.[1];
   act(() => expect(back?.()).toBe(true));
   expect(sheet().isOpen).toBe(false);
   expect(useCardPaneStore.getState().isOpen).toBe(true);
-  expect(remove).toHaveBeenCalled();
+  expect(remove).toHaveBeenCalledTimes(2);
 });

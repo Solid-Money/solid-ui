@@ -414,6 +414,7 @@ export interface CardBorrowPosition {
   debtUsd: bigint;
   /**
    * What could be borrowed right now, from `SolidSpendLens.availableToBorrowUsd`.
+   * Absent when the lens has no answer.
    *
    * Not `power - debt`: the lens has already clamped it by the per-Safe debt cap, the
    * global debt cap and the Safe's remaining spending limit. Those are the same clamps
@@ -421,7 +422,7 @@ export interface CardBorrowPosition {
    * "you can spend this on credit" — anything derived from collateral alone would quote a
    * number a card tap then declines.
    */
-  availableToBorrowUsd: bigint;
+  availableToBorrowUsd?: bigint;
   /**
    * What the credit line leaves to draw: {@link availableToBorrowUsd} without the Safe's
    * rolling spending limit.
@@ -790,11 +791,8 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
         prospectivePowerUsd: credit?.prospectiveCollateralUsd ?? 0n,
         liquidationCapacityUsd: credit?.liquidationCapacityUsd ?? capacityUsd,
         debtUsd: credit?.debtUsd ?? debt,
-        // Without the lens there is no honest borrowable figure: the module's power covers
-        // only escrowed collateral and none of the caps, so a derived number would be wrong
-        // in both directions. Zero says "we do not know" and the UI shows a line of zero
-        // rather than one it cannot stand behind.
-        availableToBorrowUsd: credit?.availableToBorrowUsd ?? 0n,
+        // The module's fallback only covers escrowed collateral. A spendable figure needs the lens.
+        availableToBorrowUsd: credit?.availableToBorrowUsd,
         // Zero without the lens for the same reason: the line it is cut from is the lens's.
         creditHeadroomUsd: credit
           ? creditHeadroom(credit, p, totalDebtUsd as unknown as bigint)
@@ -1084,6 +1082,7 @@ interface UseCardSpendRegistrationOptions {
    * there is a card to resolve an issuer from.
    */
   enabled?: boolean;
+  refetchInterval?: number;
 }
 
 /**
@@ -1130,7 +1129,10 @@ interface UseCardSpendRegistrationOptions {
  * and {@link cancelPendingIncrease} exists so the delay window is something the user can
  * actually act inside.
  */
-export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOptions = {}) {
+export function useCardSpendRegistration({
+  enabled,
+  refetchInterval,
+}: UseCardSpendRegistrationOptions = {}) {
   const { provider } = useCardProvider();
   const { user, safeAA } = useUser();
   const queryClient = useQueryClient();
@@ -1150,6 +1152,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   const query = useQuery<CardSpendRegistration>({
     ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress, preferV2),
     enabled: isEnabled,
+    refetchInterval,
   });
 
   const registration = query.data ?? null;

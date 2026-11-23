@@ -8,6 +8,7 @@ import {
 import { Text } from '@/components/ui/text';
 import { formatBps, type LoanAsset, type LoanModel, type LoanStatus } from '@/lib/creditRisk';
 
+import type { LoanSafetyStatus } from './loanSafety';
 import type { ReactNode } from 'react';
 
 /**
@@ -24,22 +25,40 @@ export const CREDIT_COLORS = {
   divider: 'rgba(255, 255, 255, 0.08)',
 } as const;
 
-/**
- * Green, amber, red. Amber is "Getting close", about 5% from a sale; red is kept for under 1.0,
- * where part of the loan can actually be sold.
- */
-export const STATUS_STYLE: Record<LoanStatus, { label: string; color: string; tint: string }> = {
+export const STATUS_STYLE: Record<
+  LoanSafetyStatus,
+  { label: string; color: string; tint: string }
+> = {
   healthy: { label: 'Healthy', color: CREDIT_COLORS.green, tint: 'rgba(148, 242, 127, 0.15)' },
   caution: { label: 'Getting close', color: CREDIT_COLORS.amber, tint: 'rgba(245, 181, 71, 0.15)' },
   'at-risk': { label: 'At risk', color: CREDIT_COLORS.red, tint: 'rgba(217, 97, 103, 0.15)' },
+  unknown: { label: 'Unavailable', color: '#CCCCCC', tint: 'rgba(255, 255, 255, 0.1)' },
 };
 
-export const StatusChip = ({ status }: { status: LoanStatus }) => (
+export const StatusChip = ({
+  status,
+  label = STATUS_STYLE[status].label,
+}: {
+  status: LoanSafetyStatus;
+  label?: string;
+}) => (
   <View style={[styles.chip, { backgroundColor: STATUS_STYLE[status].tint }]}>
     <Text className="text-[13px] font-medium" style={{ color: STATUS_STYLE[status].color }}>
-      {STATUS_STYLE[status].label}
+      {label}
     </Text>
   </View>
+);
+
+export const CreditSectionHelp = ({ label, onPress }: { label: string; onPress: () => void }) => (
+  <Pressable
+    accessibilityLabel={label}
+    accessibilityRole="button"
+    className="h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 active:opacity-70"
+    hitSlop={10}
+    onPress={onPress}
+  >
+    <Text className="text-[13px] text-white/70">?</Text>
+  </Pressable>
 );
 
 /**

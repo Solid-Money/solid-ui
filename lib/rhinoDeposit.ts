@@ -693,8 +693,8 @@ export const isRhinoPayoutFinal = (
 
 /**
  * Whether the deposit is done for good: rhino.fi has paid out, and its payout is
- * the end of it (see `isRhinoPayoutFinal`). The address screen says "Deposit
- * complete" then, and offers to close rather than to copy the address again.
+ * the end of it (see `isRhinoPayoutFinal`). The wallet deposit screen uses
+ * this status to close and open Activity.
  */
 export const isRhinoDepositComplete = (
   deposit: Pick<RhinoDeposit, 'status' | 'destinationType' | 'receiveSymbol'>,

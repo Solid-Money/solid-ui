@@ -19,8 +19,8 @@ const STEPS = [
   {
     key: 'ltv',
     icon: getAsset('images/collateral-help-ltv.svg'),
-    title: 'Each asset has an LTV',
-    body: 'The share of its value you can borrow, minus a small safety buffer.',
+    title: 'Each asset has a loan-to-value (LTV)',
+    body: 'The share of its value you can borrow. At 90% LTV, $100 backs about $85 of spending, after a small safety buffer.',
   },
   {
     key: 'locked',
@@ -92,11 +92,7 @@ interface CollateralHelpSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/**
- * "How collateral works", from the "?" beside "Collateral assets" on the spend-mode sheet's
- * Credit panel. It opens over that sheet rather than replacing it, so "Got it" lands the
- * cardholder back on the panel they asked from.
- */
+/** "How collateral works", opened from Credit or Loan safety. */
 const CollateralHelpSheet = ({ isOpen, onOpenChange }: CollateralHelpSheetProps) => (
   <CardBottomSheet
     isOpen={isOpen}

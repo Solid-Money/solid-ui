@@ -806,8 +806,8 @@ export interface CardResponse {
 
 /**
  * The currency a cashback row is earned, capped and paid in: dollars (soUSD on Fuse) or, for a
- * Wirex cardholder whose main currency is EUR, euros (soEUR on Base). The two are never added
- * together or converted into each other — every total is per currency.
+ * Wirex cardholder whose main currency is EUR, euros (soEUR on Base). The API reports totals
+ * separately for each currency.
  */
 export type CashbackCurrency = 'USD' | 'EUR';
 

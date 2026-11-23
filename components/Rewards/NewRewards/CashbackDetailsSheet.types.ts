@@ -1,21 +1,17 @@
-import type { CashbackFigure } from '@/lib/cashbackProgress';
 import type { CashbackCurrency } from '@/lib/types';
 import type { ReactElement } from 'react';
 
 export interface CashbackDetailsData {
   cashbackRate: number;
-  /** Current cashback currency for the rate description and monthly cap. */
-  currency?: CashbackCurrency;
-  monthlyCashbackLabel: string;
-  /** What this month's purchases are paid up to — see `monthlyCashbackCap`. */
-  maxCashbackMonthly: number;
+  currency: CashbackCurrency;
+  monthlyCashbackLabel?: string;
+  monthlyCapLabel: string;
   /**
-   * The cap of the tier held now. Passed when it can differ from
-   * `maxCashbackMonthly`, so the sheet can say why the month's cap is higher
-   * (purchases made during a trial that has since ended keep its cap).
+   * The current tier's cap, shown when purchases from a higher tier still
+   * have a higher cap this month.
    */
-  tierMonthlyCap?: number;
-  allTimeCashback: CashbackFigure[];
+  tierMonthlyCapLabel?: string;
+  allTimeCashbackLabel: string;
 }
 
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {

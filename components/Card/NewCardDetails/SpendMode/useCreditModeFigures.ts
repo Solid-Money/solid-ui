@@ -70,7 +70,7 @@ export interface BorrowPositionFigures extends BorrowedSummaryFigures {
   risk: BorrowRisk;
 }
 
-/** The Credit panel of the spend-mode sheet: the borrowed block over the collateral list. */
+/** Combined figures for the Spend mode sheet and Credit page. */
 export interface CreditModeFigures extends BorrowedSummaryFigures {
   /** What is left to borrow across every instance — the figure under the Credit segment. */
   availableToBorrow: string;
@@ -292,23 +292,25 @@ export const combineCreditFigures = (
  * {@link combineCreditFigures} for the signed-in cardholder. Reads the per-asset breakdown only
  * while `enabled` — the spend-mode sheet passes whether it is open.
  */
-export const useCreditModeFigures = ({ enabled }: { enabled: boolean }): CreditModeFigures => {
+export const useCreditModeFigures = ({ enabled }: { enabled: boolean }) => {
   const { position, borrowApyPerSecond } = useCardSpendRegistration();
   const { data: positions } = useCardCreditPositions({ enabled });
   const { formatMicroUsd } = useCardDisplayCurrency();
-  const { order: collateralOrder } = useCollateralOrder();
+  const { order: collateralOrder, canEdit } = useCollateralOrder();
 
-  return useMemo(
-    () =>
-      combineCreditFigures(
-        position,
-        borrowApyPerSecond,
-        positions,
-        formatMicroUsd,
-        collateralOrder,
-      ),
-    [position, borrowApyPerSecond, positions, formatMicroUsd, collateralOrder],
-  );
+  return useMemo(() => {
+    const figures = combineCreditFigures(
+      position,
+      borrowApyPerSecond,
+      positions,
+      formatMicroUsd,
+      collateralOrder,
+    );
+    return {
+      ...figures,
+      canEditCollateralOrder: canEdit && figures.collateralKeys.length > 1,
+    };
+  }, [position, borrowApyPerSecond, positions, formatMicroUsd, collateralOrder, canEdit]);
 };
 
 export default useCreditModeFigures;

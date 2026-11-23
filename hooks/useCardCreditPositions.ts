@@ -11,8 +11,11 @@ import {
 } from 'viem';
 import { base as baseChain, fuse } from 'viem/chains';
 
-import { isCardSpendV2Configured, SpendCohort } from '@/constants/cardSpendV2';
-import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
+import { isCardSpendV2Configured, SpendCohort, toSpendMode } from '@/constants/cardSpendV2';
+import {
+  BASE_SPEND_DEPLOYMENT,
+  isSpendDeploymentConfigured,
+} from '@/constants/spendModuleDeployments';
 import { useCardSpendModeAccess } from '@/hooks/useCardSpendModeAccess';
 import {
   CARD_SPEND_REGISTRATION_QUERY_KEY,
@@ -126,6 +129,8 @@ export interface CreditInstancePosition {
   creditLineUsd: bigint;
   /** What the line leaves to draw, as `useCardSpendRegistration` computes it for Fuse. */
   creditHeadroomUsd: bigint;
+  /** Credit the lens allows for a purchase, including the card's spending limits. */
+  availableToBorrowUsd: bigint;
   borrowApyPerSecond: bigint;
   /**
    * Every token the module accepts as collateral, held or not, and any other token still
@@ -145,6 +150,16 @@ export interface CreditInstancePosition {
 export interface CardCreditPositions {
   fuse: CreditInstancePosition | null;
   base: CreditInstancePosition | null;
+}
+
+export type CollateralCatalogAsset = Pick<
+  CreditCollateralAsset,
+  'chainId' | 'token' | 'symbol' | 'ltvWad'
+>;
+
+export interface BaseCollateralPreview {
+  moduleAddress: Address;
+  canEnable: boolean;
 }
 
 type TokenAvailability = {
@@ -192,6 +207,58 @@ const throwUnansweredFailure = (
   );
   if (unanswered) throw unanswered.error;
 };
+
+/** Collateral the Base module accepts, independent of any Safe's activation or balances. */
+const readBaseCollateralCatalog = async (
+  moduleAddress: Address,
+): Promise<CollateralCatalogAsset[]> => {
+  const chainId = baseChain.id;
+  const client = publicClient(chainId);
+  const module = { address: moduleAddress, abi: SolidCashModuleV2_ABI } as const;
+  const blockNumber = await client.getBlockNumber();
+  const tokens = await client.readContract({
+    ...module,
+    functionName: 'allowedTokens',
+    blockNumber,
+  });
+  if (!tokens.length) return [];
+  const results = await client.multicall({
+    allowFailure: true,
+    blockNumber,
+    contracts: tokens.flatMap(token => [
+      { ...module, functionName: 'getTokenConfig', args: [token] } as const,
+      { address: token, abi: erc20Abi, functionName: 'symbol' } as const,
+      { ...module, functionName: 'tokenPaused', args: [token] } as const,
+    ]),
+  });
+  throwUnansweredFailure(results);
+
+  return tokens.flatMap((token, index) => {
+    const [config, symbol, paused] = results.slice(index * 3, index * 3 + 3);
+    const terms = config?.result;
+    if (
+      !terms ||
+      typeof terms !== 'object' ||
+      !terms.collateral ||
+      terms.ltv <= 0n ||
+      typeof symbol?.result !== 'string' ||
+      !symbol.result ||
+      paused?.result !== false
+    ) {
+      return [];
+    }
+    return [{ chainId, token, symbol: symbol.result, ltvWad: terms.ltv }];
+  });
+};
+
+export const useBaseCollateralCatalog = (moduleAddress: Address | undefined) =>
+  useQuery({
+    queryKey: ['base-collateral-catalog', moduleAddress],
+    queryFn: () => readBaseCollateralCatalog(moduleAddress!),
+    enabled: !!moduleAddress,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
 
 /**
  * One instance's credit position, or null when the Safe has none there.
@@ -383,6 +450,13 @@ export const readCreditInstance = async (
     pendingWithdrawal.status === 'success'
       ? (pendingWithdrawal.result as { token: Address; readyAt: bigint; amount: bigint })
       : undefined;
+  const canSpendOnCredit =
+    lens.moduleEnabled &&
+    lens.registered &&
+    !lens.modulePaused &&
+    !lens.safePausedFlag &&
+    toSpendMode(lens.activeMode) !== 'cash' &&
+    credit.fullyPriced;
 
   return {
     chainId,
@@ -392,6 +466,7 @@ export const readCreditInstance = async (
     fullyPriced: credit.fullyPriced,
     creditLineUsd: credit.borrowingPowerUsd + credit.prospectiveCollateralUsd,
     creditHeadroomUsd: creditHeadroom(credit, moduleParams, totalDebtUsd.result as bigint),
+    availableToBorrowUsd: canSpendOnCredit ? credit.availableToBorrowUsd : 0n,
     borrowApyPerSecond: borrowApyPerSecond.result as bigint,
     collateral,
     unhealthySince: unhealthySince.status === 'success' ? Number(unhealthySince.result) : 0,
@@ -454,12 +529,28 @@ export const useBaseCreditInstance = () => {
   const lensAddress = BASE_SPEND_DEPLOYMENT.spendLensAddress as Address | undefined;
   const isLive =
     isSpendModeCohort && baseDeployment?.enabled === true && !!moduleAddress && !!lensAddress;
+  const collateralPreview = useMemo<BaseCollateralPreview | undefined>(
+    () =>
+      !isLive &&
+      isSpendModeCohort &&
+      spendDeployments?.cohortEnabled &&
+      baseDeployment?.available &&
+      baseDeployment.moduleAddress
+        ? {
+            moduleAddress: baseDeployment.moduleAddress as Address,
+            canEnable:
+              !baseDeployment.enabled && isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT),
+          }
+        : undefined,
+    [isLive, isSpendModeCohort, spendDeployments?.cohortEnabled, baseDeployment],
+  );
 
   // `isLive` reads false until both gates answer; this says whether that false is final yet.
   // A gate that failed leaves it false too, which is not a Safe with no Base loan.
   const isError = isAccessError || (isSpendModeCohort && isDeploymentsError);
   return {
     isLive,
+    collateralPreview,
     isLoading: isAccessLoading || isDeploymentsLoading,
     isError,
     /** Retries whichever gate failed. */
@@ -532,6 +623,7 @@ export const useCardCreditPositions = ({
 
   const {
     isLive: readsBase,
+    collateralPreview: baseCollateralPreview,
     isLoading: isBaseGateLoading,
     isError: isBaseGateError,
     refetchGate: refetchBaseGate,
@@ -573,6 +665,9 @@ export const useCardCreditPositions = ({
     data,
     fuse: fuseQuery,
     base: baseQuery,
+    baseCollateralPreview,
+    readsBase,
+    isBaseGateReady: !isBaseGateLoading && !isBaseGateError,
     /** Some instance this cardholder borrows on has not answered its first read yet. */
     // Base's gate counts too: until it answers, a Base-only borrower would read as owing nothing.
     isLoading:

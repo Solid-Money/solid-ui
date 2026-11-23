@@ -20,7 +20,7 @@ jest.mock('@/hooks/useRhinoDeposits', () => ({
 
 const mockDeposit: { current?: Partial<RhinoDeposit> } = {};
 const ADDRESS = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
-const onCompleteChange = jest.fn();
+const onComplete = jest.fn();
 
 let root: any;
 const element = () => (
@@ -31,7 +31,7 @@ const element = () => (
     chainName="Polygon"
     addressType="EVM"
     destinationType="WALLET"
-    onCompleteChange={onCompleteChange}
+    onComplete={onComplete}
   />
 );
 const render = () => {
@@ -63,21 +63,20 @@ afterEach(() => {
   act(() => root?.unmount());
 });
 
-describe('RhinoDepositStatus onCompleteChange', () => {
-  it('reports not complete while scanning or on its way', () => {
+describe('RhinoDepositStatus onComplete', () => {
+  it('waits while scanning or on its way', () => {
     render();
     mockDeposit.current = { ...executed, status: 'ACCEPTED' };
     rerender();
 
-    expect(onCompleteChange).toHaveBeenCalled();
-    expect(onCompleteChange).not.toHaveBeenCalledWith(true);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('reports complete once rhino.fi has paid the Safe', () => {
     mockDeposit.current = executed;
     render();
 
-    expect(onCompleteChange).toHaveBeenLastCalledWith(true);
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   // ETH is paid to an address our pipeline wraps from, so it is not done yet.
@@ -85,15 +84,13 @@ describe('RhinoDepositStatus onCompleteChange', () => {
     mockDeposit.current = { ...executed, tokenSymbol: 'ETH', receiveSymbol: 'ETH' };
     render();
 
-    expect(onCompleteChange).not.toHaveBeenCalledWith(true);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('takes it back when it leaves the screen', () => {
-    mockDeposit.current = executed;
+  it.each(['REJECTED', 'REFUNDED'] as const)('does not report completion for %s', status => {
+    mockDeposit.current = { ...executed, status };
     render();
-    act(() => root.unmount());
-    root = undefined;
 
-    expect(onCompleteChange).toHaveBeenLastCalledWith(false);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

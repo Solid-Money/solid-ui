@@ -4,10 +4,7 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { EUR_VAULT } from '@/constants/vaults';
-import { CashbackCurrency } from '@/lib/types';
-import { cn, formatBalance, formatNumber, formatWholeDollars } from '@/lib/utils';
-import { CURRENCY_SYMBOLS } from '@/lib/utils/cardHelpers';
-import { formatCurrencyAmount } from '@/lib/vaultCurrency';
+import { cn, formatNumber } from '@/lib/utils';
 
 import RewardsDiamondIcon from './RewardsDiamondIcon';
 
@@ -33,17 +30,13 @@ const StatRow = ({ label, children }: { label: string; children: ReactNode }) =>
 
 const Divider = () => <View className="h-px bg-white/10" />;
 
-/** Caps and totals in whole units: "$450", or "€450" for a euro cardholder. */
-const formatWhole = (value: number, currency: CashbackCurrency): string =>
-  currency === 'EUR' ? formatCurrencyAmount(value || 0, 'EUR', 0, 0) : formatWholeDollars(value);
-
 const CashbackDetailsContent = ({
   cashbackRate,
-  currency = 'USD',
+  currency,
   monthlyCashbackLabel,
-  maxCashbackMonthly,
-  tierMonthlyCap,
-  allTimeCashback,
+  monthlyCapLabel,
+  tierMonthlyCapLabel,
+  allTimeCashbackLabel,
   onGetMoreCashback,
   animationSession,
   isSheet = true,
@@ -79,7 +72,7 @@ const CashbackDetailsContent = ({
             Cashback earned this month
           </Text>
           <Text className="max-w-[55%] text-right text-lg font-medium text-[#94F27F]">
-            {monthlyCashbackLabel}
+            {monthlyCashbackLabel ?? '—'}
           </Text>
         </View>
         <Text className="text-xs text-white/50">Total includes pending cashback.</Text>
@@ -89,38 +82,26 @@ const CashbackDetailsContent = ({
           under a bigger one — a trial that has since ended — and those keep
           it. Saying so is what stops "$100" next to a Core rate reading as a
           mistake, and new purchases count toward the tier's own cap. */}
-      {tierMonthlyCap !== undefined && maxCashbackMonthly > tierMonthlyCap ? (
+      {tierMonthlyCapLabel ? (
         <View className="gap-0.5 px-[19px] py-3">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-medium text-white/70">Monthly cap</Text>
-            <Text className="text-lg font-medium text-white">
-              {formatWhole(maxCashbackMonthly, currency)}
-            </Text>
+            <Text className="text-lg font-medium text-white">{monthlyCapLabel}</Text>
           </View>
           <Text className="text-xs text-white/50">
             Purchases made on a higher tier earlier this month keep its cap. New purchases count
-            toward your current {formatWhole(tierMonthlyCap, currency)} cap.
+            toward your current {tierMonthlyCapLabel} cap.
           </Text>
         </View>
       ) : (
         <StatRow label="Monthly cap">
-          <Text className="text-lg font-medium text-white">
-            {formatWhole(maxCashbackMonthly, currency)}
-          </Text>
+          <Text className="text-lg font-medium text-white">{monthlyCapLabel}</Text>
         </StatRow>
       )}
       <Divider />
-      {/* Each currency in its own figure, side by side ("€12 + $150"): euro
-          and dollar cashback are never added together or converted. */}
       <StatRow label="All time cashback">
         <Text className="max-w-[55%] text-right text-lg font-medium text-white">
-          {allTimeCashback
-            .map(({ value, currency }) =>
-              value > 0 && value < 1
-                ? formatBalance(value, CURRENCY_SYMBOLS[currency])
-                : formatWhole(value, currency),
-            )
-            .join(' + ')}
+          {allTimeCashbackLabel}
         </Text>
       </StatRow>
     </View>

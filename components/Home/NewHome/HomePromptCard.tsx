@@ -25,9 +25,7 @@ import { Text } from '@/components/ui/text';
 import { DEVICE_DIGITAL_WALLET, DigitalWalletType } from '@/constants/digital-wallet';
 import { cardInfoWalletGuidePath, cardTransactionDetailPath, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { DeclinedPaymentPrompt, useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useUnreachableBaseBalance } from '@/hooks/useUnreachableBaseBalance';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
@@ -43,6 +41,7 @@ import {
   useHomePromptStore,
 } from '@/store/useHomePromptStore';
 
+import type { DeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
 import type { Href } from 'expo-router';
 
 // Figma: Mona Sans / Bold 700 / 18px / line-height 100%.
@@ -283,6 +282,7 @@ function wirexContent(
 interface HomePromptCardProps {
   /** Which banner to show — resolved by `useHomePrompt`. */
   promptKey: HomePromptKey;
+  declined: DeclinedPaymentPrompt | null;
   /** Whether the user has already funded their account (deposit step). */
   depositCompleted: boolean;
   className?: string;
@@ -304,15 +304,15 @@ interface HomePromptCardProps {
  *
  * Separate from the legacy HomeCardSetup so the public/legacy home is unaffected.
  */
-const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCardProps) => {
+const HomePromptCard = ({
+  promptKey,
+  declined,
+  depositCompleted,
+  className,
+}: HomePromptCardProps) => {
   const dismiss = useHomePromptStore(state => state.dismiss);
   const dismissDecline = useHomePromptStore(state => state.dismissDecline);
   const { data: cardStatus } = useCardStatus();
-  const { provider } = useCardProvider();
-  // Only read for the two Wirex steps; off — and free — for every other banner.
-  const declined = useDeclinedPaymentPrompt(
-    promptKey === 'card-declined' && provider === CardProvider.WIREX,
-  );
   const { eurc } = useUnusableEurc();
   const unreachableBase = useUnreachableBaseBalance();
   const baseSpend = useEuroSpendEnablement();
