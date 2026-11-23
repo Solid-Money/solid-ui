@@ -113,16 +113,23 @@ export const AdditionalCollateral = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const viewer = useWalletDepositViewer();
-  const preview = !isIncomplete && assets.length === 0 ? baseCollateralPreview : undefined;
+  const preview = !isIncomplete ? baseCollateralPreview : undefined;
   const baseCatalog = useBaseCollateralCatalog(preview?.moduleAddress);
-  const heldKeys = new Set(heldAssets.map(collateralDiscoveryKey));
-  const rows = preview
-    ? sortByCollateralOrder(
-        (baseCatalog.data ?? []).filter(asset => !heldKeys.has(collateralDiscoveryKey(asset))),
-        asset => collateralAssetKeyOf(asset.symbol),
-        DEFAULT_COLLATERAL_ORDER,
-      )
-    : assets;
+  const knownKeys = new Set([...heldAssets, ...assets].map(collateralDiscoveryKey));
+  const previewAssets = sortByCollateralOrder(
+    (baseCatalog.data ?? []).filter(asset => {
+      const key = collateralDiscoveryKey(asset);
+      if (knownKeys.has(key)) return false;
+      knownKeys.add(key);
+      return true;
+    }),
+    asset => collateralAssetKeyOf(asset.symbol),
+    DEFAULT_COLLATERAL_ORDER,
+  );
+  const rows = [
+    ...assets.map(asset => ({ asset, isPreview: false })),
+    ...previewAssets.map(asset => ({ asset, isPreview: true })),
+  ];
   const visible = expanded ? rows : rows.slice(0, PREVIEW_COUNT);
   const error = isIncomplete || (preview && baseCatalog.isError);
   const status = error
@@ -137,11 +144,11 @@ export const AdditionalCollateral = ({
         <Text className="text-[16px] text-white/50">More assets you can use</Text>
         <CreditSectionHelp label="Help with eligible collateral" onPress={onHelpPress} />
       </View>
-      {preview && rows.length > 0 ? (
+      {preview && previewAssets.length > 0 ? (
         <Text className="text-[14px] leading-5 text-white/60">
           {preview.canEnable
-            ? 'Turn on Base spending to use these assets as collateral.'
-            : 'Using these assets as collateral requires an app build that supports Base spending.'}
+            ? 'Turn on Base spending to use Base assets as collateral.'
+            : 'Base assets require an app build that supports Base spending.'}
         </Text>
       ) : null}
       <View style={styles.card}>
@@ -157,7 +164,7 @@ export const AdditionalCollateral = ({
             ) : null}
           </View>
         ) : null}
-        {visible.map((asset, index) => {
+        {visible.map(({ asset, isPreview }, index) => {
           const address = asset.token.toLowerCase();
           const vault = LIVE_VAULTS.find(candidate =>
             candidate.vaults.some(
@@ -166,7 +173,7 @@ export const AdditionalCollateral = ({
           );
           const name = vault?.vaultName ?? assetName(asset);
           const canDepositToken =
-            !preview &&
+            !isPreview &&
             !vault &&
             WALLET_DEPOSIT_TOKENS.some(
               token =>
@@ -188,7 +195,7 @@ export const AdditionalCollateral = ({
                     {vault ? ' · keeps earning' : ''}
                   </Text>
                 </View>
-                {!preview && vault ? (
+                {!isPreview && vault ? (
                   <AddYield name={name} vaultType={vault.type} />
                 ) : canDepositToken ? (
                   <AddButton name={name} onPress={() => openCryptoDeposit(asset)} />
@@ -213,7 +220,7 @@ export const AdditionalCollateral = ({
             </Pressable>
           </>
         ) : null}
-        {preview?.canEnable && rows.length > 0 ? (
+        {preview?.canEnable ? (
           <>
             <View style={styles.divider} />
             <EnableBaseCollateral />

@@ -222,7 +222,7 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
         <Text className="text-center text-[14px] text-white/60">
           Your card can now use your Base balance. Checking your balance…
         </Text>
-      ) : available && fix === 'view_spend_mode' ? (
+      ) : fix === 'view_spend_mode' ? (
         <>
           <Pressable accessibilityRole="button" className={PRIMARY_BUTTON} onPress={openSpendMode}>
             <Text className="text-[16px] font-semibold text-black">View spend mode</Text>
