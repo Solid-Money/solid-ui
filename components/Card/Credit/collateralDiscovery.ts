@@ -3,7 +3,8 @@ import { collateralAssetKeyOf } from '@/lib/utils/collateralOrder';
 import type { CollateralCatalogAsset, CreditCollateralAsset } from '@/hooks/useCardCreditPositions';
 
 export const collateralDiscoveryKey = (asset: CollateralCatalogAsset): string =>
-  collateralAssetKeyOf(asset.symbol) ?? `${asset.chainId}:${asset.token.toLowerCase()}`;
+  collateralAssetKeyOf(asset.symbol, asset.chainId) ??
+  `${asset.chainId}:${asset.token.toLowerCase()}`;
 
 /** One recommendation per asset, using the first eligible instance in the given order. */
 export const findAdditionalCollateral = (

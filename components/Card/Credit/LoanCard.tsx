@@ -24,6 +24,7 @@ import {
   type LoanAsset,
   type LoanModel,
   type LoanSale,
+  steadyAssetsLabel,
   valueOf,
 } from '@/lib/creditRisk';
 
@@ -109,8 +110,9 @@ const riskSentence = (
   }
   if (risk.kind === 'multi') {
     if (risk.togetherDrop === null) {
+      const steady = steadyAssetsLabel(loan.assets.filter(asset => asset.steady));
       return [
-        'Your Yield assets cover this loan on their own, so a fall in your crypto can’t put it at risk.',
+        `Your ${steady} cover this loan on their own, so a fall in your crypto can’t put it at risk.`,
       ];
     }
     return [

@@ -123,7 +123,7 @@ export const AdditionalCollateral = ({
       knownKeys.add(key);
       return true;
     }),
-    asset => collateralAssetKeyOf(asset.symbol),
+    asset => collateralAssetKeyOf(asset.symbol, asset.chainId),
     DEFAULT_COLLATERAL_ORDER,
   );
   const rows = [

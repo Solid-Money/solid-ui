@@ -239,6 +239,17 @@ export const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] })
   if (icon === 'eth') {
     return <Image accessible={false} source={ETH_YIELD_ICON} style={styles.collateralEthIcon} />;
   }
+  // The Base stablecoins: their token logos, drawn as the Cash panel draws them.
+  if (icon === 'usdc' || icon === 'eurc') {
+    return <Image accessible={false} source={TOKEN_LOGO[icon]} style={styles.collateralLogo} />;
+  }
+  if (icon === 'usdt') {
+    return (
+      <View accessible={false} style={styles.tokenLogo}>
+        <Image source={TOKEN_LOGO.usdt} style={styles.usdtLogo} />
+      </View>
+    );
+  }
   if (icon === 'usd' || icon === 'eur' || icon === 'cbbtc') {
     return (
       <View accessible={false} style={styles.collateralIcon}>

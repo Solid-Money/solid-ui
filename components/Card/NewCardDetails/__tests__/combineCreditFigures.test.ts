@@ -423,6 +423,108 @@ describe('combineCreditFigures', () => {
       ]);
     });
   });
+  describe('Base stablecoin collateral rows', () => {
+    const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+    const BASE_USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
+    const BASE_EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+    const FUSE_USDC_E = '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9';
+    const FUSE_USDT = '0x68c9736781E9316ebf5c3d49FE0C1f45D2D104Cd';
+    const stable = (
+      token: string,
+      symbol: string,
+      overrides: Partial<CreditCollateralAsset> = {},
+    ) => asset({ chainId: 8453, token: token as `0x${string}`, symbol, decimals: 6, ...overrides });
+
+    it('lists USDC, USDT and EURC when held, by ticker and logo, EURC in euros', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            stable(BASE_EURC, 'EURC', {
+              amount: 70_000_000n,
+              valueUsd: 81_600_000n,
+              valueEur: 70_000_000n,
+            }),
+            stable(BASE_USDT, 'USDT', { amount: 5_000_000n, valueUsd: 5_000_000n }),
+            stable(BASE_USDC, 'USDC', { amount: 20_000_000n, valueUsd: 20_000_000n }),
+          ],
+        }),
+      });
+
+      // In the default lock order: USDC, USDT, then EURC.
+      expect(
+        figures.collateral.map(row => [row.label, row.icon, row.value, row.usdEquivalent, row.ltv]),
+      ).toEqual([
+        ['USDC', 'usdc', '$20.00', undefined, 'LTV 90%'],
+        ['USDT', 'usdt', '$5.00', undefined, 'LTV 90%'],
+        ['EURC', 'eurc', '€70.00', '≈ $81.60', 'LTV 90%'],
+      ]);
+      expect(figures.collateralKeys).toEqual(['USDC', 'USDT', 'EURC']);
+    });
+
+    it('offers the stables to order when unheld, without a $0.00 row for each', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          collateral: [
+            asset({ chainId: 8453, token: SOEUR, symbol: 'soEUR' }),
+            stable(BASE_USDC, 'USDC'),
+            stable(BASE_EURC, 'EURC'),
+          ],
+        }),
+      });
+
+      expect(figures.collateral.map(row => row.label)).toEqual(['EUR Yield']);
+      expect(figures.collateralKeys).toEqual(['EUR_YIELD', 'USDC', 'EURC']);
+    });
+
+    it('never lists Fuse USDC.e or USDT as collateral', () => {
+      const figures = combineCreditFigures(fusePosition, RATE, {
+        fuse: instance({
+          collateral: [
+            asset({}),
+            asset({
+              token: FUSE_USDC_E,
+              symbol: 'USDC.e',
+              decimals: 6,
+              amount: 1n,
+              valueUsd: 1n,
+              listedAsCollateral: false,
+              countsTowardPower: false,
+            }),
+            asset({
+              token: FUSE_USDT,
+              symbol: 'USDT',
+              decimals: 6,
+              amount: 1n,
+              valueUsd: 1n,
+              listedAsCollateral: false,
+              countsTowardPower: false,
+            }),
+          ],
+        }),
+        base: null,
+      });
+
+      expect(figures.collateral.map(row => row.label)).toEqual(['USD Yield']);
+      expect(figures.collateralKeys).toEqual(['USD_YIELD']);
+    });
+
+    it('names the stables in what a loan is backed by', () => {
+      const figures = combineCreditFigures(noFuseDebt, RATE, {
+        fuse: null,
+        base: baseLoan({
+          debtUsd: 10_000_000n,
+          collateral: [
+            stable(BASE_USDC, 'USDC', { amount: 30_000_000n, valueUsd: 30_000_000n }),
+            stable(BASE_EURC, 'EURC', { amount: 10_000_000n, valueUsd: 11_000_000n }),
+          ],
+        }),
+      });
+
+      expect(figures.positions.map(loan => loan.backedBy)).toEqual(['USDC and EURC']);
+    });
+  });
   describe('the collateral order', () => {
     const BASE_SOBTC = '0x49d88bd2b250d57fc2c14a16a3420fb149078d00';
     const BASE_WBTC = '0x0555e30da8f98308edb960aa94c0db47230d2b9c';

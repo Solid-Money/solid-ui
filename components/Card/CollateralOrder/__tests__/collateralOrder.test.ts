@@ -34,6 +34,11 @@ const CBBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf' as Address;
 const SOBTC = '0x49d88bd2b250d57fc2c14a16a3420fb149078d00' as Address;
 const WBTC = '0x0555e30da8f98308edb960aa94c0db47230d2b9c' as Address;
 const AAVE = '0x63706e401c06ac8513145b7687A14804d17f814b' as Address;
+const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address;
+const BASE_USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2' as Address;
+const BASE_EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42' as Address;
+const FUSE_USDC_E = '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9' as Address;
+const FUSE_USDT = '0x68c9736781E9316ebf5c3d49FE0C1f45D2D104Cd' as Address;
 const LTV_90 = 900_000_000_000_000_000n;
 
 const asset = (overrides: Partial<CreditCollateralAsset>): CreditCollateralAsset => ({
@@ -90,6 +95,9 @@ describe('collateral order keys', () => {
     expect(DEFAULT_COLLATERAL_ORDER).toEqual([
       'USD_YIELD',
       'EUR_YIELD',
+      'USDC',
+      'USDT',
+      'EURC',
       'BTC',
       'BTC_YIELD',
       'WBTC',
@@ -105,6 +113,9 @@ describe('collateral order keys', () => {
   it.each([
     ['soUSD', 'USD_YIELD'],
     ['soEUR', 'EUR_YIELD'],
+    ['USDC', 'USDC'],
+    ['USDT', 'USDT'],
+    ['EURC', 'EURC'],
     ['cbBTC', 'BTC'],
     ['soBTC', 'BTC_YIELD'],
     ['WBTC', 'WBTC'],
@@ -117,9 +128,24 @@ describe('collateral order keys', () => {
     expect(collateralAssetKeyOf(symbol)).toBe(key);
   });
 
+  it('keys the stables on Base', () => {
+    expect(collateralAssetKeyOf('USDC', 8453)).toBe('USDC');
+    expect(collateralAssetKeyOf('USDT', 8453)).toBe('USDT');
+    expect(collateralAssetKeyOf('EURC', 8453)).toBe('EURC');
+  });
+
+  it('never keys a Fuse stable: USDC.e and USDT are spendable there, not collateral', () => {
+    expect(collateralAssetKeyOf('USDC.e')).toBeUndefined();
+    expect(collateralAssetKeyOf('USDC.e', 122)).toBeUndefined();
+    expect(collateralAssetKeyOf('USDT', 122)).toBeUndefined();
+    expect(collateralAssetKeyOf('USDC', 122)).toBeUndefined();
+    // soUSD is collateral on both, so the chain does not change its key.
+    expect(collateralAssetKeyOf('soUSD', 122)).toBe('USD_YIELD');
+    expect(collateralAssetKeyOf('soUSD', 8453)).toBe('USD_YIELD');
+  });
+
   it('has no key for a token the card cannot lock', () => {
-    expect(collateralAssetKeyOf('USDC')).toBeUndefined();
-    expect(collateralAssetKeyOf('EURC')).toBeUndefined();
+    expect(collateralAssetKeyOf('FUSE')).toBeUndefined();
     expect(collateralAssetKeyOf(undefined)).toBeUndefined();
   });
 });
@@ -135,19 +161,70 @@ describe('normalizeCollateralOrder', () => {
   });
 
   it('collapses duplicates and drops keys that are not collateral or not known', () => {
-    const order = normalizeCollateralOrder(['BTC', 'BTC', 'USDC', 'NOPE', 'USD_YIELD']);
+    const order = normalizeCollateralOrder(['BTC', 'BTC', 'FUSE', 'NOPE', 'USD_YIELD']);
 
     expect(order.indexOf('BTC')).toBeLessThan(order.indexOf('USD_YIELD'));
     expect(order).toHaveLength(DEFAULT_COLLATERAL_ORDER.length);
     expect(new Set(order).size).toBe(DEFAULT_COLLATERAL_ORDER.length);
-    expect(order).not.toContain('USDC');
+    expect(order).not.toContain('FUSE');
+  });
+
+  it('slots the stables into an order saved before they were collateral, after EUR Yield', () => {
+    // The default before USDC, USDT and EURC were collateral.
+    const saved = [
+      'USD_YIELD',
+      'EUR_YIELD',
+      'BTC',
+      'BTC_YIELD',
+      'WBTC',
+      'ETH',
+      'ETH_YIELD',
+      'SOL',
+      'AAVE',
+      'ZEC',
+    ];
+
+    expect(normalizeCollateralOrder(saved)).toEqual([...DEFAULT_COLLATERAL_ORDER]);
+  });
+
+  it('keeps a customised older order and slots the stables in front of the key after them', () => {
+    const order = normalizeCollateralOrder([
+      'EUR_YIELD',
+      'USD_YIELD',
+      'SOL',
+      'BTC',
+      'BTC_YIELD',
+      'WBTC',
+      'ETH',
+      'ETH_YIELD',
+      'AAVE',
+      'ZEC',
+    ]);
+
+    expect(order).toEqual([
+      'EUR_YIELD',
+      'USD_YIELD',
+      'SOL',
+      'USDC',
+      'USDT',
+      'EURC',
+      'BTC',
+      'BTC_YIELD',
+      'WBTC',
+      'ETH',
+      'ETH_YIELD',
+      'AAVE',
+      'ZEC',
+    ]);
   });
 
   it('puts a key a partial order leaves out at its default place', () => {
-    // EUR_YIELD comes before BTC by default, so it lands in front of it.
+    // EUR_YIELD and the stables come before BTC by default, so they land in front of it, in
+    // default order.
     const order = normalizeCollateralOrder(['SOL', 'BTC', 'USD_YIELD']);
+    const btc = order.indexOf('BTC');
 
-    expect(order.indexOf('EUR_YIELD')).toBe(order.indexOf('BTC') - 1);
+    expect(order.slice(btc - 4, btc)).toEqual(['EUR_YIELD', 'USDC', 'USDT', 'EURC']);
     expect(order.indexOf('SOL')).toBeLessThan(order.indexOf('BTC'));
     expect(order.indexOf('BTC')).toBeLessThan(order.indexOf('USD_YIELD'));
   });
@@ -206,6 +283,9 @@ describe('the listed order', () => {
     expect(next).toEqual([
       'SOL',
       'EUR_YIELD',
+      'USDC',
+      'USDT',
+      'EURC',
       'USD_YIELD',
       'BTC_YIELD',
       'WBTC',
@@ -337,10 +417,64 @@ describe('buildCollateralOrderRows', () => {
   it('lists nothing before the credit reads answer, and skips tokens with no key', () => {
     expect(buildCollateralOrderRows(undefined).size).toBe(0);
     const rows = buildCollateralOrderRows({
-      fuse: instance(122, [asset({ symbol: 'USDC' })]),
+      fuse: instance(122, [asset({ symbol: 'FUSE' })]),
       base: null,
     });
     expect(rows.size).toBe(0);
+  });
+
+  it('lists the Base stables as collateral: USDC and USDT in dollars, EURC in euros', () => {
+    const rows = buildCollateralOrderRows({
+      fuse: null,
+      base: instance(8453, [
+        asset({ chainId: 8453, token: BASE_USDC, symbol: 'USDC', decimals: 6 }),
+        asset({
+          chainId: 8453,
+          token: BASE_USDT,
+          symbol: 'USDT',
+          decimals: 6,
+          amount: 12_000_000n,
+          valueUsd: 12_000_000n,
+        }),
+        asset({
+          chainId: 8453,
+          token: BASE_EURC,
+          symbol: 'EURC',
+          decimals: 6,
+          amount: 70_000_000n,
+          valueUsd: 81_600_000n,
+          valueEur: 70_000_000n,
+        }),
+      ]),
+    });
+
+    expect([...rows.keys()].sort()).toEqual(['EURC', 'USDC', 'USDT']);
+    expect(rows.get('USDC')).toMatchObject({
+      name: 'USDC',
+      icon: 'usdc',
+      value: '$0.00',
+      subtitle: 'LTV 90%',
+    });
+    expect(rows.get('USDT')).toMatchObject({ name: 'USDT', icon: 'usdt', value: '$12.00' });
+    expect(rows.get('EURC')).toMatchObject({
+      name: 'EURC',
+      icon: 'eurc',
+      value: '€70.00',
+      detail: '≈ $81.60',
+    });
+  });
+
+  it('never lists Fuse USDC.e or USDT, even if Fuse listed them', () => {
+    const rows = buildCollateralOrderRows({
+      fuse: instance(122, [
+        asset({}),
+        asset({ token: FUSE_USDC_E, symbol: 'USDC.e', decimals: 6 }),
+        asset({ token: FUSE_USDT, symbol: 'USDT', decimals: 6 }),
+      ]),
+      base: null,
+    });
+
+    expect([...rows.keys()]).toEqual(['USD_YIELD']);
   });
 });
 

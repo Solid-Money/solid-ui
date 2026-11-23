@@ -21,9 +21,9 @@ import {
   buildLoan,
   type LoanModel,
   type LoanStatus,
-  STEADY_SYMBOLS,
   WAD,
   worstStatus,
+  YIELD_SYMBOLS,
 } from '@/lib/creditRisk';
 import { collateralAssetKeyOf, sortByCollateralOrder } from '@/lib/utils/collateralOrder';
 
@@ -100,11 +100,14 @@ const formatEuro = (amount: bigint) =>
     maximumFractionDigits: 2,
   });
 
-/** Held balances and the default Yield rows. Discovery takes eligible zero-balance rows below. */
+/**
+ * Held balances and the default Yield rows. Discovery takes eligible zero-balance rows below —
+ * the Base stablecoins among them, which are listed here only when held.
+ */
 const listsAsset = (asset: CreditCollateralAsset): boolean =>
   asset.amount > 0n ||
   // soUSD on Base only when held: otherwise a second "$0.00" USD Yield row beside Fuse's.
-  (STEADY_SYMBOLS.includes(asset.symbol) &&
+  (YIELD_SYMBOLS.includes(asset.symbol) &&
     !(asset.symbol === 'soUSD' && asset.chainId !== fuseChain.id));
 
 const collateralEntry = (
@@ -130,7 +133,7 @@ const collateralEntry = (
           : `${lockedValue} locked`,
     terms:
       asset.ltvWad > 0n && asset.countsTowardPower
-        ? `LTV ${percentOf(asset.ltvWad)}${STEADY_SYMBOLS.includes(asset.symbol) ? ' · keeps earning' : ''}`
+        ? `LTV ${percentOf(asset.ltvWad)}${YIELD_SYMBOLS.includes(asset.symbol) ? ' · keeps earning' : ''}`
         : 'Not used for borrowing',
   };
 };
@@ -206,7 +209,7 @@ export const useCreditDetails = (): CreditDetails => {
     );
     const collateral = sortByCollateralOrder(
       instances.flatMap(position => position.collateral),
-      asset => collateralAssetKeyOf(asset.symbol),
+      asset => collateralAssetKeyOf(asset.symbol, asset.chainId),
       figures.collateralKeys,
     );
     // A failed or unanswered position read can hide a holding on the other instance.

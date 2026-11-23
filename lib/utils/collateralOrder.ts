@@ -1,3 +1,5 @@
+import { base } from 'viem/chains';
+
 import type { SpendAssetKey } from '@/lib/utils/spendOrder';
 
 /**
@@ -9,11 +11,17 @@ import type { SpendAssetKey } from '@/lib/utils/spendOrder';
  *
  * It governs new locks only — the shortfall after what is already escrowed — and the shop's own
  * yield share still comes first: EUR Yield at a euro shop, USD Yield at a dollar shop.
+ *
+ * USDC, USDT and EURC are collateral on Base only (Fuse locks soUSD alone), at soUSD's and soEUR's
+ * tier: LTV 90%, threshold 95%.
  */
 export type CollateralAssetKey = Extract<
   SpendAssetKey,
   | 'USD_YIELD'
   | 'EUR_YIELD'
+  | 'USDC'
+  | 'USDT'
+  | 'EURC'
   | 'BTC'
   | 'BTC_YIELD'
   | 'WBTC'
@@ -31,6 +39,9 @@ export type CollateralAssetKey = Extract<
 export const DEFAULT_COLLATERAL_ORDER: readonly CollateralAssetKey[] = [
   'USD_YIELD',
   'EUR_YIELD',
+  'USDC',
+  'USDT',
+  'EURC',
   'BTC',
   'BTC_YIELD',
   'WBTC',
@@ -44,6 +55,10 @@ export const DEFAULT_COLLATERAL_ORDER: readonly CollateralAssetKey[] = [
 const KEY_BY_SYMBOL: Readonly<Record<string, CollateralAssetKey>> = {
   soUSD: 'USD_YIELD',
   soEUR: 'EUR_YIELD',
+  // Base's native USDC. Fuse's bridged USDC is "USDC.e", which is not collateral and maps to none.
+  USDC: 'USDC',
+  USDT: 'USDT',
+  EURC: 'EURC',
   cbBTC: 'BTC',
   soBTC: 'BTC_YIELD',
   WBTC: 'WBTC',
@@ -54,9 +69,26 @@ const KEY_BY_SYMBOL: Readonly<Record<string, CollateralAssetKey>> = {
   cbZEC: 'ZEC',
 };
 
-/** The collateral key for a token's symbol ("cbBTC" → `BTC`), or undefined for any other. */
-export const collateralAssetKeyOf = (symbol: string | undefined): CollateralAssetKey | undefined =>
-  symbol ? KEY_BY_SYMBOL[symbol] : undefined;
+/**
+ * The stables, which only the Base instance takes as collateral. Fuse's USDT shares the ticker, so
+ * a token on any other chain never maps to these.
+ */
+const BASE_ONLY_KEYS: ReadonlySet<CollateralAssetKey> = new Set(['USDC', 'USDT', 'EURC']);
+
+/**
+ * The collateral key for a token's symbol ("cbBTC" → `BTC`), or undefined for any other. With a
+ * chain, the stables map on Base only: Fuse USDC.e and USDT are spendable there, never collateral.
+ */
+export const collateralAssetKeyOf = (
+  symbol: string | undefined,
+  chainId?: number,
+): CollateralAssetKey | undefined => {
+  const key = symbol ? KEY_BY_SYMBOL[symbol] : undefined;
+  if (key && chainId !== undefined && chainId !== base.id && BASE_ONLY_KEYS.has(key)) {
+    return undefined;
+  }
+  return key;
+};
 
 export const isCollateralAssetKey = (value: string): value is CollateralAssetKey =>
   (DEFAULT_COLLATERAL_ORDER as readonly string[]).includes(value);
