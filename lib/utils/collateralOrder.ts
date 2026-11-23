@@ -97,16 +97,27 @@ export const isCollateralAssetKey = (value: string): value is CollateralAssetKey
  * Every collateral key once, in the given order, with any key it leaves out at its default
  * position. The backend sends the full list; this keeps the app right against a partial one, and
  * drops a key this build does not know rather than guessing where it goes.
+ *
+ * With `known` (the backend's own `defaultCollateralOrder`), only keys the backend also names are
+ * kept or added. The order is sent back on Save and in the preview, and a backend older than a key
+ * rejects the whole list with a 400: the stables reached this build before the backend that
+ * accepts them.
  */
 export const normalizeCollateralOrder = (
   order: readonly string[] | undefined,
+  known?: readonly string[],
 ): CollateralAssetKey[] => {
-  const ranked = [...new Set((order ?? []).filter(isCollateralAssetKey))];
-  for (const [index, key] of DEFAULT_COLLATERAL_ORDER.entries()) {
+  const defaults = known
+    ? DEFAULT_COLLATERAL_ORDER.filter(key => known.includes(key))
+    : DEFAULT_COLLATERAL_ORDER;
+  const ranked = [
+    ...new Set((order ?? []).filter(isCollateralAssetKey).filter(key => defaults.includes(key))),
+  ];
+  for (const [index, key] of defaults.entries()) {
     if (ranked.includes(key)) continue;
     // In front of the first ranked key that follows it by default, so a key a newer build added
     // lands where today's order would put it rather than at the bottom.
-    const after = DEFAULT_COLLATERAL_ORDER.slice(index + 1).find(next => ranked.includes(next));
+    const after = defaults.slice(index + 1).find(next => ranked.includes(next));
     ranked.splice(after ? ranked.indexOf(after) : ranked.length, 0, key);
   }
   return ranked;

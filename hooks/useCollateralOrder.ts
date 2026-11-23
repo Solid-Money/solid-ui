@@ -46,7 +46,20 @@ export const useCollateralOrder = () => {
   const order = useMemo<CollateralAssetKey[]>(
     () =>
       query.data?.collateralOrder
-        ? normalizeCollateralOrder(query.data.collateralOrder)
+        ? // Only keys this backend accepts: it rejects a saved list naming one it does not know.
+          normalizeCollateralOrder(query.data.collateralOrder, query.data.defaultCollateralOrder)
+        : [...DEFAULT_COLLATERAL_ORDER],
+    [query.data],
+  );
+
+  /** The backend's default order, cut to keys it accepts: what Reset puts on screen. */
+  const defaultOrder = useMemo<CollateralAssetKey[]>(
+    () =>
+      query.data?.defaultCollateralOrder
+        ? normalizeCollateralOrder(
+            query.data.defaultCollateralOrder,
+            query.data.defaultCollateralOrder,
+          )
         : [...DEFAULT_COLLATERAL_ORDER],
     [query.data],
   );
@@ -75,6 +88,7 @@ export const useCollateralOrder = () => {
 
   return {
     order,
+    defaultOrder,
     customized: query.data?.collateralOrderCustomized ?? false,
     /**
      * Whether to offer "Edit order": the backend's internal-team cohort decides. Fails closed —

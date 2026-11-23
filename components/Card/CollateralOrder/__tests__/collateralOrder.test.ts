@@ -228,6 +228,31 @@ describe('normalizeCollateralOrder', () => {
     expect(order.indexOf('SOL')).toBeLessThan(order.indexOf('BTC'));
     expect(order.indexOf('BTC')).toBeLessThan(order.indexOf('USD_YIELD'));
   });
+
+  it('never adds or keeps a key the backend does not name', () => {
+    // A backend from before the stables: its default has none of them, and it rejects a saved
+    // list that names one with a 400.
+    const known = DEFAULT_COLLATERAL_ORDER.filter(
+      key => key !== 'USDC' && key !== 'USDT' && key !== 'EURC',
+    );
+
+    const order = normalizeCollateralOrder(['SOL', 'USDT', 'BTC', 'USD_YIELD'], known);
+
+    expect(order).toHaveLength(known.length);
+    expect(order).not.toContain('USDC');
+    expect(order).not.toContain('USDT');
+    expect(order).not.toContain('EURC');
+    // With no stables to place, EUR_YIELD lands right in front of BTC again.
+    expect(order.indexOf('EUR_YIELD')).toBe(order.indexOf('BTC') - 1);
+  });
+
+  it('adds the stables once the backend names them', () => {
+    const order = normalizeCollateralOrder(['SOL', 'BTC'], [...DEFAULT_COLLATERAL_ORDER]);
+
+    expect([...order].sort()).toEqual([...DEFAULT_COLLATERAL_ORDER].sort());
+    const btc = order.indexOf('BTC');
+    expect(order.slice(btc - 3, btc)).toEqual(['USDC', 'USDT', 'EURC']);
+  });
 });
 
 describe('sameCollateralOrder', () => {
