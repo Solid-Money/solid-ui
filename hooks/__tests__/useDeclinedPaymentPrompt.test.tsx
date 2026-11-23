@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { DeclinedPaymentPrompt, useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useDeclineSpendable } from '@/hooks/useDeclineSpendable';
 import { CardTransactionCategory } from '@/lib/types';
 
 const { act, create } = jest.requireActual('react-test-renderer');
@@ -13,8 +14,26 @@ let mockDisplayCurrency: any;
 jest.mock('@/hooks/useCardTransactions', () => ({
   useCardTransactions: () => ({ data: mockTransactions }),
 }));
+let mockSpendableLoading: boolean;
+const mockRefetchSpendable = jest.fn();
 jest.mock('@/hooks/useCardSpendable', () => ({
-  useCardSpendable: () => ({ data: mockSpendable }),
+  useCardSpendable: () => ({
+    data: mockSpendable,
+    isLoading: mockSpendableLoading,
+    refetch: mockRefetchSpendable,
+  }),
+}));
+let mockBalancesRefresh: any;
+const mockRefetchBalances = jest.fn();
+jest.mock('@/hooks/useBalances', () => ({
+  useBalancesRefresh: (options: any) => {
+    mockBalancesRefresh = options;
+    return { refetch: mockRefetchBalances };
+  },
+}));
+let mockTile: { availableUsd: number | null; isLoading: boolean };
+jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () => ({
+  useSpendModeFigures: () => mockTile,
 }));
 jest.mock('@/hooks/useCardSpendRegistration', () => ({
   useCardSpendRegistration: () => mockRegistration,
@@ -59,9 +78,14 @@ describe('useDeclinedPaymentPrompt', () => {
   beforeEach(() => {
     jest.useFakeTimers({ now: NOW });
     mockSpendable = { available: { amount: '0', currency: 'usd' } };
+    mockSpendableLoading = false;
+    mockRefetchSpendable.mockReset();
+    mockRefetchBalances.mockReset();
     mockRegistration = { registration: {}, mode: 'cash', isRegistered: true };
     mockBaseCredit = { base: {}, readsBase: false, isBaseGateReady: true };
     mockDisplayCurrency = { inEuros: false };
+    // The tile cannot say unless a test gives it a number: the hook's own figures stand.
+    mockTile = { availableUsd: null, isLoading: false };
   });
 
   afterEach(() => {
@@ -166,5 +190,124 @@ describe('useDeclinedPaymentPrompt', () => {
     });
 
     expect(prompt).toBeNull();
+  });
+
+  describe("the Available to spend tile's number (T-174)", () => {
+    beforeEach(() => {
+      mockTransactions = { pages: [{ data: [declined(new Date(NOW.getTime() - 2 * HOUR_MS))] }] };
+      // Cash only, as the backend counts it.
+      mockSpendable = { available: { amount: '5', currency: 'usd' } };
+    });
+
+    it('is what the banner quotes, not the cash-only figure', () => {
+      mockTile = { availableUsd: 12.5, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt?.available).toEqual({ amount: 12.5, currency: 'USD' });
+    });
+
+    it('is what the banner quotes in Credit mode, in the main currency', () => {
+      // On its own the hook would say the larger single line, $11. The tile reads $43.40.
+      mockRegistration = {
+        ...mockRegistration,
+        mode: 'credit',
+        position: { availableToBorrowUsd: 11_000_000n },
+      };
+      mockBaseCredit = {
+        ...mockBaseCredit,
+        readsBase: true,
+        base: { data: { availableToBorrowUsd: 5_000_000n } },
+      };
+      mockDisplayCurrency = { inEuros: true, usdPerEur: 1.1657 };
+      mockTransactions = {
+        pages: [{ data: [{ ...declined(new Date(NOW.getTime() - HOUR_MS)), amount: '110.96' }] }],
+      };
+      mockTile = { availableUsd: 43.4, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+      expect(prompt?.available).toEqual({ amount: 37.23, currency: 'EUR' });
+
+      mockTile = { availableUsd: 111, isLoading: false };
+      act(() => root.update(<Probe />));
+      expect(prompt).toBeNull();
+    });
+
+    it('hides the banner once it covers the payment', () => {
+      mockTile = { availableUsd: 20, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt).toBeNull();
+    });
+
+    it('waits for the tile rather than show one number and then another', () => {
+      mockTile = { availableUsd: null, isLoading: true };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt).toBeNull();
+    });
+
+    it('still quotes the tile, in dollars, when the backend cash read failed', () => {
+      mockSpendable = undefined;
+      mockTile = { availableUsd: 12.5, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt?.available).toEqual({ amount: 12.5, currency: 'USD' });
+    });
+
+    it('waits for the backend cash read while it is still loading', () => {
+      mockSpendable = undefined;
+      mockSpendableLoading = true;
+      mockTile = { availableUsd: 12.5, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt).toBeNull();
+    });
+
+    it("re-reads the tile's balances with the receipt's poll and its refresh", async () => {
+      let refetchCash: (() => Promise<unknown>) | undefined;
+      const Receipt = () => {
+        const { refetchCash: current } = useDeclineSpendable({ refetchInterval: 15_000 });
+        React.useEffect(() => {
+          refetchCash = current;
+        }, [current]);
+        return null;
+      };
+
+      act(() => {
+        root = create(<Receipt />);
+      });
+      expect(mockBalancesRefresh).toEqual({ enabled: true, refetchInterval: 15_000 });
+
+      await refetchCash?.();
+      expect(mockRefetchSpendable).toHaveBeenCalledTimes(1);
+      expect(mockRefetchBalances).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the cash figure when the tile cannot say', () => {
+      mockTile = { availableUsd: null, isLoading: false };
+
+      act(() => {
+        root = create(<Probe />);
+      });
+
+      expect(prompt?.available).toEqual({ amount: 5, currency: 'USD' });
+    });
   });
 });

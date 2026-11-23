@@ -143,6 +143,11 @@ interface DeclineCreditAvailability {
   mode: 'credit' | 'smart';
   availableUsd?: number;
   displayUsdPerEur?: number;
+  /**
+   * `availableUsd` is the home Available to spend tile's own number — in Smart, already the larger
+   * of cash and credit — so it is quoted as it is rather than weighed against the cash path again.
+   */
+  isTileFigure?: boolean;
 }
 
 /**
@@ -230,6 +235,47 @@ const cashPaymentFigures = (
   return { payment, available };
 };
 
+/**
+ * The backend's spendable figures with the home Available to spend tile's number in their place.
+ *
+ * The backend counts cash only. The tile follows the spend mode, so in Credit it counts the credit
+ * line too — and the declined-payment banner under it said "You have €10.02 available to spend"
+ * beside a tile reading €36.54. The banner and the receipt take this, so all three quote one
+ * number.
+ *
+ * For the cash path. In Credit and Smart the tile's number goes to `declinedPaymentFigures` as the
+ * credit figure instead (`isTileFigure`).
+ *
+ * `usd` is the tile's figure in dollars. `eur` is what the tile shows when it shows euros: used as
+ * it is for a euro card, so the two match to the cent; otherwise the dollars are converted at the
+ * card's own quote and rounded down, as the backend's figure is. The quote itself is kept.
+ */
+export const withTileAvailable = (
+  spendable: CardSpendableResponse,
+  tile: { usd: number; eur?: number },
+): CardSpendableResponse => {
+  const usd = Math.max(0, tile.usd);
+  const inCard = spendable.available_in_card_currency;
+  const rate = inCard?.rate;
+  const isEuroCard = inCard?.currency?.trim().toUpperCase() === 'EUR';
+  const inCardAmount =
+    isEuroCard && tile.eur !== undefined
+      ? Math.max(0, tile.eur)
+      : rate && rate > 0
+        ? usdToEur(usd, rate)
+        : undefined;
+
+  return {
+    ...spendable,
+    available: { amount: String(usd), currency: 'usd' },
+    // Without a usable quote there is no figure in the card's currency to give: dollars it is.
+    available_in_card_currency:
+      inCard && inCardAmount !== undefined
+        ? { ...inCard, amount: inCardAmount.toFixed(2) }
+        : undefined,
+  };
+};
+
 export const declinedPaymentFigures = (
   transaction: DeclinedPayment,
   spendable?: CardSpendableResponse | null,
@@ -261,6 +307,11 @@ export const declinedPaymentFigures = (
     : undefined;
 
   if (credit.mode === 'credit') return { payment, available, comparable };
+  // The tile's Smart number: one figure for the banner, the receipt and the tile. A top-up still
+  // funds the cash path, so the cash comparison stays beside it.
+  if (credit.isTileFigure) {
+    return { payment, available, comparable, cashComparable: cash.comparable };
+  }
 
   // Smart can use either path. Compare the gaps in USD, since the two paths can use different FX.
   const cashUsd = Number(spendable?.available?.amount);

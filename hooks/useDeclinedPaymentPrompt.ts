@@ -16,7 +16,10 @@ export interface DeclinedPaymentPrompt {
   /** Card transaction id — what the banner's "Fix it" opens. */
   transactionId: string;
   payment: Money;
-  /** What the card can spend now, live — less than {@link payment}, or there is no banner. */
+  /**
+   * What the card can spend now, live — the Available to spend tile's own number. Less than
+   * {@link payment}, or there is no banner.
+   */
   available: Money;
   merchantName?: string;
 }

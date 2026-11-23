@@ -52,6 +52,14 @@ export interface SpendModeFigures {
 
   /** The figure under each segment name in the control. */
   segmentValue: Record<SpendMode, string>;
+  /**
+   * What the home Available to spend tile shows for the mode in force, in dollars, before it is
+   * formatted: the cash balance in Cash, the credit left in Credit, the larger of the two in Smart.
+   *
+   * For anything that has to quote the tile's number rather than work out one of its own (the
+   * declined-payment banner and receipt). Null while the tile is loading or reads "—".
+   */
+  availableUsd: number | null;
 
   /** Whether there is a loan at all. What gates the Repay button. */
   hasPosition: boolean;
@@ -172,6 +180,13 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     // The tile's own placeholder, on the figures that count Base and nowhere else: `isLoading`
     // also holds the Assets screen's Fuse-only credit line, which has nothing to wait for.
     const unknownWithoutBase = isBaseCreditUnavailable ? '—' : undefined;
+    const isLoading =
+      isRegistrationLoading || isBalanceLoading || isBaseAccessLoading || isBaseCreditLoading;
+    // The tile's figure for the mode in force, by the same rules as the labels below.
+    const smartMicro = cashMicro > spendableHeadroom ? cashMicro : spendableHeadroom;
+    const availableMicro =
+      mode === 'cash' ? cashMicro : mode === 'credit' ? spendableHeadroom : smartMicro;
+    const isAvailableKnown = !isLoading && (mode === 'cash' || !unknownWithoutBase);
 
     return {
       mode,
@@ -201,10 +216,9 @@ export const useSpendModeFigures = (): SpendModeFigures => {
         // takes exactly one path, so the most Smart can fund is the larger of the two; the
         // two figures also overlap heavily, both deriving from the same balance, so adding
         // them would quote money the Safe does not have.
-        smart:
-          unknownWithoutBase ??
-          formatMicroUsd(cashMicro > spendableHeadroom ? cashMicro : spendableHeadroom),
+        smart: unknownWithoutBase ?? formatMicroUsd(smartMicro),
       },
+      availableUsd: isAvailableKnown ? Number(availableMicro) / Number(ONE_USD) : null,
 
       hasPosition: debt > 0n,
       canBorrow,
@@ -215,8 +229,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       fullyPriced: position?.fullyPriced ?? true,
 
       // Base too, so the tile doesn't land on the Fuse figure and then jump to the whole line.
-      isLoading:
-        isRegistrationLoading || isBalanceLoading || isBaseAccessLoading || isBaseCreditLoading,
+      isLoading,
     };
   }, [
     mode,

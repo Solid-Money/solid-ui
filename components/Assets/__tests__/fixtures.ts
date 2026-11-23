@@ -100,6 +100,7 @@ export const spendFixture: SpendModeFigures = {
   borrowApy: '5.57%',
   borrowedProgress: 0.175,
   segmentValue: { cash: '$228.40', credit: '$1,650.00', smart: '$1,650.00' },
+  availableUsd: 1650,
   hasPosition: true,
   canBorrow: true,
   showsBorrowPosition: true,
