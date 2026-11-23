@@ -71,6 +71,22 @@ const getEarnOffer = (token: TokenBalance, tokens: TokenBalance[]): EarnOffer | 
   }
 };
 
+/** The idle cash to the cent, kept in token units: `$18.98`, or `<$0.01` under a cent. */
+const formatIdleCash = (amount: TokenUnits, currency: string) =>
+  amount.raw * 100n < 10n ** BigInt(amount.decimals)
+    ? `<${currency}0.01`
+    : `${currency}${formatTokenUnits(amount, 2, 2)}`;
+
+/** The idle ETH kept short and in token units, the way `formatTokenAmount` shortens a number. */
+const formatIdleEth = (amount: TokenUnits) => {
+  const one = 10n ** BigInt(amount.decimals);
+  if (amount.raw >= 1000n * one) return formatTokenUnits(amount, 2, 2);
+  if (amount.raw >= one) return formatTokenUnits(amount, 4, 2);
+  // About four significant digits: the leading zeros after the point, plus three.
+  const leadingPlaces = amount.decimals - amount.raw.toString().length + 1;
+  return formatTokenUnits(amount, Math.min(8, leadingPlaces + 3));
+};
+
 /** Figma 31247:16253 and 31247:16245. */
 const EarnBannerRow = ({ vault, symbol, balance, balanceUsd }: EarnOffer) => {
   const { width } = useWindowDimensions();
@@ -92,10 +108,9 @@ const EarnBannerRow = ({ vault, symbol, balance, balanceUsd }: EarnOffer) => {
     : yearlyYield.raw >= 10n ** BigInt(yearlyYield.decimals);
 
   // Someone who already holds this Yield product reads the idle amount itself.
-  const idleAmount = Number(formatUnits(balance.raw, balance.decimals));
   const idleLabel = isEth
-    ? `${formatTokenAmount(idleAmount)} ETH`
-    : formatYieldAmount(idleAmount, vault.type);
+    ? `${formatIdleEth(balance)} ETH`
+    : formatIdleCash(balance, getVaultCurrencySymbol(vault.type));
 
   let subtitle = `Put it in ${name}`;
   if (savings) {
@@ -139,6 +154,10 @@ const EarnBannerRow = ({ vault, symbol, balance, balanceUsd }: EarnOffer) => {
       </View>
       <View className="min-w-0 flex-1 gap-0.5">
         <Text
+          // Under 390pt the title is the only text, and it now carries an amount of any length.
+          numberOfLines={slim ? 1 : undefined}
+          adjustsFontSizeToFit={slim}
+          minimumFontScale={0.7}
           className={
             slim
               ? 'text-[14px] font-medium leading-[19px] text-brand'
