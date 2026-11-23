@@ -67,6 +67,51 @@ describe('inviteCopy', () => {
   });
 });
 
+describe('inviteCopy with a KOL perk', () => {
+  const perk = {
+    tierDiscountPct: 50,
+    sepaFreeMonths: 1,
+    sepaFreeCapUsd: 10000,
+    endsAt: '2026-12-23T00:00:00.000Z',
+  };
+
+  it('leads with the discount, then the free SEPA and the card bonus', () => {
+    const copy = inviteCopy({ ...v4, code: 'ARTEM50', perk });
+
+    expect(copy.inviter).toBe('eli');
+    expect(headline(copy.title)).toBe('Get 50% off your first\nyear of Prime or Ultra');
+    expect(copy.title.filter(part => part.accent).map(part => part.text)).toEqual(['50% off']);
+    expect(copy.subtitle).toBe(
+      'Plus free SEPA deposits for your first month, up to $10,000. And spend $150 in your first 30 days for a $10 card bonus.',
+    );
+    expect(copy.steps).toEqual([
+      'Create your account',
+      'Deposit euros by SEPA with no fee',
+      'Upgrade to Prime or Ultra for 50% off',
+    ]);
+    expect(copy.footnote).toBe('For new accounts created by 23 Dec.');
+  });
+
+  it('leads with free SEPA when there is no discount', () => {
+    const copy = inviteCopy({ ...v4, perk: { ...perk, tierDiscountPct: 0, sepaFreeMonths: 3 } });
+    expect(headline(copy.title)).toBe('Free SEPA deposits\nfor your first 3 months');
+    expect(
+      copy.subtitle.startsWith('Free SEPA deposits for your first 3 months, up to $10,000.'),
+    ).toBe(true);
+    expect(copy.steps).toEqual([
+      'Create your account',
+      'Deposit euros by SEPA with no fee',
+      'Get your free card',
+    ]);
+  });
+
+  it('falls back to the normal invite on a malformed perk', () => {
+    expect(headline(inviteCopy({ ...v4, perk: { tierDiscountPct: 'x' } }).title)).toBe(
+      'Get $10 to spend\nwith your card',
+    );
+  });
+});
+
 describe('inviterInitial', () => {
   it('upper-cases the first character', () => {
     expect(inviterInitial('eli')).toBe('E');

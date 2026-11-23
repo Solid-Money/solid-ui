@@ -10,11 +10,12 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useConfirmResidence } from '@/hooks/useConfirmResidence';
-import { useEurDepositPromotion } from '@/hooks/useProductFees';
+import { useEurDepositPromotion, useKolPerk } from '@/hooks/useProductFees';
 import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { kolSepaPerkCopy } from '@/lib/referral/invitePerk';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
 import { cn } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -22,6 +23,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
 import { FeePromotionNotice } from './FeePromotionNotice';
+import { KolPerkNotice } from './KolPerkNotice';
 import {
   detailRows,
   RAIL_PRESENTATION,
@@ -161,6 +163,8 @@ export const WirexBankAccountDetails = ({
   const walletLink = useWirexWalletLink();
   // Free SEPA deposits, while a promotion runs and the user has some left.
   const eurPromotion = useEurDepositPromotion();
+  // Free SEPA from a KOL's invite perk, which is used before any promotion.
+  const kolSepaCopy = kolSepaPerkCopy(useKolPerk());
   const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
   const countrySource = useCountryStore(state => state.countryInfo?.source);
@@ -422,7 +426,9 @@ export const WirexBankAccountDetails = ({
       rows={detailRows(activeRail)}
       header={switcher}
       notice={
-        activeRail.accountType === WirexBankAccountType.SEPA && eurPromotion ? (
+        activeRail.accountType !== WirexBankAccountType.SEPA ? null : kolSepaCopy ? (
+          <KolPerkNotice title={kolSepaCopy.title} body={kolSepaCopy.body} />
+        ) : eurPromotion ? (
           <FeePromotionNotice promotion={eurPromotion} />
         ) : null
       }

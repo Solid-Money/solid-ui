@@ -28,6 +28,7 @@ import {
   canPayCashFor,
   findOffer,
   formatFuse,
+  formatInviteDiscount,
   formatLockDuration,
   formatRenewalTerms,
   formatSaleEnds,
@@ -328,7 +329,7 @@ const UpgradeReviewContent = () => {
               <TierPrice
                 priceUsd={firstYearFeeUsd}
                 listPriceUsd={offer.annualFeeUsd}
-                secondaryValue={formatSaleEnds(offer) || undefined}
+                secondaryValue={formatSaleEnds(offer) || formatInviteDiscount(offer) || undefined}
               />
             </TierDetailRow>
             {/* A bridged payment that landed short: what the bridge took comes

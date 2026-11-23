@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { parseInviteCodeFromText } from '@/lib/referral/inviteCode';
+import { invitePerkShort, readInvitePerk } from '@/lib/referral/invitePerk';
 import { formatUsdWhole } from '@/lib/referral/referralV4';
 import { cn } from '@/lib/utils';
 
@@ -17,9 +18,11 @@ export type InviteCodeStatus =
   /** The lookup itself failed: say nothing, signup sends the code and the backend decides. */
   | { kind: 'unverified' };
 
-/** "Dana invited you · $10 card bonus". */
+/** "Dana invited you · $10 card bonus", or "· 50% off Prime & Ultra + free SEPA" for a KOL's perk code. */
 const validLine = (lookup: Extract<ReferralInviteLookup, { valid: true }>) => {
   const who = `${lookup.referrer.username} invited you`;
+  const perk = readInvitePerk(lookup.perk);
+  if (perk) return `${who} · ${invitePerkShort(perk)}`;
   if (lookup.offer) return `${who} · ${formatUsdWhole(lookup.offer.friendCreditUsd)} card bonus`;
   if (lookup.legacyOffer) {
     return `${who} · ${formatUsdWhole(lookup.legacyOffer.friendRewardUsd)} in ${lookup.legacyOffer.payoutToken}`;

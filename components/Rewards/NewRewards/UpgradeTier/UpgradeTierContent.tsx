@@ -41,6 +41,7 @@ import {
   membershipDateLabel,
   nextPurchasableTier,
   offerFirstYearFeeUsd,
+  offerInviteDiscount,
   offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
@@ -321,7 +322,9 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
                 listPriceUsd={offer.annualFeeUsd}
                 secondaryValue={
                   isOfferOnSale(offer) && offer.annualFeeUsd !== null
-                    ? `First year, then ${formatPriceUsd(offer.annualFeeUsd)}/year`
+                    ? offerInviteDiscount(offer)
+                      ? `First year with ${offerInviteDiscount(offer)?.pct}% invite discount, then ${formatPriceUsd(offer.annualFeeUsd)}/year`
+                      : `First year, then ${formatPriceUsd(offer.annualFeeUsd)}/year`
                     : undefined
                 }
               />

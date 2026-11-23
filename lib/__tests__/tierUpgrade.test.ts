@@ -6,6 +6,7 @@ import {
   formatFuse,
   formatFuseHeld,
   formatFuseShortfall,
+  formatInviteDiscount,
   formatLockDuration,
   formatMembershipDate,
   formatMembershipDay,
@@ -24,6 +25,7 @@ import {
   membershipDateLabel,
   nextPurchasableTier,
   offerFirstYearFeeUsd,
+  offerInviteDiscount,
   offerMandateUsd,
   offerPaymentMode,
   remainingFuseForTier,
@@ -607,5 +609,36 @@ describe('formatting', () => {
     expect(formatLockDuration(180)).toBe('6 months');
     expect(formatLockDuration(730)).toBe('2 years');
     expect(formatLockDuration(0)).toBe('');
+  });
+});
+
+describe('offerInviteDiscount', () => {
+  it('reads the KOL invite discount that prices the first year', () => {
+    const discounted = offer({
+      firstYearFeeUsd: 99.5,
+      inviteDiscount: { pct: 50, inviterUsername: 'artem.betev' },
+    });
+    expect(offerInviteDiscount(discounted)).toEqual({ pct: 50, inviterUsername: 'artem.betev' });
+    expect(formatInviteDiscount(discounted)).toBe(
+      "50% off your first year with artem.betev's invite",
+    );
+    // No sale-style end: the invite line is what explains the price.
+    expect(formatSaleEnds(discounted)).toBe('');
+  });
+
+  it('ignores a discount that does not lower the price, or is malformed', () => {
+    expect(
+      offerInviteDiscount(offer({ inviteDiscount: { pct: 50, inviterUsername: 'x' } })),
+    ).toBeNull();
+    expect(
+      offerInviteDiscount(
+        offer({
+          firstYearFeeUsd: 99.5,
+          inviteDiscount: { pct: Number.NaN, inviterUsername: 'x' },
+        }),
+      ),
+    ).toBeNull();
+    expect(offerInviteDiscount(offer({ firstYearFeeUsd: 99.5, inviteDiscount: null }))).toBeNull();
+    expect(formatInviteDiscount(undefined)).toBe('');
   });
 });
