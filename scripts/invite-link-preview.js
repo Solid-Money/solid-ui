@@ -15,7 +15,6 @@ const INVITE_PREVIEW = {
   title: "You're invited to Solid",
   description: 'Sign up with this invite and get card credit to spend with your Solid card.',
   image: 'https://app.solid.xyz/assets/images/invite-open-graph.png',
-  url: 'https://app.solid.xyz/invite',
 };
 
 const escapeAttr = value =>
@@ -25,14 +24,17 @@ const TAGS = [
   ['property', 'og:title', 'title'],
   ['property', 'og:description', 'description'],
   ['property', 'og:image', 'image'],
-  ['property', 'og:url', 'url'],
   ['name', 'twitter:title', 'title'],
   ['name', 'twitter:description', 'description'],
   ['name', 'twitter:image', 'image'],
   ['name', 'description', 'description'],
 ];
 
-/** Returns the HTML with the invite preview tags applied; throws if a tag is missing. */
+/**
+ * Returns the HTML with the invite preview tags applied; throws if a tag is missing.
+ * The canonical link and og:url keep the site-wide value: the page is one static
+ * file for every code and there is no bare /invite page to point at.
+ */
 function applyInvitePreview(html, preview = INVITE_PREVIEW) {
   let out = html;
   for (const [attr, key, field] of TAGS) {
@@ -40,10 +42,6 @@ function applyInvitePreview(html, preview = INVITE_PREVIEW) {
     if (!tag.test(out)) throw new Error(`[invite-preview] ${key} tag not found`);
     out = out.replace(tag, `<meta ${attr}="${key}" content="${escapeAttr(preview[field])}"/>`);
   }
-  out = out.replace(
-    /<link rel="canonical" href="[^"]*"\s*\/?>/,
-    `<link rel="canonical" href="${preview.url}"/>`,
-  );
   out = out.replace(
     /<title([^>]*)>[^<]*<\/title>/,
     `<title$1>${escapeAttr(preview.title)}</title>`,

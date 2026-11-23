@@ -19,7 +19,7 @@ const EXPORTED_HEAD =
   `</head><body></body></html>`;
 
 describe('applyInvitePreview', () => {
-  it('swaps title, description, image and url across og/twitter tags', () => {
+  it('swaps title, description and image across og/twitter tags', () => {
     const out = applyInvitePreview(EXPORTED_HEAD);
 
     expect(out).toContain(`<title>You're invited to Solid</title>`);
@@ -28,11 +28,16 @@ describe('applyInvitePreview', () => {
       `<meta property="og:description" content="${INVITE_PREVIEW.description}"/>`,
     );
     expect(out).toContain(`<meta property="og:image" content="${INVITE_PREVIEW.image}"/>`);
-    expect(out).toContain(`<meta property="og:url" content="${INVITE_PREVIEW.url}"/>`);
     expect(out).toContain(`<meta name="twitter:title" content="You're invited to Solid"/>`);
     expect(out).toContain(`<meta name="twitter:image" content="${INVITE_PREVIEW.image}"/>`);
     expect(out).toContain(`<meta name="description" content="${INVITE_PREVIEW.description}"/>`);
-    expect(out).toContain(`<link rel="canonical" href="${INVITE_PREVIEW.url}"/>`);
+  });
+
+  it('leaves the site-wide canonical link and og:url in place', () => {
+    const out = applyInvitePreview(EXPORTED_HEAD);
+
+    expect(out).toContain(`<link rel="canonical" href="https://app.solid.xyz"/>`);
+    expect(out).toContain(`<meta property="og:url" content="https://app.solid.xyz"/>`);
   });
 
   it('removes the old site-wide branding from the invite page', () => {
@@ -47,7 +52,6 @@ describe('applyInvitePreview', () => {
       title: 'Ampersand & "quote" <tag>',
       description: 'd',
       image: 'i',
-      url: 'u',
     });
 
     expect(out).toContain(
