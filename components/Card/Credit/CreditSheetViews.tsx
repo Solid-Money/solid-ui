@@ -30,6 +30,7 @@ import {
   type LoanModel,
   type LoanRisk,
   quoteUnlock,
+  steadyAssetsLabel,
   unitsCeil,
   type UnlockQuote,
   WAD,
@@ -214,6 +215,8 @@ export const BreakdownView = ({
 }) => {
   const together = loan.risk.kind === 'multi' ? loan.risk.togetherDrop : undefined;
   const payDown = loan.payDown;
+  // "Yield assets", "stablecoins" or both: what is held steady against the crypto.
+  const steady = steadyAssetsLabel(loan.assets.filter(asset => asset.steady));
 
   return (
     <>
@@ -223,8 +226,7 @@ export const BreakdownView = ({
       {together === null ? (
         <Note>
           <Text className="text-[14px] leading-[20px] text-white/80">
-            Your Yield assets cover this loan on their own, so a fall in your crypto can’t put it at
-            risk.
+            {`Your ${steady} cover this loan on their own, so a fall in your crypto can’t put it at risk.`}
           </Text>
         </Note>
       ) : together !== undefined ? (
@@ -232,9 +234,7 @@ export const BreakdownView = ({
           <Text className="text-[14px] leading-[20px] text-white/80">
             {'Your crypto can fall '}
             <Text className="font-semibold text-white">{formatFraction(together)}</Text>
-            {
-              ' together before part of this loan can be sold. Yield assets are held steady in this figure.'
-            }
+            {` together before part of this loan can be sold. ${steady.charAt(0).toUpperCase()}${steady.slice(1)} are held steady in this figure.`}
           </Text>
         </Note>
       ) : null}

@@ -9,6 +9,7 @@ import {
   quoteUnlock,
   roundUpToStep,
   statusOf,
+  steadyAssetsLabel,
   UNLOCK_INTEREST_HEADROOM_SECONDS,
   WAD,
 } from '@/lib/creditRisk';
@@ -257,6 +258,77 @@ describe('buildLoan — several volatile assets', () => {
 
   it('suggests no pay-down while the loan is comfortably healthy', () => {
     expect(loan.payDown).toBeNull();
+  });
+});
+
+describe('buildLoan — Base stablecoins as collateral', () => {
+  // USDC, USDT and EURC on Base: LTV 90%, threshold 95%, 5% bonus — soUSD's and soEUR's tier.
+  const usdcOnly = (debt: number, overrides: Partial<CreditInstancePosition> = {}) =>
+    position(debt, [asset('USDC', 1_000, 0.9, 0.95)], overrides);
+
+  it('prices a USDC-only loan from cover over debt, and never gives it a sell price', () => {
+    const loan = buildLoan(usdcOnly(800), NOW);
+    // cover 950 over 800 owed
+    expect(loan.coverUsd).toBe(usd(950));
+    expect(loan.powerUsd).toBe(usd(900));
+    expect(loan.healthFactor).toBeCloseTo(1.1875, 4);
+    expect(loan.status).toBe('healthy');
+    expect(loan.risk).toEqual({ kind: 'steady' });
+    expect(loan.assets[0].steady).toBe(true);
+    expect(loan.assets[0].aloneDrop).toBeNull();
+    expect(loan.assets[0].aloneSellPriceUsd).toBeNull();
+    expect(loan.penaltyBps).toEqual({ min: 500, max: 500 });
+    expect(loanSafetyStatus(loan)).toBe('healthy');
+  });
+
+  it('still warns a USDC-only loan that interest has pushed close to the line', () => {
+    // 950 / 930 ≈ 1.02: Getting close by health alone, with no price to quote.
+    const loan = buildLoan(usdcOnly(930), NOW);
+    expect(loan.status).toBe('caution');
+    expect(loan.risk.kind).toBe('steady');
+    expect(loan.sale).toBeNull();
+    // 950 / 960 < 1.0
+    expect(buildLoan(usdcOnly(960), NOW).sale).toEqual({ kind: 'unrecorded' });
+  });
+
+  it('unlocks USDC up to the spare power at its 90% LTV', () => {
+    const loan = buildLoan(usdcOnly(800), NOW);
+    // (900 − 800) / 0.9
+    expect(freeToUnlock(loan, loan.assets[0])).toEqual({
+      amount: 111_111_111n,
+      valueUsd: 111_111_111n,
+    });
+  });
+
+  it('holds USDT and EURC steady too, beside soUSD and soEUR', () => {
+    const loan = buildLoan(
+      position(500, [
+        asset('USDT', 200, 0.9, 0.95),
+        asset('EURC', 200, 0.9, 0.95),
+        asset('soUSD', 200, 0.9, 0.95),
+      ]),
+      NOW,
+    );
+    expect(loan.assets.every(a => a.steady)).toBe(true);
+    expect(loan.risk).toEqual({ kind: 'steady' });
+  });
+
+  it('counts a stablecoin as steady cover when one crypto asset can move', () => {
+    // The design loan with its EUR Yield swapped for the same $81 of USDC: the same sell price.
+    const loan = buildLoan(position(600, [asset('USDC', 81, 0.9, 0.95), bitcoin(930.23)]), NOW);
+    expect(loan.risk.kind).toBe('single');
+    if (loan.risk.kind !== 'single') return;
+    expect(loan.risk.asset.symbol).toBe('cbBTC');
+    expect(Number(loan.risk.sellPriceUsd) / 1e6).toBeCloseTo(80_325.76, 0);
+  });
+
+  it('names what is held steady: Yield assets, stablecoins, or both', () => {
+    expect(steadyAssetsLabel([])).toBe('Yield assets');
+    expect(steadyAssetsLabel([{ symbol: 'soEUR' }])).toBe('Yield assets');
+    expect(steadyAssetsLabel([{ symbol: 'USDC' }, { symbol: 'EURC' }])).toBe('stablecoins');
+    expect(steadyAssetsLabel([{ symbol: 'soUSD' }, { symbol: 'USDT' }])).toBe(
+      'stablecoins and Yield assets',
+    );
   });
 });
 

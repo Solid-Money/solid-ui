@@ -191,9 +191,10 @@ export const useCardSpendDeployments = () => {
  *
  * ## Note on the name
  *
- * The Base instance is **dollar-denominated**; EURC is a spendable asset within it and is
- * not collateral, so nothing here lends against euros — and lending is not planned. The copy this
- * powers says "euro spending", which is exactly what the user gets: spending a euro balance.
+ * The Base instance is **dollar-denominated**: debt is in dollars. EURC (and soEUR) are spendable
+ * there and, in Credit mode, also collateral the card can borrow against — but enabling Base is
+ * what this flow does, and what the cardholder gets from it first is spending a euro balance. So
+ * the copy this powers says "euro spending" (or "Base spending"), never "lending".
  */
 export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const { user, safeAA } = useUser();

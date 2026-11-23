@@ -13,7 +13,6 @@ import { type CollateralOrderPreviewShop, useCollateralOrder } from '@/hooks/use
 import { showErrorToast } from '@/lib/errors';
 import {
   type CollateralAssetKey,
-  DEFAULT_COLLATERAL_ORDER,
   sameCollateralOrder,
   visibleCollateralOrder,
   withVisibleCollateralOrder,
@@ -97,7 +96,7 @@ export default function CollateralOrderScreen() {
       note="Euro shops lock your EUR Yield first and dollar shops your USD Yield. For any other currency, your card follows this order. Collateral that’s already locked stays locked."
       list={list}
       preview={<CollateralOrderPreview draft={current} shop={shop} onShopChange={setShop} />}
-      onReset={() => setDraft([...DEFAULT_COLLATERAL_ORDER])}
+      onReset={() => setDraft([...saved.defaultOrder])}
       canReset={isReady}
       onSave={handleSave}
       canSave={canSave}

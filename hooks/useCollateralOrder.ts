@@ -46,7 +46,20 @@ export const useCollateralOrder = () => {
   const order = useMemo<CollateralAssetKey[]>(
     () =>
       query.data?.collateralOrder
-        ? normalizeCollateralOrder(query.data.collateralOrder)
+        ? // Only keys this backend accepts: it rejects a saved list naming one it does not know.
+          normalizeCollateralOrder(query.data.collateralOrder, query.data.defaultCollateralOrder)
+        : [...DEFAULT_COLLATERAL_ORDER],
+    [query.data],
+  );
+
+  /** The backend's default order, cut to keys it accepts: what Reset puts on screen. */
+  const defaultOrder = useMemo<CollateralAssetKey[]>(
+    () =>
+      query.data?.defaultCollateralOrder
+        ? normalizeCollateralOrder(
+            query.data.defaultCollateralOrder,
+            query.data.defaultCollateralOrder,
+          )
         : [...DEFAULT_COLLATERAL_ORDER],
     [query.data],
   );
@@ -75,6 +88,7 @@ export const useCollateralOrder = () => {
 
   return {
     order,
+    defaultOrder,
     customized: query.data?.collateralOrderCustomized ?? false,
     /**
      * Whether to offer "Edit order": the backend's internal-team cohort decides. Fails closed —
@@ -112,6 +126,10 @@ export const COLLATERAL_ORDER_PREVIEW_PURCHASE = SPEND_ORDER_PREVIEW_PURCHASE;
  * contract's lock math — so the preview never shows a lock the card would not make. Debounced, so
  * dragging a row does not send a request per swap, and the last answer stays on screen while the
  * next one loads.
+ *
+ * Waits for the saved order, and sends only keys it names: until then the draft is this build's own
+ * default, and a backend older than a key (the stables) rejects a list naming it with a 400. The
+ * debounced draft can still be that default for a moment after the read answers, hence the filter.
  */
 export const useCollateralOrderPreview = (
   draft: readonly CollateralAssetKey[],
@@ -119,14 +137,18 @@ export const useCollateralOrderPreview = (
 ) => {
   const { user } = useUser();
   const { provider } = useCardProvider();
+  const saved = useCollateralOrder();
   const debounced = useDebounce(draft, 300);
+  const order = useMemo(
+    () => debounced.filter(key => saved.order.includes(key)),
+    [debounced, saved.order],
+  );
   const purchase = COLLATERAL_ORDER_PREVIEW_PURCHASE[shop];
 
   return useQuery({
-    queryKey: [CARD_COLLATERAL_ORDER_PREVIEW_QUERY_KEY, user?.userId, shop, debounced.join(',')],
-    queryFn: () =>
-      withRefreshToken(() => getCardCollateralOrderPreview({ ...purchase, order: [...debounced] })),
-    enabled: !!user?.userId && provider === CardProvider.WIREX,
+    queryKey: [CARD_COLLATERAL_ORDER_PREVIEW_QUERY_KEY, user?.userId, shop, order.join(',')],
+    queryFn: () => withRefreshToken(() => getCardCollateralOrderPreview({ ...purchase, order })),
+    enabled: !!user?.userId && provider === CardProvider.WIREX && saved.hasLoaded,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
     retry: 1,

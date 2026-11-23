@@ -33,11 +33,14 @@ import type { BorrowedSummaryFigures } from '@/components/Card/NewCardDetails/Sp
 
 /**
  * A collateral row's mark: the yield glyphs for Solid's own shares, the token's logo for the
- * crypto Base takes as collateral.
+ * stablecoins and the crypto Base takes as collateral.
  */
 export type CollateralIcon =
   | 'usd'
   | 'eur'
+  | 'usdc'
+  | 'usdt'
+  | 'eurc'
   | 'eth'
   | 'cbbtc'
   | 'sobtc'
@@ -99,12 +102,16 @@ export interface CreditModeFigures extends BorrowedSummaryFigures {
 }
 
 /**
- * What each collateral token is, as the app names it: the savings product for Solid's shares,
- * the asset's own name for the crypto Base takes.
+ * What each collateral token is, as the app names it: the savings product for Solid's shares, the
+ * ticker for the Base stablecoins (as the spend order names them), the asset's own name for the
+ * crypto Base takes. Fuse's USDC.e and USDT are never collateral, so never reach these rows.
  */
 export const COLLATERAL_LABEL: Readonly<Record<string, { label: string; icon: CollateralIcon }>> = {
   soUSD: { label: 'USD Yield', icon: 'usd' },
   soEUR: { label: 'EUR Yield', icon: 'eur' },
+  USDC: { label: 'USDC', icon: 'usdc' },
+  USDT: { label: 'USDT', icon: 'usdt' },
+  EURC: { label: 'EURC', icon: 'eurc' },
   soETH: { label: 'ETH Yield', icon: 'eth' },
   cbBTC: { label: 'Bitcoin', icon: 'cbbtc' },
   soBTC: { label: 'BTC Yield', icon: 'sobtc' },
@@ -264,7 +271,7 @@ export const combineCreditFigures = (
     ...(positions?.fuse?.collateral ?? []),
     ...(positions?.base?.collateral ?? []),
   ].filter(asset => asset.listedAsCollateral);
-  const keyOf = (asset: CreditCollateralAsset) => collateralAssetKeyOf(asset.symbol);
+  const keyOf = (asset: CreditCollateralAsset) => collateralAssetKeyOf(asset.symbol, asset.chainId);
   const lockable = new Set(
     accepted.map(keyOf).filter((key): key is CollateralAssetKey => key !== undefined),
   );

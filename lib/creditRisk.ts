@@ -52,11 +52,36 @@ export const UNLOCK_REPAY_STEP_USD = 5n * USD;
 /** Health the module reports for a position with no debt. */
 const NO_DEBT_HF = 2n ** 255n;
 
+/** Solid's dollar and euro yield shares: steady, and they keep earning while locked. */
+export const YIELD_SYMBOLS: readonly string[] = ['soUSD', 'soEUR'];
+
 /**
- * Yield shares that hold their value: only interest moves a loan backed by these alone. Everything
- * else — Bitcoin, ETH, ETH Yield (priced in ETH), the other crypto — can fall.
+ * The stablecoins Base takes as collateral. USDC and USDT are dollar pegs; EURC moves with the
+ * euro the way soEUR does, which the module prices and the loan model treats as holding its value.
  */
-export const STEADY_SYMBOLS: readonly string[] = ['soUSD', 'soEUR'];
+export const STABLECOIN_COLLATERAL_SYMBOLS: readonly string[] = ['USDC', 'USDT', 'EURC'];
+
+/**
+ * Assets that hold their value: only interest moves a loan backed by these alone, so they never
+ * get a "sold if it falls by N%" price. Everything else — Bitcoin, ETH, ETH Yield (priced in ETH),
+ * the other crypto — can fall.
+ */
+export const STEADY_SYMBOLS: readonly string[] = [
+  ...YIELD_SYMBOLS,
+  ...STABLECOIN_COLLATERAL_SYMBOLS,
+];
+
+/**
+ * What a loan's steady assets are called in copy that sets them against the crypto: "Yield
+ * assets", "stablecoins", or both. Falls back to "Yield assets" when none is locked.
+ */
+export const steadyAssetsLabel = (assets: readonly Pick<LoanAsset, 'symbol'>[]): string => {
+  const hasYield = assets.some(asset => YIELD_SYMBOLS.includes(asset.symbol));
+  const hasStable = assets.some(asset => STABLECOIN_COLLATERAL_SYMBOLS.includes(asset.symbol));
+  if (hasStable && hasYield) return 'stablecoins and Yield assets';
+  if (hasStable) return 'stablecoins';
+  return 'Yield assets';
+};
 
 export type LoanStatus = 'healthy' | 'caution' | 'at-risk';
 

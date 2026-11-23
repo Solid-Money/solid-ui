@@ -1,3 +1,5 @@
+import { base } from 'viem/chains';
+
 import type { SpendAssetKey } from '@/lib/utils/spendOrder';
 
 /**
@@ -9,11 +11,17 @@ import type { SpendAssetKey } from '@/lib/utils/spendOrder';
  *
  * It governs new locks only — the shortfall after what is already escrowed — and the shop's own
  * yield share still comes first: EUR Yield at a euro shop, USD Yield at a dollar shop.
+ *
+ * USDC, USDT and EURC are collateral on Base only (Fuse locks soUSD alone), at soUSD's and soEUR's
+ * tier: LTV 90%, threshold 95%.
  */
 export type CollateralAssetKey = Extract<
   SpendAssetKey,
   | 'USD_YIELD'
   | 'EUR_YIELD'
+  | 'USDC'
+  | 'USDT'
+  | 'EURC'
   | 'BTC'
   | 'BTC_YIELD'
   | 'WBTC'
@@ -31,6 +39,9 @@ export type CollateralAssetKey = Extract<
 export const DEFAULT_COLLATERAL_ORDER: readonly CollateralAssetKey[] = [
   'USD_YIELD',
   'EUR_YIELD',
+  'USDC',
+  'USDT',
+  'EURC',
   'BTC',
   'BTC_YIELD',
   'WBTC',
@@ -44,6 +55,10 @@ export const DEFAULT_COLLATERAL_ORDER: readonly CollateralAssetKey[] = [
 const KEY_BY_SYMBOL: Readonly<Record<string, CollateralAssetKey>> = {
   soUSD: 'USD_YIELD',
   soEUR: 'EUR_YIELD',
+  // Base's native USDC. Fuse's bridged USDC is "USDC.e", which is not collateral and maps to none.
+  USDC: 'USDC',
+  USDT: 'USDT',
+  EURC: 'EURC',
   cbBTC: 'BTC',
   soBTC: 'BTC_YIELD',
   WBTC: 'WBTC',
@@ -54,9 +69,26 @@ const KEY_BY_SYMBOL: Readonly<Record<string, CollateralAssetKey>> = {
   cbZEC: 'ZEC',
 };
 
-/** The collateral key for a token's symbol ("cbBTC" → `BTC`), or undefined for any other. */
-export const collateralAssetKeyOf = (symbol: string | undefined): CollateralAssetKey | undefined =>
-  symbol ? KEY_BY_SYMBOL[symbol] : undefined;
+/**
+ * The stables, which only the Base instance takes as collateral. Fuse's USDT shares the ticker, so
+ * a token on any other chain never maps to these.
+ */
+const BASE_ONLY_KEYS: ReadonlySet<CollateralAssetKey> = new Set(['USDC', 'USDT', 'EURC']);
+
+/**
+ * The collateral key for a token's symbol ("cbBTC" → `BTC`), or undefined for any other. With a
+ * chain, the stables map on Base only: Fuse USDC.e and USDT are spendable there, never collateral.
+ */
+export const collateralAssetKeyOf = (
+  symbol: string | undefined,
+  chainId?: number,
+): CollateralAssetKey | undefined => {
+  const key = symbol ? KEY_BY_SYMBOL[symbol] : undefined;
+  if (key && chainId !== undefined && chainId !== base.id && BASE_ONLY_KEYS.has(key)) {
+    return undefined;
+  }
+  return key;
+};
 
 export const isCollateralAssetKey = (value: string): value is CollateralAssetKey =>
   (DEFAULT_COLLATERAL_ORDER as readonly string[]).includes(value);
@@ -65,16 +97,27 @@ export const isCollateralAssetKey = (value: string): value is CollateralAssetKey
  * Every collateral key once, in the given order, with any key it leaves out at its default
  * position. The backend sends the full list; this keeps the app right against a partial one, and
  * drops a key this build does not know rather than guessing where it goes.
+ *
+ * With `known` (the backend's own `defaultCollateralOrder`), only keys the backend also names are
+ * kept or added. The order is sent back on Save and in the preview, and a backend older than a key
+ * rejects the whole list with a 400: the stables reached this build before the backend that
+ * accepts them.
  */
 export const normalizeCollateralOrder = (
   order: readonly string[] | undefined,
+  known?: readonly string[],
 ): CollateralAssetKey[] => {
-  const ranked = [...new Set((order ?? []).filter(isCollateralAssetKey))];
-  for (const [index, key] of DEFAULT_COLLATERAL_ORDER.entries()) {
+  const defaults = known
+    ? DEFAULT_COLLATERAL_ORDER.filter(key => known.includes(key))
+    : DEFAULT_COLLATERAL_ORDER;
+  const ranked = [
+    ...new Set((order ?? []).filter(isCollateralAssetKey).filter(key => defaults.includes(key))),
+  ];
+  for (const [index, key] of defaults.entries()) {
     if (ranked.includes(key)) continue;
     // In front of the first ranked key that follows it by default, so a key a newer build added
     // lands where today's order would put it rather than at the bottom.
-    const after = DEFAULT_COLLATERAL_ORDER.slice(index + 1).find(next => ranked.includes(next));
+    const after = defaults.slice(index + 1).find(next => ranked.includes(next));
     ranked.splice(after ? ranked.indexOf(after) : ranked.length, 0, key);
   }
   return ranked;

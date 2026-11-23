@@ -70,7 +70,7 @@ export const buildCollateralOrderRows = (
   ].filter(asset => asset.listedAsCollateral);
   const byKey = new Map<CollateralAssetKey, CreditCollateralAsset[]>();
   for (const asset of accepted) {
-    const key = collateralAssetKeyOf(asset.symbol);
+    const key = collateralAssetKeyOf(asset.symbol, asset.chainId);
     if (!key) continue;
     byKey.set(key, [...(byKey.get(key) ?? []), asset]);
   }

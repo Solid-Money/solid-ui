@@ -40,8 +40,8 @@ const LENS_MODULE_ABI = [
   },
 ] as const;
 
-/** Collateral denominated in euros, shown in euros first. */
-const EURO_COLLATERAL_SYMBOLS: readonly string[] = ['soEUR'];
+/** Collateral denominated in euros, shown in euros first: soEUR, and EURC on Base. */
+const EURO_COLLATERAL_SYMBOLS: readonly string[] = ['soEUR', 'EURC'];
 /** What a euro collateral is converted through: the same instance's own EURC price. */
 const EURC_SYMBOL = 'EURC';
 
