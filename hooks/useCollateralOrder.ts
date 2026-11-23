@@ -126,6 +126,10 @@ export const COLLATERAL_ORDER_PREVIEW_PURCHASE = SPEND_ORDER_PREVIEW_PURCHASE;
  * contract's lock math — so the preview never shows a lock the card would not make. Debounced, so
  * dragging a row does not send a request per swap, and the last answer stays on screen while the
  * next one loads.
+ *
+ * Waits for the saved order, and sends only keys it names: until then the draft is this build's own
+ * default, and a backend older than a key (the stables) rejects a list naming it with a 400. The
+ * debounced draft can still be that default for a moment after the read answers, hence the filter.
  */
 export const useCollateralOrderPreview = (
   draft: readonly CollateralAssetKey[],
@@ -133,14 +137,18 @@ export const useCollateralOrderPreview = (
 ) => {
   const { user } = useUser();
   const { provider } = useCardProvider();
+  const saved = useCollateralOrder();
   const debounced = useDebounce(draft, 300);
+  const order = useMemo(
+    () => debounced.filter(key => saved.order.includes(key)),
+    [debounced, saved.order],
+  );
   const purchase = COLLATERAL_ORDER_PREVIEW_PURCHASE[shop];
 
   return useQuery({
-    queryKey: [CARD_COLLATERAL_ORDER_PREVIEW_QUERY_KEY, user?.userId, shop, debounced.join(',')],
-    queryFn: () =>
-      withRefreshToken(() => getCardCollateralOrderPreview({ ...purchase, order: [...debounced] })),
-    enabled: !!user?.userId && provider === CardProvider.WIREX,
+    queryKey: [CARD_COLLATERAL_ORDER_PREVIEW_QUERY_KEY, user?.userId, shop, order.join(',')],
+    queryFn: () => withRefreshToken(() => getCardCollateralOrderPreview({ ...purchase, order })),
+    enabled: !!user?.userId && provider === CardProvider.WIREX && saved.hasLoaded,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
     retry: 1,
