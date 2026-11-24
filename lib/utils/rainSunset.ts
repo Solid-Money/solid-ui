@@ -1,6 +1,7 @@
 import { formatUnits } from 'viem';
 
 import type {
+  CardCollateralAvailableDto,
   CardCollateralTokenBalanceDto,
   CardStatusResponse,
   RainSunsetStatus,
@@ -55,6 +56,35 @@ export function formatClosingDate(
 export function formatClosingBalance(usd: number): string {
   const value = Number.isFinite(usd) ? Math.max(usd, 0) : 0;
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * What is still the cardholder's own money on the closing card, in dollars:
+ * the card's on-chain collateral, capped at its spending power.
+ *
+ * A card payment that has gone through stays in the collateral contract until
+ * the issuer collects it, which can take days. That part pays for something the
+ * cardholder already bought and cannot be withdrawn; spending power already
+ * nets it off. So the smaller of the two is the only figure the app may call
+ * "your card balance" — the same rule as the backend's check before the move to
+ * the new card, and the cap the withdraw screen applies. Quoting the whole
+ * collateral told people to withdraw money they had already spent.
+ *
+ * Unknown spending power keeps the whole collateral: we cannot tell what is
+ * owed. Null until the balance has been read.
+ */
+export function closingCardBalanceUsd(
+  collateral:
+    | Pick<CardCollateralAvailableDto, 'totalCollateralUsd' | 'spendingPowerUsd'>
+    | null
+    | undefined,
+): number | null {
+  if (!collateral) return null;
+  const { totalCollateralUsd, spendingPowerUsd } = collateral;
+  if (spendingPowerUsd === undefined || !Number.isFinite(spendingPowerUsd)) {
+    return totalCollateralUsd;
+  }
+  return Math.max(0, Math.min(totalCollateralUsd, spendingPowerUsd));
 }
 
 /**
@@ -343,6 +373,16 @@ export function unitsToCents(units: bigint, decimals: number, round: 'up' | 'dow
 }
 
 /**
+ * A token amount to two decimals, truncated, from its integer units — never
+ * rounded up, so the amount beside a dollar figure that is rounded down cannot
+ * read a cent higher than it (3.239 USDT is "3.23", next to "$3.23").
+ */
+export function formatTokenUnits(units: bigint, decimals: number): string {
+  const cents = unitsToCents(units > 0n ? units : 0n, decimals, 'down');
+  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
+}
+
+/**
  * What withdrawing `units` leaves of the token on the card, in whole cents —
  * rounded down, so the sub-cent dust a capped amount can leave is not reported
  * as balance still on the card.
@@ -371,4 +411,60 @@ export function tokenWithdrawal(
     capCents === undefined ? raw : centsToUnits(capCents > 0n ? capCents : 0n, token.decimals);
   const units = capped < raw ? capped : raw;
   return { units, amount: formatUnits(units, token.decimals) };
+}
+
+/** One token's part of a closing-card withdrawal. */
+export interface ClosingWithdrawalRow<T> {
+  token: T;
+  /** The token's position in the list the plan was made from. */
+  index: number;
+  /** What moves, in the token's smallest units; zero when the cap leaves all of it. */
+  units: bigint;
+  /** `units` in whole cents, rounded down: what the screen may say moves. */
+  cents: bigint;
+}
+
+/** What a closing-card withdrawal moves and what it leaves, before anything is sent. */
+export interface ClosingWithdrawalPlan<T> {
+  /** One row per token, in the order given. */
+  rows: ClosingWithdrawalRow<T>[];
+  /** What can move to the wallet now, in whole cents. */
+  movableCents: bigint;
+  /** What the cap keeps on the card, in whole cents. */
+  heldCents: bigint;
+}
+
+/**
+ * What withdrawing a closing card's balance will move, token by token, under
+ * the card's spending power.
+ *
+ * The withdraw screen shows this, so the amount on its button is the amount
+ * that arrives. It walks the tokens the way the withdrawal itself does
+ * (`RainClosingWithdraw`): each token in order, as much of it as the cap still
+ * allows, the cap reduced by what the token used (rounded up), and everything
+ * past the cap left on the card. Unknown spending power caps nothing.
+ */
+export function closingWithdrawalPlan<
+  T extends Pick<CardCollateralTokenBalanceDto, 'rawBalance' | 'decimals'>,
+>(tokens: readonly T[], spendingPowerUsd: number | undefined): ClosingWithdrawalPlan<T> {
+  let capCents = spendingPowerUsd === undefined ? undefined : floorCents(spendingPowerUsd);
+  let movableCents = 0n;
+  let heldCents = 0n;
+  const rows = tokens.map((token, index): ClosingWithdrawalRow<T> => {
+    if (capCents !== undefined && capCents < 1n) {
+      // The cap is spent: this token stays on the card.
+      heldCents += remainderCents(token, 0n);
+      return { token, index, units: 0n, cents: 0n };
+    }
+    const { units } = tokenWithdrawal(token, capCents);
+    const cents = unitsToCents(units, token.decimals, 'down');
+    movableCents += cents;
+    heldCents += remainderCents(token, units);
+    if (capCents !== undefined) {
+      const used = unitsToCents(units, token.decimals, 'up');
+      capCents = used >= capCents ? 0n : capCents - used;
+    }
+    return { token, index, units, cents };
+  });
+  return { rows, movableCents, heldCents };
 }

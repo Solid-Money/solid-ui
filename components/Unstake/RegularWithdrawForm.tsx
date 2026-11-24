@@ -22,6 +22,7 @@ import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { getVaultKey, isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeForWithdraw from '@/hooks/useBridgeForWithdraw';
+import useBridgeSoEthBaseToMainnet from '@/hooks/useBridgeSoEthBaseToMainnet';
 import useBridgeToMainnetSoEth from '@/hooks/useBridgeToMainnetSoEth';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance, useSoEthVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
@@ -34,7 +35,7 @@ import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import { ADDRESSES } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { getSoEthWithdrawChain, SOETH_WITHDRAW_CHAINS } from '@/lib/soEthWithdraw';
+import { isSoEthBaseConfigured, SOETH_WITHDRAW_CHAINS } from '@/lib/soEthWithdraw';
 import {
   getSoUsdWithdrawChain,
   resumeWithdrawAmount,
@@ -141,21 +142,17 @@ const RegularWithdrawForm = () => {
   // soEURC withdraws in one step on Base, like soFUSE on Fuse, and is shown in EUR.
   // The new Base deployments report the share's on-chain symbol as soEUR.
   const isSoEurc = getVaultKey(selectedToken?.contractTickerSymbol) === 'EUR';
-  // soETH held on Base withdraws in one step, through the Base queue for Base WETH,
-  // like soEURC. soETH on Fuse keeps the two steps (bridge to Ethereum, then the
-  // Ethereum queue), and so does a withdraw resumed after that bridge.
-  const isSoEthOnBase =
-    isSoEth &&
-    getSoEthWithdrawChain(selectedToken?.chainId) === base.id &&
-    session?.vault !== 'ETH';
-  // soETH on Base in a build with no Base soETH deployment: neither flow fits. The two-step flow
-  // below bridges the Safe's FUSE shares, not these, so it must not be offered for them.
+  // soETH is only withdrawn on Ethereum. Shares on Fuse or Base bridge there in
+  // step 1 (Fuse through the paymaster, Base paying the LayerZero fee in Base ETH),
+  // then step 2 requests them on the Ethereum queue for WETH.
+  const isSoEthOnBase = isSoEth && selectedToken?.chainId === base.id;
+  // soETH on Base in a build with no Base soETH teller: it cannot be bridged from here. The Fuse
+  // bridge moves the Safe's Fuse shares, not these, so it must not be offered for them.
   const isSoEthOnBaseUnavailable =
-    isSoEth && selectedToken?.chainId === base.id && !isSoEthOnBase && session?.vault !== 'ETH';
-  const soEthWithdrawChain = SOETH_WITHDRAW_CHAINS[isSoEthOnBase ? base.id : mainnet.id];
-  // Base soETH is paid out by the Base queue at the Base accountant's rate, not Ethereum's.
+    isSoEthOnBase && !isSoEthBaseConfigured && session?.vault !== 'ETH';
+  const soEthWithdrawChain = SOETH_WITHDRAW_CHAINS[mainnet.id];
   const { data: exchangeRate } = useVaultExchangeRate(
-    isSoFuse ? 'FUSE' : isSoEthOnBase ? 'ETH_BASE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
+    isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
   );
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
@@ -282,14 +279,14 @@ const RegularWithdrawForm = () => {
 
   const { bridge, bridgeStatus } = useBridgeForWithdraw(withdrawChainId);
   const { bridgeSoEth, bridgeSoEthStatus } = useBridgeToMainnetSoEth();
+  const { bridgeSoEthFromBase, bridgeSoEthFromBaseStatus } = useBridgeSoEthBaseToMainnet();
   const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw(withdrawChainId);
-  const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth(
-    isSoEthOnBase ? base.id : mainnet.id,
-  );
+  const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth(mainnet.id);
   const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
   const { withdrawSoEurc, withdrawSoEurcStatus } = useWithdrawSoEurc();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
-  const isBridgeSoEthLoading = bridgeSoEthStatus === Status.PENDING;
+  const isBridgeSoEthLoading =
+    bridgeSoEthStatus === Status.PENDING || bridgeSoEthFromBaseStatus === Status.PENDING;
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
   const isWithdrawSoEthLoading = withdrawSoEthStatus === Status.PENDING;
   const isWithdrawSoFuseLoading = withdrawSoFuseStatus === Status.PENDING;
@@ -297,10 +294,10 @@ const RegularWithdrawForm = () => {
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
   // Bridging vaults (soUSD, soETH) always render both steps. A token held on
-  // Fuse starts on step 1 (bridge); a token already on the withdraw chain (Base
-  // or Ethereum for soUSD, Ethereum for soETH) — or an unfinished withdraw
-  // resumed from storage — jumps to step 2 (withdraw).
-  // soFUSE, soEURC and soETH on Base have no bridge and keep the single-step layout.
+  // Fuse (or soETH on Base) starts on step 1 (bridge); a token already on the
+  // withdraw chain (Base or Ethereum for soUSD, Ethereum for soETH) — or an
+  // unfinished withdraw resumed from storage — jumps to step 2 (withdraw).
+  // soFUSE and soEURC have no bridge and keep the single-step layout.
   const isUsdVault = !isSoFuse && !isSoEth && !isSoEurc;
   const isEthVault = isSoEth;
   const isOnEthereum = selectedToken?.chainId === 1;
@@ -506,7 +503,8 @@ const RegularWithdrawForm = () => {
 
   const onBridgeSoEthSubmit = async (data: WithdrawFormData) => {
     try {
-      await bridgeSoEth(data.amount.toString());
+      // Base shares pay their own LayerZero fee in Base ETH; Fuse shares go through the paymaster.
+      await (isSoEthOnBase ? bridgeSoEthFromBase : bridgeSoEth)(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
         symbol: 'soETH',
@@ -767,45 +765,6 @@ const RegularWithdrawForm = () => {
                 )}
               </Button>
             </View>
-          ) : isSoEthOnBase ? (
-            <View className="px-5 py-6 md:p-5">
-              <View className="mb-4 flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2">
-                  <RenderTokenIcon
-                    tokenIcon={getTokenIcon({ tokenSymbol: 'soETH', size: 22 })}
-                    size={22}
-                  />
-                  <Text className="text-base font-bold text-white">Withdraw to WETH</Text>
-                </View>
-                {/* An estimate: the queue keeps a request open for at least three days and a solver
-                    usually fills it well within them, but nothing guarantees a payout by then. */}
-                <Text className="text-base font-medium text-muted-foreground">
-                  Usually within 3 days
-                </Text>
-              </View>
-              <Button
-                variant="brand"
-                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
-                onPress={handleSubmit(onWithdrawSoEthSubmit)}
-                disabled={isWithdrawFormDisabled() || isWithdrawSoEthLoading}
-              >
-                {isWithdrawSoEthLoading ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <View className="flex-row items-center gap-2">
-                    <Image
-                      source={require('@/assets/images/key.png')}
-                      tintColor="#18181b"
-                      className="h-6 w-6"
-                      contentFit="contain"
-                    />
-                    <Text className="text-base font-bold" style={{ color: '#18181b' }}>
-                      Withdraw
-                    </Text>
-                  </View>
-                )}
-              </Button>
-            </View>
           ) : isUsdVault ? (
             <>
               {/* Step 1: Bridge to the withdraw chain */}
@@ -958,6 +917,11 @@ const RegularWithdrawForm = () => {
                     <Text className="text-base font-medium text-muted-foreground">~2 min</Text>
                   </View>
                 </View>
+                {isSoEthOnBase && activeStep === 1 && (
+                  <Text className="-mt-2 mb-4 text-sm text-muted-foreground">
+                    Bridge fee is paid in ETH on Base from your wallet
+                  </Text>
+                )}
                 <Button
                   variant="brand"
                   className={cn(

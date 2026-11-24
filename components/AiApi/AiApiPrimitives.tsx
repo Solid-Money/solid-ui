@@ -291,10 +291,8 @@ export const AiApiLimitOptions = ({
           )}
         >
           <Text
-            className={cn(
-              'text-[15px]',
-              item.selected ? 'font-semibold text-black' : 'font-medium text-white',
-            )}
+            className="text-[15px]"
+            style={item.selected ? SELECTED_LIMIT_LABEL : LIMIT_LABEL}
             numberOfLines={1}
           >
             {item.label}
@@ -304,6 +302,15 @@ export const AiApiLimitOptions = ({
     </View>
   );
 };
+
+/**
+ * A limit pill's label colour and weight, as inline styles and not classes. On
+ * the web a Text's classes pile up across renders, so toggling `text-black` /
+ * `text-white` left the newly picked pill white on white (same as the setup
+ * guide's tabs, see AiApiSetupGuide.tsx).
+ */
+const LIMIT_LABEL = { color: '#FFFFFF', fontFamily: 'MonaSans_500Medium' };
+const SELECTED_LIMIT_LABEL = { color: '#000000', fontFamily: 'MonaSans_600SemiBold' };
 
 /** A thin bar for how much of a limit is used. */
 export const AiApiProgress = ({ progress }: { progress: number }) => (
