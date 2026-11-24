@@ -78,6 +78,9 @@ const RainClosingCardNotice = () => {
 
   const goToNewCard = () => router.push(path.CARD_NEW_CARD);
   const goToWithdraw = () => router.push(path.CARD_CLOSING_WITHDRAW);
+  // A closed card whose holder already started the move offers to continue
+  // it, as its copy and the closed-card screen do.
+  const offersNewCard = sunset.newCardAvailable || (closed && Boolean(sunset.migration));
 
   return (
     <View style={styles.notice}>
@@ -94,7 +97,7 @@ const RainClosingCardNotice = () => {
       </View>
       <Text className="text-[15px] leading-[21px] text-white/70">{message}</Text>
       <View style={styles.buttons}>
-        {sunset.newCardAvailable ? (
+        {offersNewCard ? (
           <>
             <NoticeButton
               label={sunset.migration ? 'Continue to your new card' : 'Get your new card'}

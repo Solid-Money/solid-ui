@@ -122,6 +122,9 @@ export default function HomeScreenNew() {
 
   useEffect(() => {
     if (screenParam !== CARD_INFO_SCREEN) return;
+    // Keep the link until the card's status is in: only then is it known
+    // whether the card is one the sunset closed, which goes to its own screen.
+    if (isCardStatusLoading) return;
     if (cardClosedBySunset) {
       router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
       router.push(path.CARD_CLOSED);
@@ -139,7 +142,14 @@ export default function HomeScreenNew() {
       openCardPane();
     }
     router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
-  }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide, cardClosedBySunset]);
+  }, [
+    screenParam,
+    walletParam,
+    openCardPane,
+    openCardPaneWalletGuide,
+    cardClosedBySunset,
+    isCardStatusLoading,
+  ]);
 
   // `?whatsNew=`, `?deposit=` and `?spendMode=` open what a push or link was
   // about over this screen (`constants/homeLinkParams`).
