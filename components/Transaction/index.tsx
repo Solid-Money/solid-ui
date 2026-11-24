@@ -38,9 +38,12 @@ const formatRowAmount = (amount: string, symbol?: string) =>
     : formatNumber(Number(amount), 2);
 
 /** Symbols whose activity rows arrive in another case ("SOUSD", "CBBTC"), as their token writes them. */
-const DISPLAY_SYMBOLS: Record<string, string> = { sousd: 'soUSD', cbbtc: 'cbBTC' };
+const DISPLAY_SYMBOLS = new Map([
+  ['sousd', 'soUSD'],
+  ['cbbtc', 'cbBTC'],
+]);
 const displaySymbol = (symbol?: string) =>
-  (symbol && DISPLAY_SYMBOLS[symbol.toLowerCase()]) ?? symbol;
+  (symbol && DISPLAY_SYMBOLS.get(symbol.toLowerCase())) || symbol;
 
 type TransactionClassNames = {
   container?: string;
