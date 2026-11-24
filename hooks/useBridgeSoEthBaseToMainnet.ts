@@ -8,6 +8,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
+import { UserCopyError } from '@/lib/errors/UserCopyError';
 import {
   executeTransactions,
   USER_CANCELLED_TRANSACTION,
@@ -53,8 +54,10 @@ const useBridgeSoEthBaseToMainnet = () => {
         const fee = await readSoEthBaseBridgeFee(safe);
         const ethBalance = await getBalance(publicClient(base.id), { address: safe });
         if (ethBalance < fee) {
-          throw new Error(
-            `You need ${Number(formatEther(fee)).toFixed(6)} ETH on Base in your Solid wallet for the bridge fee`,
+          // UserCopyError so the failure sheet shows this, not generic copy; the exact fee, since
+          // rounding a tiny one shows "0.000000 ETH".
+          throw new UserCopyError(
+            `You need ${formatEther(fee)} ETH on Base in your Solid wallet for the bridge fee`,
           );
         }
 
