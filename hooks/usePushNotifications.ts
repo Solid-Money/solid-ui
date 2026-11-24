@@ -408,7 +408,7 @@ const NAVIGATION_READY_POLL_MS = 100;
  * This matters because of where the push hook lives. It is called at the very
  * top of the root layout, which returns `null` until the app-ready flag and the
  * critical fonts land — so its first effects run with no `<Stack>` mounted, and
- * `router.replace` in that window throws "Attempted to navigate before mounting
+ * navigating in that window throws "Attempted to navigate before mounting
  * the Root Layout component". On a cold start that window is exactly when a
  * notification tap arrives, so the tap was thrown away and the user landed on
  * home: the whole of "the payment notification never opens the transaction".
@@ -483,12 +483,16 @@ export function usePushNotifications() {
     if (Platform.OS === 'web') return;
     if (!isNavigationReady) return;
 
+    // Preserve the current screen and initialize the parent of a deep link into
+    // a stack that hasn't mounted yet, so system Back can pop the destination.
+    const openNotification = (response: Notifications.NotificationResponse) =>
+      handleNotificationResponse(response, href => router.navigate(href, { withAnchor: true }));
+
     // Handle notification taps (user taps a notification from the system tray).
     // Record the open and its campaign first, then deep-link on the link the
     // backend stamped on the push (falling back to `type` for older ones).
-    const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
-      response => handleNotificationResponse(response, href => router.replace(href)),
-    );
+    const notificationResponseSubscription =
+      Notifications.addNotificationResponseReceivedListener(openNotification);
 
     // The tap that launched the app, which the listener above never sees.
     //
@@ -509,7 +513,7 @@ export function usePushNotifications() {
     try {
       const launchResponse = Notifications.getLastNotificationResponse();
       if (launchResponse) {
-        handleNotificationResponse(launchResponse, href => router.replace(href));
+        openNotification(launchResponse);
       }
     } catch (error) {
       // Only reachable where the native module has no such method. A tap we
