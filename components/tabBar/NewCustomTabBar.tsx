@@ -82,6 +82,10 @@ const HIDDEN_TAB_ROUTES = new Set(['settings', 'sumsub-kyc']);
  * - `spend-order`, `collateral-order`: the card's order editors; the bar covers their Save
  *   button and the bottom band a lifted row auto-scrolls the page in.
  * - `credit`: the card's Credit page; the bar covers its loan actions and the end of the page.
+ * - `closing-withdraw`: the closing card's withdraw screen; the bar covers its Withdraw
+ *   button, so the balance cannot be moved off the card.
+ * - `new-card`: the move to the new card; the bar covers "Not now" and the lower edge of the
+ *   button above it. Same pinned footer as `closing-withdraw`.
  * - `ai-api`, `ai-api-key`, `ai-api-setup`: the AI API screens end in their own
  *   full-width buttons, which the bar would sit on.
  * - `refer/*`: the referral v4 screens pin their share bar to the bottom edge.
@@ -93,6 +97,8 @@ const HIDDEN_NESTED_ROUTES = new Set([
   'spend-order',
   'collateral-order',
   'credit',
+  'closing-withdraw',
+  'new-card',
   'ai-api',
   'ai-api-key',
   'ai-api-setup',

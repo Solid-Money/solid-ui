@@ -2,6 +2,8 @@ import {
   blocksNewCard,
   cardNoticeCopy,
   closesPhrase,
+  closingCardBalanceUsd,
+  closingWithdrawalPlan,
   floorCents,
   formatClosingBalance,
   formatClosingDate,
@@ -161,6 +163,131 @@ describe('rainSunset', () => {
       expect(unitsToCents(5000n, 6, 'up')).toBe(1n);
       expect(unitsToCents(5000n, 6, 'down')).toBe(0n);
       expect(unitsToCents(248500000n, 6, 'up')).toBe(24850n);
+    });
+  });
+
+  describe('closingCardBalanceUsd', () => {
+    it('is the collateral capped at spending power: what is still the cardholder’s', () => {
+      expect(closingCardBalanceUsd({ totalCollateralUsd: 60, spendingPowerUsd: 42.5 })).toBe(42.5);
+      expect(closingCardBalanceUsd({ totalCollateralUsd: 30, spendingPowerUsd: 200 })).toBe(30);
+    });
+
+    it('does not count collateral that pays for card payments already made', () => {
+      // T-40, nbchacker29: $11.14 in the contract, $10.90 of it for three settled purchases.
+      const balance = closingCardBalanceUsd({ totalCollateralUsd: 11.14, spendingPowerUsd: 0.24 });
+      expect(balance).toBe(0.24);
+      expect(homeBannerCopy('closing-balance', sunset(), balance).message).toBe(
+        'Withdraw your $0.24 card balance before then.',
+      );
+
+      // T-40, redninjax39: the whole $288.69 was his own settled spend.
+      const spent = closingCardBalanceUsd({ totalCollateralUsd: 288.69, spendingPowerUsd: 0 });
+      expect(spent).toBe(0);
+      expect(hasClosingBalance(spent)).toBe(false);
+      expect(blocksNewCard(spent, sunset())).toBe(false);
+      expect(rainClosingBannerState(sunset(), spent)).toBe('closing-empty');
+    });
+
+    it('still blocks the new card on a real balance above the threshold', () => {
+      const balance = closingCardBalanceUsd({ totalCollateralUsd: 60, spendingPowerUsd: 42.5 });
+      expect(blocksNewCard(balance, sunset())).toBe(true);
+    });
+
+    it('keeps the whole collateral when spending power is unknown', () => {
+      expect(closingCardBalanceUsd({ totalCollateralUsd: 75 })).toBe(75);
+      expect(closingCardBalanceUsd({ totalCollateralUsd: 75, spendingPowerUsd: NaN })).toBe(75);
+    });
+
+    it('is unknown, never zero, until the balance has been read', () => {
+      expect(closingCardBalanceUsd(undefined)).toBeNull();
+      expect(closingCardBalanceUsd(null)).toBeNull();
+      expect(isClosingBalanceUnknown(closingCardBalanceUsd(undefined))).toBe(true);
+    });
+
+    it('never goes below zero', () => {
+      expect(closingCardBalanceUsd({ totalCollateralUsd: 10, spendingPowerUsd: -3 })).toBe(0);
+    });
+  });
+
+  describe('closingWithdrawalPlan', () => {
+    const usdc = { symbol: 'USDC', rawBalance: '7910000', decimals: 6 };
+    const usdt = { symbol: 'USDT', rawBalance: '3239000', decimals: 6 };
+
+    it('moves only what spending power allows and names the rest as held', () => {
+      // T-40, nbchacker29: the screen said "Withdraw $11.14"; $0.24 could move.
+      const plan = closingWithdrawalPlan([usdc, usdt], 0.24);
+      expect(plan.rows.map(row => [row.token.symbol, row.index, row.units, row.cents])).toEqual([
+        ['USDC', 0, 240000n, 24n],
+        ['USDT', 1, 0n, 0n],
+      ]);
+      expect(plan.movableCents).toBe(24n);
+      expect(plan.heldCents).toBe(1090n);
+    });
+
+    it('moves everything when nothing caps it', () => {
+      for (const spendingPower of [undefined, 500]) {
+        const plan = closingWithdrawalPlan([usdc, usdt], spendingPower);
+        expect(plan.rows.map(row => row.units)).toEqual([7910000n, 3239000n]);
+        expect(plan.movableCents).toBe(1114n);
+        expect(plan.heldCents).toBe(0n);
+      }
+    });
+
+    it('leaves only sub-cent dust when the cap is the balance to the cent', () => {
+      const plan = closingWithdrawalPlan([usdc, usdt], 11.14);
+      expect(plan.rows.map(row => row.units)).toEqual([7910000n, 3230000n]);
+      expect(plan.movableCents).toBe(1114n);
+      // 0.009 USDT stays behind; it is not reported as a balance still on the card.
+      expect(plan.heldCents).toBe(0n);
+    });
+
+    it('moves nothing when the whole collateral is owed', () => {
+      const plan = closingWithdrawalPlan([usdc, usdt], 0);
+      expect(plan.rows.every(row => row.units === 0n)).toBe(true);
+      expect(plan.movableCents).toBe(0n);
+      expect(plan.heldCents).toBe(1114n);
+    });
+
+    it('carries the cap from one token into the next', () => {
+      const plan = closingWithdrawalPlan([usdc, usdt], 9);
+      expect(plan.rows.map(row => [row.units, row.cents])).toEqual([
+        [7910000n, 791n],
+        [1090000n, 109n],
+      ]);
+      expect(plan.movableCents).toBe(900n);
+      expect(plan.heldCents).toBe(214n);
+    });
+
+    it('asks each token for exactly what the withdrawal itself would', () => {
+      const plan = closingWithdrawalPlan([usdc, usdt], 9);
+      expect(plan.rows[0].units).toBe(tokenWithdrawal(usdc, 900n).units);
+      expect(plan.rows[1].units).toBe(tokenWithdrawal(usdt, 109n).units);
+      expect(plan.heldCents).toBe(remainderCents(usdt, plan.rows[1].units));
+    });
+
+    it('never overstates the cap left after a sub-cent amount', () => {
+      const dust = { symbol: 'USDC', rawBalance: '5000', decimals: 6 };
+      const dollar = { symbol: 'USDT', rawBalance: '1000000', decimals: 6 };
+      const plan = closingWithdrawalPlan([dust, dollar], 0.1);
+      // The dust uses a whole cent of the cap and shows as nothing moved.
+      expect(plan.rows.map(row => [row.units, row.cents])).toEqual([
+        [5000n, 0n],
+        [90000n, 9n],
+      ]);
+      expect(plan.movableCents).toBe(9n);
+      expect(plan.heldCents).toBe(91n);
+    });
+
+    it('works in a token’s own decimals', () => {
+      const dai = { symbol: 'DAI', rawBalance: '248500000000000000000', decimals: 18 };
+      const plan = closingWithdrawalPlan([dai], 12.34);
+      expect(plan.rows[0].units).toBe(12340000000000000000n);
+      expect(plan.movableCents).toBe(1234n);
+      expect(plan.heldCents).toBe(23616n);
+    });
+
+    it('is empty for an empty card', () => {
+      expect(closingWithdrawalPlan([], 5)).toEqual({ rows: [], movableCents: 0n, heldCents: 0n });
     });
   });
 

@@ -29,6 +29,7 @@ import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import {
+  closingWithdrawalPlan,
   floorCents,
   formatClosingBalance,
   formatClosingDate,
@@ -76,6 +77,11 @@ type Phase =
  * reason to leave anything on it. Each token is its own collateral withdrawal —
  * today's `useWithdrawRainCollateral`, one `withdrawAsset` per token — so a card
  * holding two tokens asks for the passkey twice, and the screen says so.
+ *
+ * The amounts shown are what the withdrawal will move (`closingWithdrawalPlan`),
+ * never the card's whole collateral: the part of it set aside for card payments
+ * already made stays on the card, and the screen says how much that is. Showing
+ * the collateral put "Withdraw $11.14" on a card with $0.24 to withdraw.
  */
 export function RainClosingWithdraw() {
   const router = useRouter();
@@ -93,7 +99,15 @@ export function RainClosingWithdraw() {
       ),
     [collateral],
   );
-  const totalUsd = tokens.reduce((sum, token) => sum + token.balanceUsd, 0);
+  // What the withdrawal will move under the card's spending power, and what
+  // that leaves on the card; the rows, the total and the button all read this.
+  const plan = useMemo(
+    () => closingWithdrawalPlan(tokens, collateral?.spendingPowerUsd),
+    [tokens, collateral?.spendingPowerUsd],
+  );
+  const movable = plan.rows.filter(row => row.units > 0n);
+  const totalUsd = Number(plan.movableCents) / 100;
+  const heldUsd = Number(plan.heldCents) / 100;
   const closesOn = formatClosingDate(sunset?.closesAt);
   // No answer at all is not an empty card: say so and offer to read it again.
   const unreadable = !collateral && isError;
@@ -200,9 +214,10 @@ export function RainClosingWithdraw() {
   };
 
   if (phase.kind === 'done' && phase.leftUsd > 0) {
-    // Rain capped the withdrawal below the card balance (it still holds some
-    // against pending payments). Say what moved and what did not, and lead
-    // back to the review, which shows what is still on the card.
+    // Rain capped the withdrawal below the card's collateral: the rest is set
+    // aside, nearly always for card payments already made. Say what moved and
+    // what did not, without promising the rest, and offer the review, which
+    // re-reads the card.
     return (
       <PageLayout desktopOnly scrollable={false}>
         <View className="mx-auto w-full max-w-lg flex-1 px-6">
@@ -216,19 +231,20 @@ export function RainClosingWithdraw() {
               {formatClosingBalance(phase.usd)} is in your wallet
             </Text>
             <Text className="text-center text-[16px] leading-[22px] text-white/70">
-              {formatClosingBalance(phase.leftUsd)} is still on your card, held for pending
-              payments. Withdraw it once they settle.
+              {formatClosingBalance(phase.leftUsd)} is still on your card. It is set aside, usually
+              for card payments you already made, and can’t be withdrawn.
             </Text>
           </View>
           <View className="pb-6 pt-3">
-            <Button
-              onPress={() => setPhase({ kind: 'review' })}
-              className="mb-2 h-[54px] rounded-full bg-white"
-            >
-              <Text className="text-[17px] font-semibold text-black">Withdraw the rest</Text>
+            <Button onPress={goToCard} className="mb-2 h-[54px] rounded-full bg-white">
+              <Text className="text-[17px] font-semibold text-black">Done</Text>
             </Button>
-            <Button variant="ghost" onPress={goToCard} className="h-[54px] rounded-full">
-              <Text className="text-[17px] font-semibold text-white">Done</Text>
+            <Button
+              variant="ghost"
+              onPress={() => setPhase({ kind: 'review' })}
+              className="h-[54px] rounded-full"
+            >
+              <Text className="text-[17px] font-semibold text-white">Check card balance</Text>
             </Button>
           </View>
         </View>
@@ -284,10 +300,18 @@ export function RainClosingWithdraw() {
   }
 
   const withdrawing = phase.kind === 'withdrawing';
+  // One passkey confirmation per token that actually moves.
   const confirmations =
-    tokens.length > 1
-      ? `You'll confirm with your passkey, once for each of the ${tokens.length} tokens.`
+    movable.length > 1
+      ? `You'll confirm with your passkey, once for each of the ${movable.length} tokens.`
       : "You'll confirm with your passkey.";
+  // The collateral past the cap: named, so the total above is not read as an error.
+  const held =
+    heldUsd > 0
+      ? movable.length > 0
+        ? `Another ${formatClosingBalance(heldUsd)} on your card is set aside, usually for card payments you already made, and can’t be withdrawn.`
+        : `The ${formatClosingBalance(heldUsd)} on your card is set aside, usually for card payments you already made, and can’t be withdrawn.`
+      : null;
   const stays = closesOn
     ? ` Your card keeps working until ${closesOn.long}.`
     : ' Your card keeps working until it closes.';
@@ -318,29 +342,28 @@ export function RainClosingWithdraw() {
                 {formatClosingBalance(totalUsd)}
               </Text>
             )}
-            <Text className="text-[14px] text-white/50">All of it moves to your wallet</Text>
+            {movable.length > 0 || !held ? (
+              <Text className="text-[14px] text-white/50">All of it moves to your wallet</Text>
+            ) : null}
           </View>
 
-          {tokens.length > 0 ? (
+          {movable.length > 0 ? (
             <View style={styles.section}>
               <Text className="text-[15px] font-medium text-white/60">From your card</Text>
               <View style={styles.list}>
-                {tokens.map((token, index) => (
+                {movable.map(({ token, index, units, cents }, position) => (
                   <View key={`${token.chainId}:${token.tokenAddress}`}>
-                    {index > 0 ? <View style={styles.divider} /> : null}
+                    {position > 0 ? <View style={styles.divider} /> : null}
                     <View style={styles.row}>
-                      <TokenLogoPop symbol={token.symbol} index={index} />
+                      <TokenLogoPop symbol={token.symbol} index={position} />
                       <View style={styles.rowText}>
                         <Text className="text-[16px] font-medium text-white">{token.symbol}</Text>
                         <Text className="text-[13px] text-white/50">
-                          {Number(
-                            formatUnits(BigInt(token.rawBalance || '0'), token.decimals),
-                          ).toFixed(2)}{' '}
-                          {token.symbol}
+                          {Number(formatUnits(units, token.decimals)).toFixed(2)} {token.symbol}
                         </Text>
                       </View>
                       <Text className="text-[16px] font-medium text-white">
-                        {formatClosingBalance(token.balanceUsd)}
+                        {formatClosingBalance(Number(cents) / 100)}
                       </Text>
                       {withdrawing && phase.step === index ? (
                         <ActivityIndicator color="#94F27F" style={styles.rowSpinner} />
@@ -367,6 +390,8 @@ export function RainClosingWithdraw() {
             </View>
           </View>
 
+          {held ? <Text className="text-[14px] leading-[20px] text-white/50">{held}</Text> : null}
+
           <Text className="text-[14px] leading-[20px] text-white/50">
             {confirmations}
             {stays}
@@ -377,7 +402,7 @@ export function RainClosingWithdraw() {
           <Button
             variant="brand"
             className="h-[54px] rounded-full"
-            disabled={withdrawing || isLoading || (!unreadable && tokens.length === 0)}
+            disabled={withdrawing || isLoading || (!unreadable && movable.length === 0)}
             onPress={() => (unreadable ? void refetch() : void withdrawAll())}
           >
             {withdrawing ? (
@@ -386,7 +411,7 @@ export function RainClosingWithdraw() {
               <Text className="text-[17px] font-semibold text-black">
                 {unreadable
                   ? 'Try again'
-                  : tokens.length === 0 && !isLoading
+                  : movable.length === 0 && !isLoading
                     ? 'Nothing to withdraw'
                     : `Withdraw ${formatClosingBalance(totalUsd)}`}
               </Text>

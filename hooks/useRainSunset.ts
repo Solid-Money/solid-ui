@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { getCardCollateralAvailable } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
-import { rainSunsetOf } from '@/lib/utils/rainSunset';
+import { closingCardBalanceUsd, rainSunsetOf } from '@/lib/utils/rainSunset';
 
 export const RAIN_SUNSET_BALANCE_KEY = 'rainSunsetBalance';
 
@@ -11,10 +11,12 @@ export const RAIN_SUNSET_BALANCE_KEY = 'rainSunsetBalance';
  * Rain sunset for the signed-in user: the closing-card block from
  * `/cards/status`, and the balance still on the closing card.
  *
- * The balance is the card's on-chain collateral summed over every token — the
- * same read the withdraw screen uses, because that is what can actually be
- * moved to the wallet. Read only for someone still holding the closing card,
- * and on a slow cadence: this backs a banner, not a form.
+ * The balance is what is still the cardholder's own money: the card's on-chain
+ * collateral, capped at its spending power (`closingCardBalanceUsd`). The part
+ * of the collateral that pays for card payments already made is not theirs to
+ * withdraw, so it is never quoted as a balance. Read only for someone still
+ * holding the closing card, and on a slow cadence: this backs a banner, not a
+ * form.
  */
 export function useRainSunset() {
   const { data: cardStatus, isLoading: isStatusLoading } = useCardStatus();
@@ -33,8 +35,8 @@ export function useRainSunset() {
     cardStatus,
     sunset,
     isLoading: isStatusLoading,
-    /** Total balance left on the closing card, in dollars; null until read. */
-    balanceUsd: sunset?.hasRainCard ? (balance.data?.totalCollateralUsd ?? null) : 0,
+    /** What the cardholder can still withdraw from the closing card, in dollars; null until read. */
+    balanceUsd: sunset?.hasRainCard ? closingCardBalanceUsd(balance.data) : 0,
     collateral: balance.data ?? null,
     isBalanceLoading: balance.isLoading,
     refetchBalance: balance.refetch,
