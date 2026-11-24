@@ -5,6 +5,7 @@ import { CardProvider } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 import { useCardProvider } from './useCardProvider';
+import { useCardStatus } from './useCardStatus';
 
 const CARD_COLLATERAL_AVAILABLE_KEY = 'cardCollateralAvailable';
 
@@ -26,11 +27,15 @@ const CARD_COLLATERAL_AVAILABLE_KEY = 'cardCollateralAvailable';
  */
 export function useCardCollateralAvailable(tokenAddress?: string) {
   const { provider } = useCardProvider();
+  // A card the Rain sunset closed no longer counts as "a card", so the
+  // provider may not resolve for it; what is left on it is still withdrawable.
+  const { data: cardStatus } = useCardStatus();
+  const closedRainCard = Boolean(cardStatus?.rainSunset?.cardClosed);
 
   return useQuery({
     queryKey: [CARD_COLLATERAL_AVAILABLE_KEY, tokenAddress ?? null],
     queryFn: () => withRefreshToken(() => getCardCollateralAvailable({ tokenAddress })),
-    enabled: provider === CardProvider.RAIN,
+    enabled: provider === CardProvider.RAIN || closedRainCard,
     // Collateral moves when deposits settle and when charges are swept, so the
     // withdraw screen re-reads it on the same cadence as the card balance.
     refetchInterval: 5000,

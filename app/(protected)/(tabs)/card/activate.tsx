@@ -25,7 +25,7 @@ import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { useActivateCard } from '@/hooks/useActivateCard';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
-import { routesToNewCard } from '@/lib/utils/rainSunset';
+import { routesToClosedCard, routesToNewCard } from '@/lib/utils/rainSunset';
 
 export default function ActivateMobile() {
   const router = useRouter();
@@ -58,6 +58,10 @@ export default function ActivateMobile() {
   // issuance steps (whose last step now refuses) never show.
   if (routesToNewCard(cardStatus)) {
     return <Redirect href={path.CARD_NEW_CARD} />;
+  }
+  // A card the sunset closed is not one to activate.
+  if (routesToClosedCard(cardStatus)) {
+    return <Redirect href={path.CARD_CLOSED} />;
   }
 
   if (isCardStatusLoading || isCheckingCountry || isResolvingWirexFlow) {

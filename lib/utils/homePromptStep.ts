@@ -87,6 +87,11 @@ export function resolveHomePromptStep({
   holdsUnusableEurc = false,
   holdsUnreachableBase = false,
 }: HomePromptStepInput): HomePromptKey | null {
+  // Rain sunset: the sunset closed their card. Its own banner says so and offers
+  // the withdrawal or the new card; read as "no card", the ladder would offer to
+  // activate the card that was just closed.
+  if (cardStatus?.rainSunset?.cardClosed) return null;
+
   // Verified long ago and spent on a card that is now gone: "Your Solid card is
   // ready! Activate" would be the wrong news, and was all this user was shown.
   if (canReplaceClosedCard(cardStatus)) return 'replace-card';

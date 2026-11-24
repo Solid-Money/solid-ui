@@ -35,7 +35,7 @@ import {
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { resolveDigitalWallet } from '@/constants/digital-wallet';
-import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM } from '@/constants/path';
+import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM, path } from '@/constants/path';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
@@ -116,8 +116,17 @@ export default function HomeScreenNew() {
   const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
   const openCardPaneWalletGuide = useCardPaneStore(state => state.openWalletGuide);
 
+  // Rain sunset: a card the sunset closed has no details to show — the pane
+  // would draw it as if it still worked. Its own screen says why instead.
+  const cardClosedBySunset = Boolean(cardStatus?.rainSunset?.cardClosed);
+
   useEffect(() => {
     if (screenParam !== CARD_INFO_SCREEN) return;
+    if (cardClosedBySunset) {
+      router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
+      router.push(path.CARD_CLOSED);
+      return;
+    }
     // `&wallet=apple|google` asks for the "Add to Wallet" guide on top of the
     // pane, on that wallet's tab — the addressable form of the popup, which is
     // what lets the home "Add to Apple Pay" banner be nothing but a redirect.
@@ -130,7 +139,7 @@ export default function HomeScreenNew() {
       openCardPane();
     }
     router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
-  }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide]);
+  }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide, cardClosedBySunset]);
 
   // `?whatsNew=`, `?deposit=` and `?spendMode=` open what a push or link was
   // about over this screen (`constants/homeLinkParams`).

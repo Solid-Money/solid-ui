@@ -9,6 +9,7 @@ import { path } from '@/constants/path';
 import { useRainSunset } from '@/hooks/useRainSunset';
 import { getAsset } from '@/lib/assets';
 import {
+  holdsClosingCard,
   homeBannerCopy,
   RainClosingBannerState,
   rainClosingBannerState,
@@ -53,6 +54,9 @@ const PillButton = ({
  *  - `closing-balance`: no new card for them yet, money on the card — Withdraw.
  *    No close button: the design keeps it up while there is money to move.
  *  - `closing-empty`: nothing to withdraw — closable.
+ *  - `closed-balance`: the sunset closed their card and money is left on it —
+ *    Withdraw, and not closable while there is money to move.
+ *  - `closed-empty`: closed, nothing left, no new card where they live — closable.
  *
  * Renders nothing for anyone the sunset does not affect, which is almost
  * everyone, and nothing while the balance is still being read.
@@ -65,7 +69,7 @@ const RainClosingHomeBanner = ({ className }: { className?: string }) => {
   const openSheet = useRainSunsetStore(state => state.setSheetOpen);
 
   if (!sunset) return null;
-  if (sunset.hasRainCard && isBalanceLoading) return null;
+  if (holdsClosingCard(sunset) && isBalanceLoading) return null;
 
   const state = rainClosingBannerState(sunset, balanceUsd);
   if (!state) return null;
@@ -75,6 +79,8 @@ const RainClosingHomeBanner = ({ className }: { className?: string }) => {
     'new-card': true,
     'closing-balance': false,
     'closing-empty': true,
+    'closed-balance': false,
+    'closed-empty': true,
   };
   if (closable[state] && dismissed.includes(key)) return null;
 
@@ -101,10 +107,17 @@ const RainClosingHomeBanner = ({ className }: { className?: string }) => {
                 onPress={goToNewCard}
               />
             ) : null}
-            {state === 'closing-balance' ? (
+            {state === 'closing-balance' || state === 'closed-balance' ? (
               <PillButton label="Withdraw" primary onPress={goToWithdraw} />
             ) : null}
-            {state !== 'new-card' ? (
+            {state === 'closed-balance' && (sunset.newCardAvailable || sunset.migration) ? (
+              <PillButton
+                label={sunset.migration ? 'Continue' : 'Get new card'}
+                primary={false}
+                onPress={goToNewCard}
+              />
+            ) : null}
+            {state === 'closing-balance' || state === 'closing-empty' ? (
               <PillButton
                 label="What's changing"
                 primary={state === 'closing-empty'}

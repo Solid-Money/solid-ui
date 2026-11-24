@@ -112,7 +112,11 @@ const CardDetailsPane = () => {
   const { data: cardStatus } = useCardStatus();
   // Rain sunset: the card-closing notice under the card art.
   const { sunset: rainSunset } = useRainSunset();
-  const showsClosingNotice = Boolean(rainSunset?.notice && rainSunset.hasRainCard);
+  // A card the sunset already closed gets the closed notice, and no actions: it
+  // cannot be funded, frozen or spent from any more.
+  const cardClosedBySunset = Boolean(rainSunset?.cardClosed);
+  const showsClosingNotice =
+    cardClosedBySunset || Boolean(rainSunset?.notice && rainSunset.hasRainCard);
   const { data: customer } = useCustomer();
   const { provider } = useCardProvider();
   // Either read: the status names the issuer from KYC on, so the card-live popup is never preceded
@@ -365,16 +369,18 @@ const CardDetailsPane = () => {
               <RainClosingCardNotice />
             </HeroEnter>
           ) : null}
-          <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
-            <CardActionsRow
-              isCardFrozen={isCardFrozen}
-              canToggleFreeze={canToggleFreeze}
-              isFreezing={isFreezing}
-              onFreezeToggle={handleFreezeToggle}
-              onManagePress={openSpendSheet}
-              canAddFunds={canAddFundsToCard(fundsAccess)}
-            />
-          </HeroEnter>
+          {cardClosedBySunset ? null : (
+            <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
+              <CardActionsRow
+                isCardFrozen={isCardFrozen}
+                canToggleFreeze={canToggleFreeze}
+                isFreezing={isFreezing}
+                onFreezeToggle={handleFreezeToggle}
+                onManagePress={openSpendSheet}
+                canAddFunds={canAddFundsToCard(fundsAccess)}
+              />
+            </HeroEnter>
+          )}
           {/* In the spend-mode row's place, which cannot show at the same time: that row needs
               card spending to be on, and this one is only here while it is off. */}
           {showsEnableSpending ? (

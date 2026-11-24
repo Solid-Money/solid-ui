@@ -1,15 +1,18 @@
 import {
   blocksNewCard,
   cardNoticeCopy,
+  closedCardCopy,
   closesPhrase,
   floorCents,
   formatClosingBalance,
   formatClosingDate,
   hasClosingBalance,
+  holdsClosingCard,
   homeBannerCopy,
   isClosingBalanceUnknown,
   rainClosingBannerState,
   remainderCents,
+  routesToClosedCard,
   routesToNewCard,
   tokenWithdrawal,
   unitsToCents,
@@ -220,6 +223,68 @@ describe('rainSunset', () => {
     it('does nothing where no new card is available and none was started', () => {
       expect(routesToNewCard(status(sunset({ hasRainCard: false })))).toBe(false);
       expect(routesToNewCard(status())).toBe(false);
+    });
+  });
+
+  /**
+   * The sunset's bulk cancel closed the card of a holder who never moved. The
+   * app says so, offers what was left on it, and the new card where there is
+   * one — never the old card as if it worked, nor "activate your card".
+   */
+  describe('a card the sunset closed', () => {
+    const closed = (overrides: Partial<RainSunsetStatus> = {}) =>
+      sunset({ hasRainCard: false, notice: false, cardClosed: true, ...overrides });
+    const status = (rainSunset?: RainSunsetStatus): CardStatusResponse => ({ rainSunset });
+
+    it('still reads the balance on it', () => {
+      expect(holdsClosingCard(closed())).toBe(true);
+      expect(holdsClosingCard(sunset())).toBe(true);
+      expect(holdsClosingCard(sunset({ hasRainCard: false }))).toBe(false);
+      expect(holdsClosingCard(null)).toBe(false);
+    });
+
+    it('asks for the withdrawal first while money is left, even with a new card available', () => {
+      expect(rainClosingBannerState(closed(), 12.5)).toBe('closed-balance');
+      expect(rainClosingBannerState(closed({ newCardAvailable: true }), 12.5)).toBe(
+        'closed-balance',
+      );
+      // A balance that could not be read is never shown as empty.
+      expect(rainClosingBannerState(closed(), null)).toBe('closed-balance');
+    });
+
+    it('offers the new card once nothing is left, or says cards are gone', () => {
+      expect(rainClosingBannerState(closed({ newCardAvailable: true }), 0)).toBe('new-card');
+      expect(rainClosingBannerState(closed(), 0)).toBe('closed-empty');
+    });
+
+    it('words the banner for a card that is already closed', () => {
+      expect(homeBannerCopy('closed-balance', closed(), 12.5)).toEqual({
+        title: 'Your card was closed',
+        message: 'Withdraw the $12.50 left on it to your wallet.',
+      });
+      expect(homeBannerCopy('new-card', closed({ newCardAvailable: true }), 0).message).toBe(
+        'Your previous card was closed. A new one takes a few minutes.',
+      );
+      expect(homeBannerCopy('closed-empty', closed(), 0).title).toBe('Your card was closed');
+    });
+
+    it('explains the closed card, with the new card only where there is one', () => {
+      const withNewCard = closedCardCopy(closed({ newCardAvailable: true }), 3, 'Kenya');
+      expect(withNewCard.message).toContain('Get your new Solid card');
+      expect(withNewCard.message).toContain('The $3.00 left on it is still yours');
+
+      const noNewCard = closedCardCopy(closed(), 0, 'Kenya');
+      expect(noNewCard.message).toContain("aren't available in Kenya");
+      expect(noNewCard.message).not.toContain('withdraw');
+      expect(`${noNewCard.title} ${noNewCard.message}`).not.toMatch(/rain/i);
+    });
+
+    it('routes the card flow to the new card, else to the closed card', () => {
+      expect(routesToNewCard(status(closed({ newCardAvailable: true })))).toBe(true);
+      expect(routesToClosedCard(status(closed({ newCardAvailable: true })))).toBe(false);
+      expect(routesToClosedCard(status(closed()))).toBe(true);
+      expect(routesToClosedCard(status(sunset()))).toBe(false);
+      expect(routesToClosedCard(status())).toBe(false);
     });
   });
 });

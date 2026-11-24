@@ -98,6 +98,19 @@ export function hasStartedNewCard(sunset: RainSunsetStatus | null | undefined): 
   return Boolean(sunset?.migration);
 }
 
+/** The sunset closed their card (they never got the new one). */
+export function isClosedCard(sunset: RainSunsetStatus | null | undefined): boolean {
+  return Boolean(sunset?.cardClosed);
+}
+
+/**
+ * Whether money can still be on their old card: they hold it, or the sunset
+ * closed it — a closed card's balance stays theirs to withdraw.
+ */
+export function holdsClosingCard(sunset: RainSunsetStatus | null | undefined): boolean {
+  return Boolean(sunset?.hasRainCard || sunset?.cardClosed);
+}
+
 /**
  * Which Home banner (Figma "Rain closing / Home banner") the user gets.
  *
@@ -106,14 +119,30 @@ export function hasStartedNewCard(sunset: RainSunsetStatus | null | undefined): 
  * - `closing-balance`: no new card for them yet, and money left on the card —
  *   or a balance that could not be read, which is never shown as empty.
  * - `closing-empty`: no new card for them yet and nothing left to withdraw.
+ * - `closed-balance`: the card was closed and money is still on it (or its
+ *   balance could not be read). Ahead of the new card: the money is theirs,
+ *   and the new card is issued only once it is withdrawn.
+ * - `closed-empty`: the card was closed, nothing is left on it and no new card
+ *   is available where they live.
  */
-export type RainClosingBannerState = 'new-card' | 'closing-balance' | 'closing-empty';
+export type RainClosingBannerState =
+  | 'new-card'
+  | 'closing-balance'
+  | 'closing-empty'
+  | 'closed-balance'
+  | 'closed-empty';
 
 export function rainClosingBannerState(
   sunset: RainSunsetStatus | null | undefined,
   balanceUsd: number | null | undefined,
 ): RainClosingBannerState | null {
   if (!sunset) return null;
+  if (sunset.cardClosed) {
+    if (isClosingBalanceUnknown(balanceUsd) || hasClosingBalance(balanceUsd)) {
+      return 'closed-balance';
+    }
+    return sunset.newCardAvailable ? 'new-card' : 'closed-empty';
+  }
   if (sunset.newCardAvailable) return 'new-card';
   if (!sunset.notice) return null;
   if (isClosingBalanceUnknown(balanceUsd)) return 'closing-balance';
@@ -138,6 +167,17 @@ export function homeBannerCopy(
   const closes = closesPhrase(sunset.closesAt, 'short');
   switch (state) {
     case 'new-card':
+      if (sunset.cardClosed) {
+        return hasStartedNewCard(sunset)
+          ? {
+              title: 'Finish getting your new card',
+              message: 'Your previous card was closed. Pick up where you left off.',
+            }
+          : {
+              title: 'Get your new Solid card',
+              message: 'Your previous card was closed. A new one takes a few minutes.',
+            };
+      }
       // A Rain applicant who never got a card has no "current card" to close.
       if (!sunset.hasRainCard) {
         return hasStartedNewCard(sunset)
@@ -171,7 +211,48 @@ export function homeBannerCopy(
         title: `Your card closes ${closes}`,
         message: 'Nothing to withdraw. Move any subscriptions to another card before then.',
       };
+    case 'closed-balance':
+      return {
+        title: 'Your card was closed',
+        message: isClosingBalanceUnknown(balanceUsd)
+          ? 'Withdraw what was left on it to your wallet.'
+          : `Withdraw the ${formatClosingBalance(balanceUsd ?? 0)} left on it to your wallet.`,
+      };
+    case 'closed-empty':
+      return {
+        title: 'Your card was closed',
+        message:
+          "Solid cards aren't available where you live right now. Your Solid account keeps working as usual.",
+      };
   }
+}
+
+/** Copy for a card the sunset closed, on its own screen and the card notice. */
+export function closedCardCopy(
+  sunset: RainSunsetStatus,
+  balanceUsd: number | null | undefined,
+  countryName?: string | null,
+): { title: string; message: string } {
+  const balance = isClosingBalanceUnknown(balanceUsd)
+    ? ' Withdraw whatever is left on it to your wallet.'
+    : hasClosingBalance(balanceUsd)
+      ? ` The ${formatClosingBalance(balanceUsd ?? 0)} left on it is still yours: withdraw it to your wallet.`
+      : '';
+  if (sunset.newCardAvailable || sunset.migration) {
+    return {
+      title: 'Your card was closed',
+      message:
+        "We've moved Solid cards to a new card partner, and your previous card can't be used any more." +
+        `${balance} Get your new Solid card, it takes a few minutes.`,
+    };
+  }
+  const where = countryName ? ` in ${countryName}` : ' where you live';
+  return {
+    title: 'Your card was closed',
+    message:
+      `Solid cards aren't available${where} right now, and your previous card can't be used any more.` +
+      `${balance} Your Solid account keeps working as usual.`,
+  };
 }
 
 /** Copy for the card-screen notice (Figma "Rain closing / Card notice"). */
@@ -219,6 +300,15 @@ export function routesToNewCard(cardStatus: CardStatusResponse | null | undefine
   const sunset = cardStatus?.rainSunset;
   if (!sunset || sunset.hasRainCard) return false;
   return sunset.newCardAvailable || Boolean(sunset.migration);
+}
+
+/**
+ * Whether the card flow should show the closed-card screen: the sunset closed
+ * their card and there is no new card to send them to. Without it, the closed
+ * card reads as "no card" and the issuance flow offers to activate it.
+ */
+export function routesToClosedCard(cardStatus: CardStatusResponse | null | undefined): boolean {
+  return Boolean(cardStatus?.rainSunset?.cardClosed) && !routesToNewCard(cardStatus);
 }
 
 /**

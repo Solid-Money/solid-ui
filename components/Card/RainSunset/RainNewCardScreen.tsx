@@ -60,6 +60,7 @@ const BENEFITS: { icon: AssetPath; title: string; description: string }[] = [
  */
 function NewCardIntro({
   hasCurrentCard,
+  cardClosed,
   closesAt,
   resuming,
   balanceUsd,
@@ -69,6 +70,8 @@ function NewCardIntro({
 }: {
   /** They still hold the closing card; a Rain applicant with no card does not. */
   hasCurrentCard: boolean;
+  /** The sunset already closed their card. */
+  cardClosed: boolean;
   closesAt: string | null;
   resuming: boolean;
   balanceUsd: number | null;
@@ -101,12 +104,14 @@ function NewCardIntro({
         <CardWaitingHero />
         <View className="w-full gap-2">
           <Text className="text-center text-[28px] font-semibold leading-[34px] text-white">
-            {hasCurrentCard ? 'Get your new Solid card' : 'Get your Solid card'}
+            {hasCurrentCard || cardClosed ? 'Get your new Solid card' : 'Get your Solid card'}
           </Text>
           <Text className="text-center text-[15px] leading-[21px] text-white/70">
-            {hasCurrentCard
-              ? `Your current card closes ${closesPhrase(closesAt, 'long')}. Your new card comes from our new card partner, Wirex, so you'll verify your identity once more.`
-              : "Solid cards now come from our new card partner, Wirex, so you'll verify your identity with them. It takes a few minutes."}
+            {cardClosed
+              ? "Your previous card was closed. Your new card comes from our new card partner, Wirex, so you'll verify your identity once more."
+              : hasCurrentCard
+                ? `Your current card closes ${closesPhrase(closesAt, 'long')}. Your new card comes from our new card partner, Wirex, so you'll verify your identity once more.`
+                : "Solid cards now come from our new card partner, Wirex, so you'll verify your identity with them. It takes a few minutes."}
           </Text>
         </View>
         <View style={styles.benefits}>
@@ -128,7 +133,9 @@ function NewCardIntro({
         </Text>
         {blocked && balanceUsd != null ? (
           <Text className="text-center text-[14px] leading-[20px] text-white/50">
-            {`Withdraw the ${formatClosingBalance(balanceUsd)} on your current card before your new card is issued.`}
+            {cardClosed
+              ? `Withdraw the ${formatClosingBalance(balanceUsd)} left on your previous card before your new card is issued.`
+              : `Withdraw the ${formatClosingBalance(balanceUsd)} on your current card before your new card is issued.`}
           </Text>
         ) : null}
       </View>
@@ -183,10 +190,11 @@ export function RainNewCardScreen() {
   // Nothing to move: already moved (the status no longer carries the block), or
   // no new card where they live. Their card screen says why.
   if (!sunset || (!sunset.newCardAvailable && !migration)) {
-    return <Redirect href={path.CARD_INFO} />;
+    return <Redirect href={sunset?.cardClosed ? path.CARD_CLOSED : path.CARD_INFO} />;
   }
 
-  const goToCard = () => router.replace(path.CARD_INFO);
+  // A card the sunset closed has no card screen; Home is where "not now" goes.
+  const goToCard = () => router.replace(sunset.cardClosed ? path.HOME : path.CARD_INFO);
   const startKyc = () => {
     track(TRACKING_EVENTS.CARD_ONBOARDING_CTA_PRESSED, { step: 'rain_sunset_verify' });
     setKycFlow('card_migration');
@@ -243,6 +251,7 @@ export function RainNewCardScreen() {
       return (
         <NewCardIntro
           hasCurrentCard={sunset.hasRainCard}
+          cardClosed={Boolean(sunset.cardClosed)}
           closesAt={sunset.closesAt}
           resuming={Boolean(migration?.kycReviewStatus)}
           balanceUsd={balanceUsd}
