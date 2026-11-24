@@ -41,6 +41,7 @@ import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useCardStatusReadiness } from '@/hooks/useCardStatusReadiness';
 import { useHomeLinkAction } from '@/hooks/useHomeLinkAction';
 import { useHomeLoadTracking } from '@/hooks/useHomeLoadTracking';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
@@ -60,13 +61,6 @@ import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
-
-/**
- * A card link waiting on a card status read that failed reads it again after
- * this, doubling each time, up to the max.
- */
-const CARD_STATUS_RETRY_MS = 2_000;
-const CARD_STATUS_RETRY_MAX_MS = 30_000;
 
 /**
  * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
@@ -95,13 +89,8 @@ export default function HomeScreenNew() {
   const updateUser = useUserStore(state => state.updateUser);
   const setHomeReady = useWhatsNewStore(state => state.setHomeReady);
   const intercom = useIntercom();
-  const {
-    data: cardStatus,
-    isLoading: isCardStatusLoading,
-    isError: isCardStatusError,
-    errorUpdatedAt: cardStatusErrorAt,
-    refetch: refetchCardStatus,
-  } = useCardStatus();
+  const cardStatusQuery = useCardStatus();
+  const { data: cardStatus, isLoading: isCardStatusLoading } = cardStatusQuery;
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
   const { provider: cardProvider } = useCardProvider();
   const { symbol: displaySymbol, toDisplayAmount } = useCardDisplayCurrency();
@@ -134,34 +123,14 @@ export default function HomeScreenNew() {
   const cardClosedBySunset = Boolean(cardStatus?.rainSunset?.cardClosed);
 
   // Whether the card is one the sunset closed is known only once its status
-  // is in. Until then (still loading, or the read failed with nothing cached)
-  // a card link waits rather than guess the card works. With no user there is
-  // no status query at all: neither loading nor failed, so links act at once.
-  const cardStatusUnknown = isCardStatusLoading || (isCardStatusError && cardStatus === undefined);
-
-  // A failed read is tried again while a card link waits on it, each time a
-  // little later (the query itself does not retry).
-  const cardStatusRetries = useRef(0);
-  useEffect(() => {
-    if (screenParam !== CARD_INFO_SCREEN || !isCardStatusError || cardStatus !== undefined) {
-      cardStatusRetries.current = 0;
-      return;
-    }
-    const delay = Math.min(
-      CARD_STATUS_RETRY_MS * 2 ** cardStatusRetries.current,
-      CARD_STATUS_RETRY_MAX_MS,
-    );
-    const timer = setTimeout(() => {
-      cardStatusRetries.current += 1;
-      void refetchCardStatus();
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [screenParam, isCardStatusError, cardStatus, cardStatusErrorAt, refetchCardStatus]);
+  // is (see `useCardStatusReadiness`): until then a card link waits, rather
+  // than guess the card works.
+  const cardStatusKnown = useCardStatusReadiness(cardStatusQuery, screenParam === CARD_INFO_SCREEN);
 
   useEffect(() => {
     if (screenParam !== CARD_INFO_SCREEN) return;
-    // Keep the link until the card's status is in (see above).
-    if (cardStatusUnknown) return;
+    // Keep the link until the card's status is known (see above).
+    if (!cardStatusKnown) return;
     if (cardClosedBySunset) {
       router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
       router.push(path.CARD_CLOSED);
@@ -185,7 +154,7 @@ export default function HomeScreenNew() {
     openCardPane,
     openCardPaneWalletGuide,
     cardClosedBySunset,
-    cardStatusUnknown,
+    cardStatusKnown,
   ]);
 
   // `?whatsNew=`, `?deposit=` and `?spendMode=` open what a push or link was
