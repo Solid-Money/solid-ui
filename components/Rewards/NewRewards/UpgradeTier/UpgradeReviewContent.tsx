@@ -27,7 +27,7 @@ import {
   canAffordUpgrade,
   canPayCashFor,
   findOffer,
-  formatFuse,
+  formatFuseToLock,
   formatLockDuration,
   formatRenewalTerms,
   formatSaleEnds,
@@ -312,7 +312,7 @@ const UpgradeReviewContent = () => {
                 FUSE figure, and soFUSE is quoted at the FUSE it is worth. */}
             <TierDetailRow
               label="Amount to lock"
-              value={`${formatFuse(remainingFuse)} FUSE`}
+              value={`${formatFuseToLock(remainingFuse)} FUSE`}
               withDivider
             />
             <TierDetailRow
