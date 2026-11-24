@@ -1,3 +1,4 @@
+import { inviteDiscountLine } from '@/lib/referral/invitePerk';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
@@ -439,6 +440,27 @@ export const formatSaleEnds = (offer: TierOffer | undefined): string => {
   const day = formatMembershipDay(offer.saleEndsAt);
   return day ? `Offer ends ${day}` : '';
 };
+
+/**
+ * The KOL invite discount pricing this offer's first year, or null: absent,
+ * malformed, or not actually making the first year cheaper.
+ */
+export const offerInviteDiscount = (
+  offer: TierOffer | undefined,
+): { pct: number; inviterUsername: string } | null => {
+  const discount = offer?.inviteDiscount;
+  if (!discount || typeof discount !== 'object' || !isOfferOnSale(offer)) return null;
+  const { pct, inviterUsername } = discount;
+  if (typeof pct !== 'number' || !Number.isFinite(pct) || pct <= 0) return null;
+  return {
+    pct: Math.round(pct),
+    inviterUsername: typeof inviterUsername === 'string' ? inviterUsername : '',
+  };
+};
+
+/** "50% off your first year with dana's invite" while one prices the offer; otherwise nothing. */
+export const formatInviteDiscount = (offer: TierOffer | undefined): string =>
+  inviteDiscountLine(offerInviteDiscount(offer));
 
 /**
  * What buying this tier does to the membership the user already pays for, or

@@ -144,6 +144,37 @@ describe('bankDepositFeeLine', () => {
     });
   });
 
+  it('credits the KOL invite perk on a deposit it made free', () => {
+    expect(
+      bankDepositFeeLine({
+        ...base,
+        amount: '0.00',
+        waiveReason: 'KolPerk',
+        waivedAmount: '0.50',
+        kolPerk: { kolUsername: 'artem.betev' },
+      }),
+    ).toEqual({
+      value: '€0.00',
+      note: 'Free with your invite perk from artem.betev · you saved €0.50',
+    });
+    expect(bankDepositFeeLine({ ...base, amount: '0.00', waiveReason: 'KolPerk' })).toEqual({
+      value: '€0.00',
+      note: 'Free with your invite perk',
+    });
+  });
+
+  it('reads the perk off the activity, ignoring junk', () => {
+    expect(
+      readBankDepositFee({
+        fee: { ...base, amount: '0.00', waiveReason: 'KolPerk', kolPerk: { kolUsername: 'k' } },
+      })?.kolPerk,
+    ).toEqual({ kolUsername: 'k' });
+    expect(
+      readBankDepositFee({ fee: { ...base, amount: '0.00', kolPerk: { kolUsername: 4 } } })
+        ?.kolPerk,
+    ).toEqual({});
+  });
+
   it('credits the plan on Ultra', () => {
     expect(bankDepositFeeLine({ ...base, amount: '0.00', waiveReason: 'TierFree' })).toEqual({
       value: '€0.00',

@@ -4578,6 +4578,12 @@ export type ReferralInviteLookup =
         windowDays: number;
         payoutToken: string;
       } | null;
+      /**
+       * What a KOL's perk code adds while it would be granted: a first-year
+       * membership discount and free SEPA deposits. Absent on a user's own
+       * code and on older backends; read it through `readInvitePerk`.
+       */
+      perk?: unknown;
     }
   | { valid: false; code: string };
 
@@ -4783,6 +4789,11 @@ export interface TierOffer {
   paymentMode?: TierPaymentMode;
   /** The lower-tier membership buying this one ends, when there is one. */
   replacesSubscription?: TierReplacedSubscription | null;
+  /**
+   * The KOL invite discount in `firstYearFeeUsd`, when one made the first year
+   * cheaper. Read it through `offerInviteDiscount`.
+   */
+  inviteDiscount?: { pct: number; inviterUsername: string } | null;
 }
 
 /** The user's locked FUSE position. */

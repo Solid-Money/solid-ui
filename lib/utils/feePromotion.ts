@@ -16,6 +16,8 @@ export const EUR_BANK_DEPOSIT_PROMOTION_SCOPE = 'eur_bank_deposit';
 
 /** Mirrors ProductFeeWaiveReason on the backend. */
 export const FEE_WAIVE_REASON_PROMOTION = 'Promotion';
+/** A KOL invite perk's free SEPA months covered the fee. */
+export const FEE_WAIVE_REASON_KOL_PERK = 'KolPerk';
 export const FEE_WAIVE_REASON_TIER_FREE = 'TierFree';
 
 /** A live fee promotion, as one user sees it. */
@@ -49,6 +51,8 @@ export interface BankDepositFeeSummary {
   /** What the fee would have been, when a promotion covered it. */
   waivedAmount?: string;
   promotion?: { id: string; name?: string; slot: number; freeCount?: number };
+  /** The KOL whose invite perk made the deposit free. */
+  kolPerk?: { kolUsername?: string };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -161,6 +165,15 @@ export function readBankDepositFee(metadata: unknown): BankDepositFeeSummary | n
         }
       : undefined;
 
+  const kolPerk =
+    fee.kolPerk && typeof fee.kolPerk === 'object'
+      ? {
+          ...(typeof fee.kolPerk.kolUsername === 'string' && {
+            kolUsername: fee.kolPerk.kolUsername,
+          }),
+        }
+      : undefined;
+
   return {
     amount: fee.amount,
     currency: fee.currency.toUpperCase(),
@@ -169,6 +182,7 @@ export function readBankDepositFee(metadata: unknown): BankDepositFeeSummary | n
     ...(typeof fee.waiveReason === 'string' && { waiveReason: fee.waiveReason }),
     ...(isNonNegativeDecimal(fee.waivedAmount) && { waivedAmount: fee.waivedAmount }),
     ...(promotion && { promotion }),
+    ...(kolPerk && { kolPerk }),
   };
 }
 
@@ -200,6 +214,14 @@ export function bankDepositFeeLine(fee: BankDepositFeeSummary): {
         ? ` · you saved ${formatFiat(fee.waivedAmount, fee.currency)}`
         : '';
     return { value, note: `${which}${saved}` };
+  }
+  if (fee.waiveReason === FEE_WAIVE_REASON_KOL_PERK) {
+    const from = fee.kolPerk?.kolUsername ? ` from ${fee.kolPerk.kolUsername}` : '';
+    const saved =
+      fee.waivedAmount && Number(fee.waivedAmount) > 0
+        ? ` · you saved ${formatFiat(fee.waivedAmount, fee.currency)}`
+        : '';
+    return { value, note: `Free with your invite perk${from}${saved}` };
   }
   if (fee.waiveReason === FEE_WAIVE_REASON_TIER_FREE) {
     return { value, note: 'Free on your plan' };

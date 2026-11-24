@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
-import { fetchFeePromotions, fetchProductFeeRates, recordSwapFee } from '@/lib/api';
+import { fetchFeePromotions, fetchKolPerk, fetchProductFeeRates, recordSwapFee } from '@/lib/api';
+import { readUserKolPerk } from '@/lib/referral/invitePerk';
 import { FeeProduct, RecordSwapFeeParams } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { eurDepositPromotion, nextEurPromotionChange } from '@/lib/utils/feePromotion';
@@ -86,6 +87,29 @@ export const useEurDepositPromotion = () => {
   }, [next, now]);
 
   return eurDepositPromotion(data ?? null, now);
+};
+
+/**
+ * The user's KOL invite perk, or null — none, not loaded yet, or a failed
+ * load (the screen then simply doesn't advertise it). Polled like the fee
+ * promotions, so a deposit that uses up the cap reaches an open screen.
+ * A failed refresh hides it too: the perk it last read may since have run
+ * out, and a later refresh that succeeds shows it again.
+ */
+export const useKolPerk = () => {
+  const userId = useSelectedUserId();
+
+  const { data, isError } = useQuery({
+    queryKey: [PRODUCT_FEES, 'kolPerk', userId],
+    queryFn: async () => readUserKolPerk(await withRefreshToken(() => fetchKolPerk())),
+    staleTime: secondsToMilliseconds(60),
+    refetchInterval: secondsToMilliseconds(60),
+    refetchIntervalInBackground: false,
+    gcTime: minutesToMilliseconds(5),
+    enabled: Boolean(userId),
+    retry: false,
+  });
+  return isError ? null : (data ?? null);
 };
 
 /**

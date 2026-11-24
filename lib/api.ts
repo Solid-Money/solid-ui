@@ -3004,6 +3004,26 @@ export const fetchFeePromotions = async (): Promise<UserFeePromotionsResponse> =
   return response.json();
 };
 
+/**
+ * The user's own KOL invite perk — the membership discount they can still
+ * take and their free SEPA months — as `{ perk }`, `perk` null when they hold
+ * none. Untrusted: read it through `readUserKolPerk`.
+ */
+export const fetchKolPerk = async (): Promise<unknown> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/kol-perks/me`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 /** What this user would pay on a given amount, right now. */
 export const fetchProductFeeQuote = async (
   product: FeeProduct,
