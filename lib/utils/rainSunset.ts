@@ -283,6 +283,16 @@ export function unitsToCents(units: bigint, decimals: number, round: 'up' | 'dow
 }
 
 /**
+ * A token amount to two decimals, truncated, from its integer units — never
+ * rounded up, so the amount beside a dollar figure that is rounded down cannot
+ * read a cent higher than it (3.239 USDT is "3.23", next to "$3.23").
+ */
+export function formatTokenUnits(units: bigint, decimals: number): string {
+  const cents = unitsToCents(units > 0n ? units : 0n, decimals, 'down');
+  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
+}
+
+/**
  * What withdrawing `units` leaves of the token on the card, in whole cents —
  * rounded down, so the sub-cent dust a capped amount can leave is not reported
  * as balance still on the card.

@@ -11,7 +11,6 @@ import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatUnits } from 'viem';
 
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -33,6 +32,7 @@ import {
   floorCents,
   formatClosingBalance,
   formatClosingDate,
+  formatTokenUnits,
   remainderCents,
   tokenWithdrawal,
   unitsToCents,
@@ -359,7 +359,7 @@ export function RainClosingWithdraw() {
                       <View style={styles.rowText}>
                         <Text className="text-[16px] font-medium text-white">{token.symbol}</Text>
                         <Text className="text-[13px] text-white/50">
-                          {Number(formatUnits(units, token.decimals)).toFixed(2)} {token.symbol}
+                          {formatTokenUnits(units, token.decimals)} {token.symbol}
                         </Text>
                       </View>
                       <Text className="text-[16px] font-medium text-white">

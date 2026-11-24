@@ -7,6 +7,7 @@ import {
   floorCents,
   formatClosingBalance,
   formatClosingDate,
+  formatTokenUnits,
   hasClosingBalance,
   homeBannerCopy,
   isClosingBalanceUnknown,
@@ -157,6 +158,19 @@ describe('rainSunset', () => {
       expect(floorCents(1e-7)).toBe(0n);
       expect(floorCents(-1)).toBe(0n);
       expect(floorCents(undefined)).toBe(0n);
+    });
+
+    it('shows a token amount truncated to two decimals, never rounded up', () => {
+      // Beside a dollar figure that is rounded down: 3.239 USDT is $3.23, not "3.24 USDT".
+      expect(formatTokenUnits(3239000n, 6)).toBe('3.23');
+      expect(formatTokenUnits(1009000n, 6)).toBe('1.00');
+      expect(formatTokenUnits(240000n, 6)).toBe('0.24');
+      expect(formatTokenUnits(7910000n, 6)).toBe('7.91');
+      expect(formatTokenUnits(248500000n, 6)).toBe('248.50');
+      expect(formatTokenUnits(12349999999999999999n, 18)).toBe('12.34');
+      expect(formatTokenUnits(5n, 0)).toBe('5.00');
+      expect(formatTokenUnits(0n, 6)).toBe('0.00');
+      expect(formatTokenUnits(-1n, 6)).toBe('0.00');
     });
 
     it('rounds a token amount up for the cap it uses, down for what moved', () => {
