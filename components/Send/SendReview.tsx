@@ -63,7 +63,12 @@ const SendReview: React.FC = () => {
     })),
   );
   const { activities, refetchAll } = useActivity();
-  const { data: addressBook = [] } = useQuery({
+  const {
+    data: addressBook,
+    isError: isAddressBookError,
+    isFetching: isAddressBookFetching,
+    refetch: refetchAddressBook,
+  } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
     staleTime: 5 * 60 * 1000,
@@ -75,11 +80,19 @@ const SendReview: React.FC = () => {
   const expectedChainId = getExpectedRecipientChainId(
     address,
     activities,
-    addressBook,
+    addressBook ?? [],
     recipientChainId,
   );
   const isNetworkMismatch =
     !!selectedToken && !!expectedChainId && expectedChainId !== selectedToken.chainId;
+  // Without the address book a saved contact's network is unknown, and an empty
+  // list would read as "no expected network" and skip the check. A picked
+  // network doesn't need it. Hold Send while it loads; if it fails, offer a
+  // retry and make the user confirm the network themselves.
+  const isAddressBookMissing = !recipientChainId && !addressBook;
+  const isCheckingRecipient = isAddressBookMissing && !isAddressBookError;
+  const isRecipientCheckFailed = isAddressBookMissing && isAddressBookError;
+  const needsNetworkConfirmation = isNetworkMismatch || isRecipientCheckFailed;
   const [networkConfirmed, setNetworkConfirmed] = useState(false);
 
   const { send, sendStatus, totpModal } = useSend({
@@ -120,12 +133,14 @@ const SendReview: React.FC = () => {
 
   const getButtonText = () => {
     if (isSendLoading) return 'Sending';
+    if (isCheckingRecipient) return 'Checking recipient';
     return 'Send';
   };
 
   const handleSend = async () => {
     if (!selectedToken || !amount || !address) return;
-    if (isNetworkMismatch && !networkConfirmed) return;
+    if (isCheckingRecipient) return;
+    if (needsNetworkConfirmation && !networkConfirmed) return;
 
     const nameValue = watchName('name');
     const skip2fa = watchName('skip2fa');
@@ -317,6 +332,44 @@ const SendReview: React.FC = () => {
           </View>
         ) : null}
 
+        {isRecipientCheckFailed ? (
+          <View className="gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4">
+            <Text className="text-base font-bold text-red-400">
+              Couldn&apos;t check this recipient&apos;s network
+            </Text>
+            <Text className="text-sm font-medium leading-5 text-red-300">
+              Your contacts didn&apos;t load, so we can&apos;t tell which network this address was
+              saved on. This sends {selectedToken.contractTickerSymbol} on{' '}
+              {chainName(selectedToken.chainId)}.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void refetchAddressBook()}
+              disabled={isAddressBookFetching}
+              className="flex-row items-center gap-2 self-start"
+            >
+              <Text className="text-sm font-semibold text-white underline">
+                {isAddressBookFetching ? 'Retrying' : 'Retry'}
+              </Text>
+              {isAddressBookFetching && <ActivityIndicator size="small" color="white" />}
+            </Pressable>
+            {!isNetworkMismatch && (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: networkConfirmed }}
+                onPress={() => setNetworkConfirmed(value => !value)}
+                className="flex-row items-center gap-3"
+              >
+                <Checkbox checked={networkConfirmed} onCheckedChange={setNetworkConfirmed} />
+                <Text className="flex-1 text-sm text-white">
+                  The recipient can receive {selectedToken.contractTickerSymbol} on{' '}
+                  {chainName(selectedToken.chainId)}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
+
         {isContact && (
           <SaveContact
             control={nameControl as Control<AddressBookFormData>}
@@ -346,11 +399,16 @@ const SendReview: React.FC = () => {
         variant="brand"
         className="h-12 rounded-xl"
         onPress={handleSend}
-        disabled={isSendLoading || isProtocolRecipient || (isNetworkMismatch && !networkConfirmed)}
+        disabled={
+          isSendLoading ||
+          isCheckingRecipient ||
+          isProtocolRecipient ||
+          (needsNetworkConfirmation && !networkConfirmed)
+        }
       >
         <Key />
         <Text className="text-base font-bold">{getButtonText()}</Text>
-        {isSendLoading && <ActivityIndicator color="black" />}
+        {(isSendLoading || isCheckingRecipient) && <ActivityIndicator color="black" />}
       </Button>
 
       <NeedHelp />
