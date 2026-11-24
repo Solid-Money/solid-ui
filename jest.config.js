@@ -1,9 +1,10 @@
 module.exports = {
   preset: 'jest-expo',
   // `immer` ships ESM only and the zustand stores build on it, so it has to be
-  // transformed for any store to be importable from a test.
+  // transformed for any store to be importable from a test. The same goes for
+  // `marked` and `github-slugger`, which react-native-marked (support replies) uses.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|@rn-primitives/.*|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@shopify/flash-list|immer)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|@rn-primitives/.*|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@shopify/flash-list|immer|marked|github-slugger)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
