@@ -283,6 +283,7 @@ export type AttributionChannel =
   | 'paid_social'
   | 'social'
   | 'email'
+  | 'push'
   | 'referral'
   | 'direct'
   | 'other';
@@ -318,6 +319,8 @@ export const getAttributionChannel = (data: Partial<AttributionData>): Attributi
 
     if (medium.includes('social') || medium.includes('organic_social')) return 'social';
     if (medium.includes('email')) return 'email';
+    // Our own pushes stamp utm_medium=push (backend push-attribution.constants).
+    if (medium === 'push') return 'push';
     if (medium.includes('organic')) return 'organic';
   }
 

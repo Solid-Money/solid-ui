@@ -12,6 +12,7 @@ jest.mock('@react-native-firebase/messaging', () => () => ({ onTokenRefresh: jes
 jest.mock('@/lib/api', () => ({ registerPushToken: jest.fn() }));
 jest.mock('@/lib/registerForPushNotifications', () => ({
   registerForPushNotificationsAsync: jest.fn(),
+  pushDeviceInfo: jest.fn(() => ({})),
 }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
 // Both zustand stores the hook imports persist through MMKV, whose native
@@ -144,8 +145,26 @@ describe('routeForLink', () => {
     );
   });
 
-  it('returns nothing for a link it cannot place, rather than guessing', () => {
-    expect(routeForLink(link('/some/unknown/screen'))).toBeUndefined();
+  it('opens any other in-app path the way a Universal Link would', () => {
+    // An admin can point an automated nudge at a screen this map does not
+    // list; it opens without an app release, keeping its own params but not
+    // the campaign's.
+    expect(routeForLink(link('/coins'))).toEqual('/coins');
+    expect(routeForLink(link('/deposit?method=bank&utm_source=deposit_sepa'))).toEqual({
+      pathname: '/deposit',
+      params: { method: 'bank' },
+    });
+  });
+
+  it('refuses the screens a push must never open by path', () => {
+    expect(routeForLink(link('/settings/delete-account'))).toBeUndefined();
+    expect(routeForLink(link('/signup'))).toBeUndefined();
+    expect(routeForLink(link('/recovery'))).toBeUndefined();
+    expect(routeForLink(link('/card/3ds/abc'))).toBeUndefined();
+  });
+
+  it('returns nothing for a link it cannot read, rather than guessing', () => {
+    expect(routeForLink(link('/a b'))).toBeUndefined();
     expect(routeForLink('not a url')).toBeUndefined();
     expect(routeForLink(undefined)).toBeUndefined();
   });
@@ -408,6 +427,31 @@ describe('handleNotificationResponse', () => {
       );
 
       expect(navigate).toHaveBeenCalledWith(path.CARD_INFO);
+    });
+
+    it('records the automated nudge and version the push came from', () => {
+      handleNotificationResponse(
+        iosResponseFor('n-nudge', {
+          type: 'no-deposit-reminder',
+          stage: '1',
+          nudge_key: 'no-deposit-reminder-1',
+          nudge_version: '3',
+          utm_source: 'reminder_1',
+          utm_medium: 'push',
+          utm_campaign: 'solid_engagement',
+          link: link('/?utm_source=reminder_1'),
+        }),
+        jest.fn(),
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        TRACKING_EVENTS.PUSH_NOTIFICATION_OPENED,
+        expect.objectContaining({
+          notification_type: 'no-deposit-reminder',
+          nudge_key: 'no-deposit-reminder-1',
+          nudge_version: '3',
+        }),
+      );
     });
 
     it('records the open with its type and campaign', () => {
