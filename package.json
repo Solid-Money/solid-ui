@@ -24,7 +24,7 @@
     "analyze:ios": "npx expo export --source-maps --platform ios --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/ios/*.js'",
     "analyze:android": "npx expo export --source-maps --platform android --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/android/*.js'",
     "analyze:web": "npx source-map-explorer 'dist/_expo/static/js/web/*.js'",
-    "export:web": "npm run assets:update && npm run assets:sync-public && node scripts/export-web.mjs",
+    "export:web": "npm run assets:update && npm run assets:sync-public && node scripts/export-web.mjs && node scripts/invite-link-preview.js",
     "sourcemaps:upload": "node scripts/upload-sourcemaps.mjs",
     "sourcemaps:strip": "find dist -name '*.map' -type f -delete",
     "build:web": "npm run export:web && npm run sourcemaps:upload && npm run sourcemaps:strip",
