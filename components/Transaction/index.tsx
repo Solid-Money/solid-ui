@@ -37,6 +37,14 @@ const formatRowAmount = (amount: string, symbol?: string) =>
     ? formatBtcRowAmount(amount, BTC_DISPLAY_DECIMALS)
     : formatNumber(Number(amount), 2);
 
+/** Symbols whose activity rows arrive in another case ("SOUSD", "CBBTC"), as their token writes them. */
+const DISPLAY_SYMBOLS = new Map([
+  ['sousd', 'soUSD'],
+  ['cbbtc', 'cbBTC'],
+]);
+const displaySymbol = (symbol?: string) =>
+  (symbol && DISPLAY_SYMBOLS.get(symbol.toLowerCase())) || symbol;
+
 type TransactionClassNames = {
   container?: string;
 };
@@ -291,6 +299,9 @@ const Transaction = ({
   };
 
   const formattedTimestamp = timestamp ? formatActivityTimestamp(timestamp) : null;
+  const showsStatusText = Boolean(
+    directDepositStatusMessage || amount === '0' || hideSavingsAmount,
+  );
 
   return (
     <Pressable
@@ -339,8 +350,15 @@ const Transaction = ({
         </View>
       )}
 
-      <View className="min-w-0 flex-[1] items-end">
-        {directDepositStatusMessage || amount === '0' || hideSavingsAmount ? (
+      {/* An amount keeps to one line: the column takes the amount's full width (the title truncates
+          instead), so a long BTC figure doesn't push its symbol onto a second line. */}
+      <View
+        className={cn(
+          'items-end',
+          showsStatusText ? 'min-w-0 flex-[1]' : 'shrink-0 grow basis-auto pl-2',
+        )}
+      >
+        {showsStatusText ? (
           <Text
             className={cn(
               'text-sm font-medium',
@@ -362,9 +380,10 @@ const Transaction = ({
           <Text
             className={cn('text-base font-medium web:text-lg', statusTextColor)}
             style={statusColorStyle}
+            numberOfLines={1}
           >
             {statusSign}
-            {formatRowAmount(amount, symbol)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
+            {formatRowAmount(amount, symbol)} {displaySymbol(symbol)}
           </Text>
         )}
         {directDepositIsPendingOrProcessing && !isCardDeposit && (
