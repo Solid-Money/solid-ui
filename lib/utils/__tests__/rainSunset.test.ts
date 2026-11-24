@@ -398,6 +398,17 @@ describe('rainSunset', () => {
       expect(rainClosingBannerState(closed(), 0)).toBe('closed-empty');
     });
 
+    it('lets them finish a new card they started, though it is no longer offered where they live', () => {
+      const started = closed({
+        newCardAvailable: false,
+        migration: {},
+      });
+      expect(rainClosingBannerState(started, 0)).toBe('new-card');
+      expect(homeBannerCopy('new-card', started, 0).title).toBe('Finish getting your new card');
+      // As the card flow routes them.
+      expect(routesToNewCard({ rainSunset: started } as CardStatusResponse)).toBe(true);
+    });
+
     it('words the banner for a card that is already closed', () => {
       expect(homeBannerCopy('closed-balance', closed(), 12.5)).toEqual({
         title: 'Your card was closed',

@@ -152,8 +152,8 @@ export function holdsClosingCard(sunset: RainSunsetStatus | null | undefined): b
  * - `closed-balance`: the card was closed and money is still on it (or its
  *   balance could not be read). Ahead of the new card: the money is theirs,
  *   and the new card is issued only once it is withdrawn.
- * - `closed-empty`: the card was closed, nothing is left on it and no new card
- *   is available where they live.
+ * - `closed-empty`: the card was closed, nothing is left on it, no new card is
+ *   available where they live, and they have not started one.
  */
 export type RainClosingBannerState =
   | 'new-card'
@@ -171,7 +171,9 @@ export function rainClosingBannerState(
     if (isClosingBalanceUnknown(balanceUsd) || hasClosingBalance(balanceUsd)) {
       return 'closed-balance';
     }
-    return sunset.newCardAvailable ? 'new-card' : 'closed-empty';
+    // A new card they already started stays theirs to finish, as the card flow
+    // and the closed-card screen offer it.
+    return sunset.newCardAvailable || hasStartedNewCard(sunset) ? 'new-card' : 'closed-empty';
   }
   if (sunset.newCardAvailable) return 'new-card';
   if (!sunset.notice) return null;
