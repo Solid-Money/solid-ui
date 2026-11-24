@@ -9,10 +9,12 @@ import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import TierBalanceOutflowNotice from '@/components/TierBalance/TierBalanceOutflowNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useEarnOutflowUsd, useTierBalanceOutflowWarning } from '@/hooks/useTierBalance';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -127,6 +129,19 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     return Number(amount) * (liveToken?.quoteRate || 0);
   }, [liveToken, amount]);
 
+  // Sending an Earn share (on any chain) takes it out of Earn, which can cost
+  // a tier held or being built on the "Hold in Earn" route.
+  const outflowUsd = useEarnOutflowUsd({
+    address: liveToken?.contractAddress,
+    symbol: liveToken?.contractTickerSymbol,
+    amount: Number(amount),
+    priceUsd: liveToken?.quoteRate,
+  });
+  const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
+    'send',
+    outflowUsd,
+  );
+
   useEffect(() => {
     if (amount) setValue('amount', amount);
   }, [amount, setValue]);
@@ -165,10 +180,11 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
 
   const onSubmit = useCallback(
     (data: any) => {
+      proceedPastWarning();
       setAmount(data.amount.toString());
       onNext();
     },
-    [setAmount, onNext],
+    [setAmount, onNext, proceedPastWarning],
   );
 
   return (
@@ -250,6 +266,7 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
           {errors.amount && (
             <Text className="text-sm text-red-400">{errors.amount.message as string}</Text>
           )}
+          <TierBalanceOutflowNotice warning={tierBalanceWarning} />
         </View>
       </View>
 

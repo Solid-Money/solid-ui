@@ -48,9 +48,10 @@ export const QUERY_CACHE_VERSION = 2;
  *
  * tierMembership 2: fetched with `?paymentModes=transfer`; its offers carry the
  * first-year price and payment mode.
+ * tierMembership 3: carries `balance`, the "Hold in Earn" route.
  */
 export const QUERY_FAMILY_VERSIONS: Readonly<Record<string, number>> = {
-  tierMembership: 2,
+  tierMembership: 3,
 };
 
 /**

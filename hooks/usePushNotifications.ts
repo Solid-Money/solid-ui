@@ -248,6 +248,12 @@ function getNotificationRoute(data?: NotificationData): Href {
   // carry a link; this covers one whose link this build cannot read.
   if (type?.startsWith('ai_api_')) return path.AI_API;
 
+  // "Hold in Earn" tier pushes (tier_balance_unlocked, _grace_started,
+  // _grace_cleared, _ended) are all about where the tier stands, which the
+  // benefits screen shows. They link `/rewards/benefits`; this covers a link
+  // this build cannot read.
+  if (type?.startsWith('tier_balance_')) return path.REWARDS_BENEFITS;
+
   // Legacy routing, for pushes that predate the deep link. Lifecycle types are
   // deliberately absent: they never had a branch here, so every one of them
   // fell to `default` and opened home — which is the gap the link fixes.

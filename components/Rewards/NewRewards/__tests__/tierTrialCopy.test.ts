@@ -8,7 +8,14 @@ import {
   trialRemainingLabel,
   upgradeCelebrationCopy,
 } from '@/components/Rewards/NewRewards/tierTrialCopy';
-import { RewardsTier, RewardsUserData, TierBenefits, TierTrial } from '@/lib/types';
+import {
+  RewardsTier,
+  RewardsUserData,
+  TierBalanceRouteDto,
+  TierBalanceTrackDto,
+  TierBenefits,
+  TierTrial,
+} from '@/lib/types';
 
 const trial = (overrides: Partial<TierTrial> = {}): TierTrial => ({
   id: 'trial-1',
@@ -51,6 +58,13 @@ describe('tierPopupStats', () => {
 
   it('shows nothing at all before the tier benefits land', () => {
     expect(tierPopupStats(undefined)).toEqual([]);
+  });
+
+  it('leaves the yield boost out for a tier held without it', () => {
+    expect(tierPopupStats(primeBenefits, { yieldBoost: false })).toEqual([
+      { value: '4%', label: 'Cashback' },
+      { value: '25%', label: 'Subscriptions' },
+    ]);
   });
 
   it('finds the tier being celebrated in the benefits list', () => {
@@ -135,6 +149,56 @@ describe('upgradeCelebrationCopy', () => {
     );
 
     expect(copy.body).toBe('Your confirmed FUSE Savings balance has unlocked Prime.');
+  });
+
+  describe('a tier unlocked by holding a balance in Earn', () => {
+    const track = (tier: RewardsTier.PRIME | RewardsTier.ULTRA): TierBalanceTrackDto => ({
+      tier,
+      status: 'active',
+      thresholdUsd: tier === RewardsTier.PRIME ? 7_300 : 41_000,
+      shortfallUsd: 0,
+      progressPct: 100,
+      daysHeld: 21,
+      qualifiesOn: null,
+      unlockedAt: '2026-11-24T00:00:00Z',
+      graceEndsAt: null,
+      reentryAt: null,
+    });
+    const balance = (overrides: Partial<TierBalanceRouteDto> = {}): TierBalanceRouteDto => ({
+      enabled: true,
+      grantsTier: RewardsTier.PRIME,
+      holdsCurrentTier: true,
+      currentUsd: 8_000,
+      measuredAt: null,
+      lowestUsd: 7_400,
+      lookbackDays: 21,
+      graceDays: 4,
+      reentryDays: 45,
+      breakdown: null,
+      rules: { countsCreditCollateral: true, subtractsCreditDebt: false, countsLockedFuse: true },
+      prime: track(RewardsTier.PRIME),
+      ultra: { ...track(RewardsTier.ULTRA), status: 'none' },
+      ...overrides,
+    });
+
+    it('names Earn, what keeps the tier, and that Yield boost is not part of it', () => {
+      const copy = upgradeCelebrationCopy(data(), balance());
+
+      expect(copy.title).toBe('Welcome to Prime');
+      expect(copy.body).toBe(
+        'Holding your balance in Earn has unlocked Prime. Every Prime benefit is yours, except Yield boost.',
+      );
+      expect(copy.note).toBe('Keep $7.3K or more in Earn to hold this tier.');
+    });
+
+    it('says nothing of Earn when another route holds the tier', () => {
+      expect(upgradeCelebrationCopy(data(), balance({ holdsCurrentTier: false })).body).toBe(
+        'You reached the Prime points milestone. Your new benefits are now active.',
+      );
+      expect(upgradeCelebrationCopy(data(), null).body).toBe(
+        'You reached the Prime points milestone. Your new benefits are now active.',
+      );
+    });
   });
 
   it('falls back to the points milestone', () => {

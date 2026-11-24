@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Href, router } from 'expo-router';
 
+import EarnTierBalanceCard from '@/components/Earn/EarnTierBalanceCard';
 import EarnYieldBoostCard from '@/components/Earn/EarnYieldBoostCard';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
@@ -154,7 +155,13 @@ export default function EarnScreen() {
         past30={past30}
         products={products}
         onOpenProduct={type => router.push(openYieldProduct(type) as Href)}
-        boost={<EarnYieldBoostCard />}
+        boost={
+          <>
+            {/* Draws nothing unless the "Hold in Earn" tier route is staged to this user. */}
+            <EarnTierBalanceCard />
+            <EarnYieldBoostCard />
+          </>
+        }
       />
     </PageLayout>
   );

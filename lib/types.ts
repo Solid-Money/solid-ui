@@ -4917,4 +4917,83 @@ export interface TierMembershipState {
    */
   bridgeFeeCoverPct?: number;
   contracts: TierMembershipContracts;
+  /**
+   * The "Hold in Earn" route: a tier unlocked by keeping a USD balance in Earn
+   * for a lookback period. Null for anyone without access (it is staged to the
+   * internal team) or while the route is off, and absent on older backends —
+   * both mean the app shows nothing about it. Read it through `lib/tierBalance`.
+   */
+  balance?: TierBalanceRouteDto | null;
+}
+
+/** Where one tier stands on the balance route. */
+export type TierBalanceTrackStatus = 'none' | 'building' | 'active' | 'grace' | 'cooldown';
+
+/** The tiers the balance route can grant. */
+export type TierBalanceTier = RewardsTier.PRIME | RewardsTier.ULTRA;
+
+/**
+ * One tier's progress on the balance route. Prime and Ultra are tracked apart:
+ * an Ultra member who drops under Ultra's threshold but stays above Prime's
+ * goes through Ultra's grace and lands on Prime.
+ */
+export interface TierBalanceTrackDto {
+  tier: TierBalanceTier;
+  status: TierBalanceTrackStatus;
+  /** Pinned threshold while active/grace; today's threshold otherwise. USD. */
+  thresholdUsd: number;
+  /** How much more is needed now (0 when currentUsd >= thresholdUsd). USD. */
+  shortfallUsd: number;
+  /** 0..100, currentUsd / thresholdUsd. */
+  progressPct: number;
+  /** Consecutive measured days at or above the threshold, up to lookbackDays. */
+  daysHeld: number;
+  /** building: the UTC day (YYYY-MM-DD) the tier unlocks if the balance stays. */
+  qualifiesOn: string | null;
+  /** active/grace: when the route granted it (ISO). */
+  unlockedAt: string | null;
+  /** grace: the instant the tier ends unless the balance is back above (ISO). */
+  graceEndsAt: string | null;
+  /** cooldown: when the route can unlock this tier again (ISO). */
+  reentryAt: string | null;
+}
+
+/** What the qualifying Earn balance is made of, in USD. */
+export interface TierBalanceBreakdownDto {
+  /** Vault shares sitting in the Safe, all chains. */
+  walletUsd: number;
+  /** Vault shares escrowed as Credit collateral (Fuse + Base Cash module v2). */
+  creditCollateralUsd: number;
+  /** soFUSE locked in the tier lock. */
+  lockedFuseUsd: number;
+  /** Credit debt (subtracted when the config says so). */
+  creditDebtUsd: number;
+  /** Per asset, wallet + collateral + locked. */
+  byVault: { usd: number; eur: number; eth: number; btc: number; fuse: number };
+}
+
+/** The user's position on the balance route, as `GET /accounts/v1/tier-membership` reports it. */
+export interface TierBalanceRouteDto {
+  /** The user may use the route (feature on and access granted). Always true in the app payload. */
+  enabled: boolean;
+  /** Tier this route grants right now. */
+  grantsTier: RewardsTier;
+  /** True when the user's current tier would be lower without this route. */
+  holdsCurrentTier: boolean;
+  /** Latest measured qualifying Earn balance, USD. Null before the first measurement. */
+  currentUsd: number | null;
+  measuredAt: string | null;
+  /** Lowest daily balance over the lookback window (measured days only). */
+  lowestUsd: number | null;
+  lookbackDays: number;
+  graceDays: number;
+  reentryDays: number;
+  breakdown: TierBalanceBreakdownDto | null;
+  rules: {
+    countsCreditCollateral: boolean;
+    subtractsCreditDebt: boolean;
+    countsLockedFuse: boolean;
+  };
+  prime: TierBalanceTrackDto;
+  ultra: TierBalanceTrackDto;
 }

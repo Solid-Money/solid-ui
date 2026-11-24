@@ -142,7 +142,10 @@ export interface EarnViewProps {
   past30: number | undefined;
   products: EarnProduct[];
   onOpenProduct: (type: VaultType) => void;
-  /** The yield boost card; it renders nothing for a user without one. */
+  /**
+   * The yield boost card and the "Hold in Earn" tier nudge; each renders nothing
+   * for a user without one.
+   */
   boost?: ReactNode;
 }
 

@@ -28,6 +28,16 @@ jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
 jest.mock('@/hooks/swap/useSwapFlow', () => ({ useSwapFlow: () => mockModel }));
+// The "Hold in Earn" warning reads the tier membership; this suite is about the form.
+jest.mock('@/hooks/useTierBalance', () => ({
+  useEarnOutflowUsd: () => 0,
+  useTierBalanceOutflowWarning: () => ({ warning: null, proceed: () => undefined }),
+}));
+jest.mock('@/lib/vaults', () => ({ isEarnShareToken: () => false }));
+jest.mock('@/components/TierBalance/TierBalanceOutflowNotice', () => ({
+  __esModule: true,
+  default: 'TierBalanceOutflowNotice',
+}));
 jest.mock('@/store/swapStore', () => ({
   useSwapActionHandlers: () => ({ onSwitchTokens: jest.fn(), onUserInput: mockUserInput }),
   useSwapState: (selector: any) =>

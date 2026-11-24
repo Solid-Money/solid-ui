@@ -5,7 +5,13 @@ import {
   tierPresentationContent,
   tierPresentationFees,
 } from '@/components/Rewards/NewRewards/tierBenefitsPresentation';
-import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
+import {
+  RewardsTier,
+  type TierBalanceTrackDto,
+  type TierBenefits,
+  type TierFees,
+  type TierOffer,
+} from '@/lib/types';
 
 const { CORE, PRIME, ULTRA } = RewardsTier;
 const benefits = (tier: RewardsTier, overrides: Partial<TierBenefits> = {}) =>
@@ -284,6 +290,52 @@ describe('membership offer presentation', () => {
       // No contracts at all is the same answer, never a price.
       expect(tierOfferSubtitle(upgrade)).toBe('Requires 600K FUSE locked');
       expect(tierOfferSubtitle({ ...upgrade, lockAvailable: false }, noTreasury)).toBeNull();
+    });
+  });
+
+  describe('the Hold in Earn route', () => {
+    const track: TierBalanceTrackDto = {
+      tier: PRIME,
+      status: 'none',
+      thresholdUsd: 7_300,
+      shortfallUsd: 2_000,
+      progressPct: 70,
+      daysHeld: 0,
+      qualifiesOn: null,
+      unlockedAt: null,
+      graceEndsAt: null,
+      reentryAt: null,
+    };
+
+    it('is the last way to get the tier, at the threshold the backend sends', () => {
+      expect(tierOfferRows(offer(), undefined, track)).toEqual([
+        { label: 'Annual membership', value: '$149.5/year' },
+        { label: 'Or lock FUSE', value: '37.5K FUSE' },
+        { label: 'Or hold in Earn', value: '$7.3K', balanceTrack: track },
+      ]);
+      expect(tierOfferSubtitle(offer(), undefined, track)).toBe(
+        '$149.5/year, 37.5K FUSE locked or $7.3K in Earn',
+      );
+    });
+
+    it('reads with one purchase route, or none', () => {
+      expect(tierOfferSubtitle(offer({ cashAvailable: false }), undefined, track)).toBe(
+        '37.5K FUSE locked or $7.3K in Earn',
+      );
+      expect(tierOfferSubtitle(offer({ lockAvailable: false }), undefined, track)).toBe(
+        '$149.5/year or $7.3K in Earn',
+      );
+      // Neither purchase route on, or no membership offer at all.
+      expect(tierOfferRows(undefined, undefined, track)).toEqual([
+        { label: 'Hold in Earn', value: '$7.3K', balanceTrack: track },
+      ]);
+      expect(tierOfferSubtitle(undefined, undefined, track)).toBe('Hold $7.3K in Earn');
+    });
+
+    it('keeps the two-route copy when the route is not offered', () => {
+      expect(tierOfferSubtitle(offer(), undefined, undefined)).toBe(
+        '$149.5/year or 37.5K FUSE locked',
+      );
     });
   });
 });

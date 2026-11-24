@@ -8,6 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useCancelTierSubscription, useTierMembership } from '@/hooks/useTierMembership';
 import { getAsset } from '@/lib/assets';
+import {
+  activeTierBalance,
+  formatBalanceUsd,
+  formatThresholdUsd,
+  formatTierBalanceDate,
+  relevantTrack,
+} from '@/lib/tierBalance';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
   availableRoutes,
@@ -65,6 +72,11 @@ const TierMembershipSheetContent = ({
   const subscriptionTierName = subscription ? getTierDisplayName(subscription.tier) : '';
   const lock = membership?.lock;
   const dateLabel = membershipDateLabel(membership);
+  // The "Hold in Earn" route, when it is holding a tier for this user.
+  const balance = activeTierBalance(membership);
+  const balanceTrack = relevantTrack(balance, membership?.currentTier);
+  const heldByBalance =
+    balanceTrack?.status === 'active' || balanceTrack?.status === 'grace' ? balanceTrack : null;
   const subscriptionEnded =
     subscription?.status === TierSubscriptionStatus.EXPIRED ||
     subscription?.status === TierSubscriptionStatus.REPLACED;
@@ -149,6 +161,28 @@ const TierMembershipSheetContent = ({
                   : '—'
             }
           />
+        </View>
+      ) : null}
+
+      {balance && heldByBalance ? (
+        <View className="mt-4 overflow-hidden rounded-[20px] bg-[#232323]">
+          <TierDetailRow
+            label="Earn balance"
+            value={balance.currentUsd === null ? '—' : formatBalanceUsd(balance.currentUsd)}
+            withDivider
+          />
+          <TierDetailRow
+            label={`Minimum for ${getTierDisplayName(heldByBalance.tier)}`}
+            value={formatThresholdUsd(heldByBalance.thresholdUsd)}
+            withDivider={heldByBalance.status === 'grace'}
+          />
+          {heldByBalance.status === 'grace' ? (
+            <TierDetailRow
+              label="Top up by"
+              value={formatTierBalanceDate(heldByBalance.graceEndsAt) || '—'}
+              valueClassName="text-warning"
+            />
+          ) : null}
         </View>
       ) : null}
 

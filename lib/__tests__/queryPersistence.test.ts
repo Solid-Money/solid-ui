@@ -211,9 +211,26 @@ describe('persist then restore', () => {
     const { families: _families, ...legacy } = JSON.parse(mockDisk.get(DISK_KEY)!);
     mockDisk.set(DISK_KEY, JSON.stringify(legacy));
 
-    expect(QUERY_FAMILY_VERSIONS.tierMembership).toBe(2);
     expect(restoreQueryCache(newClient())).toBe(4);
     expect(getQueryCacheRestoreInfo().droppedFamilies).toEqual([]);
+  });
+
+  it('drops a tier membership written before it carried the balance route', () => {
+    signIn('u1');
+    const client = newClient();
+    persist(client);
+    client.setQueryData(['tierMembership', 'u1', 'transfer'], { enabled: true, offers: [] });
+    client.setQueryData(['vault', 'balance', SAFE, 'USDC'], 100);
+    jest.advanceTimersByTime(2_000);
+    // Written before family versions existed, so read as tierMembership 2.
+    const { families: _families, ...legacy } = JSON.parse(mockDisk.get(DISK_KEY)!);
+    mockDisk.set(DISK_KEY, JSON.stringify(legacy));
+
+    expect(QUERY_FAMILY_VERSIONS.tierMembership).toBe(3);
+    const restored = newClient();
+    expect(restoreQueryCache(restored)).toBe(1);
+    expect(restored.getQueryData(['tierMembership', 'u1', 'transfer'])).toBeUndefined();
+    expect(getQueryCacheRestoreInfo().droppedFamilies).toEqual(['tierMembership']);
   });
 
   it('reports why nothing was restored', () => {
