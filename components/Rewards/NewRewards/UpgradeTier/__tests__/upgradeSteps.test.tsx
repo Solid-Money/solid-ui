@@ -59,6 +59,10 @@ jest.mock('@/lib/lockTokenRows', () => ({ lockTokenRow: () => ({}) }));
 jest.mock('@/lib/utils', () => ({ formatNumber: (value: number) => String(value) }));
 // Reached through the card's asset table, and never called here.
 jest.mock('@/lib/wagmi', () => ({ publicClient: jest.fn() }));
+jest.mock('@/store/useDepositStore', () => ({
+  useDepositStore: (select: (state: { setModal: () => void }) => unknown) =>
+    select({ setModal: jest.fn() }),
+}));
 
 const mockSubscribe = jest.fn();
 jest.mock('@/hooks/useTierMembership', () => ({
@@ -215,7 +219,7 @@ describe('the offer step', () => {
     mockMembership = membershipWith({ revenueTreasuryAddress: null });
     mockPayment = { ...mockPayment, affordable: true };
 
-    render(<UpgradeTierContent onTopUp={jest.fn()} />);
+    render(<UpgradeTierContent />);
 
     expect(texts()).toContain('Tier upgrades are not available right now.');
     expect(texts()).not.toContain('Review upgrade');
@@ -225,7 +229,7 @@ describe('the offer step', () => {
   it('still offers the purchase while cash can be paid', () => {
     mockPayment = { ...mockPayment, affordable: true };
 
-    render(<UpgradeTierContent onTopUp={jest.fn()} />);
+    render(<UpgradeTierContent />);
 
     expect(texts()).toContain('Review upgrade');
   });
@@ -234,7 +238,7 @@ describe('the offer step', () => {
   it('goes on to the review for a payment awaiting confirmation', () => {
     mockPayment = { ...mockPayment, awaitingConfirm: true };
 
-    render(<UpgradeTierContent onTopUp={jest.fn()} />);
+    render(<UpgradeTierContent />);
 
     expect(texts()).toContain('Review upgrade');
     expect(texts()).not.toContain('Top up');
@@ -257,7 +261,7 @@ describe('the offer step', () => {
     it('keeps the cash route, and goes on to the review to confirm', () => {
       cashOff();
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(texts()).not.toContain('Tier upgrades are not available right now.');
       expect(texts()).toContain('Review upgrade');
@@ -267,7 +271,7 @@ describe('the offer step', () => {
     it('does not move the selection to the lock', () => {
       cashOff({ lockAvailable: true });
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(mockStore.setRoute).not.toHaveBeenCalled();
       expect(texts()).toContain('Review upgrade');
@@ -277,7 +281,7 @@ describe('the offer step', () => {
       cashOff({ lockAvailable: true });
       mockStore.route = null;
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(mockStore.setRoute).toHaveBeenCalledWith('cash');
       expect(mockStore.setRoute).not.toHaveBeenCalledWith('lock');
@@ -287,7 +291,7 @@ describe('the offer step', () => {
       cashOff({ lockAvailable: true });
       mockStore.route = 'lock';
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(mockStore.setRoute).not.toHaveBeenCalled();
     });
@@ -296,7 +300,7 @@ describe('the offer step', () => {
       cashOff();
       mockPayment = { ...mockPayment, awaitingConfirm: false };
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(texts()).toContain('Tier upgrades are not available right now.');
     });
@@ -315,7 +319,7 @@ describe('the offer step', () => {
     it('still goes on to the review to confirm it', () => {
       mockPayment = { ...mockPayment, awaitingConfirm: true };
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(texts()).not.toContain('Tier upgrades are not available right now.');
       expect(texts()).toContain('Review upgrade');
@@ -324,7 +328,7 @@ describe('the offer step', () => {
     it('offers nothing once nothing awaits confirmation', () => {
       mockPayment = { ...mockPayment, affordable: true };
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(texts()).toContain('Tier upgrades are not available right now.');
       expect(texts()).not.toContain('Review upgrade');
@@ -335,7 +339,7 @@ describe('the offer step', () => {
       mockMembership = { ...mockMembership!, offers: [] } as TierMembershipState;
       mockPayment = { ...mockPayment, awaitingConfirm: true };
 
-      render(<UpgradeTierContent onTopUp={jest.fn()} />);
+      render(<UpgradeTierContent />);
 
       expect(texts()).toContain('Tier upgrades are not available right now.');
     });

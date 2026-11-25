@@ -24,13 +24,21 @@ import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useBlackFridayCampaign } from '@/hooks/useBlackFridayCampaign';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership } from '@/hooks/useTierMembership';
+import { type BlackFridayOffer, blackFridayOffer } from '@/lib/blackFriday';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
-import { availableRoutes, findOffer, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
+import {
+  availableRoutes,
+  canPayCashFor,
+  findOffer,
+  formatPriceUsd,
+  offerFirstYearFeeUsd,
+} from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -74,21 +82,28 @@ const PremiumUpgradeFooter = ({
   selectedTier,
   onUpgradePress,
   cta,
+  sale,
 }: {
   selectedTier: RewardsTier;
   /** The button, its subtitle and whether it does anything — see `tierUpgradeCta`. */
   cta: TierUpgradeCta;
+  sale?: BlackFridayOffer;
   onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const { label: actionLabel, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
-  const label =
+  const { label: actionLabel, subtitle: ctaSubtitle, enabled, held } = cta;
+  const saleAction = actionLabel === 'Upgrade' || actionLabel === 'Keep' ? sale : undefined;
+  const canUpgrade = enabled && !saleAction?.preview;
+  const standardLabel =
     actionLabel === 'Upgrade'
       ? `Upgrade to ${TIER_LABELS[selectedTier]}`
       : actionLabel === 'Keep'
         ? `Keep ${TIER_LABELS[selectedTier]}`
         : actionLabel;
+  const label = saleAction
+    ? `${standardLabel} for ${formatPriceUsd(saleAction.saleUsd)}`
+    : standardLabel;
   // Gone, not greyed out, for any tier the user already has.
   //
   // Was `selectedTier !== currentTier`, which only ever hid the footer on the
@@ -172,7 +187,16 @@ const PremiumUpgradeFooter = ({
             lineHeight: 23,
           }}
         >
-          {ctaSubtitle}
+          {saleAction ? (
+            <>
+              <Text className="text-[#DDD2A5]">
+                Save {formatPriceUsd(saleAction.beforeUsd - saleAction.saleUsd)}
+              </Text>
+              {` · ${formatPriceUsd(saleAction.saleUsd)} first year, then ${formatPriceUsd(saleAction.beforeUsd)}/year`}
+            </>
+          ) : (
+            ctaSubtitle
+          )}
         </Text>
         <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
           <Pressable
@@ -215,6 +239,7 @@ export default function RewardsBenefitsScreenNew() {
 }
 
 function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier | null }) {
+  const campaign = useBlackFridayCampaign();
   const {
     data: rewardsData,
     isError,
@@ -235,7 +260,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
           target => target.tier === tier && target.requiredFuse > 0,
         )
       : undefined;
-  const { data: membership } = useTierMembership();
+  const { data: membership, isError: membershipError } = useTierMembership({
+    refreshInterval: campaign.banner ? 15_000 : undefined,
+  });
   const openTierUpgrade = useTierUpgradeStore(state => state.open);
   const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(initialTier);
   const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
@@ -298,6 +325,17 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
     const offer = findOffer(membership, tier);
     if (!membership?.enabled || !offer || offer.held) return [];
     return availableRoutes(offer, membership.contracts);
+  };
+  const saleFor = (tier: RewardsTier) => {
+    const offer = findOffer(membership, tier);
+    return blackFridayOffer(
+      tier,
+      !membershipError && membership?.enabled && offer && canPayCashFor(offer, membership.contracts)
+        ? offer
+        : undefined,
+      tierBenefits?.find(benefit => benefit.tier === tier),
+      campaign,
+    );
   };
 
   const ctaFor = (tier: RewardsTier) => {
@@ -441,6 +479,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
         <PremiumUpgradeFooter
           selectedTier={selectedTier}
           cta={ctaFor(selectedTier)}
+          sale={saleFor(selectedTier)}
           onUpgradePress={handleUpgradePress}
         />
       )}
@@ -558,6 +597,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   showCardFx={showCardFx}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
                   contracts={membership?.contracts}
+                  blackFriday={saleFor(tier)}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))

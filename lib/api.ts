@@ -2748,6 +2748,8 @@ export const confirmTierLock = async (body: {
 export const confirmTierSubscription = async (body: {
   tier: RewardsTier;
   transactionHash: string;
+  /** The highest first-year fee accepted at checkout during a sale. */
+  expectedFirstYearUsd?: number;
   /**
    * The cross-chain transfer that brought the USDC in, when it was bridged.
    * The backend reads it back from LI.FI and lets the first charge absorb what

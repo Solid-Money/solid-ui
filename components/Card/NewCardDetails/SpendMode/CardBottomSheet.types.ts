@@ -45,6 +45,8 @@ export interface CardBottomSheetProps {
    * with a loan on each instance; web already scrolls.
    */
   scrollable?: boolean;
+  /** Full-bleed content that draws its own drag indicator. */
+  fullBleed?: { backgroundColor: string; radius: number; title: string };
   children: (body: CardSheetBody) => ReactNode;
 }
 

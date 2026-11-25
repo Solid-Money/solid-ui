@@ -119,10 +119,11 @@ export const useRewardsUserData = (options?: {
   });
 };
 
-export const useTierBenefits = () => {
+export const useTierBenefits = ({ enabled = true }: { enabled?: boolean } = {}) => {
   return useQuery({
     queryKey: [REWARDS, 'tierBenefits'],
     queryFn: fetchTierBenefits,
+    enabled,
     staleTime: secondsToMilliseconds(60),
   });
 };

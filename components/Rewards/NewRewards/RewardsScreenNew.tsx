@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import Loading from '@/components/Loading';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
+import BlackFridayPromotion from '@/components/Promotions/BlackFridayPromotion';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
@@ -16,6 +17,7 @@ import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useAiApiOverview } from '@/hooks/useAiApi';
+import { useBlackFridayPromotion } from '@/hooks/useBlackFridayCampaign';
 import {
   useOptInToRewards,
   useReferralSummary,
@@ -70,6 +72,7 @@ export default function RewardsScreenNew() {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
+  const { promotion: blackFridayPromotion } = useBlackFridayPromotion();
   const { data: aiApi } = useAiApiOverview();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
@@ -287,6 +290,12 @@ export default function RewardsScreenNew() {
               <Text className="text-base font-semibold text-white">Explore tiers</Text>
             </Pressable>
           </View>
+
+          {blackFridayPromotion && (
+            <View className="px-4">
+              <BlackFridayPromotion promotion={blackFridayPromotion} />
+            </View>
+          )}
 
           {/* The spin & win flow is a native-only modal — SpinWinModalProvider
               force-closes itself on web — so the button stays native-only. It is

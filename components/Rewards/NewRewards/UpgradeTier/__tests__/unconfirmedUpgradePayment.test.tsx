@@ -229,7 +229,7 @@ describe('a payment whose send ended with no hash, and a balance short of the fe
   it('goes on to the review rather than offering to top up or bridge', () => {
     unconfirmed();
 
-    render(<UpgradeTierContent onTopUp={jest.fn()} />);
+    render(<UpgradeTierContent />);
 
     expect(texts()).toContain('Review upgrade');
     expect(texts()).not.toContain('Top up');

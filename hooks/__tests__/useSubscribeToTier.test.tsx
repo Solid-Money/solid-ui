@@ -218,6 +218,7 @@ describe('a module subscription', () => {
     ).toBe(199_000_000n);
 
     expect(mockConfirm).toHaveBeenCalledWith({
+      expectedFirstYearUsd: 159,
       tier: RewardsTier.PRIME,
       transactionHash: TX,
       funding: FUNDING,

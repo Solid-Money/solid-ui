@@ -19,8 +19,11 @@ import {
   CoreRocketPerkIcon,
 } from '@/assets/images/rewards-tiers/core-tier-icons';
 import { Text } from '@/components/ui/text';
+import { useReferralCountdown } from '@/hooks/useReferralCountdown';
 import { type AssetPath, getAsset } from '@/lib/assets';
+import { type BlackFridayOffer, formatBlackFridayFuse } from '@/lib/blackFriday';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
+import { formatPriceUsd } from '@/lib/tierUpgrade';
 import {
   RewardsTier,
   type TierBenefits,
@@ -30,6 +33,11 @@ import {
   type TierOffer,
 } from '@/lib/types';
 
+import BlackFridayTierPanel, {
+  BLACK_FRIDAY_GOLD,
+  BlackFridayChip,
+  BlackFridayTierPrice,
+} from './BlackFridayTierOffer';
 import {
   type CashbackCategoryKey,
   formatCashbackRate,
@@ -42,6 +50,7 @@ import {
   type PerkIconName,
   TIER_LABELS,
   TIER_PRESENTATION,
+  type TierOfferRow,
   tierOfferRows,
   type TierPerk,
   tierPresentationContent,
@@ -284,7 +293,17 @@ function TierCardArtwork({
   );
 }
 
-function Panel({ title, s, children }: { title?: string; s: number; children: ReactNode }) {
+function Panel({
+  title,
+  s,
+  accessory,
+  children,
+}: {
+  title?: string;
+  s: number;
+  accessory?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <View
       style={{
@@ -297,9 +316,17 @@ function Panel({ title, s, children }: { title?: string; s: number; children: Re
     >
       {title && (
         <>
-          <Text style={[medium(s), { color: 'rgba(255,255,255,0.7)', padding: 19 * s }]}>
-            {title}
-          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 19 * s,
+            }}
+          >
+            <Text style={[medium(s), { color: 'rgba(255,255,255,0.7)' }]}>{title}</Text>
+            {accessory}
+          </View>
           <View style={styles.divider} />
         </>
       )}
@@ -313,6 +340,7 @@ function ValuePill({
   s,
   locked = false,
   highlight = false,
+  gold = false,
   struckValue,
 }: {
   value: string;
@@ -320,6 +348,7 @@ function ValuePill({
   locked?: boolean;
   /** Green, for a fee this tier pays less of than Core. */
   highlight?: boolean;
+  gold?: boolean;
   /** A regular price, drawn struck through before `value` while a sale runs. */
   struckValue?: string;
 }) {
@@ -366,6 +395,7 @@ function ValuePill({
           medium(s),
           locked && { fontSize: 15 * s, color: 'rgba(255,255,255,0.45)' },
           highlight && { color: GREEN },
+          gold && { color: BLACK_FRIDAY_GOLD },
         ]}
       >
         {value}
@@ -378,14 +408,15 @@ function StatsBand({
   tier,
   s,
   benefits,
+  campaignCashback,
 }: {
   tier: RewardsTier;
   s: number;
   benefits?: TierBenefits;
+  campaignCashback?: number;
 }) {
   const content = tierPresentationContent(tier, benefits);
   const web = Platform.OS === 'web';
-  const statTextClass = web ? `tier-benefits-stat tier-benefits-stat-${tier}` : undefined;
   return (
     <View
       style={{
@@ -406,8 +437,13 @@ function StatsBand({
       />
       <View style={{ flexDirection: 'row', flex: 1 }}>
         {content.stats.map(stat => {
-          const percent = stat.value.endsWith('%');
-          const dollar = stat.value.startsWith('$');
+          const offerRate = stat.label === 'Cashback' ? campaignCashback : undefined;
+          const value = offerRate ? `${offerRate}%` : stat.value;
+          const color = offerRate ? BLACK_FRIDAY_GOLD : content.accent;
+          const statTextClass =
+            web && !offerRate ? `tier-benefits-stat tier-benefits-stat-${tier}` : undefined;
+          const percent = value.endsWith('%');
+          const dollar = value.startsWith('$');
           return (
             <View
               key={stat.label}
@@ -427,23 +463,23 @@ function StatsBand({
                       fontSize: 25 * s,
                       lineHeight: (web ? 25 : 32) * s,
                       ...(web && { marginTop: 5 * s, letterSpacing: -1 * s }),
-                      color: content.accent,
+                      color,
                     }}
                   >
                     $
                   </Text>
                 )}
                 <Text
-                  className={web ? `font-light ${statTextClass}` : undefined}
+                  className={web ? `font-light ${statTextClass ?? ''}` : undefined}
                   style={{
                     fontFamily: 'MonaSans_300Light',
                     fontSize: 46 * s,
                     lineHeight: 46 * s,
                     letterSpacing: -1.84 * s,
-                    color: content.accent,
+                    color,
                   }}
                 >
-                  {stat.value.replace(/[%$]/g, '')}
+                  {value.replace(/[%$]/g, '')}
                 </Text>
                 {percent && (
                   <Text
@@ -456,7 +492,7 @@ function StatsBand({
                         marginTop: (tier === RewardsTier.CORE ? 5 : 4) * s,
                         letterSpacing: -1 * s,
                       }),
-                      color: content.accent,
+                      color,
                     }}
                   >
                     %
@@ -726,9 +762,11 @@ function CashbackPanel({
   s,
   benefits,
   allBenefits,
+  campaign,
 }: {
   tier: RewardsTier;
   s: number;
+  campaign?: BlackFridayOffer;
   benefits?: TierBenefits;
   /** Every tier's benefits, for the tier named on a locked category's pill. */
   allBenefits?: TierBenefits[];
@@ -751,8 +789,21 @@ function CashbackPanel({
             justifyContent: 'space-between',
           }}
         >
-          <Text style={medium(s)}>Every purchase</Text>
-          <ValuePill value={formatTierCashbackRate(tier)} s={s} />
+          <View style={{ flex: 1 }}>
+            <Text style={medium(s)}>Every purchase</Text>
+            {!!campaign?.cashback && (
+              <Text style={[regular(s), { color: BLACK_FRIDAY_GOLD, fontSize: 12 * s }]}>
+                Black Friday week
+                {campaign.cashbackCap ? ` · up to ${campaign.cashbackCap} a month` : ''}
+              </Text>
+            )}
+          </View>
+          <ValuePill
+            s={s}
+            gold={!!campaign?.cashback}
+            struckValue={campaign?.cashback ? '5%' : undefined}
+            value={campaign?.cashback ? `${campaign.cashback}%` : formatTierCashbackRate(tier)}
+          />
         </View>
         {categories.map(category => {
           // Artwork is the one thing the API cannot supply, so an unknown
@@ -870,6 +921,7 @@ export function TierBenefitsPage({
   allBenefits,
   offer,
   contracts,
+  blackFriday,
   showUpgradeSpace,
   showCardFx,
 }: {
@@ -892,6 +944,7 @@ export function TierBenefitsPage({
   offer?: TierOffer;
   /** The membership's contracts, which decide whether the cash price is one that can be paid. */
   contracts?: Pick<TierMembershipContracts, 'billingTokenAddress' | 'revenueTreasuryAddress'>;
+  blackFriday?: BlackFridayOffer;
   showUpgradeSpace: boolean;
   /**
    * Whether this user is quoted the card FX price — the perk, the Fees & Caps
@@ -909,7 +962,37 @@ export function TierBenefitsPage({
     table.lines.filter(line => line.key !== 'fx'),
     cardFx,
   );
-  const offers = tierOfferRows(offer, contracts);
+  const time = useReferralCountdown(blackFriday?.endsAt);
+  const sale = time?.isElapsed ? undefined : blackFriday;
+  const countdown = time ? `ENDS IN ${time.label.toUpperCase()}` : '';
+  const discount = sale ? Math.round((1 - sale.saleUsd / sale.beforeUsd) * 100) : 0;
+  const offers: (TierOfferRow & { earn?: boolean })[] = sale
+    ? [
+        {
+          label: 'Annual membership',
+          value: `${formatPriceUsd(sale.saleUsd)}/year`,
+          listValue: formatPriceUsd(sale.beforeUsd),
+        },
+        ...(sale.lockFuse
+          ? [
+              {
+                label: 'Or lock FUSE',
+                value: `${formatBlackFridayFuse(sale.lockFuse)} FUSE`,
+                listValue: sale.beforeFuse ? formatBlackFridayFuse(sale.beforeFuse) : undefined,
+              },
+            ]
+          : []),
+        ...(sale.earnHoldUsd
+          ? [
+              {
+                label: 'Or hold in Earn',
+                value: formatPriceUsd(sale.earnHoldUsd),
+                earn: true,
+              },
+            ]
+          : []),
+      ]
+    : tierOfferRows(offer, contracts);
   const showsOffers = tier !== RewardsTier.CORE && offers.length > 0;
   const cardFxFootnote = cardFx ? (
     <Text
@@ -954,6 +1037,13 @@ export function TierBenefitsPage({
       style={{ width, paddingBottom: bottomInset + (showUpgradeSpace ? 150 : 48) * s }}
     >
       <View style={{ height: topInset + 463 * s }}>
+        {sale && (
+          <View style={{ position: 'absolute', top: topInset + 67 * s, left: 0, right: 0 }}>
+            <BlackFridayChip
+              scale={s}
+            >{`BLACK FRIDAY · ${discount}% OFF · ${countdown}`}</BlackFridayChip>
+          </View>
+        )}
         <Text
           accessibilityRole="header"
           style={{
@@ -980,7 +1070,9 @@ export function TierBenefitsPage({
             alignItems: 'center',
           }}
         >
-          {current ? (
+          {sale ? (
+            <BlackFridayTierPrice offer={sale} scale={s} />
+          ) : current ? (
             <View
               style={{
                 borderRadius: 100,
@@ -1005,9 +1097,23 @@ export function TierBenefitsPage({
         </View>
       </View>
       <Animated.View testID={`tier-benefits-content-${tier}`} style={contentMotion}>
-        <StatsBand tier={tier} s={s} benefits={benefits} />
+        <StatsBand tier={tier} s={s} benefits={benefits} campaignCashback={sale?.cashback} />
+        {sale && (
+          <BlackFridayTierPanel
+            offer={sale}
+            tierName={TIER_LABELS[tier]}
+            countdown={countdown}
+            scale={s}
+          />
+        )}
         <PerksPanel tier={tier} s={s} benefits={benefits} cardFx={cardFx} />
-        <CashbackPanel tier={tier} s={s} benefits={benefits} allBenefits={allBenefits} />
+        <CashbackPanel
+          tier={tier}
+          s={s}
+          benefits={benefits}
+          allBenefits={allBenefits}
+          campaign={sale}
+        />
         <Panel title="Fees & Caps" s={s}>
           <View style={{ paddingHorizontal: 19 * s, paddingVertical: 8 * s }}>
             {visibleFeeLines.map(line => (
@@ -1058,23 +1164,35 @@ export function TierBenefitsPage({
         </Panel>
         {showsOffers && cardFxFootnote}
         {showsOffers && (
-          <Panel title={`Get ${TIER_LABELS[tier]}`} s={s}>
+          <Panel
+            title={`Get ${TIER_LABELS[tier]}`}
+            s={s}
+            accessory={sale && <BlackFridayChip scale={s}>{`SAVE ${discount}%`}</BlackFridayChip>}
+          >
             <View style={{ paddingHorizontal: 20 * s, paddingTop: 4 * s, paddingBottom: 8 * s }}>
-              {offers.map(row => (
+              {offers.map((row, index) => (
                 <View
                   key={row.label}
-                  style={{
-                    minHeight: 52 * s,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 10 * s,
-                  }}
+                  style={[
+                    {
+                      minHeight: 52 * s,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10 * s,
+                    },
+                    sale && tier === RewardsTier.PRIME && index > 0 && styles.offerRowDivider,
+                  ]}
                 >
                   <Text style={[medium(s), { fontFamily: 'MonaSans_400Regular' }]}>
                     {row.label}
                   </Text>
-                  <ValuePill value={row.value} struckValue={row.listValue} s={s} />
+                  <ValuePill
+                    value={row.value}
+                    struckValue={row.listValue}
+                    gold={!!sale && !row.earn}
+                    s={s}
+                  />
                 </View>
               ))}
             </View>
@@ -1091,4 +1209,5 @@ export function TierBenefitsPage({
 
 const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+  offerRowDivider: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
 });
