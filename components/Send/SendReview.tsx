@@ -3,7 +3,6 @@ import { Control } from 'react-hook-form';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { useQuery } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -24,13 +23,12 @@ import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
-import { fetchAddressBook } from '@/lib/api';
 import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { isProtocolAddress, PROTOCOL_ADDRESS_RECIPIENT_ERROR } from '@/lib/protocolAddresses';
 import { getExpectedRecipientChainId } from '@/lib/sendRecipients';
 import { Status, TokenType } from '@/lib/types';
-import { cn, eclipseAddress, formatNumber, withRefreshToken } from '@/lib/utils';
+import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 
@@ -64,15 +62,24 @@ const SendReview: React.FC = () => {
   );
   const { activities, refetchAll, initialFetchStatus, retryInitialFetch } = useActivity();
   const {
-    data: addressBook,
-    isError: isAddressBookError,
-    isFetching: isAddressBookFetching,
-    refetch: refetchAddressBook,
-  } = useQuery({
-    queryKey: ['address-book'],
-    queryFn: () => withRefreshToken(() => fetchAddressBook()),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    control: nameControl,
+    watch: watchName,
+    handleAddContact,
+    errors: nameErrors,
+    hasSkipped2fa,
+    addressBookQuery: {
+      data: addressBook,
+      isError: isAddressBookError,
+      isFetching: isAddressBookFetching,
+      refetch: refetchAddressBook,
+    },
+  } = useAddressBook({
+    defaultAddress: address || '',
+    defaultName: name || '',
+    optionalName: true,
+    onSuccess: () => {
+      // Prevent navigation
+    },
   });
   // A regular send always executes on the token's chain. When this recipient is
   // known on another network (picked in the bridge flow, a saved contact's, or
@@ -126,21 +133,6 @@ const SendReview: React.FC = () => {
     address: address as Address | undefined,
     chainId: selectedToken?.chainId,
     enabled: !!address && !!selectedToken?.chainId,
-  });
-
-  const {
-    control: nameControl,
-    watch: watchName,
-    handleAddContact,
-    errors: nameErrors,
-    hasSkipped2fa,
-  } = useAddressBook({
-    defaultAddress: address || '',
-    defaultName: name || '',
-    optionalName: true,
-    onSuccess: () => {
-      // Prevent navigation
-    },
   });
 
   const { isVerified: isTotpVerified } = useTotp();

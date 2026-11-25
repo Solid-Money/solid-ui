@@ -68,12 +68,13 @@ export const useAddressBook = (options?: {
   const setModal = useSendStore(state => state.setModal);
   const queryClient = useQueryClient();
 
-  const { data: addressBook = [] } = useQuery({
+  const addressBookQuery = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
     staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
+  const addressBook = useMemo(() => addressBookQuery.data ?? [], [addressBookQuery.data]);
 
   const addressBookEntry = useMemo(() => {
     if (!options?.defaultAddress) return null;
@@ -156,5 +157,8 @@ export const useAddressBook = (options?: {
     handleAddContact,
     addToAddressBookMutation,
     hasSkipped2fa,
+    // The raw query, for callers that must tell "not loaded" or "failed" from
+    // an empty address book (`data` stays undefined until it loads).
+    addressBookQuery,
   };
 };
