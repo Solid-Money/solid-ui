@@ -34,6 +34,7 @@ import {
   type SoBtcChainId,
   soBtcSharesToAssets,
 } from '@/lib/soBtc';
+import { fixedPointUsd } from '@/lib/tierBalance';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
@@ -134,9 +135,12 @@ const SoBtcWithdrawForm = () => {
       : 0n;
   const amountBtc = amountShares && rate ? toBtc(soBtcSharesToAssets(amountShares, rate)) : 0;
   // What leaves Earn, at the price the USD line under the amount already uses.
+  // Valued from the BTC the shares are worth, in sats, without a float in between.
   const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
     'withdraw',
-    btcPrice > 0 ? amountBtc * btcPrice : 0,
+    amountShares && rate
+      ? fixedPointUsd(soBtcSharesToAssets(amountShares, rate), SOBTC_DECIMALS, btcPrice)
+      : 0,
   );
 
   const validation: string | null = useMemo(() => {

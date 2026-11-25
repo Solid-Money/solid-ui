@@ -47,6 +47,7 @@ import {
   SoUsdWithdrawChainId,
 } from '@/lib/soUsdWithdraw';
 import { sponsoredMinimumCopy, useSponsoredMinimum } from '@/lib/sponsoredMinimum';
+import { fixedPointUsd, parseTokenUnits } from '@/lib/tierBalance';
 import { Status, TokenType, VaultType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
@@ -383,12 +384,23 @@ const RegularWithdrawForm = () => {
   // price — fetched only for someone the route is staged to.
   const { relevant: tierBalanceTrack } = useTierBalance();
   const { data: eurcPriceUsd } = useTokenPriceUsd(isSoEurc && tierBalanceTrack ? 'EURC' : '');
+  // In fixed point: the share amount is parsed to base units, never to a float.
   const outflowUsd = useMemo(() => {
-    const amount = Number(watchedAmount || 0);
-    if (!Number.isFinite(amount) || amount <= 0) return 0;
-    if (isSoEurc) return amount * (exchangeRate ?? 1) * (Number(eurcPriceUsd) || 0);
-    return amount * (selectedToken?.quoteRate || 0);
-  }, [watchedAmount, isSoEurc, exchangeRate, eurcPriceUsd, selectedToken?.quoteRate]);
+    const decimals = selectedToken?.contractDecimals;
+    if (decimals === undefined) return 0;
+    const units = parseTokenUnits(watchedAmount ? String(watchedAmount) : undefined, decimals);
+    if (isSoEurc) {
+      return fixedPointUsd(units, decimals, exchangeRate ?? 1, Number(eurcPriceUsd) || 0);
+    }
+    return fixedPointUsd(units, decimals, selectedToken?.quoteRate || 0);
+  }, [
+    watchedAmount,
+    isSoEurc,
+    exchangeRate,
+    eurcPriceUsd,
+    selectedToken?.contractDecimals,
+    selectedToken?.quoteRate,
+  ]);
   const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
     'withdraw',
     outflowUsd,

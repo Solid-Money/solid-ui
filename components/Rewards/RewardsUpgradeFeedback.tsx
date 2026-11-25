@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import TierPopup from '@/components/Rewards/NewRewards/TierPopup';
 import {
   benefitsForTier,
+  pendingCelebrationCopy,
   tierPopupStats,
   upgradeCelebrationCopy,
 } from '@/components/Rewards/NewRewards/tierTrialCopy';
@@ -56,11 +57,21 @@ export default function RewardsUpgradeFeedback() {
   // Which route the tier came by decides the words, and the "Hold in Earn" one
   // is told by the membership payload rather than the rewards one. The route
   // unlocks on the backend's own schedule, so the copy on hand may predate it:
-  // read it again when a promotion lands.
+  // read it again when a promotion lands, and name no route — nor claim Yield
+  // boost — until that read has come back for this promotion. A read that
+  // fails leaves the neutral words up; the card can still be dismissed.
   const { data: membership, refetch: refetchMembership } = useTierMembership();
   const balance = activeTierBalance(membership);
+  const [confirmedFor, setConfirmedFor] = useState<typeof success>(undefined);
   useEffect(() => {
-    if (success) void refetchMembership();
+    if (!success) return;
+    let live = true;
+    void refetchMembership().then(result => {
+      if (live && result.isSuccess) setConfirmedFor(success);
+    });
+    return () => {
+      live = false;
+    };
   }, [success, refetchMembership]);
 
   // Held after dismissal so the card can animate out: `dismiss` clears
@@ -75,9 +86,10 @@ export default function RewardsUpgradeFeedback() {
   // moment the flow closes — which a completed purchase does itself.
   if (!shown || upgradeFlowOpen) return null;
 
-  const copy = upgradeCelebrationCopy(shown, balance);
+  const confirmed = confirmedFor === shown;
+  const copy = confirmed ? upgradeCelebrationCopy(shown, balance) : pendingCelebrationCopy(shown);
   // The route grants everything the tier gives but Yield boost.
-  const byBalance = unlockedByBalance(balance, shown.currentTier);
+  const byBalance = confirmed && unlockedByBalance(balance, shown.currentTier);
 
   return (
     <TierPopup
@@ -89,7 +101,7 @@ export default function RewardsUpgradeFeedback() {
       // The tier's own benefits, not this user's rates: an override pinned to
       // one cardholder is not what "Welcome to Prime" is announcing.
       stats={tierPopupStats(benefitsForTier(tierBenefits, shown.currentTier), {
-        yieldBoost: !byBalance,
+        yieldBoost: confirmed && !byBalance,
       })}
       note={copy.note}
       primaryLabel="Explore benefits"

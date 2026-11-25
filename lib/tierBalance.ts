@@ -1,3 +1,5 @@
+import { parseUnits } from 'viem';
+
 import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
@@ -99,12 +101,15 @@ export interface TierBalanceOutflowWarning {
 /**
  * The warning to show before `outflowUsd` leaves Earn, or null for none.
  *
- * Informational only — every flow lets the user carry on. Shown when, for the
- * relevant track:
- * - it is active or in grace, the route is what holds the user's current tier,
- *   and the balance after the outflow would be under the threshold; or
- * - it is building and the balance after the outflow would be under the
- *   threshold, which resets the progress.
+ * Informational only — every flow lets the user carry on. Every track the
+ * outflow would cross is weighed, not just the one the screens talk about:
+ * - a tier the route holds, when the route is what holds the user's current
+ *   tier and the balance after the outflow would be under its threshold —
+ *   grace starts, or the tier ends; this comes first;
+ * - otherwise a tier above the current one that is building and whose
+ *   threshold the balance would fall under — its progress resets. A Prime
+ *   member by balance building toward Ultra is warned about Ultra even while
+ *   Prime stays funded. Of several, the lowest tier crossed is named.
  *
  * Nothing for an outflow of nothing (or one the form cannot price yet), and
  * nothing before the backend has measured a balance to subtract it from.
@@ -115,11 +120,14 @@ export const outflowWarning = (
   outflowUsd: number,
 ): TierBalanceOutflowWarning | null => {
   if (!Number.isFinite(outflowUsd) || outflowUsd <= 0) return null;
-  const track = relevantTrack(balance, currentTier);
-  if (!balance || !track || balance.currentUsd === null) return null;
-  if (balance.currentUsd - outflowUsd >= track.thresholdUsd) return null;
+  if (!balance?.enabled || balance.currentUsd === null) return null;
+  const after = balance.currentUsd - outflowUsd;
+  const crosses = (track: TierBalanceTrackDto) => after < track.thresholdUsd;
 
-  const warning = (kind: TierBalanceOutflowKind): TierBalanceOutflowWarning => ({
+  const warning = (
+    track: TierBalanceTrackDto,
+    kind: TierBalanceOutflowKind,
+  ): TierBalanceOutflowWarning => ({
     kind,
     tier: track.tier,
     thresholdUsd: track.thresholdUsd,
@@ -130,10 +138,81 @@ export const outflowWarning = (
     reentryDays: balance.reentryDays,
   });
 
-  if (track.status === 'building') return warning('reset');
-  if (!isHeld(track) || !balance.holdsCurrentTier) return null;
-  if (track.status === 'active' && balance.graceDays > 0) return warning('grace');
-  return warning('lose');
+  // A tier the route holds: the highest, Ultra over Prime.
+  const held = isHeld(balance.ultra) ? balance.ultra : isHeld(balance.prime) ? balance.prime : null;
+  if (held && balance.holdsCurrentTier && crosses(held)) {
+    return warning(held, held.status === 'active' && balance.graceDays > 0 ? 'grace' : 'lose');
+  }
+
+  // Progress toward a tier above what the user holds, by any route.
+  const floor = held ? held.tier : (currentTier ?? RewardsTier.CORE);
+  const building = TIER_BALANCE_TIERS.filter(
+    tier => isHigherTier(tier, floor) && isHigherTier(tier, currentTier ?? RewardsTier.CORE),
+  )
+    .map(tier => tierBalanceTrack(balance, tier))
+    .find(track => track.status === 'building' && crosses(track));
+  return building ? warning(building, 'reset') : null;
+};
+
+// ---------------------------------------------------------------------------
+// Valuing what leaves Earn, in fixed point.
+// ---------------------------------------------------------------------------
+
+/** Decimals a price or rate is carried at once it becomes a bigint. */
+const PRICE_DECIMALS = 12;
+
+/**
+ * A typed token amount as base units, or null when it is not a positive amount
+ * the token can carry ("", "abc", "-1", more decimals than the token has).
+ */
+export const parseTokenUnits = (
+  amount: string | undefined,
+  decimals: number | undefined,
+): bigint | null => {
+  const trimmed = amount?.trim();
+  if (!trimmed || decimals === undefined || !Number.isInteger(decimals) || decimals < 0) {
+    return null;
+  }
+  try {
+    const units = parseUnits(trimmed, decimals);
+    return units > 0n ? units : null;
+  } catch {
+    return null;
+  }
+};
+
+/** A positive finite price or rate as a bigint at {@link PRICE_DECIMALS}, else null. */
+const priceUnits = (price: number): bigint | null => {
+  if (!Number.isFinite(price) || price <= 0) return null;
+  try {
+    return parseUnits(price.toFixed(PRICE_DECIMALS), PRICE_DECIMALS);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * The USD value of `units` base units of a token with `decimals`, at each of
+ * `prices` in turn (USD per token, or a share's rate then the asset's USD
+ * price), worked out in bigint so the token amount loses no precision before
+ * it is compared with a threshold. Only the final figure, in cents, becomes a
+ * number. 0 for no units or any price that is not positive.
+ */
+export const fixedPointUsd = (
+  units: bigint | null | undefined,
+  decimals: number,
+  ...prices: number[]
+): number => {
+  if (!units || units <= 0n || prices.length === 0) return 0;
+  let value = units;
+  let scale = 10n ** BigInt(decimals);
+  for (const price of prices) {
+    const fixed = priceUnits(price);
+    if (fixed === null) return 0;
+    value *= fixed;
+    scale *= 10n ** BigInt(PRICE_DECIMALS);
+  }
+  return Number((value * 100n) / scale) / 100;
 };
 
 // ---------------------------------------------------------------------------
@@ -162,7 +241,9 @@ export const formatShortfallUsd = (amount: number): string =>
 
 /** A measured balance, rounded DOWN so it never reads as enough when it is not. */
 export const formatBalanceUsd = (amount: number): string =>
-  `$${COMPACT_USD.format(Math.floor(Math.max(0, amount)))}`;
+  // Grouped whole dollars, never compact: compact formatting rounds to the
+  // nearest step, so $7,299 would read "$7.3K" beside a $7.3K target.
+  `$${Math.floor(Math.max(0, amount)).toLocaleString('en-US')}`;
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;

@@ -63,6 +63,7 @@ import {
 } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
 import { sponsoredMinimumCopy, useSponsoredMinimum } from '@/lib/sponsoredMinimum';
+import { fixedPointUsd, parseTokenUnits } from '@/lib/tierBalance';
 import {
   CardProvider,
   DepositCategory,
@@ -622,9 +623,10 @@ export default function CardDepositInternalForm() {
   // or being built on the "Hold in Earn" route. Priced at the soUSD rate read
   // above, or the share's wallet quote until that lands.
   const savingsOutflowUsd = useMemo(() => {
-    const amount = Number(watchedAmount || 0);
-    if (!isSavingsSource || !Number.isFinite(amount) || amount <= 0) return 0;
-    return amount * (exchangeRate > 0 ? exchangeRate : soUsdToken?.quoteRate || 0);
+    if (!isSavingsSource) return 0;
+    // soUSD shares are 6-decimal; parsed to base units, never to a float.
+    const units = parseTokenUnits(watchedAmount ? String(watchedAmount) : undefined, 6);
+    return fixedPointUsd(units, 6, exchangeRate > 0 ? exchangeRate : soUsdToken?.quoteRate || 0);
   }, [isSavingsSource, watchedAmount, exchangeRate, soUsdToken?.quoteRate]);
   const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
     'card_topup',

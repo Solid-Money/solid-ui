@@ -2,6 +2,7 @@
 import {
   benefitsForTier,
   durationLabel,
+  pendingCelebrationCopy,
   tierPopupStats,
   trialDaysRemaining,
   trialOfferCopy,
@@ -116,6 +117,18 @@ describe('trialOfferCopy', () => {
     expect(trialOfferCopy(trial({ durationDays: 1 })).body).toBe(
       '1 day of Prime, on us. Activate to start your trial.',
     );
+  });
+});
+
+describe('pendingCelebrationCopy', () => {
+  it('names the tier and nothing about how it came or what it includes', () => {
+    const copy = pendingCelebrationCopy({ currentTier: RewardsTier.ULTRA } as RewardsUserData);
+
+    expect(copy).toEqual({
+      eyebrow: 'Tier upgraded',
+      title: 'Welcome to Ultra',
+      body: 'Your new benefits are now active.',
+    });
   });
 });
 

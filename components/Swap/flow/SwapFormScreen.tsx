@@ -114,7 +114,8 @@ const SwapFormScreen: React.FC = () => {
   const paidOutOfEarn = useEarnOutflowUsd({
     address: fromAsset?.address,
     symbol: fromAsset?.symbol,
-    amount: typedIntoGet ? 0 : Number(typedValue),
+    amount: typedIntoGet ? undefined : typedValue,
+    decimals: fromAsset?.decimals,
     priceUsd: priceOf(fromAsset),
   });
   const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(

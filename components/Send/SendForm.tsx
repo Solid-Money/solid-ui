@@ -134,7 +134,8 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
   const outflowUsd = useEarnOutflowUsd({
     address: liveToken?.contractAddress,
     symbol: liveToken?.contractTickerSymbol,
-    amount: Number(amount),
+    amount: amount ? String(amount) : undefined,
+    decimals: liveToken?.contractDecimals,
     priceUsd: liveToken?.quoteRate,
   });
   const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(

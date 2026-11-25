@@ -10,7 +10,9 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { track } from '@/lib/analytics';
 import {
   activeTierBalance,
+  fixedPointUsd,
   outflowWarning,
+  parseTokenUnits,
   relevantTrack,
   type TierBalanceOutflowFlow,
   type TierBalanceOutflowWarning,
@@ -79,11 +81,15 @@ export const useEarnOutflowUsd = ({
   address,
   symbol,
   amount,
+  decimals,
   priceUsd,
 }: {
   address: string | undefined;
   symbol: string | undefined;
-  amount: number;
+  /** The amount as typed, in whole tokens. Parsed to base units, never to a float. */
+  amount: string | undefined;
+  /** The token's decimals, to parse `amount` with. */
+  decimals: number | undefined;
   priceUsd: number | undefined;
 }): number => {
   const { relevant } = useTierBalance();
@@ -94,9 +100,10 @@ export const useEarnOutflowUsd = ({
   const { data: eurRate } = useVaultExchangeRate('EUR', needsEuroPrice);
   const { data: eurcPriceUsd } = useTokenPriceUsd(needsEuroPrice ? 'EURC' : '');
 
-  if (!isShare || !Number.isFinite(amount) || amount <= 0) return 0;
-  if (hasQuote) return amount * (priceUsd ?? 0);
-  if (isEuro) return amount * (eurRate ?? 0) * (Number(eurcPriceUsd) || 0);
+  if (!isShare || decimals === undefined) return 0;
+  const units = parseTokenUnits(amount, decimals);
+  if (hasQuote) return fixedPointUsd(units, decimals, priceUsd ?? 0);
+  if (isEuro) return fixedPointUsd(units, decimals, eurRate ?? 0, Number(eurcPriceUsd) || 0);
   return 0;
 };
 

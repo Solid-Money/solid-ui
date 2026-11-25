@@ -150,6 +150,20 @@ interface UpgradeCelebrationCopy {
  * `balance` is the membership's "Hold in Earn" route; it only speaks when the
  * route is what holds the tier just reached.
  */
+/**
+ * The celebration's words before the route the tier came by is confirmed:
+ * the tier, and nothing about how it was reached or what it includes beyond
+ * "your benefits" — no route, no Yield boost claim.
+ */
+export const pendingCelebrationCopy = (data: RewardsUserData): UpgradeCelebrationCopy => {
+  const tierName = getTierDisplayName(data.currentTier);
+  return {
+    eyebrow: 'Tier upgraded',
+    title: `Welcome to ${tierName}`,
+    body: 'Your new benefits are now active.',
+  };
+};
+
 export const upgradeCelebrationCopy = (
   data: RewardsUserData,
   balance?: TierBalanceRouteDto | null,

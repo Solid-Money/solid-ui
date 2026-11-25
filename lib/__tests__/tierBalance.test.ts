@@ -1,10 +1,13 @@
 import {
   activeTierBalance,
+  fixedPointUsd,
+  formatBalanceUsd,
   formatShortfallUsd,
   formatThresholdUsd,
   formatTierBalanceDate,
   outflowWarning,
   outflowWarningCopy,
+  parseTokenUnits,
   relevantTrack,
   trackNeedsTopUp,
   trackNudgeCopy,
@@ -175,6 +178,38 @@ describe('outflowWarning', () => {
     expect(outflowWarning(balance, ULTRA, 1_000)).toBeNull();
   });
 
+  it('warns that Ultra progress resets while the Prime the route holds stays funded', () => {
+    const balance = route(
+      { currentUsd: 42_000, holdsCurrentTier: true, grantsTier: PRIME },
+      { status: 'active' },
+      { status: 'building', daysHeld: 12 },
+    );
+    expect(outflowWarning(balance, PRIME, 2_000)).toMatchObject({
+      kind: 'reset',
+      tier: ULTRA,
+      thresholdUsd: ULTRA_USD,
+      daysHeld: 12,
+    });
+    // Down past Prime too: losing the tier held comes first.
+    expect(outflowWarning(balance, PRIME, 40_000)).toMatchObject({ kind: 'grace', tier: PRIME });
+  });
+
+  it('warns about Ultra progress even when another route holds Prime', () => {
+    const balance = route(
+      { currentUsd: 42_000, holdsCurrentTier: false, grantsTier: PRIME },
+      { status: 'active' },
+      { status: 'building' },
+    );
+    expect(outflowWarning(balance, PRIME, 2_000)).toMatchObject({ kind: 'reset', tier: ULTRA });
+    // Prime stays held by the other route: dropping under it is not this route's to warn about.
+    expect(outflowWarning(balance, PRIME, 40_000)).toMatchObject({ kind: 'reset', tier: ULTRA });
+  });
+
+  it('says nothing about building progress for a tier already held another way', () => {
+    const balance = route({ currentUsd: 42_000 }, { status: 'building' }, { status: 'building' });
+    expect(outflowWarning(balance, ULTRA, 40_000)).toBeNull();
+  });
+
   it('says nothing for a track with nothing to lose', () => {
     expect(outflowWarning(route({ currentUsd: 100 }), CORE, 50)).toBeNull();
     expect(outflowWarning(route({ currentUsd: 100 }, { status: 'cooldown' }), CORE, 50)).toBeNull();
@@ -194,7 +229,40 @@ describe('outflowWarning', () => {
   });
 });
 
+describe('fixed-point valuation', () => {
+  it('parses a typed amount to base units, or null for anything else', () => {
+    expect(parseTokenUnits('1.5', 6)).toBe(1_500_000n);
+    expect(parseTokenUnits(' 0.00000001 ', 8)).toBe(1n);
+    expect(parseTokenUnits('', 6)).toBeNull();
+    expect(parseTokenUnits('abc', 6)).toBeNull();
+    expect(parseTokenUnits('0', 6)).toBeNull();
+    expect(parseTokenUnits('1', undefined)).toBeNull();
+  });
+
+  it('values base units in fixed point, through a rate and a price', () => {
+    // 7,300 soUSD at 1.090824 USDC per share.
+    expect(fixedPointUsd(7_300_000_000n, 6, 1.090824)).toBe(7963.01);
+    // 0.1 soBTC worth of sats at $61,413.59.
+    expect(fixedPointUsd(10_000_000n, 8, 61_413.59)).toBe(6141.35);
+    // soEURC: shares → euros at the rate → dollars at the EURC price.
+    expect(fixedPointUsd(1_000_000_000n, 6, 1.004846, 1.0898756)).toBe(1095.15);
+  });
+
+  it('is 0 without units or a usable price', () => {
+    expect(fixedPointUsd(null, 6, 1)).toBe(0);
+    expect(fixedPointUsd(1_000_000n, 6, 0)).toBe(0);
+    expect(fixedPointUsd(1_000_000n, 6, Number.NaN)).toBe(0);
+    expect(fixedPointUsd(1_000_000n, 6)).toBe(0);
+  });
+});
+
 describe('formatting', () => {
+  it('never shows an insufficient balance as reaching the target', () => {
+    expect(formatBalanceUsd(7_299.99)).toBe('$7,299');
+    expect(formatThresholdUsd(PRIME_USD)).toBe('$7.3K');
+    expect(formatBalanceUsd(-1)).toBe('$0');
+  });
+
   it('writes thresholds compactly and shortfalls rounded up', () => {
     expect(formatThresholdUsd(7_500)).toBe('$7.5K');
     expect(formatThresholdUsd(35_000)).toBe('$35K');
@@ -283,7 +351,7 @@ describe('trackProgress', () => {
     const none = route({ currentUsd: 3_650.9 }, { progressPct: 50 });
     expect(trackProgress(none.prime, none)).toEqual({
       percent: 50,
-      value: '$3.65K',
+      value: '$3,650',
       target: '/$7.3K',
     });
 
