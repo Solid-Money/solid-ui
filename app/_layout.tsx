@@ -84,6 +84,7 @@ import { ensureFreshAccessToken } from '@/lib/utils';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
+import { syncBlackFridayQaPreview } from '@/store/useBlackFridayQaPreviewStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
@@ -357,6 +358,13 @@ function RootLayout() {
   }, [criticalFontsLoaded]);
   const pathname = usePathname();
   const params = useGlobalSearchParams();
+  const blackFridayPreview = params.blackFridayPreview;
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      syncBlackFridayQaPreview(window, blackFridayPreview);
+    }
+  }, [blackFridayPreview]);
 
   useEffect(() => {
     // Only run on Web and only in production

@@ -387,7 +387,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       return;
     }
 
-    if (!ctaFor(tier).enabled) return;
+    if (campaign.preview || !ctaFor(tier).enabled) return;
 
     if (upgradeRoutes(tier).length > 0) {
       openTierUpgrade(tier);
