@@ -924,6 +924,15 @@ export interface CardActivationFailure {
 export interface RainSunsetStatus {
   /** They still hold the closing card (active, frozen or pending). */
   hasRainCard: boolean;
+  /**
+   * Their card was closed for good by the sunset (they never got the new
+   * card). The top-level status reads `inactive`; this says why, so the app
+   * shows "your card was closed" — with the way to a new card and to any money
+   * left on it — instead of a card that no longer works.
+   */
+  cardClosed?: boolean;
+  /** When that card was closed (ISO). */
+  cardClosedAt?: string;
   /** Show the closing notice on Home and the card screen. */
   notice: boolean;
   /** The day the closing cards stop working (YYYY-MM-DD), or null if not announced. */

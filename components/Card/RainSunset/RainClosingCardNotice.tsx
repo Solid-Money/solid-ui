@@ -8,6 +8,7 @@ import { path } from '@/constants/path';
 import { useRainSunset } from '@/hooks/useRainSunset';
 import {
   cardNoticeCopy,
+  closedCardCopy,
   formatClosingBalance,
   hasClosingBalance,
   isClosingBalanceUnknown,
@@ -57,12 +58,16 @@ const RainClosingCardNotice = () => {
   const { sunset, cardStatus, balanceUsd, isBalanceLoading } = useRainSunset();
   const openSheet = useRainSunsetStore(state => state.setSheetOpen);
 
-  if (!sunset?.notice || !sunset.hasRainCard) return null;
+  const closed = Boolean(sunset?.cardClosed);
+  if (!sunset || (!closed && (!sunset.notice || !sunset.hasRainCard))) return null;
 
   const countryName = COUNTRIES.find(
     country => country.code === cardStatus?.country?.toUpperCase(),
   )?.name;
-  const { title, message } = cardNoticeCopy(sunset, balanceUsd, countryName);
+  // A card the sunset already closed: why it no longer works, and what is left.
+  const { title, message } = closed
+    ? closedCardCopy(sunset, balanceUsd, countryName)
+    : cardNoticeCopy(sunset, balanceUsd, countryName);
   // A read that failed still offers the withdrawal (its screen re-reads); one
   // still in flight waits rather than flashing a button that may go away.
   const balanceUnknown = isClosingBalanceUnknown(balanceUsd);
@@ -73,6 +78,9 @@ const RainClosingCardNotice = () => {
 
   const goToNewCard = () => router.push(path.CARD_NEW_CARD);
   const goToWithdraw = () => router.push(path.CARD_CLOSING_WITHDRAW);
+  // A closed card whose holder already started the move offers to continue
+  // it, as its copy and the closed-card screen do.
+  const offersNewCard = sunset.newCardAvailable || (closed && Boolean(sunset.migration));
 
   return (
     <View style={styles.notice}>
@@ -82,14 +90,14 @@ const RainClosingCardNotice = () => {
         </View>
         <View style={styles.titles}>
           <Text className="text-[13px] font-semibold" style={{ color: AMBER }}>
-            Card closing
+            {closed ? 'Card closed' : 'Card closing'}
           </Text>
           <Text className="text-[18px] font-semibold leading-[24px] text-white">{title}</Text>
         </View>
       </View>
       <Text className="text-[15px] leading-[21px] text-white/70">{message}</Text>
       <View style={styles.buttons}>
-        {sunset.newCardAvailable ? (
+        {offersNewCard ? (
           <>
             <NoticeButton
               label={sunset.migration ? 'Continue to your new card' : 'Get your new card'}

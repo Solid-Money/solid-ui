@@ -35,12 +35,13 @@ import {
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { resolveDigitalWallet } from '@/constants/digital-wallet';
-import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM } from '@/constants/path';
+import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM, path } from '@/constants/path';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useCardStatusReadiness } from '@/hooks/useCardStatusReadiness';
 import { useHomeLinkAction } from '@/hooks/useHomeLinkAction';
 import { useHomeLoadTracking } from '@/hooks/useHomeLoadTracking';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
@@ -88,7 +89,8 @@ export default function HomeScreenNew() {
   const updateUser = useUserStore(state => state.updateUser);
   const setHomeReady = useWhatsNewStore(state => state.setHomeReady);
   const intercom = useIntercom();
-  const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
+  const cardStatusQuery = useCardStatus();
+  const { data: cardStatus, isLoading: isCardStatusLoading } = cardStatusQuery;
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
   const { provider: cardProvider } = useCardProvider();
   const { symbol: displaySymbol, toDisplayAmount } = useCardDisplayCurrency();
@@ -116,8 +118,24 @@ export default function HomeScreenNew() {
   const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
   const openCardPaneWalletGuide = useCardPaneStore(state => state.openWalletGuide);
 
+  // Rain sunset: a card the sunset closed has no details to show — the pane
+  // would draw it as if it still worked. Its own screen says why instead.
+  const cardClosedBySunset = Boolean(cardStatus?.rainSunset?.cardClosed);
+
+  // Whether the card is one the sunset closed is known only once its status
+  // is (see `useCardStatusReadiness`): until then a card link waits, rather
+  // than guess the card works.
+  const cardStatusKnown = useCardStatusReadiness(cardStatusQuery, screenParam === CARD_INFO_SCREEN);
+
   useEffect(() => {
     if (screenParam !== CARD_INFO_SCREEN) return;
+    // Keep the link until the card's status is known (see above).
+    if (!cardStatusKnown) return;
+    if (cardClosedBySunset) {
+      router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
+      router.push(path.CARD_CLOSED);
+      return;
+    }
     // `&wallet=apple|google` asks for the "Add to Wallet" guide on top of the
     // pane, on that wallet's tab — the addressable form of the popup, which is
     // what lets the home "Add to Apple Pay" banner be nothing but a redirect.
@@ -130,7 +148,14 @@ export default function HomeScreenNew() {
       openCardPane();
     }
     router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
-  }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide]);
+  }, [
+    screenParam,
+    walletParam,
+    openCardPane,
+    openCardPaneWalletGuide,
+    cardClosedBySunset,
+    cardStatusKnown,
+  ]);
 
   // `?whatsNew=`, `?deposit=` and `?spendMode=` open what a push or link was
   // about over this screen (`constants/homeLinkParams`).

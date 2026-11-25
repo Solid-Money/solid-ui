@@ -95,6 +95,8 @@ type Path = {
   CARD_NEW_CARD: Href;
   /** Rain sunset: withdraw the whole balance on a closing card to the wallet. */
   CARD_CLOSING_WITHDRAW: Href;
+  /** Rain sunset: the card the sunset closed, for a holder with no new card to go to. */
+  CARD_CLOSED: Href;
   CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
   SETTINGS: Href;
@@ -180,6 +182,7 @@ export const path: Path = {
   CARD_ACTIVATE: '/card/activate',
   CARD_NEW_CARD: '/card/new-card' as Href,
   CARD_CLOSING_WITHDRAW: '/card/closing-withdraw' as Href,
+  CARD_CLOSED: '/card/closed' as Href,
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
   EARN: '/earn',
   SETTINGS: '/settings',

@@ -112,7 +112,8 @@ export function RainClosingWithdraw() {
   // No answer at all is not an empty card: say so and offer to read it again.
   const unreadable = !collateral && isError;
 
-  const goToCard = () => router.replace(path.CARD_INFO);
+  // A card the sunset closed has no card screen to go back to; its own does.
+  const goToCard = () => router.replace(sunset?.cardClosed ? path.CARD_CLOSED : path.CARD_INFO);
 
   /**
    * Withdraw every token from `start` on. A retry after a failure resumes at
@@ -312,9 +313,11 @@ export function RainClosingWithdraw() {
         ? `Another ${formatClosingBalance(heldUsd)} on your card is set aside, usually for card payments you already made, and can’t be withdrawn.`
         : `The ${formatClosingBalance(heldUsd)} on your card is set aside, usually for card payments you already made, and can’t be withdrawn.`
       : null;
-  const stays = closesOn
-    ? ` Your card keeps working until ${closesOn.long}.`
-    : ' Your card keeps working until it closes.';
+  const stays = sunset?.cardClosed
+    ? ' Your card is closed, but what was left on it is still yours.'
+    : closesOn
+      ? ` Your card keeps working until ${closesOn.long}.`
+      : ' Your card keeps working until it closes.';
 
   return (
     <PageLayout desktopOnly scrollable={false}>

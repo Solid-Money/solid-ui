@@ -28,6 +28,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { canReplaceClosedCard } from '@/lib/utils/cardStatusRouting';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
+import { routesToNewCard } from '@/lib/utils/rainSunset';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
@@ -130,14 +131,21 @@ const HomeWalletCard = ({
   const awaitingKycDecision = isKycAwaitingDecision(cardStatus);
   // The card was closed and its holder can order the next one themselves.
   const replacingClosedCard = canReplaceClosedCard(cardStatus);
+  // Rain sunset: the sunset closed their card. Its screens (the new card, or why
+  // it closed) are where a tap goes, not the "Your card is waiting" prompt.
+  const closedBySunset = Boolean(cardStatus?.rainSunset?.cardClosed);
   // What the cardless card says it does. A closed card's holder is not getting
   // their first card, so "Get your card" would misdescribe the replacement
   // flow the tap opens — and it is the whole label for a screen reader.
-  const cardlessLabel = replacingClosedCard
-    ? 'Get a new card'
-    : awaitingKycDecision
-      ? 'Your card is on its way'
-      : 'Get your card';
+  const cardlessLabel = closedBySunset
+    ? routesToNewCard(cardStatus)
+      ? 'Get your new card'
+      : 'Card closed'
+    : replacingClosedCard
+      ? 'Get a new card'
+      : awaitingKycDecision
+        ? 'Your card is on its way'
+        : 'Get your card';
 
   const card = <NewCardArt last4={last4} />;
 
@@ -153,6 +161,10 @@ const HomeWalletCard = ({
    * activate step orders the replacement.
    */
   const handleCardlessPress = () => {
+    if (closedBySunset) {
+      router.push(routesToNewCard(cardStatus) ? path.CARD_NEW_CARD : path.CARD_CLOSED);
+      return;
+    }
     if (awaitingKycDecision || replacingClosedCard) {
       track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
         source: 'home_wallet_card',

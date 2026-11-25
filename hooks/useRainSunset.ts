@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { getCardCollateralAvailable } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
-import { closingCardBalanceUsd, rainSunsetOf } from '@/lib/utils/rainSunset';
+import { closingCardBalanceUsd, holdsClosingCard, rainSunsetOf } from '@/lib/utils/rainSunset';
 
 export const RAIN_SUNSET_BALANCE_KEY = 'rainSunsetBalance';
 
@@ -15,17 +15,18 @@ export const RAIN_SUNSET_BALANCE_KEY = 'rainSunsetBalance';
  * collateral, capped at its spending power (`closingCardBalanceUsd`). The part
  * of the collateral that pays for card payments already made is not theirs to
  * withdraw, so it is never quoted as a balance. Read only for someone still
- * holding the closing card, and on a slow cadence: this backs a banner, not a
- * form.
+ * holding the closing card, or whose card the sunset closed (what was left on
+ * it is still theirs), and on a slow cadence: this backs a banner, not a form.
  */
 export function useRainSunset() {
   const { data: cardStatus, isLoading: isStatusLoading } = useCardStatus();
   const sunset = rainSunsetOf(cardStatus);
+  const holdsCard = holdsClosingCard(sunset);
 
   const balance = useQuery({
     queryKey: [RAIN_SUNSET_BALANCE_KEY],
     queryFn: () => withRefreshToken(() => getCardCollateralAvailable({})),
-    enabled: Boolean(sunset?.hasRainCard),
+    enabled: holdsCard,
     staleTime: 30_000,
     refetchInterval: 60_000,
     retry: 1,
@@ -36,7 +37,7 @@ export function useRainSunset() {
     sunset,
     isLoading: isStatusLoading,
     /** What the cardholder can still withdraw from the closing card, in dollars; null until read. */
-    balanceUsd: sunset?.hasRainCard ? closingCardBalanceUsd(balance.data) : 0,
+    balanceUsd: holdsCard ? closingCardBalanceUsd(balance.data) : 0,
     collateral: balance.data ?? null,
     isBalanceLoading: balance.isLoading,
     refetchBalance: balance.refetch,

@@ -89,6 +89,26 @@ describe('resolveHomePromptStep — the pre-card rungs', () => {
     );
   });
 
+  it('offers nothing for a card the Rain sunset closed: its own banner speaks', () => {
+    expect(
+      step({
+        ...noCard,
+        cardStatus: {
+          status: CardStatus.INACTIVE,
+          kycStatus: KycStatus.APPROVED,
+          rainSunset: {
+            hasRainCard: false,
+            cardClosed: true,
+            notice: false,
+            closesAt: null,
+            newCardAvailable: false,
+            maxLeftoverUsd: 1,
+          },
+        },
+      }),
+    ).toBeNull();
+  });
+
   it('keeps offering activation for a closed card support has to replace', () => {
     expect(
       step({
