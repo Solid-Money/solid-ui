@@ -89,6 +89,10 @@ export function useActivity() {
   const [initialFetchStatus, setInitialFetchStatus] = useState<ActivityFetchStatus>('pending');
   const hasFetchedInitial = useRef(false);
   const fetchedForUserId = useRef<string | null>(null);
+  // Bumped by each initial fetch or retry. A run that completes after a newer
+  // one started (a user switch, a retry) must not set the status: an earlier
+  // user's page arriving would end the wait for the current user's.
+  const initialFetchRun = useRef(0);
 
   const { refetchAll, isRefreshing, isSyncing, isSyncStale, canSync } = useActivityRefresh({
     syncOnAppActive: true,
@@ -173,7 +177,9 @@ export function useActivity() {
     hasFetchedInitial.current = true;
     fetchedForUserId.current = user.userId;
     setIsLoading(true);
+    const run = ++initialFetchRun.current;
     const settle = (ok: boolean) => {
+      if (run !== initialFetchRun.current) return;
       setIsLoading(false);
       setInitialFetchStatus(ok ? 'success' : 'error');
     };
@@ -198,8 +204,12 @@ export function useActivity() {
 
   // Fetch page 1 again after a failed initial fetch.
   const retryInitialFetch = useCallback(async () => {
+    const run = ++initialFetchRun.current;
     setInitialFetchStatus('pending');
-    setInitialFetchStatus((await fetchPage(1)) ? 'success' : 'error');
+    const ok = await fetchPage(1);
+    if (run !== initialFetchRun.current) return;
+    setIsLoading(false);
+    setInitialFetchStatus(ok ? 'success' : 'error');
   }, [fetchPage]);
 
   // Load next page
