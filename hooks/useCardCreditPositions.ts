@@ -21,6 +21,7 @@ import {
   CARD_SPEND_REGISTRATION_QUERY_KEY,
   creditHeadroom,
   lensCredit,
+  readBaseModeState,
 } from '@/hooks/useCardSpendRegistration';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
 import useUser from '@/hooks/useUser';
@@ -28,6 +29,8 @@ import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { SolidSpendLens_ABI } from '@/lib/abis/SolidSpendLens';
 import { ADDRESSES } from '@/lib/config';
 import { publicClient } from '@/lib/wagmi';
+
+import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 
 /** The lens's `v2()`, which the app's lens ABI leaves out. */
 const LENS_MODULE_ABI = [
@@ -562,6 +565,32 @@ export const useBaseCreditInstance = () => {
     moduleAddress,
     lensAddress,
   };
+};
+
+/**
+ * The mode the Base instance holds for this Safe, or null when Base is not part of this card
+ * (not enabled there, not registered, or not answered yet).
+ *
+ * The picker takes the card's mode from Fuse, so a switch that reached Fuse and not Base looks
+ * finished: choosing the same mode again only closed the sheet. That is where every Credit switch
+ * made outside the spend-mode cohort ended up while Base was held back for it (45 Safes on
+ * Nov 26 2026, at a €0 credit line against Base balances), and where a Base step that failed
+ * leaves a Safe. This is what lets the sheet see Base is behind and offer to finish the change.
+ *
+ * Keyed under the registration query, so a switch refreshes it with everything else.
+ */
+export const useBaseSpendMode = ({ enabled }: { enabled: boolean }): SpendMode | null => {
+  const { user } = useUser();
+  const safeAddress = user?.safeAddress as Address | undefined;
+  const { isLive, moduleAddress } = useBaseCreditInstance();
+
+  const { data } = useQuery({
+    queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, 'base-mode', safeAddress, moduleAddress],
+    queryFn: () => readBaseModeState(safeAddress as Address, moduleAddress as Address),
+    enabled: enabled && isLive && !!safeAddress && !!moduleAddress,
+  });
+
+  return isLive && data?.live ? data.mode : null;
 };
 
 /**

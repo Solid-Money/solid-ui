@@ -144,6 +144,12 @@ interface SpendModeSheetContentProps {
    * button into a plain dismissal rather than a "Change to …".
    */
   activeMode: SpendMode;
+  /**
+   * The mode Base holds, or null where Base is not part of this card. When it differs from
+   * {@link activeMode} the switch reached Fuse alone, so the active mode's button finishes it
+   * instead of dismissing.
+   */
+  baseMode?: SpendMode | null;
   initialMode?: SpendMode;
   /** Every figure the panels and the control show. */
   figures: SpendModeFigures;
@@ -195,6 +201,7 @@ interface SpendModeSheetContentProps {
  */
 const SpendModeSheetContent = ({
   activeMode,
+  baseMode = null,
   initialMode = activeMode,
   figures,
   credit,
@@ -259,9 +266,17 @@ const SpendModeSheetContent = ({
     );
   }, []);
 
+  // Base kept its old mode after a switch that reached Fuse alone: the active mode is not
+  // fully in force, so choosing it again sends Base the switch (`modeSwitchTargets` skips
+  // Fuse) rather than closing the sheet. Not while a Fuse switch is still armed.
+  const isBaseBehind = !!baseMode && baseMode !== activeMode && !figures.pendingMode;
+  const isFinishing = selected === activeMode && isBaseBehind;
   // On the mode already in force there is nothing to change to, so the button is
   // the grey dismissal from the Cash frame instead of the green one.
-  const isActiveSelected = selected === activeMode;
+  const isActiveSelected = selected === activeMode && !isBaseBehind;
+  const actionLabel = `${isFinishing ? 'Finish changing' : 'Change'} to ${
+    SPEND_MODE_COPY[selected].label
+  }`;
   const actionProgress = useSharedValue(isActiveSelected ? 0 : 1);
 
   useEffect(() => {
@@ -411,16 +426,16 @@ const SpendModeSheetContent = ({
         <Text className="mt-4 text-center text-[14px] font-normal leading-[18px] text-[#D96167]">
           {error}
         </Text>
+      ) : isFinishing && baseMode ? (
+        <Text className="mt-4 text-center text-[14px] font-normal leading-[18px] text-white/70">
+          {`Part of your balance is still on ${SPEND_MODE_COPY[baseMode].label}. Finish the change to use it with ${SPEND_MODE_COPY[selected].label} too.`}
+        </Text>
       ) : null}
 
       <Animated.View style={[styles.action, actionStyle]}>
         <Pressable
           accessibilityLabel={
-            isSwitching
-              ? 'Confirming spend mode change'
-              : isActiveSelected
-                ? 'Close'
-                : `Change to ${SPEND_MODE_COPY[selected].label}`
+            isSwitching ? 'Confirming spend mode change' : isActiveSelected ? 'Close' : actionLabel
           }
           accessibilityRole="button"
           // `busy` as well as `disabled`: to a screen reader those are different
@@ -435,13 +450,7 @@ const SpendModeSheetContent = ({
               the spinner fades in with its label instead of appearing beside a
               caption that has already changed underneath it. */}
           <Animated.View
-            key={
-              isSwitching
-                ? 'confirming'
-                : isActiveSelected
-                  ? 'dismiss'
-                  : SPEND_MODE_COPY[selected].label
-            }
+            key={isSwitching ? 'confirming' : isActiveSelected ? 'dismiss' : actionLabel}
             entering={FadeIn.duration(ACTION_FADE_DURATION)}
             exiting={FadeOut.duration(ACTION_FADE_DURATION / 2)}
             style={styles.actionContent}
@@ -458,11 +467,7 @@ const SpendModeSheetContent = ({
                 isActiveSelected ? 'text-white' : 'text-black',
               )}
             >
-              {isSwitching
-                ? 'Confirming…'
-                : isActiveSelected
-                  ? 'Cancel'
-                  : `Change to ${SPEND_MODE_COPY[selected].label}`}
+              {isSwitching ? 'Confirming…' : isActiveSelected ? 'Cancel' : actionLabel}
             </Text>
           </Animated.View>
         </Pressable>
