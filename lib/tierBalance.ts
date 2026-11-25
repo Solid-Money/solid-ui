@@ -235,8 +235,21 @@ const COMPACT_USD = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
 
-/** A threshold as running copy writes it: "$7.5K", "$35K", "$250". */
-export const formatThresholdUsd = (amount: number): string => `$${COMPACT_USD.format(amount)}`;
+/**
+ * A threshold as running copy writes it: "$7.5K", "$35K", "$250" — compact
+ * only when that is exactly the threshold. Anything compact would round
+ * ("$7.3K" for $7,301) is written in full, rounded UP to the dollar, so the
+ * target never reads lower than what the route asks for: "$7,301".
+ */
+export const formatThresholdUsd = (amount: number): string => {
+  const dollars = Math.ceil(Math.max(0, amount));
+  // Two decimals of K, M or B: exact when the dollars are a multiple of a
+  // hundredth of that unit.
+  const unit = dollars >= 1e9 ? 1e9 : dollars >= 1e6 ? 1e6 : dollars >= 1e3 ? 1e3 : 1;
+  return unit === 1 || dollars % (unit / 100) === 0
+    ? `$${COMPACT_USD.format(dollars)}`
+    : `$${dollars.toLocaleString('en-US')}`;
+};
 
 /**
  * An amount still to add, rounded UP to the dollar so adding it always clears

@@ -273,6 +273,14 @@ describe('formatting', () => {
     expect(formatBalanceUsd(7_299.99)).toBe('$7,299');
     expect(formatThresholdUsd(PRIME_USD)).toBe('$7.3K');
     expect(formatBalanceUsd(-1)).toBe('$0');
+    // A threshold compact formatting would round down is written in full.
+    expect(formatBalanceUsd(7_300)).toBe('$7,300');
+    expect(formatThresholdUsd(7_301)).toBe('$7,301');
+    expect(formatThresholdUsd(7_300.5)).toBe('$7,301');
+    expect(formatThresholdUsd(34_999)).toBe('$34,999');
+    expect(formatThresholdUsd(1_234_567)).toBe('$1,234,567');
+    expect(formatThresholdUsd(1_250_000)).toBe('$1.25M');
+    expect(formatThresholdUsd(999_990)).toBe('$999.99K');
   });
 
   it('writes thresholds compactly and shortfalls rounded up', () => {
