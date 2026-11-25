@@ -241,11 +241,23 @@ describe('fixed-point valuation', () => {
 
   it('values base units in fixed point, through a rate and a price', () => {
     // 7,300 soUSD at 1.090824 USDC per share.
-    expect(fixedPointUsd(7_300_000_000n, 6, 1.090824)).toBe(7963.01);
+    expect(fixedPointUsd(7_300_000_000n, 6, 1.090824)).toBe(7963.0152);
     // 0.1 soBTC worth of sats at $61,413.59.
-    expect(fixedPointUsd(10_000_000n, 8, 61_413.59)).toBe(6141.35);
-    // soEURC: shares → euros at the rate → dollars at the EURC price.
-    expect(fixedPointUsd(1_000_000_000n, 6, 1.004846, 1.0898756)).toBe(1095.15);
+    expect(fixedPointUsd(10_000_000n, 8, 61_413.59)).toBe(6141.359);
+    // soEURC: shares → euros at the rate → dollars at the EURC price, with the
+    // sub-micro-dollar remainder rounded up.
+    expect(fixedPointUsd(1_000_000_000n, 6, 1.004846, 1.0898756)).toBe(1095.157138);
+  });
+
+  it('keeps fractions of a cent, so a sliver past the allowance still warns', () => {
+    // $700.000001 out of $8,000 leaves $7,299.999999: below a $7,300 threshold.
+    const sliver = fixedPointUsd(700_000_001n, 6, 1);
+    expect(sliver).toBe(700.000001);
+    expect(8_000 - sliver < 7_300).toBe(true);
+    // Exactly $700 leaves exactly $7,300: not below.
+    const exact = fixedPointUsd(700_000_000n, 6, 1);
+    expect(exact).toBe(700);
+    expect(8_000 - exact < 7_300).toBe(false);
   });
 
   it('is 0 without units or a usable price', () => {

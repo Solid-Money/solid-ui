@@ -181,6 +181,9 @@ export const parseTokenUnits = (
   }
 };
 
+/** The precision {@link fixedPointUsd} returns: millionths of a dollar. */
+const USD_MICROS = 1_000_000n;
+
 /** A positive finite price or rate as a bigint at {@link PRICE_DECIMALS}, else null. */
 const priceUnits = (price: number): bigint | null => {
   if (!Number.isFinite(price) || price <= 0) return null;
@@ -195,8 +198,9 @@ const priceUnits = (price: number): bigint | null => {
  * The USD value of `units` base units of a token with `decimals`, at each of
  * `prices` in turn (USD per token, or a share's rate then the asset's USD
  * price), worked out in bigint so the token amount loses no precision before
- * it is compared with a threshold. Only the final figure, in cents, becomes a
- * number. 0 for no units or any price that is not positive.
+ * it is compared with a threshold. The final figure keeps micro-dollars,
+ * rounded up, so a sliver over a threshold's allowance still warns (round to
+ * cents only for display). 0 for no units or any price that is not positive.
  */
 export const fixedPointUsd = (
   units: bigint | null | undefined,
@@ -212,7 +216,9 @@ export const fixedPointUsd = (
     value *= fixed;
     scale *= 10n ** BigInt(PRICE_DECIMALS);
   }
-  return Number((value * 100n) / scale) / 100;
+  // Ceiling division: understating an outflow could hide a warning.
+  const micros = (value * USD_MICROS + scale - 1n) / scale;
+  return Number(micros) / Number(USD_MICROS);
 };
 
 // ---------------------------------------------------------------------------

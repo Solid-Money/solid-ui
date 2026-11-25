@@ -390,7 +390,9 @@ const RegularWithdrawForm = () => {
     if (decimals === undefined) return 0;
     const units = parseTokenUnits(watchedAmount ? String(watchedAmount) : undefined, decimals);
     if (isSoEurc) {
-      return fixedPointUsd(units, decimals, exchangeRate ?? 1, Number(eurcPriceUsd) || 0);
+      // No warning until the rate loads, rather than shares valued at par.
+      if (exchangeRate === undefined) return undefined;
+      return fixedPointUsd(units, decimals, exchangeRate, Number(eurcPriceUsd) || 0);
     }
     return fixedPointUsd(units, decimals, selectedToken?.quoteRate || 0);
   }, [
