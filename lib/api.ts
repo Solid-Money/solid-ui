@@ -19,6 +19,7 @@ import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { TIER_MEMBERSHIP_PAYMENT_MODES } from '@/lib/tierUpgrade';
 import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import {
@@ -2688,18 +2689,24 @@ export const claimYieldBoost = async (): Promise<YieldBoostClaimResult> => {
  * One request rather than three: the upgrade screen prices an offer against a
  * balance, and fetching those apart is how a screen ends up showing one from a
  * moment the other no longer belongs to.
+ *
+ * Asks for the payment modes this build can complete beyond the module charge
+ * every build supports — see `TIER_MEMBERSHIP_PAYMENT_MODES`.
  */
 export const fetchTierMembership = async (): Promise<TierMembershipState> => {
   const jwt = getJWTToken();
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership?paymentModes=${TIER_MEMBERSHIP_PAYMENT_MODES}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
     },
-    credentials: 'include',
-  });
+  );
   if (!response.ok) throw response;
   return response.json();
 };
@@ -2751,6 +2758,36 @@ export const confirmTierSubscription = async (body: {
   const jwt = getJWTToken();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/subscription/confirm`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Report that a `transfer`-mode upgrade landed: the first year paid to the
+ * treasury and the new mandate signed, in one transaction.
+ *
+ * Ends the membership it replaces and starts the new one from now. There is
+ * no `funding` here — an upgrade has no bridge-fee cover, so the transfer in
+ * that transaction is the whole payment.
+ */
+export const upgradeTierSubscription = async (body: {
+  tier: RewardsTier;
+  transactionHash: string;
+}): Promise<TierMembershipState> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/subscription/upgrade`,
     {
       method: 'POST',
       headers: {

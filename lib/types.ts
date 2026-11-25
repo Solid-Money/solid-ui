@@ -2495,6 +2495,25 @@ export interface TierFeeLine {
 }
 
 /**
+ * What a tier pays on a card purchase that needs a currency conversion, under
+ * flat tier FX pricing: all-in against the market rate, with Solid covering
+ * the rest of Wirex's foreign-currency fee. Visa's own conversion still applies
+ * outside EUR, GBP and USD.
+ *
+ * A Wirex price. A Rain card keeps its issuer's fee, which is why this sits
+ * beside {@link TierFees.lines} rather than in it: the screen shows it only to
+ * people it applies to.
+ */
+export interface TierCardFx {
+  /** The tier's rate as a fraction (0.015 = 1.5%). 0 when Solid covers it all. */
+  rate: number;
+  /** Pre-rendered: 'Free' when the rate is 0, else '1.5%'. */
+  value: string;
+  /** Core's rate: the full fee before any tier covers part of it. */
+  baseRate: number;
+}
+
+/**
  * The "Fees & Caps" block for one tier.
  *
  * Values arrive pre-rendered from the same config the charge engine bills from,
@@ -2512,6 +2531,11 @@ export interface TierFees {
   allFree: boolean;
   /** Copy under the table, absent on a tier that already pays nothing. */
   footnote?: string;
+  /**
+   * The tier's card FX price. Absent while the backend is not charging flat
+   * tier FX fees, and on backends from before it could.
+   */
+  cardFx?: TierCardFx;
 }
 
 /** Where one yield boost claim has got to. */
@@ -4488,9 +4512,39 @@ export enum TierSubscriptionStatus {
   PAST_DUE = 'past_due',
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
+  /**
+   * Ended early by an upgrade to a higher tier's membership. Never the open
+   * `subscription` — the membership that replaced it is — but a status a
+   * membership can carry.
+   */
+  REPLACED = 'replaced',
 }
 
-/** A tier the user can buy, and what it costs by each route. */
+/**
+ * How the first year of a cash membership is paid.
+ *
+ * `module`: the Safe signs the mandate and the backend takes the first year
+ * through the subscription module. `transfer`: the Safe pays the first year to
+ * the treasury itself, in the batch that signs the mandate — an upgrade from a
+ * running membership, whose period has already had its one module charge.
+ */
+export type TierPaymentMode = 'module' | 'transfer';
+
+/** The membership buying a tier would end. */
+export interface TierReplacedSubscription {
+  tier: RewardsTier;
+  /** When it would otherwise have run to. The time left is not refunded. */
+  currentPeriodEnd: string;
+}
+
+/**
+ * A tier the user can buy, and what it costs by each route.
+ *
+ * The fields after `held` are newer than the rest and optional until every
+ * backend sends them; read them through the resolvers in `lib/tierUpgrade`
+ * (`offerFirstYearFeeUsd`, `offerMandateUsd`, `offerPaymentMode`), which carry
+ * the fallbacks.
+ */
 export interface TierOffer {
   tier: RewardsTier;
   /** FUSE that must be locked to hold this tier. */
@@ -4498,16 +4552,31 @@ export interface TierOffer {
   /** Whether the lock route can be taken right now. */
   lockAvailable: boolean;
   /**
-   * Annual fee in USD, or null when this tier is not sold for cash.
+   * The annual fee in USD — the price the membership renews at — or null when
+   * this tier is not sold for cash.
    *
    * Null rather than 0 so a missing price can never be rendered as "free".
    * `cashAvailable` is the flag to branch on; this is only ever the amount.
+   * During a sale the first year costs `firstYearFeeUsd` instead.
    */
   annualFeeUsd: number | null;
   /** Whether the annual-fee route can be taken right now. */
   cashAvailable: boolean;
   /** Whether the user already holds this tier. */
   held: boolean;
+  /**
+   * What the first year costs right now: the sale price while a sale runs,
+   * otherwise the annual fee. Less than `annualFeeUsd` exactly when a sale is on.
+   */
+  firstYearFeeUsd?: number | null;
+  /** When the sale price stops being offered. Null when there is no sale. */
+  saleEndsAt?: string | null;
+  /** The per-period cap the mandate is signed at — the annual fee, never the sale price. */
+  mandateUsd?: number | null;
+  /** How the first year is paid. Absent on older backends, which only charge through the module. */
+  paymentMode?: TierPaymentMode;
+  /** The lower-tier membership buying this one ends, when there is one. */
+  replacesSubscription?: TierReplacedSubscription | null;
 }
 
 /** The user's locked FUSE position. */
@@ -4586,6 +4655,11 @@ export interface TierMembershipContracts {
   wrappedNativeAddress: string | null;
   /** The USDC the membership is billed in. */
   billingTokenAddress: string | null;
+  /**
+   * Where a `transfer`-mode first year is paid to. Null, or absent on an older
+   * backend, means an upgrade cannot be paid for in cash.
+   */
+  revenueTreasuryAddress?: string | null;
 }
 
 /**

@@ -1,6 +1,18 @@
 import { formatTierCashbackRate } from '@/lib/tierCashback';
+import {
+  canPayCashFor,
+  formatPriceUsd,
+  isOfferOnSale,
+  offerFirstYearFeeUsd,
+} from '@/lib/tierUpgrade';
 import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
-import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
+import {
+  RewardsTier,
+  type TierBenefits,
+  type TierFees,
+  type TierMembershipContracts,
+  type TierOffer,
+} from '@/lib/types';
 
 import {
   type CashbackCategory,
@@ -83,7 +95,17 @@ export type PerkIconName =
   | 'yield'
   | 'subscription'
   | 'cap'
-  | 'airline';
+  | 'airline'
+  | 'fx';
+
+/** One row of the benefits card. */
+export interface TierPerk {
+  icon: PerkIconName;
+  title: string;
+  description: string;
+  /** A small tag beside the title, e.g. "New". */
+  badge?: string;
+}
 
 export interface TierPresentationContent {
   headline: string;
@@ -105,7 +127,7 @@ export interface TierPresentationContent {
    */
   subscriptionCategories: CashbackCategory[];
   stats: { value: string; label: string }[];
-  perks: { icon: PerkIconName; title: string; description: string }[];
+  perks: TierPerk[];
 }
 
 const balanceCapLabel = (amount: number) =>
@@ -232,13 +254,44 @@ export function tierPresentationFees(tier: RewardsTier, live?: TierFees) {
   };
 }
 
-export function tierOfferRows(offer: TierOffer | undefined) {
+/** One way to get a tier, as the "Get Prime" panel and the pager subtitle write it. */
+export interface TierOfferRow {
+  label: string;
+  value: string;
+  /**
+   * The regular annual fee, during a sale: drawn struck through beside `value`
+   * where a component can do that, and as "(was $999)" where only text can.
+   */
+  listValue?: string;
+}
+
+/** The addresses that decide whether the cash route can be built — see `canPayCashFor`. */
+type OfferContracts = Pick<
+  TierMembershipContracts,
+  'billingTokenAddress' | 'revenueTreasuryAddress'
+>;
+
+/**
+ * The ways to get a tier, priced. Pass the membership's contracts: the price is
+ * only shown when the cash route can actually be taken — the same test
+ * `availableRoutes` sells by — so an upgrade paid by transfer with no treasury
+ * to pay is offered by its lock alone rather than at a price no button takes.
+ */
+export function tierOfferRows(
+  offer: TierOffer | undefined,
+  contracts?: OfferContracts,
+): TierOfferRow[] {
   if (!offer) return [];
-  const rows: { label: string; value: string }[] = [];
-  if (offer.cashAvailable && offer.annualFeeUsd != null && offer.annualFeeUsd > 0) {
+  const rows: TierOfferRow[] = [];
+  // The first year's price is what is paid now — the sale price during a sale.
+  const firstYear = offerFirstYearFeeUsd(offer);
+  if (canPayCashFor(offer, contracts) && firstYear != null && firstYear > 0) {
     rows.push({
       label: 'Annual membership',
-      value: `$${offer.annualFeeUsd.toLocaleString('en-US')}/year`,
+      value: `${formatPriceUsd(firstYear)}/year`,
+      ...(isOfferOnSale(offer) && offer.annualFeeUsd !== null
+        ? { listValue: formatPriceUsd(offer.annualFeeUsd) }
+        : {}),
     });
   }
   if (offer.lockAvailable && offer.lockFuse > 0) {
@@ -250,10 +303,16 @@ export function tierOfferRows(offer: TierOffer | undefined) {
   return rows;
 }
 
-export function tierOfferSubtitle(offer: TierOffer | undefined) {
-  const rows = tierOfferRows(offer);
-  if (rows.length === 2) return `${rows[0].value} or ${rows[1].value} locked`;
+/** A row's value as plain text: "$799/year (was $999)" during a sale. */
+const offerRowText = (row: TierOfferRow) =>
+  row.listValue ? `${row.value} (was ${row.listValue})` : row.value;
+
+export function tierOfferSubtitle(offer: TierOffer | undefined, contracts?: OfferContracts) {
+  const rows = tierOfferRows(offer, contracts);
+  if (rows.length === 2) return `${offerRowText(rows[0])} or ${rows[1].value} locked`;
   if (rows.length === 1)
-    return rows[0].label === 'Lock FUSE' ? `Requires ${rows[0].value} locked` : rows[0].value;
+    return rows[0].label === 'Lock FUSE'
+      ? `Requires ${rows[0].value} locked`
+      : offerRowText(rows[0]);
   return null;
 }

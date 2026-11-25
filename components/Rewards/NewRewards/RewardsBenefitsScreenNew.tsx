@@ -24,11 +24,13 @@ import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
-import { availableRoutes, findOffer } from '@/lib/tierUpgrade';
+import { availableRoutes, findOffer, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -38,6 +40,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 import { TierBenefitsBackground, TierBenefitsPage } from './TierBenefitsPage';
 import { TIER_LABELS, tierOfferSubtitle } from './tierBenefitsPresentation';
+import { showsCardFxPricing } from './tierCardFx';
 import TierPointsSheet from './TierPointsSheet';
 import TierSwitcher from './TierSwitcher';
 import { type TierUpgradeCta, tierUpgradeCta } from './tierUpgradeCta';
@@ -219,6 +222,10 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
     refetch: refetchRewards,
   } = useRewardsUserData();
   const { data: tierBenefits } = useTierBenefits();
+  // The card FX price is a Wirex one: Rain cardholders keep Rain's fee.
+  const { provider: cardProvider } = useCardProvider();
+  const { isSuccess: cardStatusSettled } = useCardStatus();
+  const showCardFx = showsCardFxPricing({ provider: cardProvider, cardStatusSettled });
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
   const pending = useRewardsUpgradeStore(state => !!state.pendingUntil);
   const currentTier = isError ? undefined : confirmed?.currentTier;
@@ -290,7 +297,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
   const upgradeRoutes = (tier: RewardsTier) => {
     const offer = findOffer(membership, tier);
     if (!membership?.enabled || !offer || offer.held) return [];
-    return availableRoutes(offer);
+    return availableRoutes(offer, membership.contracts);
   };
 
   const ctaFor = (tier: RewardsTier) => {
@@ -304,6 +311,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       pending,
       routes: upgradeRoutes(tier),
       annualFeeUsd: offer?.annualFeeUsd,
+      firstYearFeeUsd: offerFirstYearFeeUsd(offer),
       lockFuse: offer?.lockFuse,
       remainingFuse: upgradeTarget(tier)?.remainingFuse,
       // The membership endpoint's own verdict, so a skew between it and the
@@ -313,7 +321,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       // to keep it once the trial ends.
       trialTier: isError ? undefined : rewardsData?.activeTierTrial?.tier,
     });
-    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer) : null;
+    // Priced by the routes the button sells, so it never quotes a cash price
+    // for an upgrade it can only offer by lock.
+    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer, membership.contracts) : null;
     // Same verb as the button: a tier the trial is lending is kept, not gained.
     const purpose = cta.label === 'Keep' ? 'to keep it' : 'to upgrade';
     return cta.enabled && !isError && !pending && upgradeRoutes(tier).length > 0 && offerCopy
@@ -545,7 +555,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   benefits={tierBenefits?.find(benefit => benefit.tier === tier)}
                   allBenefits={tierBenefits}
                   fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
+                  showCardFx={showCardFx}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
+                  contracts={membership?.contracts}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))
@@ -553,7 +565,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   subtitle={(() => {
                     const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
                     const offerCopy = membership?.enabled
-                      ? tierOfferSubtitle(findOffer(membership, tier))
+                      ? tierOfferSubtitle(findOffer(membership, tier), membership.contracts)
                       : null;
                     const copy =
                       tier === RewardsTier.CORE
