@@ -62,7 +62,7 @@ const SendReview: React.FC = () => {
       setName: state.setName,
     })),
   );
-  const { activities, refetchAll } = useActivity();
+  const { activities, refetchAll, initialFetchStatus, retryInitialFetch } = useActivity();
   const {
     data: addressBook,
     isError: isAddressBookError,
@@ -86,12 +86,31 @@ const SendReview: React.FC = () => {
   const isNetworkMismatch =
     !!selectedToken && !!expectedChainId && expectedChainId !== selectedToken.chainId;
   // Without the address book a saved contact's network is unknown, and an empty
-  // list would read as "no expected network" and skip the check. A picked
-  // network doesn't need it. Hold Send while it loads; if it fails, offer a
-  // retry and make the user confirm the network themselves.
+  // list would read as "no expected network" and skip the check. Likewise an
+  // empty activity store (new or cleared device) hides the last send's network
+  // until the first history page arrives. A picked network needs neither, and a
+  // saved contact's network outranks history. Hold Send while what's needed
+  // loads; if it fails, offer a retry and make the user confirm the network.
   const isAddressBookMissing = !recipientChainId && !addressBook;
-  const isCheckingRecipient = isAddressBookMissing && !isAddressBookError;
-  const isRecipientCheckFailed = isAddressBookMissing && isAddressBookError;
+  const savedContactChainId = address
+    ? addressBook?.find(entry => entry.walletAddress.toLowerCase() === address.toLowerCase())
+        ?.chainId
+    : undefined;
+  const isHistoryMissing =
+    !recipientChainId &&
+    !savedContactChainId &&
+    !activities.length &&
+    initialFetchStatus !== 'success';
+  const isAddressBookFailed = isAddressBookMissing && isAddressBookError;
+  const isHistoryFailed = isHistoryMissing && initialFetchStatus === 'error';
+  const isCheckingRecipient =
+    (isAddressBookMissing && !isAddressBookError) ||
+    (isHistoryMissing && initialFetchStatus === 'pending');
+  const isRecipientCheckFailed = !isCheckingRecipient && (isAddressBookFailed || isHistoryFailed);
+  const retryRecipientCheck = () => {
+    if (isAddressBookFailed) void refetchAddressBook();
+    if (isHistoryFailed) void retryInitialFetch();
+  };
   const needsNetworkConfirmation = isNetworkMismatch || isRecipientCheckFailed;
   const [networkConfirmed, setNetworkConfirmed] = useState(false);
 
@@ -338,13 +357,17 @@ const SendReview: React.FC = () => {
               Couldn&apos;t check this recipient&apos;s network
             </Text>
             <Text className="text-sm font-medium leading-5 text-red-300">
-              Your contacts didn&apos;t load, so we can&apos;t tell which network this address was
-              saved on. This sends {selectedToken.contractTickerSymbol} on{' '}
-              {chainName(selectedToken.chainId)}.
+              {isAddressBookFailed && isHistoryFailed
+                ? "Your contacts and recent activity didn't load"
+                : isAddressBookFailed
+                  ? "Your contacts didn't load"
+                  : "Your recent activity didn't load"}
+              , so we can&apos;t tell which network this address expects. This sends{' '}
+              {selectedToken.contractTickerSymbol} on {chainName(selectedToken.chainId)}.
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => void refetchAddressBook()}
+              onPress={retryRecipientCheck}
               disabled={isAddressBookFetching}
               className="flex-row items-center gap-2 self-start"
             >
