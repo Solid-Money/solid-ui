@@ -578,19 +578,49 @@ export const useBaseCreditInstance = () => {
  * leaves a Safe. This is what lets the sheet see Base is behind and offer to finish the change.
  *
  * Keyed under the registration query, so a switch refreshes it with everything else.
+ *
+ * `mode` is null both when Base is confirmed not to be part of the card and while that is not
+ * known yet, so `isLoading` and `isError` say which: the sheet must not read an unanswered Base as
+ * one that matches, or the cardholder this exists for is offered "Cancel" again. Either one covers
+ * the Base gate as well as the mode read, since a gate that has not answered reads as "no Base".
+ * A mode already read wins over a refetch that is loading or failed.
  */
-export const useBaseSpendMode = ({ enabled }: { enabled: boolean }): SpendMode | null => {
+export const useBaseSpendMode = ({
+  enabled,
+}: {
+  enabled: boolean;
+}): {
+  mode: SpendMode | null;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => Promise<unknown>;
+} => {
   const { user } = useUser();
   const safeAddress = user?.safeAddress as Address | undefined;
-  const { isLive, moduleAddress } = useBaseCreditInstance();
+  const {
+    isLive,
+    moduleAddress,
+    isLoading: isGateLoading,
+    isError: isGateError,
+    refetchGate,
+  } = useBaseCreditInstance();
+  const canRead = isLive && !!safeAddress && !!moduleAddress;
 
-  const { data } = useQuery({
+  const query = useQuery({
     queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, 'base-mode', safeAddress, moduleAddress],
     queryFn: () => readBaseModeState(safeAddress as Address, moduleAddress as Address),
-    enabled: enabled && isLive && !!safeAddress && !!moduleAddress,
+    enabled: enabled && canRead,
   });
+  const hasAnswer = canRead && query.data !== undefined;
 
-  return isLive && data?.live ? data.mode : null;
+  return {
+    mode: hasAnswer && query.data?.live ? query.data.mode : null,
+    isLoading: enabled && !hasAnswer && (isGateLoading || (canRead && query.isLoading)),
+    isError: enabled && !hasAnswer && (isGateError || (canRead && query.isError)),
+    // Only what failed: a manual refetch ignores `enabled` and would read without an address.
+    refetch: () =>
+      isGateError ? refetchGate() : canRead ? query.refetch() : Promise.resolve(undefined),
+  };
 };
 
 /**

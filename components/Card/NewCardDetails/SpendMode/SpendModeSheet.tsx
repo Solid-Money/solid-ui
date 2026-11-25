@@ -39,6 +39,7 @@ const SpendModeSheet = ({
   const credit = useCreditModeFigures({ enabled: isOpen && !isSuspended });
   // Base's own mode, so a switch that reached Fuse alone can be finished from here.
   const baseMode = useBaseSpendMode({ enabled: isOpen && !isSuspended });
+  const retryBase = useCallback(() => void baseMode.refetch(), [baseMode]);
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
   // The assets the balance is made of — EURC among them once it is on for the card.
   const assets = useSpendableAssetRows();
@@ -77,7 +78,10 @@ const SpendModeSheet = ({
       {({ session, topPadding, presentation }) => (
         <SpendModeSheetContent
           activeMode={activeMode}
-          baseMode={baseMode}
+          baseMode={baseMode.mode}
+          isBaseChecking={baseMode.isLoading}
+          isBaseUnreadable={baseMode.isError}
+          onRetryBase={retryBase}
           initialMode={initialMode}
           figures={figures}
           credit={credit}

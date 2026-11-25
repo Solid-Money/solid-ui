@@ -150,6 +150,12 @@ interface SpendModeSheetContentProps {
    * instead of dismissing.
    */
   baseMode?: SpendMode | null;
+  /** Base's mode has not answered yet, so whether the active mode is fully in force is unknown. */
+  isBaseChecking?: boolean;
+  /** Base's mode could not be read, so whether the active mode is fully in force is unknown. */
+  isBaseUnreadable?: boolean;
+  /** Asks Base again after {@link isBaseUnreadable}. */
+  onRetryBase?: () => void;
   initialMode?: SpendMode;
   /** Every figure the panels and the control show. */
   figures: SpendModeFigures;
@@ -202,6 +208,9 @@ interface SpendModeSheetContentProps {
 const SpendModeSheetContent = ({
   activeMode,
   baseMode = null,
+  isBaseChecking = false,
+  isBaseUnreadable = false,
+  onRetryBase,
   initialMode = activeMode,
   figures,
   credit,
@@ -270,13 +279,22 @@ const SpendModeSheetContent = ({
   // fully in force, so choosing it again sends Base the switch (`modeSwitchTargets` skips
   // Fuse) rather than closing the sheet. Not while a Fuse switch is still armed.
   const isBaseBehind = !!baseMode && baseMode !== activeMode && !figures.pendingMode;
-  const isFinishing = selected === activeMode && isBaseBehind;
+  const isOnActive = selected === activeMode;
+  const isFinishing = isOnActive && isBaseBehind;
+  // Until Base answers, the active mode may or may not be fully in force, so the button
+  // neither closes as if it were nor offers a switch: it waits, or asks again after a failed
+  // read. Closing the sheet is still there behind the handle and the backdrop.
+  const isCheckingBase = isOnActive && !isBaseBehind && isBaseChecking;
+  const isBaseFailed = isOnActive && !isBaseBehind && !isCheckingBase && isBaseUnreadable;
   // On the mode already in force there is nothing to change to, so the button is
   // the grey dismissal from the Cash frame instead of the green one.
-  const isActiveSelected = selected === activeMode && !isBaseBehind;
-  const actionLabel = `${isFinishing ? 'Finish changing' : 'Change'} to ${
-    SPEND_MODE_COPY[selected].label
-  }`;
+  const isActiveSelected = isOnActive && !isBaseBehind && !isCheckingBase && !isBaseFailed;
+  const isBusy = isSwitching || isCheckingBase;
+  const actionLabel = isCheckingBase
+    ? 'Checking…'
+    : isBaseFailed
+      ? 'Try again'
+      : `${isFinishing ? 'Finish changing' : 'Change'} to ${SPEND_MODE_COPY[selected].label}`;
   const actionProgress = useSharedValue(isActiveSelected ? 0 : 1);
 
   useEffect(() => {
@@ -290,14 +308,14 @@ const SpendModeSheetContent = ({
   // tap, but nothing said so: a fully lit button that ignores presses reads as broken
   // rather than busy, and this one can sit there for a while — the first switch away
   // from Cash is a migration, which is four contract calls behind one signature.
-  const busyProgress = useSharedValue(isSwitching ? 1 : 0);
+  const busyProgress = useSharedValue(isBusy ? 1 : 0);
 
   useEffect(() => {
-    busyProgress.value = withTiming(isSwitching ? 1 : 0, {
+    busyProgress.value = withTiming(isBusy ? 1 : 0, {
       duration: ACTION_FADE_DURATION,
       easing: EASE_OUT_QUINT,
     });
-  }, [busyProgress, isSwitching]);
+  }, [busyProgress, isBusy]);
 
   const actionStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(actionProgress.value, [0, 1], ['#404040', '#94F27F']),
@@ -311,13 +329,17 @@ const SpendModeSheetContent = ({
   // against a double press because the first one costs a signature and, on a migration,
   // four contract calls.
   const handleAction = useCallback(() => {
-    if (isSwitching) return;
+    if (isBusy) return;
+    if (isBaseFailed) {
+      onRetryBase?.();
+      return;
+    }
     if (isActiveSelected) {
       onDismiss();
       return;
     }
     void onConfirm(selected);
-  }, [isActiveSelected, isSwitching, onConfirm, onDismiss, selected]);
+  }, [isActiveSelected, isBaseFailed, isBusy, onConfirm, onDismiss, onRetryBase, selected]);
 
   return (
     <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
@@ -430,6 +452,10 @@ const SpendModeSheetContent = ({
         <Text className="mt-4 text-center text-[14px] font-normal leading-[18px] text-white/70">
           {`Part of your balance is still on ${SPEND_MODE_COPY[baseMode].label}. Finish the change to use it with ${SPEND_MODE_COPY[selected].label} too.`}
         </Text>
+      ) : isBaseFailed ? (
+        <Text className="mt-4 text-center text-[14px] font-normal leading-[18px] text-white/70">
+          {`We couldn't check whether all of your balance is on ${SPEND_MODE_COPY[selected].label}.`}
+        </Text>
       ) : null}
 
       <Animated.View style={[styles.action, actionStyle]}>
@@ -440,8 +466,8 @@ const SpendModeSheetContent = ({
           accessibilityRole="button"
           // `busy` as well as `disabled`: to a screen reader those are different
           // facts, and "dimmed because something is happening" is the one here.
-          accessibilityState={{ disabled: isSwitching, busy: isSwitching }}
-          disabled={isSwitching}
+          accessibilityState={{ disabled: isBusy, busy: isBusy }}
+          disabled={isBusy}
           onPress={handleAction}
           style={styles.actionPress}
         >
@@ -458,7 +484,7 @@ const SpendModeSheetContent = ({
             {/* Beside the label rather than in place of it. "Confirming…" is worth
                 keeping: this is a signature followed by on-chain confirmation, and a
                 bare spinner on a sheet that has not moved invites a second tap. */}
-            {isSwitching ? (
+            {isBusy ? (
               <ActivityIndicator size="small" color={isActiveSelected ? '#FFFFFF' : '#000000'} />
             ) : null}
             <Text
