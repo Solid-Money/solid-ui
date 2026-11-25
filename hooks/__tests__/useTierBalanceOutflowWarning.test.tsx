@@ -24,7 +24,9 @@ jest.mock('@/lib/vaults', () => ({ isEarnShareToken: () => false }));
 jest.mock('@/lib/types', () => ({ VaultType: { USDC: 'USDC' } }));
 
 // The warning is whatever this says for the amount: a reset warning above
-// $1,000 out of Earn, nothing below.
+// $1,000 out of Earn, nothing below. A new object per amount, as the real one
+// is, so every keystroke reruns the effect and the kind/tier check is what
+// keeps a warning that stays up from being reported again.
 const resetWarning = { kind: 'reset', tier: 'prime' };
 jest.mock('@/lib/tierBalance', () => ({
   activeTierBalance: () => ({ enabled: true }),
@@ -32,7 +34,7 @@ jest.mock('@/lib/tierBalance', () => ({
   fixedPointUsd: () => 0,
   parseTokenUnits: () => 0n,
   outflowWarning: (_balance: unknown, _tier: unknown, outflowUsd: number) =>
-    outflowUsd > 1000 ? resetWarning : null,
+    outflowUsd > 1000 ? { ...resetWarning } : null,
 }));
 
 const Probe = ({ outflowUsd }: { outflowUsd: number }) => {
