@@ -93,21 +93,19 @@ const SendReview: React.FC = () => {
   const isNetworkMismatch =
     !!selectedToken && !!expectedChainId && expectedChainId !== selectedToken.chainId;
   // Without the address book a saved contact's network is unknown, and an empty
-  // list would read as "no expected network" and skip the check. Likewise an
-  // empty activity store (new or cleared device) hides the last send's network
-  // until the first history page arrives. A picked network needs neither, and a
-  // saved contact's network outranks history. Hold Send while what's needed
-  // loads; if it fails, offer a retry and make the user confirm the network.
+  // list would read as "no expected network" and skip the check. Likewise the
+  // last send's network needs the first history page: rows already on the
+  // device can be stale (a send made elsewhere) or empty on a new device. A
+  // picked network needs neither, and a saved contact's network outranks
+  // history. Hold Send while what's needed loads; if it fails, offer a retry
+  // and make the user confirm the network.
   const isAddressBookMissing = !recipientChainId && !addressBook;
   const savedContactChainId = address
     ? addressBook?.find(entry => entry.walletAddress.toLowerCase() === address.toLowerCase())
         ?.chainId
     : undefined;
   const isHistoryMissing =
-    !recipientChainId &&
-    !savedContactChainId &&
-    !activities.length &&
-    initialFetchStatus !== 'success';
+    !recipientChainId && !savedContactChainId && initialFetchStatus !== 'success';
   const isAddressBookFailed = isAddressBookMissing && isAddressBookError;
   const isHistoryFailed = isHistoryMissing && initialFetchStatus === 'error';
   const isCheckingRecipient =
