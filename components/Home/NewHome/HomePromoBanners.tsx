@@ -5,11 +5,13 @@ import { Image } from 'expo-image';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import { HOME_BANNER_RADIUS } from '@/components/Home/NewHome/homeBannerStyle';
 import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
+import BlackFridayPromotion from '@/components/Promotions/BlackFridayPromotion';
+import { BLACK_FRIDAY_SLUG, useBlackFridayPromotion } from '@/hooks/useBlackFridayCampaign';
 import { useDimension } from '@/hooks/useDimension';
-import { usePromotionsBannerPress, usePromotionsBanners } from '@/hooks/usePromotionsBanners';
+import { usePromotionsBannerPress } from '@/hooks/usePromotionsBanners';
 import { isDevFeatureEnabled } from '@/lib/config';
+import mmkvStorage from '@/lib/mmvkStorage';
 
-import type { PromotionsBannerItem } from '@/lib/types';
 import type { ImageLoadEventData } from 'expo-image';
 
 // The hardcoded Figma card (22024:1057) is 387x98, the same 387pt mobile width
@@ -24,6 +26,7 @@ const BANNER_ASPECT_RATIO = 387 / 98;
 // a future relaunch. Admin-managed banners are not gated by this — the whole
 // point of them is that the dashboard controls what runs, in production too.
 const isCashbackPromoEnabled = false;
+const BLACK_FRIDAY_DISMISSAL = 'black-friday-2026-dismissed';
 
 /**
  * Wraps whatever fills the promo slot. Padding stays on a regular View because
@@ -64,51 +67,61 @@ const PromoImageBanner = ({ uri, onPress }: { uri: string; onPress: () => void }
 };
 
 /**
- * The promo slot on the redesigned home screen.
- *
- * Banners come from the admin dashboard, targeted by platform, app version and
- * page, so a campaign like "10% Cashback for 7 Days!" can be swapped without
- * shipping a build. `HomeCashbackPromoBanner` — that same card hardcoded from
- * Figma — is the fallback for when no banner targets this build, and stays
- * behind its pause flag.
- *
- * Renders nothing at all rather than an empty wrapper when there is nothing to
- * show, which is the common case while the promo is paused: an empty View would
- * still take a slot in the parent's flex gap.
+ * The Black Friday banner sits above the tier trial. Other promotions keep
+ * their slot below it and follow the order from the admin dashboard.
  */
-const HomePromoBanners = () => {
+const HomePromoBanners = ({ children }: { children: React.ReactNode }) => {
   const { isScreenMedium } = useDimension();
-  const { banners } = usePromotionsBanners();
+  const { banners, promotion } = useBlackFridayPromotion();
   const getBannerPress = usePromotionsBannerPress();
-
-  if (!banners.length) {
-    return isCashbackPromoEnabled && isDevFeatureEnabled ? (
-      <PromoSlot>
-        <HomeCashbackPromoBanner />
-      </PromoSlot>
-    ) : null;
-  }
+  const [blackFridayDismissed, setBlackFridayDismissed] = useState(
+    () => mmkvStorage('home-promotions').getItem(BLACK_FRIDAY_DISMISSAL) === 'true',
+  );
+  const visiblePromotion = blackFridayDismissed ? undefined : promotion;
+  const otherBanners = banners.filter(banner => banner.slug !== BLACK_FRIDAY_SLUG);
+  const showCashbackFallback = isCashbackPromoEnabled && isDevFeatureEnabled;
 
   return (
-    <PromoSlot>
-      <View style={styles.stack}>
-        {banners.map((banner: PromotionsBannerItem, index) => {
-          const uri =
-            !isScreenMedium && banner.mobileImageURL ? banner.mobileImageURL : banner.imageURL;
+    <>
+      {visiblePromotion && (
+        <PromoSlot>
+          <BlackFridayPromotion
+            promotion={visiblePromotion}
+            onDismiss={() => {
+              setBlackFridayDismissed(true);
+              mmkvStorage('home-promotions').setItem(BLACK_FRIDAY_DISMISSAL, 'true');
+            }}
+          />
+        </PromoSlot>
+      )}
+      {children}
+      {otherBanners.length > 0 ? (
+        <PromoSlot>
+          <View style={styles.stack}>
+            {otherBanners.map((banner, index) => {
+              const uri =
+                !isScreenMedium && banner.mobileImageURL ? banner.mobileImageURL : banner.imageURL;
 
-          // Keyed by uri as well as position so crossing the mobile/desktop
-          // breakpoint starts the new artwork's ratio over rather than holding
-          // the previous image's until it loads.
-          return (
-            <PromoImageBanner
-              key={`promo-${banner.slug}-${index}-${uri}`}
-              uri={uri}
-              onPress={getBannerPress(banner)}
-            />
-          );
-        })}
-      </View>
-    </PromoSlot>
+              // Reset the artwork's ratio when crossing the mobile/desktop breakpoint.
+              return (
+                <PromoImageBanner
+                  key={`promo-${banner.slug}-${index}-${uri}`}
+                  uri={uri}
+                  onPress={getBannerPress(banner)}
+                />
+              );
+            })}
+          </View>
+        </PromoSlot>
+      ) : (
+        showCashbackFallback &&
+        !visiblePromotion && (
+          <PromoSlot>
+            <HomeCashbackPromoBanner />
+          </PromoSlot>
+        )
+      )}
+    </>
   );
 };
 

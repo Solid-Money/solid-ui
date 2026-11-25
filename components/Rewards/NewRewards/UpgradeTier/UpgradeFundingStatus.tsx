@@ -14,7 +14,14 @@ import {
 import { markUpgradeFundingSpent, useCashPayment } from '@/hooks/useTierUpgradeFunding';
 import { track } from '@/lib/analytics';
 import { getTierDisplayName } from '@/lib/tierNames';
-import { findOffer, isTierOnTrial } from '@/lib/tierUpgrade';
+import {
+  canPayCashFor,
+  findOffer,
+  formatUsd,
+  isTierOnTrial,
+  offerFirstYearFeeUsd,
+  offerPaymentMode,
+} from '@/lib/tierUpgrade';
 import { useLifiSwapStore } from '@/store/lifiSwapStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
@@ -31,6 +38,11 @@ import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
  * Closing is always safe. The swap keeps being tracked, and the offer step
  * picks the arrived USDC back up — with the bridge's cost still covered — the
  * next time the upgrade is opened.
+ *
+ * The second signature is whatever the offer is paid by: a mandate the backend
+ * then charges, or — for an upgrade from a running membership — the transfer
+ * batch and the upgrade endpoint. `useSubscribeToTier` reads that off the
+ * offer, so this screen cannot start an upgrade the module would refuse.
  */
 const UpgradeFundingStatus = () => {
   const { data: membership } = useTierMembership();
@@ -38,9 +50,12 @@ const UpgradeFundingStatus = () => {
   const tier = useTierUpgradeStore(state => state.tier);
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
+  const selectToken = useTierUpgradeStore(state => state.selectToken);
   const offer = tier ? findOffer(membership, tier) : undefined;
-  const feeUsd = offer?.annualFeeUsd ?? 0;
-  const payment = useCashPayment({ membership, chain, feeUsd });
+  // The first year is what is charged now, and what has to have landed.
+  const feeUsd = offerFirstYearFeeUsd(offer) ?? 0;
+  const paymentMode = offer ? offerPaymentMode(offer) : undefined;
+  const payment = useCashPayment({ membership, chain, feeUsd, paymentMode });
   const { funding } = payment;
   const { subscribe, isSubscribing, error } = useSubscribeToTier();
   const activeClientTxId = useLifiSwapStore(state => state.activeClientTxId);
@@ -68,23 +83,50 @@ const UpgradeFundingStatus = () => {
   }
 
   const keeping = isTierOnTrial(membership, tier);
-  // Read off the chain, not the swap: the balance poll is what says the USDC
-  // is actually spendable, and it is what the charge will be taken from.
-  const ready = funding.state === 'arrived' && payment.affordable;
+  // An upgrade paid by transfer that is still unconfirmed has already taken
+  // the USDC, so the balance can no longer vouch for it — and Finish is the
+  // only way to confirm it. Pressed then, it confirms that payment and never
+  // signs a new one, whatever the balance: a press that meant "finish" must
+  // not turn into a second payment if the earlier one is gone by then.
+  const confirmingEarlier = payment.awaitingConfirm;
+  // Otherwise read off the chain, not the swap: the balance poll is what says
+  // the USDC is actually spendable, and it is what the charge will be taken
+  // from — whichever token the offer row names.
+  const ready = confirmingEarlier || (funding.state === 'arrived' && payment.fuseCoversFee);
+  // A transfer upgrade's payment that landed short stays short — nothing
+  // covers its bridge — so the rest has to be sent, not waited for. Only said
+  // from a balance read asked for after it landed: until then the USDC that
+  // just arrived may be missing from it, and "short by the whole fee" would be
+  // wrong. `useCashPayment` holds it at zero until there is one, which is
+  // "Checking your balance…" below.
+  const shortUsd = funding.state === 'arrived' ? payment.arrivedShortUsd : 0;
 
   const handleFinish = async () => {
-    if (!membership.contracts.subscriptionModuleAddress || offer.annualFeeUsd === null) return;
+    // What a new payment needs. Confirming the earlier one needs none of it —
+    // it is confirmed by its own hash — and has to go through even once cash
+    // has been switched off since it was paid.
+    if (
+      !confirmingEarlier &&
+      (!membership.contracts.subscriptionModuleAddress ||
+        offerFirstYearFeeUsd(offer) === null ||
+        !canPayCashFor(offer, membership.contracts))
+    ) {
+      return;
+    }
     track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, {
       tier,
-      price_usd: offer.annualFeeUsd,
+      price_usd: feeUsd,
+      payment_mode: paymentMode,
       funded_from_chain_id: swap.fromChainId,
     });
+    // The bridged transfer is passed either way; the hook claims the bridge
+    // cover with it only for a module subscription.
     const result = await subscribe({
-      tier,
-      priceUsd: offer.annualFeeUsd,
-      moduleAddress: membership.contracts.subscriptionModuleAddress,
+      offer,
+      contracts: membership.contracts,
       moduleEnabled: chain?.moduleEnabled ?? false,
       funding: { transactionHash: swap.txHash, fromChainId: swap.fromChainId },
+      confirmPendingOnly: confirmingEarlier,
     }).catch(() => null);
     if (!result) return;
     markUpgradeFundingSpent(swap.clientTxId);
@@ -96,6 +138,17 @@ const UpgradeFundingStatus = () => {
       <Button variant="brand" className="h-12 w-full rounded-2xl" onPress={back}>
         <Text className="w-full text-center text-base font-bold">Back to upgrade</Text>
       </Button>
+    ) : shortUsd > 0 && !ready ? (
+      <View className="gap-3">
+        <Text className="text-center text-[14px] leading-5 text-white/50">
+          {`Your USDC has landed, but you’re still ${formatUsd(
+            Math.ceil(shortUsd * 100) / 100,
+          )} short of the ${formatUsd(feeUsd)} fee. Add the rest to finish.`}
+        </Text>
+        <Button variant="brand" className="h-12 w-full rounded-2xl" onPress={selectToken}>
+          <Text className="w-full text-center text-base font-bold text-black">Add the rest</Text>
+        </Button>
+      </View>
     ) : (
       <View className="gap-3">
         {error ? (

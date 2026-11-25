@@ -24,11 +24,21 @@ import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useBlackFridayCampaign } from '@/hooks/useBlackFridayCampaign';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership } from '@/hooks/useTierMembership';
+import { type BlackFridayOffer, blackFridayOffer } from '@/lib/blackFriday';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
-import { availableRoutes, findOffer } from '@/lib/tierUpgrade';
+import {
+  availableRoutes,
+  canPayCashFor,
+  findOffer,
+  formatPriceUsd,
+  offerFirstYearFeeUsd,
+} from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -38,6 +48,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 import { TierBenefitsBackground, TierBenefitsPage } from './TierBenefitsPage';
 import { TIER_LABELS, tierOfferSubtitle } from './tierBenefitsPresentation';
+import { showsCardFxPricing } from './tierCardFx';
 import TierPointsSheet from './TierPointsSheet';
 import TierSwitcher from './TierSwitcher';
 import { type TierUpgradeCta, tierUpgradeCta } from './tierUpgradeCta';
@@ -71,21 +82,28 @@ const PremiumUpgradeFooter = ({
   selectedTier,
   onUpgradePress,
   cta,
+  sale,
 }: {
   selectedTier: RewardsTier;
   /** The button, its subtitle and whether it does anything — see `tierUpgradeCta`. */
   cta: TierUpgradeCta;
+  sale?: BlackFridayOffer;
   onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const { label: actionLabel, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
-  const label =
+  const { label: actionLabel, subtitle: ctaSubtitle, enabled, held } = cta;
+  const saleAction = actionLabel === 'Upgrade' || actionLabel === 'Keep' ? sale : undefined;
+  const canUpgrade = enabled && !saleAction?.preview;
+  const standardLabel =
     actionLabel === 'Upgrade'
       ? `Upgrade to ${TIER_LABELS[selectedTier]}`
       : actionLabel === 'Keep'
         ? `Keep ${TIER_LABELS[selectedTier]}`
         : actionLabel;
+  const label = saleAction
+    ? `${standardLabel} for ${formatPriceUsd(saleAction.saleUsd)}`
+    : standardLabel;
   // Gone, not greyed out, for any tier the user already has.
   //
   // Was `selectedTier !== currentTier`, which only ever hid the footer on the
@@ -169,7 +187,16 @@ const PremiumUpgradeFooter = ({
             lineHeight: 23,
           }}
         >
-          {ctaSubtitle}
+          {saleAction ? (
+            <>
+              <Text className="text-[#DDD2A5]">
+                Save {formatPriceUsd(saleAction.beforeUsd - saleAction.saleUsd)}
+              </Text>
+              {` · ${formatPriceUsd(saleAction.saleUsd)} first year, then ${formatPriceUsd(saleAction.beforeUsd)}/year`}
+            </>
+          ) : (
+            ctaSubtitle
+          )}
         </Text>
         <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
           <Pressable
@@ -212,6 +239,7 @@ export default function RewardsBenefitsScreenNew() {
 }
 
 function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier | null }) {
+  const campaign = useBlackFridayCampaign();
   const {
     data: rewardsData,
     isError,
@@ -219,6 +247,10 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
     refetch: refetchRewards,
   } = useRewardsUserData();
   const { data: tierBenefits } = useTierBenefits();
+  // The card FX price is a Wirex one: Rain cardholders keep Rain's fee.
+  const { provider: cardProvider } = useCardProvider();
+  const { isSuccess: cardStatusSettled } = useCardStatus();
+  const showCardFx = showsCardFxPricing({ provider: cardProvider, cardStatusSettled });
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
   const pending = useRewardsUpgradeStore(state => !!state.pendingUntil);
   const currentTier = isError ? undefined : confirmed?.currentTier;
@@ -228,7 +260,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
           target => target.tier === tier && target.requiredFuse > 0,
         )
       : undefined;
-  const { data: membership } = useTierMembership();
+  const { data: membership, isError: membershipError } = useTierMembership({
+    refreshInterval: campaign.banner ? 15_000 : undefined,
+  });
   const openTierUpgrade = useTierUpgradeStore(state => state.open);
   const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(initialTier);
   const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
@@ -290,7 +324,18 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
   const upgradeRoutes = (tier: RewardsTier) => {
     const offer = findOffer(membership, tier);
     if (!membership?.enabled || !offer || offer.held) return [];
-    return availableRoutes(offer);
+    return availableRoutes(offer, membership.contracts);
+  };
+  const saleFor = (tier: RewardsTier) => {
+    const offer = findOffer(membership, tier);
+    return blackFridayOffer(
+      tier,
+      !membershipError && membership?.enabled && offer && canPayCashFor(offer, membership.contracts)
+        ? offer
+        : undefined,
+      tierBenefits?.find(benefit => benefit.tier === tier),
+      campaign,
+    );
   };
 
   const ctaFor = (tier: RewardsTier) => {
@@ -304,6 +349,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       pending,
       routes: upgradeRoutes(tier),
       annualFeeUsd: offer?.annualFeeUsd,
+      firstYearFeeUsd: offerFirstYearFeeUsd(offer),
       lockFuse: offer?.lockFuse,
       remainingFuse: upgradeTarget(tier)?.remainingFuse,
       // The membership endpoint's own verdict, so a skew between it and the
@@ -313,7 +359,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       // to keep it once the trial ends.
       trialTier: isError ? undefined : rewardsData?.activeTierTrial?.tier,
     });
-    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer) : null;
+    // Priced by the routes the button sells, so it never quotes a cash price
+    // for an upgrade it can only offer by lock.
+    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer, membership.contracts) : null;
     // Same verb as the button: a tier the trial is lending is kept, not gained.
     const purpose = cta.label === 'Keep' ? 'to keep it' : 'to upgrade';
     return cta.enabled && !isError && !pending && upgradeRoutes(tier).length > 0 && offerCopy
@@ -431,6 +479,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
         <PremiumUpgradeFooter
           selectedTier={selectedTier}
           cta={ctaFor(selectedTier)}
+          sale={saleFor(selectedTier)}
           onUpgradePress={handleUpgradePress}
         />
       )}
@@ -545,7 +594,10 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   benefits={tierBenefits?.find(benefit => benefit.tier === tier)}
                   allBenefits={tierBenefits}
                   fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
+                  showCardFx={showCardFx}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
+                  contracts={membership?.contracts}
+                  blackFriday={saleFor(tier)}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))
@@ -553,7 +605,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   subtitle={(() => {
                     const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
                     const offerCopy = membership?.enabled
-                      ? tierOfferSubtitle(findOffer(membership, tier))
+                      ? tierOfferSubtitle(findOffer(membership, tier), membership.contracts)
                       : null;
                     const copy =
                       tier === RewardsTier.CORE

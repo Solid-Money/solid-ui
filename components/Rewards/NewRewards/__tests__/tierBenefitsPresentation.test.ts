@@ -222,4 +222,68 @@ describe('membership offer presentation', () => {
     expect(tierOfferSubtitle(offer({ cashAvailable: false }))).toBe('Requires 37.5K FUSE locked');
     expect(tierOfferSubtitle(offer({ lockAvailable: false }))).toBe('$149.5/year');
   });
+
+  /**
+   * The first year is on sale and the renewals are not, so the panel strikes
+   * the annual fee through beside the sale price, and the plain-text subtitle
+   * says what it was.
+   */
+  it('prices a sale at the first year, against the annual fee', () => {
+    const sale = offer({
+      tier: ULTRA,
+      annualFeeUsd: 999,
+      firstYearFeeUsd: 799,
+      lockFuse: 600_000,
+    });
+
+    expect(tierOfferRows(sale)).toEqual([
+      { label: 'Annual membership', value: '$799/year', listValue: '$999' },
+      { label: 'Or lock FUSE', value: '600K FUSE' },
+    ]);
+    expect(tierOfferSubtitle(sale)).toBe('$799/year (was $999) or 600K FUSE locked');
+    expect(tierOfferSubtitle({ ...sale, lockAvailable: false })).toBe('$799/year (was $999)');
+  });
+
+  it('strikes nothing through outside a sale', () => {
+    const [cash] = tierOfferRows(offer({ annualFeeUsd: 199, firstYearFeeUsd: 199 }));
+
+    expect(cash).toEqual({ label: 'Annual membership', value: '$199/year' });
+  });
+
+  /**
+   * An upgrade paid by transfer needs the treasury to pay. Without it the
+   * routes offer the lock alone, so the price must not be advertised beside a
+   * button that cannot take it — the same test `availableRoutes` sells by.
+   */
+  describe('an upgrade paid by transfer', () => {
+    const upgrade = offer({
+      tier: ULTRA,
+      annualFeeUsd: 999,
+      firstYearFeeUsd: 799,
+      lockFuse: 600_000,
+      paymentMode: 'transfer',
+    });
+    const contracts = {
+      billingTokenAddress: '0x3333333333333333333333333333333333333333',
+      revenueTreasuryAddress: '0x4444444444444444444444444444444444444444',
+    };
+
+    it('is priced in cash when the treasury is known', () => {
+      expect(tierOfferSubtitle(upgrade, contracts)).toBe(
+        '$799/year (was $999) or 600K FUSE locked',
+      );
+    });
+
+    it('is offered by its lock alone without the treasury', () => {
+      const noTreasury = { ...contracts, revenueTreasuryAddress: null };
+
+      expect(tierOfferRows(upgrade, noTreasury)).toEqual([
+        { label: 'Lock FUSE', value: '600K FUSE' },
+      ]);
+      expect(tierOfferSubtitle(upgrade, noTreasury)).toBe('Requires 600K FUSE locked');
+      // No contracts at all is the same answer, never a price.
+      expect(tierOfferSubtitle(upgrade)).toBe('Requires 600K FUSE locked');
+      expect(tierOfferSubtitle({ ...upgrade, lockAvailable: false }, noTreasury)).toBeNull();
+    });
+  });
 });

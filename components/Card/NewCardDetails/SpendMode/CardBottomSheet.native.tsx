@@ -30,6 +30,7 @@ const CardBottomSheet = ({
   designTop,
   designBottom,
   scrollable = false,
+  fullBleed,
   children,
 }: CardBottomSheetProps) => {
   const insets = useSafeAreaInsets();
@@ -48,6 +49,7 @@ const CardBottomSheet = ({
   }, [isOpen]);
 
   const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const topPadding = fullBleed ? designTop : Math.max(designTop - SHEET_HANDLE_SPACE, 0);
 
   const renderBackdrop = useCallback(
     (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
@@ -73,10 +75,11 @@ const CardBottomSheet = ({
       onDismiss={dismiss}
       backdropComponent={renderBackdrop}
       backgroundStyle={{
-        backgroundColor: '#1C1C1C',
-        borderTopLeftRadius: 40,
-        borderTopRightRadius: 40,
+        backgroundColor: fullBleed?.backgroundColor ?? '#1C1C1C',
+        borderTopLeftRadius: fullBleed?.radius ?? 40,
+        borderTopRightRadius: fullBleed?.radius ?? 40,
       }}
+      handleComponent={fullBleed ? null : undefined}
       handleStyle={{ paddingBottom: 0, paddingTop: SHEET_HANDLE_PADDING }}
       handleIndicatorStyle={{
         backgroundColor: 'rgba(255,255,255,0.2)',
@@ -93,11 +96,11 @@ const CardBottomSheet = ({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: designBottom + insets.bottom }}
         >
-          {children({ session, topPadding: Math.max(designTop - SHEET_HANDLE_SPACE, 0) })}
+          {children({ session, topPadding })}
         </BottomSheetScrollView>
       ) : (
         <BottomSheetView style={{ paddingBottom: designBottom + insets.bottom }}>
-          {children({ session, topPadding: Math.max(designTop - SHEET_HANDLE_SPACE, 0) })}
+          {children({ session, topPadding })}
         </BottomSheetView>
       )}
     </BottomSheetModal>

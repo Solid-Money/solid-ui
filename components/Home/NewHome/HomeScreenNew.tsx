@@ -395,13 +395,9 @@ export default function HomeScreenNew() {
               />
             </HeroExit>
           )}
-          {/* A tier trial the user has been given or is running. Renders
-              nothing when they have neither, which is the common case. */}
-          <TierTrialSlot />
-          {/* Renders nothing at all when no banner is targeted at this build and
-              the hardcoded cashback promo is still paused, so the slot leaves no
-              gap behind. */}
-          <HomePromoBanners />
+          <HomePromoBanners>
+            <TierTrialSlot />
+          </HomePromoBanners>
         </View>
 
         <HeroExit spec={HERO_EXIT.belowCard}>

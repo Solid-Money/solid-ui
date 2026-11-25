@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Address, encodeFunctionData, erc20Abi, formatUnits } from 'viem';
+import { Address, erc20Abi, formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
-import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidSubscriptionModule_ABI } from '@/lib/abis/SolidSubscriptionModule';
 import { track } from '@/lib/analytics';
 import {
@@ -14,6 +13,7 @@ import {
   confirmTierSubscription,
   fetchTierMembership,
   resumeTierSubscription,
+  upgradeTierSubscription,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { getUserErrorMessage, sanitizeTechnicalMessage, UserCopyError } from '@/lib/errors';
@@ -24,11 +24,30 @@ import {
   reconcilePendingTierLocks,
   releasePendingTierLock,
 } from '@/lib/pendingTierLocks';
+import { readTierUpgradeStart, settlePendingTierUpgrades } from '@/lib/pendingTierUpgrades';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
-import { RewardsTier, TierMembershipState } from '@/lib/types';
+import {
+  BILLING_DECIMALS,
+  buildSubscriptionTransactions,
+  usdToBillingUnits,
+} from '@/lib/tierSubscriptionTransactions';
+import {
+  offerFirstYearFeeUsd,
+  offerMandateUsd,
+  offerPaymentMode,
+  TIER_MEMBERSHIP_PAYMENT_MODES,
+} from '@/lib/tierUpgrade';
+import { RewardsTier, TierMembershipContracts, TierMembershipState, TierOffer } from '@/lib/types';
+import { upgradeRejectionMessage } from '@/lib/upgradeRejection';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { pendingTierLocksFor, usePendingTierLockStore } from '@/store/usePendingTierLockStore';
+import {
+  PendingTierUpgrade,
+  pendingTierUpgradeKey,
+  TierUpgradePayment,
+  usePendingTierUpgradeStore,
+} from '@/store/usePendingTierUpgradeStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -49,10 +68,6 @@ const TIER_UPGRADE_BALANCES_QUERY_KEY = 'tierUpgradeBalances';
 
 /** soFUSE shares, the accountant rate and the share token all use 18 decimals. */
 const SHARE_DECIMALS = 18;
-/** USDC, and therefore every amount the subscription module moves. */
-const BILLING_DECIMALS = 6;
-/** The billing period a mandate is signed for. */
-const YEAR_SECONDS = 365n * 24n * 60n * 60n;
 
 /** What the upgrade screens need from the chain, read fresh at the moment of use. */
 export interface TierUpgradeChainState {
@@ -74,6 +89,16 @@ export interface TierUpgradeChainState {
   moduleEnabled: boolean;
   /** Whether the Safe has already written a mandate. */
   hasMandate: boolean;
+  /**
+   * When this read was asked for, ms since epoch: taken before any of it is
+   * sent, so every balance in it is at least this recent.
+   *
+   * Not React Query's `dataUpdatedAt`, which is when the slowest of the reads
+   * came back: the USDC one can answer before a bridged payment lands and the
+   * batch still finish after, and a balance judged by that would be taken as
+   * including USDC it never saw. See `resolveCashPayment`.
+   */
+  readStartedAt: number;
 }
 
 /**
@@ -84,16 +109,23 @@ export interface TierUpgradeChainState {
  * and three requests is how a screen ends up offering a tier the user already
  * holds.
  */
-export const useTierMembership = () => {
+export const useTierMembership = ({
+  enabled = true,
+  refreshInterval,
+}: { enabled?: boolean; refreshInterval?: number } = {}) => {
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
 
   return useQuery<TierMembershipState>({
-    queryKey: [TIER_MEMBERSHIP_QUERY_KEY, selectedUserId],
+    // The payment modes asked for are part of the answer — the backend offers
+    // Ultra for cash only to a client that asked for `transfer` — so they are
+    // part of the key, and a payload fetched without them is never read as one.
+    queryKey: [TIER_MEMBERSHIP_QUERY_KEY, selectedUserId, TIER_MEMBERSHIP_PAYMENT_MODES],
     // Wrapped like the other session calls: an expired token is refreshed rather
     // than leaving the portfolio waiting on React Query's retries.
     queryFn: () => withRefreshToken(fetchTierMembership),
-    enabled: Boolean(selectedUserId),
+    enabled: enabled && Boolean(selectedUserId),
     staleTime: 30_000,
+    refetchInterval: refreshInterval,
   });
 };
 
@@ -146,6 +178,7 @@ export const useTierUpgradeChainState = (contracts?: {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     queryFn: async () => {
+      const readStartedAt = Date.now();
       const client = publicClient(fuse.id);
 
       // All of them in flight together: this drives a screen that has to price
@@ -224,6 +257,7 @@ export const useTierUpgradeChainState = (contracts?: {
         usdcAmount: Number(formatUnits(usdc, BILLING_DECIMALS)),
         moduleEnabled,
         hasMandate: subscription?.registered === true && subscription.cancelledAt === 0n,
+        readStartedAt,
       };
     },
   });
@@ -469,16 +503,169 @@ export const useLockFuseForTier = () => {
 };
 
 /**
- * Buy a tier with the annual fee.
+ * An upgrade paid by transfer that was sent and is still landing. Shown to the
+ * user like any refusal of ours, but it is not a failed upgrade, and is not
+ * reported as one.
+ */
+class TierUpgradeConfirmingError extends UserCopyError {}
+
+/**
+ * The bundler turning an operation away over its nonce: another is already
+ * waiting with it and this one does not outbid it, or the nonce has just been
+ * used. What a replacement meets while the operation it replaces is still
+ * held, or has landed after all.
+ */
+const NONCE_REFUSAL = /\bAA25\b|invalid account nonce|nonce too low|replacement|already known/i;
+
+/** Whether the error, or anything that caused it, says something `pattern` matches. */
+const saysAnywhere = (error: unknown, pattern: RegExp): boolean => {
+  for (
+    let e = error as { message?: string; details?: string; cause?: unknown } | undefined;
+    e;
+    e = e.cause as typeof e
+  ) {
+    if (pattern.test(`${e.message ?? ''} ${e.details ?? ''}`)) return true;
+  }
+  return false;
+};
+
+const isNonceRefusal = (error: unknown): boolean => saysAnywhere(error, NONCE_REFUSAL);
+
+/**
+ * The bundler — or the paymaster or node asked while the operation was
+ * prepared — turning it away: it failed validation (an EntryPoint `AAxx`
+ * code, a revert in simulation) or its nonce was refused. Whatever was signed
+ * was never accepted, so it can never land.
  *
- * One user operation again: enable the module on the Safe, then write the
- * mandate. Batching is what makes the permission and its bounds a single
- * decision — a Safe cannot end up with the module enabled and no mandate, which
- * would be a standing permission with nothing shaping it.
+ * Narrow on purpose. A send that failed any other way — a dropped connection,
+ * a timeout — may have reached the bundler and been accepted with only the
+ * answer lost. "Already known" is left out for the same reason: it is the
+ * bundler saying it holds the operation.
+ */
+const REFUSED_BEFORE_ACCEPTANCE =
+  /\bAA[1-9]\d\b|reverted during simulation|execution reverted|invalid account nonce|nonce too low|replacement/i;
+
+/** A send that certainly left nothing with the bundler: refused, or stopped by our own check first. */
+const refusedBeforeAcceptance = (error: unknown): boolean =>
+  // Ours only before sending: the Safe cannot pay the network fee.
+  error instanceof UserCopyError ||
+  (saysAnywhere(error, REFUSED_BEFORE_ACCEPTANCE) && !saysAnywhere(error, /already known/i));
+
+/** An earlier payment by transfer that a new one may only replace, as settling found it. */
+type ReplaceableUpgrade = { key: string; upgrade: PendingTierUpgrade; nonce: bigint };
+
+/** A payment by transfer, on record from before it is signed. */
+interface TransferAttempt {
+  /** Where its record is kept. */
+  key: string;
+  /** The record as written, with no hash yet. */
+  record: PendingTierUpgrade;
+  /** The nonce it is sent with: the one on record. */
+  nonce: bigint;
+}
+
+/**
+ * Put a payment by transfer on record before anything is signed, under the
+ * Safe and the nonce it is then sent with: a new payment's read now, a
+ * replacement's the earlier payment's own.
  *
- * The mandate is set to exactly the price. A cap with headroom in it would
- * survive a price rise without asking, and asking is the point: a subscription
- * whose price goes up is a new agreement, and the user should sign it.
+ * From the moment the bundler may have it, a retry finds it — even when the
+ * answer that carries its hash is lost, or the app stops before it arrives —
+ * and whatever uses that nonce settles it. A replacement keeps the block of
+ * the payment it replaces, and that payment's operations, any of which may
+ * still be the one that lands.
+ */
+const recordTransferAttempt = async ({
+  userId,
+  tier,
+  payment,
+  safeAddress,
+  replacing,
+}: {
+  userId: string;
+  tier: RewardsTier;
+  /** The transfer to the treasury the operation makes. */
+  payment: TierUpgradePayment;
+  safeAddress: string;
+  replacing?: ReplaceableUpgrade;
+}): Promise<TransferAttempt> => {
+  const start = replacing
+    ? { block: replacing.upgrade.block, nonce: replacing.nonce }
+    : await readTierUpgradeStart(safeAddress as Address);
+  const record: PendingTierUpgrade = {
+    userId,
+    submittedAt: Date.now(),
+    tier,
+    payment,
+    sender: safeAddress,
+    nonce: start.nonce.toString(),
+    block: start.block,
+    ...(replacing && {
+      replaced: [
+        {
+          userOpHash: replacing.upgrade.userOpHash,
+          tier: replacing.upgrade.tier,
+          payment: replacing.upgrade.payment,
+        },
+        ...(replacing.upgrade.replaced ?? []),
+      ],
+    }),
+  };
+  const pending = usePendingTierUpgradeStore.getState();
+  const key = pendingTierUpgradeKey(record);
+  // Marked as being sent before it is written, so no screen takes it for a
+  // payment to confirm while its passkey prompt is up. Cleared when the
+  // attempt is over, whatever its end.
+  pending.setSending(key, true);
+  if (replacing) pending.replace(replacing.key, record);
+  else pending.remember(record);
+  return { key, record, nonce: start.nonce };
+};
+
+/**
+ * Take back a payment the bundler never accepted, so the record is as it was
+ * before it: nothing, or the payment it was to replace.
+ */
+const withdrawTransferAttempt = (attempt: TransferAttempt, replacing?: ReplaceableUpgrade) => {
+  const pending = usePendingTierUpgradeStore.getState();
+  if (replacing) pending.replace(attempt.key, replacing.upgrade);
+  else pending.forget(attempt.key);
+};
+
+/**
+ * Accounts with an upgrade by transfer under way in this app — settling an
+ * earlier payment, signing a new one, or confirming it.
+ *
+ * The pending record is what stops a second payment, and it is only written
+ * once the settlement check has found nothing and the nonce has been read: a
+ * second press in between — a double tap, or another step's own copy of this
+ * hook — would pass the same check, and the two would sign over each other's
+ * record. Module scope, so every instance of the hook sees the same set;
+ * released when the attempt is over, whatever its end.
+ */
+const transferUpgradesInFlight = new Set<string>();
+
+/**
+ * Buy a tier with the annual fee, the way the offer says it is paid.
+ *
+ * One user operation either way. For `module` — a first membership — that is
+ * enable the module on the Safe, then write the mandate, and the backend takes
+ * the first year through the module once it lands. Batching is what makes the
+ * permission and its bounds a single decision — a Safe cannot end up with the
+ * module enabled and no mandate, which would be a standing permission with
+ * nothing shaping it.
+ *
+ * For `transfer` — an upgrade from a running membership, whose period has
+ * already had its one module charge — the Safe pays the first year to the
+ * treasury in the same batch, and the upgrade endpoint is told instead of the
+ * confirm one. The two are never mixed: a `transfer` offer confirmed as a
+ * subscription would ask the module for a charge it will refuse.
+ *
+ * The mandate is set to exactly the annual fee — the renewal price, not a
+ * first-year sale price. A cap with headroom in it would survive a price rise
+ * without asking, and asking is the point: a subscription whose price goes up
+ * is a new agreement, and the user should sign it. See
+ * `buildSubscriptionTransactions` for the calls.
  */
 export const useSubscribeToTier = () => {
   const { user, safeAA } = useUser();
@@ -487,81 +674,264 @@ export const useSubscribeToTier = () => {
 
   const mutation = useMutation({
     mutationFn: async ({
-      tier,
-      priceUsd,
-      moduleAddress,
+      offer,
+      contracts,
       moduleEnabled,
       funding,
+      confirmPendingOnly = false,
     }: {
-      tier: RewardsTier;
-      priceUsd: number;
-      moduleAddress: string;
+      /** The offer being bought, exactly as the screen priced it. */
+      offer: TierOffer;
+      contracts: TierMembershipContracts;
       /** Whether the Safe has already enabled the module. */
       moduleEnabled: boolean;
       /**
        * The LI.FI swap that brought the USDC in, when the payment was bridged
        * from another chain. The backend reads it back and lets the first
        * charge absorb the bridge's cost. The caller marks it spent once this
-       * resolves — see `markUpgradeFundingSpent`.
+       * resolves — see `markUpgradeFundingSpent`. Not sent for a `transfer`
+       * upgrade, which has no bridge-fee cover.
        */
       funding?: { transactionHash: string; fromChainId: number };
+      /**
+       * Only finish an earlier `transfer` payment that is still unconfirmed;
+       * never sign a new one. For a screen whose balance no longer covers the
+       * fee — because that payment has already taken it — and so has not
+       * checked that a new payment could go through. Needs neither the module,
+       * the treasury nor a price on the offer: the earlier payment is
+       * confirmed by its own hash, even once cash is no longer sold.
+       */
+      confirmPendingOnly?: boolean;
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
 
-      // Rounded to whole cents before scaling, so a price stored as a decimal
-      // cannot become a mandate a fraction under what will be charged.
-      const mandate = BigInt(Math.round(priceUsd * 100)) * 10n ** BigInt(BILLING_DECIMALS - 2);
-      if (mandate <= 0n) throw new UserCopyError('This tier is not available with an annual fee.');
+      const { tier } = offer;
+      const mode = offerPaymentMode(offer);
+      const priceUsd = offerFirstYearFeeUsd(offer);
+      const userId = user.userId;
+      const safeAddress = user.safeAddress;
+      // A transfer pays the treasury from the Safe, so an earlier one that was
+      // sent and never confirmed is settled before anything new is signed —
+      // finished if it landed, rather than paid for a second time. Settling is
+      // also all a confirm-only press does.
+      const settlesEarlier = mode === 'transfer' || confirmPendingOnly;
 
-      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
-
-      const result = await executeTransactions(
-        smartAccountClient,
-        [
-          ...(moduleEnabled
-            ? []
-            : [
-                {
-                  to: user.safeAddress as Address,
-                  data: encodeFunctionData({
-                    abi: Safe_ABI,
-                    functionName: 'enableModule',
-                    args: [moduleAddress as Address],
-                  }),
-                  value: 0n,
-                },
-              ]),
-          {
-            to: moduleAddress as Address,
-            data: encodeFunctionData({
-              abi: SolidSubscriptionModule_ABI,
-              functionName: 'subscribe',
-              args: [mandate, YEAR_SECONDS],
-            }),
-            value: 0n,
-          },
-        ],
-        'Failed to start your membership',
-        fuse,
-      );
-
-      if (result === USER_CANCELLED_TRANSACTION) {
-        track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
-        return null;
+      // Held from the settlement check until this attempt is over, so no other
+      // attempt for the account passes that check before this one's payment is
+      // on record — see `transferUpgradesInFlight`.
+      if (settlesEarlier) {
+        if (transferUpgradesInFlight.has(userId)) {
+          throw new TierUpgradeConfirmingError(
+            'Your upgrade is already under way. Your membership updates as soon as it finishes — there is no need to pay again.',
+          );
+        }
+        transferUpgradesInFlight.add(userId);
       }
 
-      // The first payment is taken here, server-side, against the mandate that
-      // has just landed. It can fail — most often for a Safe short of USDC —
-      // and when it does the error carries the module's own reason.
-      const state = await confirmTierSubscription({
-        tier,
-        transactionHash: result.transactionHash,
-        ...(funding ? { funding } : {}),
-      });
+      // An earlier payment that never landed, and that a new one may only
+      // replace: sent with its nonce, so that only one of the two can land.
+      let replacing: ReplaceableUpgrade | undefined;
+      // This attempt's record, while it is being sent — see `recordTransferAttempt`.
+      let sendingKey: string | undefined;
 
-      return { state, transactionHash: result.transactionHash, tier, priceUsd };
+      try {
+        if (settlesEarlier) {
+          const earlier = await settlePendingTierUpgrades(userId);
+          if (earlier.status === 'confirmed') {
+            return { state: earlier.state, transactionHash: undefined, tier, priceUsd, mode };
+          }
+          if (earlier.status === 'rejected') {
+            throw new UserCopyError(earlier.message);
+          }
+          if (earlier.status === 'pending') {
+            throw new UserCopyError(
+              'Your last upgrade payment is still confirming. Your membership updates as soon as it does — there is no need to pay again.',
+            );
+          }
+          if (earlier.status === 'replaceable') replacing = earlier;
+        }
+
+        // There was nothing earlier left to finish, and the caller only asked
+        // to confirm: a new payment is the user's next, deliberate press.
+        // Settling marked one that never landed as replaceable, so the screen
+        // stops waiting to confirm it and offers to pay again.
+        //
+        // Checked before the contracts and the price below, which only a new
+        // payment needs: an earlier one is confirmed by its hash alone, and
+        // has to stay confirmable when cash is switched off after it was paid.
+        if (confirmPendingOnly) {
+          throw new UserCopyError(
+            replacing
+              ? 'Your last upgrade payment didn’t go through, and no money moved. Check your balance and tap again to upgrade — you can only be charged once.'
+              : 'There is no earlier payment left to confirm. Check your balance and tap again to upgrade.',
+          );
+        }
+
+        if (!contracts.subscriptionModuleAddress) {
+          throw new UserCopyError('Memberships are not available right now.');
+        }
+        const mandateUsd = offerMandateUsd(offer);
+        if (priceUsd === null || mandateUsd === null) {
+          throw new UserCopyError('This tier is not available with an annual fee.');
+        }
+        const discounted = priceUsd < mandateUsd;
+        if (discounted && offer.saleEndsAt && Date.parse(offer.saleEndsAt) <= Date.now()) {
+          throw new UserCopyError(
+            'The sale has ended. Reopen the upgrade to see the current price.',
+          );
+        }
+
+        const transactions = buildSubscriptionTransactions({
+          mode,
+          safeAddress: safeAddress as Address,
+          moduleAddress: contracts.subscriptionModuleAddress as Address,
+          moduleEnabled,
+          mandateUsd,
+          chargeUsd: priceUsd,
+          billingTokenAddress: contracts.billingTokenAddress as Address | null,
+          revenueTreasuryAddress: (contracts.revenueTreasuryAddress ?? null) as Address | null,
+        });
+
+        const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+
+        // Paid by transfer, the payment is on record before the passkey is
+        // asked for — see `recordTransferAttempt`. A replacement's record
+        // moves to it, and keeps the payment it replaces: until the nonce is
+        // used, either may land.
+        const attempt =
+          mode === 'transfer'
+            ? await recordTransferAttempt({
+                userId,
+                tier,
+                // What `buildSubscriptionTransactions` has the Safe send.
+                payment: {
+                  token: String(contracts.billingTokenAddress),
+                  to: String(contracts.revenueTreasuryAddress),
+                  units: usdToBillingUnits(priceUsd).toString(),
+                },
+                safeAddress,
+                replacing,
+              })
+            : undefined;
+        sendingKey = attempt?.key;
+
+        let userOpHash: `0x${string}` | undefined;
+        let result: Awaited<ReturnType<typeof executeTransactions>>;
+        try {
+          result = await executeTransactions(
+            smartAccountClient,
+            transactions,
+            mode === 'transfer'
+              ? 'Failed to upgrade your membership'
+              : 'Failed to start your membership',
+            fuse,
+            // The hash, the moment the bundler accepts it, and when it was
+            // sent. The record is already down: this only says more about it.
+            attempt
+              ? hash => {
+                  userOpHash = hash;
+                  usePendingTierUpgradeStore
+                    .getState()
+                    .remember({ ...attempt.record, userOpHash: hash, submittedAt: Date.now() });
+                }
+              : undefined,
+            undefined,
+            // Sent with exactly the nonce on record: a new payment's own, or
+            // the earlier payment's, as its replacement.
+            attempt?.nonce,
+          );
+        } catch (sendError) {
+          // Paid by transfer, sent, and only the wait gave up — usually because
+          // the app was in the background. The payment has most likely landed:
+          // the record stays, the next press confirms it, and saying "failed"
+          // here is what would make the user pay again. Anything else is shown
+          // as it always was; the record lets the next press settle it either
+          // way.
+          if (mode === 'transfer' && userOpHash && isReceiptTimeout(sendError)) {
+            track(TRACKING_EVENTS.TIER_SUBSCRIBE_PENDING, {
+              tier,
+              price_usd: priceUsd,
+              payment_mode: mode,
+              user_op_hash: userOpHash,
+            });
+            throw new TierUpgradeConfirmingError(
+              'Your upgrade payment is still confirming. Try again in a moment to finish — you won’t be charged twice.',
+            );
+          }
+          // Turned away before the bundler accepted anything: nothing signed
+          // can land, so the record goes back to what it was before this
+          // payment. Any other failure before the hash arrived may be a
+          // payment accepted with only the answer lost; it stays on record,
+          // and the next press settles it by its nonce.
+          if (attempt && !userOpHash && refusedBeforeAcceptance(sendError)) {
+            withdrawTransferAttempt(attempt, replacing);
+          }
+          // A replacement the bundler turned away over its nonce: it still
+          // holds the earlier payment, or that payment has just landed after
+          // all. Nothing new was sent, and the earlier record stays for the
+          // next press to settle.
+          if (replacing && !userOpHash && isNonceRefusal(sendError)) {
+            throw new TierUpgradeConfirmingError(
+              'Your last upgrade payment is still with the network, so a new one can’t be sent yet. Try again in a little while — you won’t be charged twice.',
+            );
+          }
+          throw sendError;
+        }
+
+        if (result === USER_CANCELLED_TRANSACTION) {
+          // Dismissed — the passkey prompt, or the network fee — before the
+          // bundler had anything: nothing can land, and the record is as it
+          // was before this payment.
+          if (attempt && !userOpHash) withdrawTransferAttempt(attempt, replacing);
+          track(TRACKING_EVENTS.TIER_SUBSCRIBE_CANCELLED, { tier, price_usd: priceUsd });
+          return null;
+        }
+
+        if (attempt) {
+          const pending = usePendingTierUpgradeStore.getState();
+          pending.landed(attempt.key, result.transactionHash);
+          let state: TierMembershipState;
+          try {
+            state = await upgradeTierSubscription({
+              tier,
+              transactionHash: result.transactionHash,
+            });
+          } catch (error) {
+            // Paid, and only telling the backend failed. The record is kept, so
+            // the next press confirms this payment rather than making another —
+            // or, when the backend refused it for good, shows why again.
+            const message = await upgradeRejectionMessage(error);
+            if (message) {
+              pending.rejected(attempt.key, Date.now());
+              throw new UserCopyError(message);
+            }
+            throw new UserCopyError(
+              'Your payment went through, but your upgrade isn’t confirmed yet. Tap Upgrade again to finish — you won’t be charged twice.',
+            );
+          }
+          pending.forget(attempt.key);
+          return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
+        }
+
+        // The first payment is taken here, server-side, against the mandate
+        // that has just landed. It can fail — most often for a Safe short of
+        // USDC — and when it does the error carries the module's own reason.
+        const state = await confirmTierSubscription({
+          tier,
+          transactionHash: result.transactionHash,
+          ...(discounted ? { expectedFirstYearUsd: priceUsd } : {}),
+          ...(funding ? { funding } : {}),
+        });
+
+        return { state, transactionHash: result.transactionHash, tier, priceUsd, mode };
+      } finally {
+        // A record left without a hash now counts as a payment that may have
+        // been made: the next press confirms it, whatever the balance says.
+        if (sendingKey) usePendingTierUpgradeStore.getState().setSending(sendingKey, false);
+        if (settlesEarlier) transferUpgradesInFlight.delete(userId);
+      }
     },
     onSuccess: result => {
       if (!result) return;
@@ -569,6 +939,7 @@ export const useSubscribeToTier = () => {
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_COMPLETED, {
         tier: result.tier,
         price_usd: result.priceUsd,
+        payment_mode: result.mode,
         transaction_hash: result.transactionHash,
       });
     },
@@ -578,6 +949,8 @@ export const useSubscribeToTier = () => {
           ? mutationError.message
           : getUserErrorMessage(mutationError, { action: 'subscription' }) || null,
       );
+      // Tracked as pending where it was thrown.
+      if (mutationError instanceof TierUpgradeConfirmingError) return;
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'Failed to start your membership',
       });
