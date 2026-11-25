@@ -126,20 +126,28 @@ export const useTierBalanceOutflowWarning = (
   );
 
   // What the handlers and the unmount read: the warning on screen right now,
-  // the last one reported, and whether the user went ahead.
+  // the one reported for the current appearance, the last one reported at all,
+  // and whether the user went ahead.
   const latest = useRef<{
     warning: TierBalanceOutflowWarning | null;
     flow: TierBalanceOutflowFlow;
   }>({ warning: null, flow });
+  const visible = useRef<TierBalanceOutflowWarning | null>(null);
   const shown = useRef<TierBalanceOutflowWarning | null>(null);
   const proceeded = useRef(false);
 
   useEffect(() => {
     latest.current = { warning, flow };
-    if (!warning) return;
-    // Once per warning, not once per keystroke that keeps it up.
-    const last = shown.current;
-    if (last && last.kind === warning.kind && last.tier === warning.tier) return;
+    if (!warning) {
+      // Gone from the screen: the next one is a new appearance, even if it is
+      // the same warning. `shown` keeps it for the cancellation report.
+      visible.current = null;
+      return;
+    }
+    // Once per appearance, not once per keystroke that keeps it up.
+    const current = visible.current;
+    if (current && current.kind === warning.kind && current.tier === warning.tier) return;
+    visible.current = warning;
     shown.current = warning;
     track(TRACKING_EVENTS.TIER_BALANCE_OUTFLOW_WARNING_SHOWN, {
       route: 'balance',
