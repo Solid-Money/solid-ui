@@ -72,12 +72,15 @@ const PromoImageBanner = ({ uri, onPress }: { uri: string; onPress: () => void }
  */
 const HomePromoBanners = ({ children }: { children: React.ReactNode }) => {
   const { isScreenMedium } = useDimension();
-  const { banners, promotion } = useBlackFridayPromotion();
+  const { banners, promotion, qaPreview } = useBlackFridayPromotion();
   const getBannerPress = usePromotionsBannerPress();
   const [blackFridayDismissed, setBlackFridayDismissed] = useState(
     () => mmkvStorage('home-promotions').getItem(BLACK_FRIDAY_DISMISSAL) === 'true',
   );
-  const visiblePromotion = blackFridayDismissed ? undefined : promotion;
+  const [qaPreviewDismissed, setQaPreviewDismissed] = useState(false);
+  const visiblePromotion = (qaPreview ? qaPreviewDismissed : blackFridayDismissed)
+    ? undefined
+    : promotion;
   const otherBanners = banners.filter(banner => banner.slug !== BLACK_FRIDAY_SLUG);
   const showCashbackFallback = isCashbackPromoEnabled && isDevFeatureEnabled;
 
@@ -88,6 +91,10 @@ const HomePromoBanners = ({ children }: { children: React.ReactNode }) => {
           <BlackFridayPromotion
             promotion={visiblePromotion}
             onDismiss={() => {
+              if (qaPreview) {
+                setQaPreviewDismissed(true);
+                return;
+              }
               setBlackFridayDismissed(true);
               mmkvStorage('home-promotions').setItem(BLACK_FRIDAY_DISMISSAL, 'true');
             }}

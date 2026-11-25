@@ -6,6 +6,7 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { blackFridayOffer } from '@/lib/blackFriday';
 import { findOffer } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
+import { useBlackFridayQaPreviewStore } from '@/store/useBlackFridayQaPreviewStore';
 
 import type { BlackFridayOffer } from '@/lib/blackFriday';
 import type { PromotionsBannerItem } from '@/lib/types';
@@ -15,14 +16,17 @@ export const BLACK_FRIDAY_SLUG = 'black-friday';
 /** The Wallet campaign governs the promotion across Wallet and Rewards. */
 export function useBlackFridayCampaign() {
   const focused = useIsFocused();
+  const qaPreview = useBlackFridayQaPreviewStore(state => state.enabled);
   const { banners, isError } = usePromotionsBanners({
     page: '/',
     refreshInterval: focused ? 15_000 : undefined,
   });
-  const banner = isError ? undefined : banners.find(item => item.slug === BLACK_FRIDAY_SLUG);
-  const preview = __DEV__ && process.env.EXPO_PUBLIC_BLACK_FRIDAY_PREVIEW !== 'false' && !banner;
+  const banner =
+    qaPreview || isError ? undefined : banners.find(item => item.slug === BLACK_FRIDAY_SLUG);
+  const preview =
+    qaPreview || (__DEV__ && process.env.EXPO_PUBLIC_BLACK_FRIDAY_PREVIEW !== 'false' && !banner);
 
-  return { banners, banner, focused, preview, enabled: !!banner || preview };
+  return { banners, banner, focused, preview, qaPreview, enabled: !!banner || preview };
 }
 
 export interface BlackFridayPromotionData {
@@ -55,5 +59,5 @@ export function useBlackFridayPromotion() {
       ? { banner, prime, ultra }
       : undefined;
 
-  return { banners, promotion };
+  return { banners, promotion, qaPreview: campaign.qaPreview };
 }
