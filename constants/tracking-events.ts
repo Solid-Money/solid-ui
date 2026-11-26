@@ -413,6 +413,15 @@ export const TRACKING_EVENTS = {
   CARD_ACTIVATION_SIGNATURES: 'card_activation_signatures',
   CARD_LIVE_POPUP_SHOWN: 'card_live_popup_shown',
   CARD_LIVE_POPUP_ACTION: 'card_live_popup_action',
+  // Fuse-to-Base migration: the one-time popup, the banner, the token sheet and the move itself.
+  // `usd` on each is the movable Fuse balance at that moment.
+  FUSE_MIGRATION_POPUP_SHOWN: 'fuse_migration_popup_shown',
+  FUSE_MIGRATION_POPUP_ACTION: 'fuse_migration_popup_action',
+  FUSE_MIGRATION_SHEET_OPENED: 'fuse_migration_sheet_opened',
+  FUSE_MIGRATION_STARTED: 'fuse_migration_started',
+  FUSE_MIGRATION_COMPLETED: 'fuse_migration_completed',
+  FUSE_MIGRATION_FAILED: 'fuse_migration_failed',
+  FUSE_MIGRATION_CANCELLED: 'fuse_migration_cancelled',
   // Pressed from the failure banner on /card/activate. Carries the failure
   // code, so a retry wave after an issuer outage is separable from a user
   // pressing again at a failure that will not clear.

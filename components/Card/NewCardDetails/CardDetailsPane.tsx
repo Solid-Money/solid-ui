@@ -18,6 +18,9 @@ import { router } from 'expo-router';
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import CardLivePopup from '@/components/Card/CardLivePopup';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
+import FuseMigrationCard from '@/components/Card/FuseMigration/FuseMigrationCard';
+import FuseMigrationPopup from '@/components/Card/FuseMigration/FuseMigrationPopup';
+import FuseMigrationSheet from '@/components/Card/FuseMigration/FuseMigrationSheet';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
 import CardDetailsHeader from '@/components/Card/NewCardDetails/CardDetailsHeader';
 import {
@@ -52,9 +55,11 @@ import {
 } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
+import { useFuseMigration } from '@/hooks/useFuseMigration';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRainSunset } from '@/hooks/useRainSunset';
+import useUser from '@/hooks/useUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { CardProvider, CardStatus } from '@/lib/types';
 import {
@@ -67,6 +72,7 @@ import {
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
+import { useFuseMigrationStore } from '@/store/useFuseMigrationStore';
 
 const HEADER_FADE_EXTENT = 32;
 const HEADER_GRADIENT_FADE_MS = 280;
@@ -124,6 +130,16 @@ const CardDetailsPane = () => {
   const isWirexCard =
     provider === CardProvider.WIREX || cardStatus?.provider === CardProvider.WIREX;
   const openDepositFlow = useOpenDepositFlow();
+  // Fuse-to-Base migration: a Wirex cardholder whose spendable balance is still on Fuse gets a
+  // one-time popup, then a standing row on this pane; both open the same token list.
+  const { user } = useUser();
+  const fuseMigration = useFuseMigration();
+  const fuseNoticeSeen = useFuseMigrationStore(state =>
+    user?.userId ? Boolean(state.noticeSeenBy[user.userId]) : true,
+  );
+  const markFuseNoticeSeen = useFuseMigrationStore(state => state.markNoticeSeen);
+  const [fuseSheetSource, setFuseSheetSource] = useState<'popup' | 'banner' | null>(null);
+  const showsFuseMigration = isWirexCard && fuseMigration.isEligible;
   const [isFreezing, setIsFreezing] = useState(false);
   // When Solid last refused an unfreeze. Until a card read newer than that lands,
   // the details on screen are the ones that offered it, so a refresh that fails
@@ -403,6 +419,17 @@ const CardDetailsPane = () => {
               <SpendingModeCard mode={spendModeFigures.mode} onChangeMode={openSpendMode} />
             </HeroEnter>
           ) : null}
+          {showsFuseMigration ? (
+            <HeroEnter spec={HERO_ENTER.spendMode} style={styles.fuseMigrationCard}>
+              <FuseMigrationCard
+                movableUsd={fuseMigration.movableUsd}
+                onPress={() => {
+                  fuseMigration.clearError();
+                  setFuseSheetSource('banner');
+                }}
+              />
+            </HeroEnter>
+          ) : null}
           {/* Until the allowance is granted, Rain declines every authorization on
               this card — so this starts as a blocking task, not an option, and
               it sits with the other "how this card spends" rows rather than
@@ -506,6 +533,36 @@ const CardDetailsPane = () => {
             onClose={() => setShouldShowWelcomePopup(false)}
           />
         ))}
+      {/* After the card-live popup, never on top of it: that one belongs to a brand-new card. */}
+      <FuseMigrationPopup
+        isOpen={
+          isOpen &&
+          showsFuseMigration &&
+          !fuseNoticeSeen &&
+          !shouldShowWelcomePopup &&
+          fuseSheetSource === null
+        }
+        movableUsd={fuseMigration.movableUsd}
+        onClose={() => {
+          if (user?.userId) markFuseNoticeSeen(user.userId);
+        }}
+        onReview={() => {
+          fuseMigration.clearError();
+          setFuseSheetSource('popup');
+        }}
+      />
+      <FuseMigrationSheet
+        isOpen={isOpen && fuseSheetSource !== null}
+        source={fuseSheetSource ?? 'banner'}
+        onClose={() => setFuseSheetSource(null)}
+        items={fuseMigration.items}
+        movableUsd={fuseMigration.movableUsd}
+        needsBaseEnable={fuseMigration.needsBaseEnable}
+        isMigrating={fuseMigration.isMigrating}
+        isEnablingBase={fuseMigration.isEnablingBase}
+        error={fuseMigration.error}
+        onMigrate={fuseMigration.migrate}
+      />
       <ManageCardSheet
         isOpen={isOpen && spendSheetSource !== null}
         onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
@@ -571,6 +628,7 @@ const styles = StyleSheet.create({
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
   realTimeFundingCard: { marginTop: 20 },
+  fuseMigrationCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
   linksList: { marginTop: 20 },
 });

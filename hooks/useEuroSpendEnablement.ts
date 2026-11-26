@@ -130,7 +130,9 @@ export type EuroSpendEnableSource =
   | 'card_activation'
   | 'home_banner'
   | 'credit_collateral'
-  | 'declined_receipt';
+  | 'declined_receipt'
+  /** The card pane's "Move to Base", for a cardholder whose balance is still on Fuse. */
+  | 'fuse_migration';
 
 /**
  * The user's spend-module deployments as the backend records them.
