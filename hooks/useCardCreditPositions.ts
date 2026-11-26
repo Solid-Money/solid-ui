@@ -519,10 +519,14 @@ export const useBaseCreditInstance = () => {
   } = useCardSpendModeAccess();
   const {
     data: spendDeployments,
-    isLoading: isDeploymentsLoading,
+    isPending: isDeploymentsPending,
+    fetchStatus: deploymentsFetchStatus,
     isError: isDeploymentsError,
     refetch: refetchDeployments,
   } = useCardSpendDeployments();
+  // Pending and not idle, so a request paused offline still counts as unanswered: `isLoading` is
+  // false then, and the gate would read as "no Base" (as `useCardSpendModeAccess` does for its own).
+  const isDeploymentsLoading = isDeploymentsPending && deploymentsFetchStatus !== 'idle';
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === baseChain.id,
   );
