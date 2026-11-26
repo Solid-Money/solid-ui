@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
+import BlackFridayPromotion from '@/components/Promotions/BlackFridayPromotion';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import {
@@ -23,6 +24,7 @@ import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useAiApiOverview } from '@/hooks/useAiApi';
+import { useBlackFridayPromotion } from '@/hooks/useBlackFridayCampaign';
 import { useCashbackDetails } from '@/hooks/useCashbackDetails';
 import {
   useOptInToRewards,
@@ -78,6 +80,7 @@ export default function RewardsScreenNew() {
   const cashbackDetails = useCashbackDetails(rewardsData, cardDetails ?? undefined);
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
+  const { promotion: blackFridayPromotion } = useBlackFridayPromotion();
   const { data: aiApi } = useAiApiOverview();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
@@ -299,6 +302,12 @@ export default function RewardsScreenNew() {
               </View>
             }
           />
+
+          {blackFridayPromotion && (
+            <View className="px-4">
+              <BlackFridayPromotion promotion={blackFridayPromotion} />
+            </View>
+          )}
 
           {/* The spin & win flow is a native-only modal — SpinWinModalProvider
               force-closes itself on web — so the button stays native-only. It is

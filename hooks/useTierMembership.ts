@@ -109,7 +109,10 @@ export interface TierUpgradeChainState {
  * and three requests is how a screen ends up offering a tier the user already
  * holds.
  */
-export const useTierMembership = () => {
+export const useTierMembership = ({
+  enabled = true,
+  refreshInterval,
+}: { enabled?: boolean; refreshInterval?: number } = {}) => {
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
 
   return useQuery<TierMembershipState>({
@@ -120,8 +123,9 @@ export const useTierMembership = () => {
     // Wrapped like the other session calls: an expired token is refreshed rather
     // than leaving the portfolio waiting on React Query's retries.
     queryFn: () => withRefreshToken(fetchTierMembership),
-    enabled: Boolean(selectedUserId),
+    enabled: enabled && Boolean(selectedUserId),
     staleTime: 30_000,
+    refetchInterval: refreshInterval,
   });
 };
 
@@ -771,6 +775,12 @@ export const useSubscribeToTier = () => {
         const mandateUsd = offerMandateUsd(offer);
         if (priceUsd === null || mandateUsd === null) {
           throw new UserCopyError('This tier is not available with an annual fee.');
+        }
+        const discounted = priceUsd < mandateUsd;
+        if (discounted && offer.saleEndsAt && Date.parse(offer.saleEndsAt) <= Date.now()) {
+          throw new UserCopyError(
+            'The sale has ended. Reopen the upgrade to see the current price.',
+          );
         }
 
         const transactions = buildSubscriptionTransactions({

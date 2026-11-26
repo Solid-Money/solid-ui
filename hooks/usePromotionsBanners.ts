@@ -27,13 +27,18 @@ export const PROMOTIONS_BANNER_PLATFORM: PromotionsBannerPlatformKey =
  * into the installed build, which is what the dashboard's version gate is
  * written against.
  */
-export const usePromotionsBanners = ({ enabled = true }: { enabled?: boolean } = {}) => {
+export const usePromotionsBanners = ({
+  enabled = true,
+  page,
+  refreshInterval,
+}: { enabled?: boolean; page?: string; refreshInterval?: number } = {}) => {
   const pathname = usePathname();
 
-  const { data, isLoading } = useQuery({
+  const { data, isError, isLoading } = useQuery({
     queryKey: [PROMOTIONS_BANNER_QUERY_KEY],
     queryFn: fetchPromotionsBanner,
-    staleTime: 5 * 60 * 1000,
+    staleTime: refreshInterval ?? 5 * 60 * 1000,
+    refetchInterval: refreshInterval,
     enabled,
   });
 
@@ -42,12 +47,12 @@ export const usePromotionsBanners = ({ enabled = true }: { enabled?: boolean } =
       filterPromotionsBanners(data, {
         platform: PROMOTIONS_BANNER_PLATFORM,
         appVersion: Application.nativeApplicationVersion,
-        pathname,
+        pathname: page ?? pathname,
       }),
-    [data, pathname],
+    [data, page, pathname],
   );
 
-  return { banners, isLoading };
+  return { banners, isError, isLoading };
 };
 
 type PressablePromotionsBanner = Pick<PromotionsBannerItem, 'link' | 'slug'>;
