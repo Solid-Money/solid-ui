@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 import CardBottomSheet from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet';
 import { Button } from '@/components/ui/button';
@@ -54,7 +55,7 @@ export default function BlackFridayDrawer({
   ultra: BlackFridayOffer;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSeeTiers: () => void;
+  onSeeTiers: () => void | Promise<void>;
 }) {
   const insets = useSafeAreaInsets();
   const endTime = Math.min(Date.parse(prime.endsAt), Date.parse(ultra.endsAt));
@@ -158,9 +159,13 @@ export default function BlackFridayDrawer({
             </View>
 
             <Button
-              onPress={() => {
+              onPress={async () => {
                 onOpenChange(false);
-                onSeeTiers();
+                try {
+                  await onSeeTiers();
+                } catch {
+                  Toast.show({ type: 'error', text1: 'Unable to open the link' });
+                }
               }}
               className="native:h-14 mt-[22px] h-14 w-full rounded-2xl bg-[#DDD2A5] web:hover:bg-[#E8DDB3]"
             >
