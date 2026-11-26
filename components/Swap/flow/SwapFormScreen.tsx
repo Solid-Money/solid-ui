@@ -5,11 +5,13 @@ import { useShallow } from 'zustand/react/shallow';
 
 import SwapAmountCard from '@/components/Swap/flow/SwapAmountCard';
 import SwapDetailsCard from '@/components/Swap/flow/SwapDetailsCard';
+import TierBalanceOutflowNotice from '@/components/TierBalance/TierBalanceOutflowNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useSwapFlow } from '@/hooks/swap/useSwapFlow';
+import { useEarnOutflowUsd, useTierBalanceOutflowWarning } from '@/hooks/useTierBalance';
 import { track } from '@/lib/analytics';
 import { assetDisplayName } from '@/lib/swapAssets';
 import { swapErrorButtonLabel } from '@/lib/swapErrors';
@@ -21,6 +23,7 @@ import {
   sanitizeAmountInput,
   ungroupAmountInput,
 } from '@/lib/utils/swap/format';
+import { isEarnShareToken } from '@/lib/vaults';
 import { useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 
 /** Errors the button can fix by opening the "You get" picker. */
@@ -28,6 +31,9 @@ const PICK_ANOTHER = new Set(['NO_ROUTE', 'TOKEN_NOT_SWAPPABLE', 'SAME_TOKEN']);
 
 const balanceOf = (asset: SwapAsset | undefined): number | undefined =>
   asset && 'balance' in asset ? (asset as SwapAssetWithBalance).balance : undefined;
+
+const priceOf = (asset: SwapAsset | undefined): number | undefined =>
+  asset && 'priceUsd' in asset ? (asset as SwapAssetWithBalance).priceUsd : undefined;
 
 /**
  * Screen 1 of the swap: what you pay, what you get, and what it costs. One
@@ -103,6 +109,20 @@ const SwapFormScreen: React.FC = () => {
     });
   }, [typedValue, fromAsset?.symbol]);
 
+  // Paying with an Earn share (on any chain) takes it out of Earn — unless what
+  // you get is an Earn share too, which keeps it there.
+  const paidOutOfEarn = useEarnOutflowUsd({
+    address: fromAsset?.address,
+    symbol: fromAsset?.symbol,
+    amount: typedIntoGet ? undefined : typedValue,
+    decimals: fromAsset?.decimals,
+    priceUsd: priceOf(fromAsset),
+  });
+  const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
+    'swap',
+    isEarnShareToken(toAsset?.address) ? 0 : paidOutOfEarn,
+  );
+
   const fromBalance = balanceOf(fromAsset);
   const toBalance = balanceOf(toAsset);
   const notEnough = error?.code === 'NOT_ENOUGH_BALANCE';
@@ -131,7 +151,10 @@ const SwapFormScreen: React.FC = () => {
     return {
       label: 'Review',
       disabled: !model.canReview,
-      onPress: () => setModal(SWAP_MODAL.OPEN_REVIEW),
+      onPress: () => {
+        proceedPastWarning();
+        setModal(SWAP_MODAL.OPEN_REVIEW);
+      },
     };
   })();
 
@@ -181,6 +204,12 @@ const SwapFormScreen: React.FC = () => {
           usd={typedValue && !isQuoting && !noRoute ? model.toUsd : undefined}
           onPickAsset={() => openPicker('get')}
         />
+
+        {tierBalanceWarning ? (
+          <View className="mt-3">
+            <TierBalanceOutflowNotice warning={tierBalanceWarning} />
+          </View>
+        ) : null}
 
         {showBanner ? (
           <View className="mt-3 flex-row gap-2 rounded-[15px] bg-red-500/10 px-4 py-3">

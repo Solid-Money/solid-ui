@@ -15,7 +15,8 @@ const clampProgress = (currentPoints: number, targetPoints: number) => {
   return Math.min(100, Math.max(0, (currentPoints / targetPoints) * 100));
 };
 
-const PointsProgress = ({ percent }: { percent: number }) => {
+/** The tier progress bar, shared with the "Hold in Earn" route's progress. */
+export const PointsProgress = ({ percent }: { percent: number }) => {
   const animatedProgress = useAnimatedStyle(
     () => ({ width: withTiming(`${percent}%`, { duration: 500 }) }),
     [percent],

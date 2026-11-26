@@ -1,5 +1,12 @@
+import { formatThresholdUsd, tierBalanceTrack, unlockedByBalance } from '@/lib/tierBalance';
 import { getTierDisplayName } from '@/lib/tierNames';
-import { RewardsTier, RewardsUserData, TierBenefits, TierTrial } from '@/lib/types';
+import {
+  RewardsTier,
+  RewardsUserData,
+  TierBalanceRouteDto,
+  TierBenefits,
+  TierTrial,
+} from '@/lib/types';
 
 import type { TierPopupStat } from './TierPopup';
 
@@ -11,8 +18,14 @@ import type { TierPopupStat } from './TierPopup';
  * payload reports Core's zeroes, and quoting those under "Welcome to Prime"
  * would advertise nothing. A rate the backend has not sent drops its column
  * rather than rendering "undefined%".
+ *
+ * `yieldBoost: false` leaves the boost out, for a tier the user holds without
+ * it — the "Hold in Earn" route grants everything a tier gives but that.
  */
-export const tierPopupStats = (benefits?: TierBenefits): TierPopupStat[] => {
+export const tierPopupStats = (
+  benefits?: TierBenefits,
+  { yieldBoost = true }: { yieldBoost?: boolean } = {},
+): TierPopupStat[] => {
   if (!benefits) return [];
 
   const stats: TierPopupStat[] = [];
@@ -28,7 +41,7 @@ export const tierPopupStats = (benefits?: TierBenefits): TierPopupStat[] => {
     });
   }
 
-  if (benefits.yieldBoostPercentage) {
+  if (yieldBoost && benefits.yieldBoostPercentage) {
     stats.push({
       value: `+${benefits.yieldBoostPercentage}%`,
       label: 'Yield boost',
@@ -128,16 +141,49 @@ interface UpgradeCelebrationCopy {
 /**
  * The celebration's words for a tier the user now holds.
  *
- * The body names how they got there, because the three routes are genuinely
- * different news: a trial someone handed them, a points milestone they climbed
- * to, and a FUSE balance that unlocked it outright (Figma 25480:2355). A trial
- * also gets the line that says how long it runs — the one thing this upgrade
- * has that the other two do not.
+ * The body names how they got there, because the routes are genuinely
+ * different news: a balance held in Earn, a trial someone handed them, a points
+ * milestone they climbed to, and a FUSE balance that unlocked it outright
+ * (Figma 25480:2355). A trial also gets the line that says how long it runs,
+ * and the Earn balance the line that says what keeps it.
+ *
+ * `balance` is the membership's "Hold in Earn" route; it only speaks when the
+ * route is what holds the tier just reached.
  */
-export const upgradeCelebrationCopy = (data: RewardsUserData): UpgradeCelebrationCopy => {
+/**
+ * The celebration's words before the route the tier came by is confirmed:
+ * the tier, and nothing about how it was reached or what it includes beyond
+ * "your benefits" — no route, no Yield boost claim.
+ */
+export const pendingCelebrationCopy = (data: RewardsUserData): UpgradeCelebrationCopy => {
+  const tierName = getTierDisplayName(data.currentTier);
+  return {
+    eyebrow: 'Tier upgraded',
+    title: `Welcome to ${tierName}`,
+    body: 'Your new benefits are now active.',
+  };
+};
+
+export const upgradeCelebrationCopy = (
+  data: RewardsUserData,
+  balance?: TierBalanceRouteDto | null,
+): UpgradeCelebrationCopy => {
   const tierName = getTierDisplayName(data.currentTier);
   const trial = data.activeTierTrial;
   const shared = { eyebrow: 'Tier upgraded', title: `Welcome to ${tierName}` };
+
+  if (
+    balance &&
+    unlockedByBalance(balance, data.currentTier) &&
+    data.currentTier !== RewardsTier.CORE
+  ) {
+    const track = tierBalanceTrack(balance, data.currentTier);
+    return {
+      ...shared,
+      body: `Holding your balance in Earn has unlocked ${tierName}. Every ${tierName} benefit is yours, except Yield boost.`,
+      note: `Keep ${formatThresholdUsd(track.thresholdUsd)} or more in Earn to hold this tier.`,
+    };
+  }
 
   if (trial && trial.tier === data.currentTier) {
     return {

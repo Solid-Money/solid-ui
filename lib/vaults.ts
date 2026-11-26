@@ -1,4 +1,4 @@
-import { formatUnits } from 'viem';
+import { formatUnits, zeroAddress } from 'viem';
 import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
+import { SOBTC_ADDRESSES } from '@/lib/soBtc';
 import { isSoEthBaseConfigured } from '@/lib/soEthWithdraw';
 import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
 
@@ -84,6 +85,33 @@ export const isVaultShareToken = (contractAddress?: string): boolean => {
 
   return LIVE_VAULTS.some(vault => vault.vaults.some(v => v.address.toLowerCase() === address));
 };
+
+/**
+ * Every Earn share token the app knows, lowercased: each vault's shares on
+ * Fuse, Base and Ethereum, the production shares a development wallet may hold,
+ * and soBTC on both its chains even in a build that does not list the vault.
+ */
+const EARN_SHARE_ADDRESSES: ReadonlySet<string> = new Set(
+  [
+    ...VAULTS.flatMap(vault => vault.vaults.map(entry => entry.address)),
+    ...Object.values(PRODUCTION_VAULT_ADDRESSES).flatMap(chain => Object.values(chain)),
+    SOBTC_ADDRESSES.base.vault,
+    SOBTC_ADDRESSES.ethereum.vault,
+  ]
+    .map(address => address.toLowerCase())
+    .filter(address => address !== zeroAddress),
+);
+
+/**
+ * Whether a token is an Earn share (soUSD, soEURC, soETH, soBTC, soFUSE) on any
+ * chain — the test for "moving this takes money out of Earn".
+ *
+ * Matched by address against every chain at once, not against the token's own
+ * chain or Fuse alone: shares bridge between Fuse, Base and Ethereum and keep
+ * counting toward Earn wherever they sit.
+ */
+export const isEarnShareToken = (address?: string): boolean =>
+  !!address && EARN_SHARE_ADDRESSES.has(address.toLowerCase());
 
 /**
  * The vault a wallet token belongs to — matched either as the vault share token

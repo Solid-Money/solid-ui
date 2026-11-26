@@ -10,6 +10,7 @@ import { useShallow } from 'zustand/react/shallow';
 import Max from '@/components/Max';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import TierBalanceOutflowNotice from '@/components/TierBalance/TierBalanceOutflowNotice';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -21,6 +22,7 @@ import {
   useSoBtcAvailability,
   useWithdrawSoBtc,
 } from '@/hooks/useSoBtcWithdraw';
+import { useTierBalanceOutflowWarning } from '@/hooks/useTierBalance';
 import useUser from '@/hooks/useUser';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -32,6 +34,7 @@ import {
   type SoBtcChainId,
   soBtcSharesToAssets,
 } from '@/lib/soBtc';
+import { fixedPointUsd } from '@/lib/tierBalance';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
@@ -131,6 +134,14 @@ const SoBtcWithdrawForm = () => {
       ? (soBtcSharesToAssets(amountShares, rate) * (10_000n - SOLVER_FEE_BPS)) / 10_000n
       : 0n;
   const amountBtc = amountShares && rate ? toBtc(soBtcSharesToAssets(amountShares, rate)) : 0;
+  // What leaves Earn, at the price the USD line under the amount already uses.
+  // Valued from the BTC the shares are worth, in sats, without a float in between.
+  const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
+    'withdraw',
+    amountShares && rate
+      ? fixedPointUsd(soBtcSharesToAssets(amountShares, rate), SOBTC_DECIMALS, btcPrice)
+      : 0,
+  );
 
   const validation: string | null = useMemo(() => {
     if (!amount) return null;
@@ -167,6 +178,7 @@ const SoBtcWithdrawForm = () => {
 
   const onWithdraw = async () => {
     if (!amountShares) return;
+    proceedPastWarning();
     try {
       const transaction = await withdrawSoBtc(amount.trim());
       setTransaction({ amount: Number(amount), symbol: 'soBTC' });
@@ -194,6 +206,7 @@ const SoBtcWithdrawForm = () => {
   };
 
   const onBridge = async () => {
+    proceedPastWarning();
     try {
       await bridgeSoBtc(amount.trim());
       setTransaction({ amount: Number(amount), symbol: 'soBTC' });
@@ -334,6 +347,8 @@ const SoBtcWithdrawForm = () => {
             </Text>
           </View>
         </TokenDetails>
+
+        <TierBalanceOutflowNotice warning={tierBalanceWarning} />
 
         <Text className="text-base font-medium opacity-70">Actions</Text>
         <TokenDetails>

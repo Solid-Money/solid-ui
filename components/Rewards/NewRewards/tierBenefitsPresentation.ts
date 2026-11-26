@@ -1,3 +1,4 @@
+import { formatThresholdUsd } from '@/lib/tierBalance';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import {
   canPayCashFor,
@@ -8,6 +9,7 @@ import {
 import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
 import {
   RewardsTier,
+  type TierBalanceTrackDto,
   type TierBenefits,
   type TierFees,
   type TierMembershipContracts,
@@ -263,6 +265,11 @@ export interface TierOfferRow {
    * where a component can do that, and as "(was $999)" where only text can.
    */
   listValue?: string;
+  /**
+   * Set on the "Hold in Earn" row only: the tier's track on that route, whose
+   * progress and status the panel draws under the row.
+   */
+  balanceTrack?: TierBalanceTrackDto;
 }
 
 /** The addresses that decide whether the cash route can be built — see `canPayCashFor`. */
@@ -276,12 +283,29 @@ type OfferContracts = Pick<
  * only shown when the cash route can actually be taken — the same test
  * `availableRoutes` sells by — so an upgrade paid by transfer with no treasury
  * to pay is offered by its lock alone rather than at a price no button takes.
+ *
+ * `balanceTrack` adds the "Hold in Earn" route as the last way, for a user it is
+ * staged to: priced at the threshold the backend sends, and listed even when
+ * neither purchase route is on.
  */
 export function tierOfferRows(
   offer: TierOffer | undefined,
   contracts?: OfferContracts,
+  balanceTrack?: TierBalanceTrackDto,
 ): TierOfferRow[] {
-  if (!offer) return [];
+  const rows: TierOfferRow[] = offer ? purchaseRows(offer, contracts) : [];
+  if (balanceTrack && balanceTrack.thresholdUsd > 0) {
+    rows.push({
+      label: rows.length ? 'Or hold in Earn' : 'Hold in Earn',
+      value: formatThresholdUsd(balanceTrack.thresholdUsd),
+      balanceTrack,
+    });
+  }
+  return rows;
+}
+
+/** The two ways to buy a tier: an annual fee and a FUSE lock. */
+function purchaseRows(offer: TierOffer, contracts?: OfferContracts): TierOfferRow[] {
   const rows: TierOfferRow[] = [];
   // The first year's price is what is paid now — the sale price during a sale.
   const firstYear = offerFirstYearFeeUsd(offer);
@@ -307,12 +331,34 @@ export function tierOfferRows(
 const offerRowText = (row: TierOfferRow) =>
   row.listValue ? `${row.value} (was ${row.listValue})` : row.value;
 
-export function tierOfferSubtitle(offer: TierOffer | undefined, contracts?: OfferContracts) {
-  const rows = tierOfferRows(offer, contracts);
-  if (rows.length === 2) return `${offerRowText(rows[0])} or ${rows[1].value} locked`;
-  if (rows.length === 1)
-    return rows[0].label === 'Lock FUSE'
-      ? `Requires ${rows[0].value} locked`
-      : offerRowText(rows[0]);
-  return null;
+/**
+ * The ways to get a tier in one line, for the pager subtitle: "$999/year or
+ * 50K FUSE locked", and with the "Hold in Earn" route "$999/year, 50K FUSE
+ * locked or $7.5K in Earn".
+ *
+ * The upgrade button's own subtitle leaves `balanceTrack` out: that button sells
+ * the purchase routes only, and the balance route has its own action.
+ */
+export function tierOfferSubtitle(
+  offer: TierOffer | undefined,
+  contracts?: OfferContracts,
+  balanceTrack?: TierBalanceTrackDto,
+) {
+  const rows = tierOfferRows(offer, contracts, balanceTrack);
+  const balance = rows.find(row => row.balanceTrack);
+  const purchase = rows.filter(row => !row.balanceTrack);
+  const purchaseText =
+    purchase.length === 2
+      ? `${offerRowText(purchase[0])}${balance ? ',' : ' or'} ${purchase[1].value} locked`
+      : purchase.length === 1
+        ? purchase[0].label === 'Lock FUSE'
+          ? balance
+            ? `${purchase[0].value} locked`
+            : `Requires ${purchase[0].value} locked`
+          : offerRowText(purchase[0])
+        : null;
+  if (!balance) return purchaseText;
+  return purchaseText
+    ? `${purchaseText} or ${balance.value} in Earn`
+    : `Hold ${balance.value} in Earn`;
 }

@@ -24,14 +24,18 @@ import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
+import { useAddToEarn } from '@/hooks/useTierBalance';
 import { useTierMembership } from '@/hooks/useTierMembership';
+import { track } from '@/lib/analytics';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
+import { activeTierBalance, tierBalanceTrack } from '@/lib/tierBalance';
 import { availableRoutes, findOffer, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
-import { RewardsTier } from '@/lib/types';
+import { RewardsTier, type TierBalanceTrackDto } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
@@ -237,6 +241,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       : undefined;
   const { data: membership } = useTierMembership();
   const openTierUpgrade = useTierUpgradeStore(state => state.open);
+  // The "Hold in Earn" route, for a user it is staged to; null for everyone else.
+  const balance = activeTierBalance(membership);
+  const addToEarn = useAddToEarn('tier_benefits');
   const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(initialTier);
   const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
   const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
@@ -299,6 +306,34 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
     if (!membership?.enabled || !offer || offer.held) return [];
     return availableRoutes(offer, membership.contracts);
   };
+
+  /**
+   * This tier's "Hold in Earn" track, when the page should offer it: Prime and
+   * Ultra, unless the user already holds the tier by another route and the
+   * track has nothing to report.
+   */
+  const balanceTrackFor = (tier: RewardsTier): TierBalanceTrackDto | undefined => {
+    if (!balance || tier === RewardsTier.CORE) return undefined;
+    const balanceTrack = tierBalanceTrack(balance, tier);
+    const holdsTier = !isHigherTier(tier, membership?.currentTier ?? RewardsTier.CORE);
+    return holdsTier && balanceTrack.status === 'none' ? undefined : balanceTrack;
+  };
+
+  // Reported once per tier and state, when its page is the one on screen.
+  const selectedBalanceTrack = balanceTrackFor(selectedTier);
+  const viewedBalanceTracks = useRef(new Set<string>());
+  useEffect(() => {
+    if (!selectedBalanceTrack) return;
+    const key = `${selectedBalanceTrack.tier}:${selectedBalanceTrack.status}`;
+    if (viewedBalanceTracks.current.has(key)) return;
+    viewedBalanceTracks.current.add(key);
+    track(TRACKING_EVENTS.TIER_BALANCE_OPTION_VIEWED, {
+      route: 'balance',
+      tier: selectedBalanceTrack.tier,
+      status: selectedBalanceTrack.status,
+      surface: 'tier_benefits',
+    });
+  }, [selectedBalanceTrack]);
 
   const ctaFor = (tier: RewardsTier) => {
     const offer = findOffer(membership, tier);
@@ -558,15 +593,20 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   showCardFx={showCardFx}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
                   contracts={membership?.contracts}
+                  balance={balance}
+                  balanceTrack={balanceTrackFor(tier)}
+                  onAddToEarn={addToEarn}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))
                   }
                   subtitle={(() => {
                     const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
-                    const offerCopy = membership?.enabled
-                      ? tierOfferSubtitle(findOffer(membership, tier), membership.contracts)
-                      : null;
+                    const offerCopy = tierOfferSubtitle(
+                      membership?.enabled ? findOffer(membership, tier) : undefined,
+                      membership?.contracts,
+                      balanceTrackFor(tier),
+                    );
                     const copy =
                       tier === RewardsTier.CORE
                         ? 'Starting tier'
@@ -584,6 +624,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                           fontSize: 16 * Math.min(pageWidth / 420, 1),
                           lineHeight: 20,
                           color: 'rgba(255,255,255,0.7)',
+                          // Three ways to a tier can run to a second line.
+                          textAlign: 'center',
+                          paddingHorizontal: 16,
                         }}
                       >
                         {copy}

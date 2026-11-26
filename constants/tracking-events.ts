@@ -646,6 +646,16 @@ export const TRACKING_EVENTS = {
   TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
   TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
   TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',
+  // The "Hold in Earn" route: a tier for keeping a balance in Earn, with no
+  // transaction of its own. Every event carries `route: 'balance'` and `tier`,
+  // like TIER_UPGRADE_ROUTE_SELECTED. `surface`/`source` say where it was seen
+  // (tier_benefits / earn); the outflow ones carry `flow` (withdraw / send /
+  // swap / card_topup) and `kind` (lose / grace / reset).
+  TIER_BALANCE_OPTION_VIEWED: 'tier_balance_option_viewed',
+  TIER_BALANCE_ADD_TO_EARN_PRESSED: 'tier_balance_add_to_earn_pressed',
+  TIER_BALANCE_OUTFLOW_WARNING_SHOWN: 'tier_balance_outflow_warning_shown',
+  TIER_BALANCE_OUTFLOW_WARNING_PROCEEDED: 'tier_balance_outflow_warning_proceeded',
+  TIER_BALANCE_OUTFLOW_WARNING_CANCELLED: 'tier_balance_outflow_warning_cancelled',
 
   // Cross-chain send ("Withdraw to another network"): USDC/USDT bridged from
   // Fuse to an exchange or the user's own wallet through the BridgePaymaster.

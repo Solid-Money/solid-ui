@@ -26,6 +26,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import Max from '@/components/Max';
+import TierBalanceOutflowNotice from '@/components/TierBalance/TierBalanceOutflowNotice';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -50,6 +51,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
+import { useTierBalanceOutflowWarning } from '@/hooks/useTierBalance';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
@@ -61,6 +63,7 @@ import {
 } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
 import { sponsoredMinimumCopy, useSponsoredMinimum } from '@/lib/sponsoredMinimum';
+import { fixedPointUsd, parseTokenUnits } from '@/lib/tierBalance';
 import {
   CardProvider,
   DepositCategory,
@@ -616,6 +619,20 @@ export default function CardDepositInternalForm() {
   const { data: savingsMinimum } = useSponsoredMinimum(ADDRESSES.fuse.cardDepositManager);
   const isSavingsSource = watchedFrom === CardDepositSource.SAVINGS;
 
+  // Topping up from savings spends soUSD out of Earn, which can cost a tier held
+  // or being built on the "Hold in Earn" route. Priced at the soUSD rate read
+  // above, or the share's wallet quote until that lands.
+  const savingsOutflowUsd = useMemo(() => {
+    if (!isSavingsSource) return 0;
+    // soUSD shares are 6-decimal; parsed to base units, never to a float.
+    const units = parseTokenUnits(watchedAmount ? String(watchedAmount) : undefined, 6);
+    return fixedPointUsd(units, 6, exchangeRate > 0 ? exchangeRate : soUsdToken?.quoteRate || 0);
+  }, [isSavingsSource, watchedAmount, exchangeRate, soUsdToken?.quoteRate]);
+  const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
+    'card_topup',
+    savingsOutflowUsd,
+  );
+
   const schema = useMemo(() => {
     return z.object({
       amount: z
@@ -738,6 +755,7 @@ export default function CardDepositInternalForm() {
   const onSubmit = useCallback(
     async (data: any) => {
       if (!user) return;
+      proceedPastWarning();
 
       // Track submission
       const trackingParams: Record<string, unknown> = {
@@ -860,6 +878,7 @@ export default function CardDepositInternalForm() {
       setTransaction,
       swapAndBridge,
       updateActivity,
+      proceedPastWarning,
     ],
   );
 
@@ -1052,6 +1071,8 @@ export default function CardDepositInternalForm() {
           isLoading={isEstimatedUSDCLoading}
         />
       )}
+
+      {isSavingsSource && <TierBalanceOutflowNotice warning={tierBalanceWarning} />}
 
       {/* {watchedFrom !== CardDepositSource.EXTERNAL && (
         <DestinationDisplay

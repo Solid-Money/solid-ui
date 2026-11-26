@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -20,9 +20,12 @@ import {
 } from '@/assets/images/rewards-tiers/core-tier-icons';
 import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
+import { trackNeedsTopUp, trackProgress, trackStatusLine } from '@/lib/tierBalance';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import {
   RewardsTier,
+  type TierBalanceRouteDto,
+  type TierBalanceTrackDto,
   type TierBenefits,
   type TierCardFx,
   type TierFees,
@@ -49,6 +52,7 @@ import {
 } from './tierBenefitsPresentation';
 import { CARD_FX_FOOTNOTE, cardFxPerk, withCardFxRow } from './tierCardFx';
 import TierStar from './TierHero/TierStar';
+import { PointsProgress } from './TierUpgradeCard';
 
 const ART = {
   [RewardsTier.CORE]: { source: 'images/rewards-tiers/v4/card-core.png', width: 350, height: 254 },
@@ -856,6 +860,58 @@ function CashbackPanel({
   );
 }
 
+/**
+ * Under the "Hold in Earn" row: how far the user is, where the track stands, and
+ * — when the next step is putting money in — the way to Earn's deposit. Every
+ * figure is the backend's; the progress bar is the one the points card uses.
+ */
+function BalanceRouteStatus({
+  track,
+  balance,
+  s,
+  onAddToEarn,
+}: {
+  track: TierBalanceTrackDto;
+  balance: TierBalanceRouteDto;
+  s: number;
+  onAddToEarn?: (track: TierBalanceTrackDto) => void;
+}) {
+  const progress = trackProgress(track, balance);
+  const name = TIER_LABELS[track.tier];
+  return (
+    <View style={{ paddingBottom: 12 * s, gap: 9 * s }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 * s }}>
+        <PointsProgress percent={progress.percent} />
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          {progress.value ? (
+            <Text style={[medium(s), { fontFamily: 'MonaSans_400Regular' }]}>{progress.value}</Text>
+          ) : null}
+          <Text style={[regular(s), { fontSize: 16 * s, lineHeight: 18 * s }]}>
+            {progress.target}
+          </Text>
+        </View>
+      </View>
+      <Text style={medium(s)}>{trackStatusLine(track, balance)}</Text>
+      <Text style={regular(s)}>{`Every ${name} benefit, except Yield boost.`}</Text>
+      {onAddToEarn && trackNeedsTopUp(track) ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Add to Earn to ${track.status === 'grace' ? 'keep' : 'unlock'} ${name}`}
+          onPress={() => onAddToEarn(track)}
+          className="mt-[9px] h-[35px] w-[129px] items-center justify-center self-start rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
+        >
+          <Text
+            className="font-semibold text-black"
+            style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 16, lineHeight: 20 }}
+          >
+            Add to Earn
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 export function TierBenefitsPage({
   tier,
   active,
@@ -872,6 +928,9 @@ export function TierBenefitsPage({
   contracts,
   showUpgradeSpace,
   showCardFx,
+  balance,
+  balanceTrack,
+  onAddToEarn,
 }: {
   tier: RewardsTier;
   active: boolean;
@@ -899,6 +958,13 @@ export function TierBenefitsPage({
    * see `showsCardFxPricing`.
    */
   showCardFx: boolean;
+  /**
+   * The "Hold in Earn" route and this tier's track on it, for a user the route
+   * is staged to. Absent, the page shows nothing of it.
+   */
+  balance?: TierBalanceRouteDto | null;
+  balanceTrack?: TierBalanceTrackDto;
+  onAddToEarn?: (track: TierBalanceTrackDto) => void;
 }) {
   const s = scaleFor(width);
   const table = tierPresentationFees(tier, fees);
@@ -909,7 +975,7 @@ export function TierBenefitsPage({
     table.lines.filter(line => line.key !== 'fx'),
     cardFx,
   );
-  const offers = tierOfferRows(offer, contracts);
+  const offers = tierOfferRows(offer, contracts, balance ? balanceTrack : undefined);
   const showsOffers = tier !== RewardsTier.CORE && offers.length > 0;
   const cardFxFootnote = cardFx ? (
     <Text
@@ -1061,20 +1127,29 @@ export function TierBenefitsPage({
           <Panel title={`Get ${TIER_LABELS[tier]}`} s={s}>
             <View style={{ paddingHorizontal: 20 * s, paddingTop: 4 * s, paddingBottom: 8 * s }}>
               {offers.map(row => (
-                <View
-                  key={row.label}
-                  style={{
-                    minHeight: 52 * s,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 10 * s,
-                  }}
-                >
-                  <Text style={[medium(s), { fontFamily: 'MonaSans_400Regular' }]}>
-                    {row.label}
-                  </Text>
-                  <ValuePill value={row.value} struckValue={row.listValue} s={s} />
+                <View key={row.label}>
+                  <View
+                    style={{
+                      minHeight: 52 * s,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10 * s,
+                    }}
+                  >
+                    <Text style={[medium(s), { fontFamily: 'MonaSans_400Regular' }]}>
+                      {row.label}
+                    </Text>
+                    <ValuePill value={row.value} struckValue={row.listValue} s={s} />
+                  </View>
+                  {row.balanceTrack && balance ? (
+                    <BalanceRouteStatus
+                      track={row.balanceTrack}
+                      balance={balance}
+                      s={s}
+                      onAddToEarn={onAddToEarn}
+                    />
+                  ) : null}
                 </View>
               ))}
             </View>

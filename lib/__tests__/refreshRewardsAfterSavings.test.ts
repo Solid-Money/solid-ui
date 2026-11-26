@@ -32,6 +32,15 @@ it('refetches the rewards payload without waiting for a promotion', () => {
   expect(useRewardsUpgradeStore.getState().pendingUntil).toBeUndefined();
 });
 
+it('refetches the tier membership, whose Hold in Earn route reads the Earn balance', () => {
+  const queryClient = new QueryClient();
+  const invalidate = jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue();
+
+  refreshRewardsAfterSavings(queryClient, 'a');
+
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tierMembership', 'a'] });
+});
+
 it('ignores an account that is no longer selected', () => {
   const queryClient = new QueryClient();
   const invalidate = jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue();

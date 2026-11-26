@@ -310,8 +310,25 @@ describe('getNotificationRoute', () => {
       ['rewards-tier-reached', path.REWARDS],
       ['ai_api_limit_reached', path.AI_API],
       ['ai_api_paused', path.AI_API],
+      ['tier_balance_unlocked', path.REWARDS_BENEFITS],
+      ['tier_balance_grace_started', path.REWARDS_BENEFITS],
+      ['tier_balance_grace_cleared', path.REWARDS_BENEFITS],
+      ['tier_balance_ended', path.REWARDS_BENEFITS],
     ])('still routes %s on its type', (type, expected) => {
       expect(getNotificationRoute({ type })).toEqual(expected);
+    });
+
+    it('opens the tier benefits for a Hold in Earn push, whatever form its link takes', () => {
+      expect(
+        getNotificationRoute({
+          type: 'tier_balance_grace_started',
+          link: link('/rewards/benefits'),
+        }),
+      ).toEqual(path.REWARDS_BENEFITS);
+      // The bare path the backend may send: unreadable as a URL, so the type decides.
+      expect(
+        getNotificationRoute({ type: 'tier_balance_grace_started', link: '/rewards/benefits' }),
+      ).toEqual(path.REWARDS_BENEFITS);
     });
 
     it('opens the support chat for a support reply, whatever its link', () => {

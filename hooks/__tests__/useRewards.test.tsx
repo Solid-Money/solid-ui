@@ -29,6 +29,12 @@ jest.mock('@/lib/utils', () => ({ withRefreshToken: (fn: any) => fn() }));
 // what the popup draws. Stubbing the card keeps the animated tier star — and
 // through it expo-video and the asset registry — out of this environment.
 jest.mock('@/components/Rewards/NewRewards/TierPopup', () => 'TierPopup');
+// The celebration reads the membership only for the "Hold in Earn" route's words;
+// the real hook would bring the wallet and session stack into this environment.
+const mockRefetchMembership = jest.fn();
+jest.mock('@/hooks/useTierMembership', () => ({
+  useTierMembership: () => ({ data: undefined, refetch: mockRefetchMembership }),
+}));
 
 const data = (tier: RewardsTier) =>
   ({ currentTier: tier, cashbackRate: 2, maxCashbackMonthly: 100 }) as RewardsUserData;

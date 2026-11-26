@@ -15,6 +15,7 @@ import { useShallow } from 'zustand/react/shallow';
 import Max from '@/components/Max';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import TierBalanceOutflowNotice from '@/components/TierBalance/TierBalanceOutflowNotice';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -24,6 +25,8 @@ import { getVaultKey, isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeForWithdraw from '@/hooks/useBridgeForWithdraw';
 import useBridgeSoEthBaseToMainnet from '@/hooks/useBridgeSoEthBaseToMainnet';
 import useBridgeToMainnetSoEth from '@/hooks/useBridgeToMainnetSoEth';
+import { useTierBalance, useTierBalanceOutflowWarning } from '@/hooks/useTierBalance';
+import { useTokenPriceUsd } from '@/hooks/useToken';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance, useSoEthVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
@@ -44,6 +47,7 @@ import {
   SoUsdWithdrawChainId,
 } from '@/lib/soUsdWithdraw';
 import { sponsoredMinimumCopy, useSponsoredMinimum } from '@/lib/sponsoredMinimum';
+import { fixedPointUsd, parseTokenUnits } from '@/lib/tierBalance';
 import { Status, TokenType, VaultType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
@@ -375,6 +379,35 @@ const RegularWithdrawForm = () => {
     return `$${formatNumber(Number(watchedAmount || 0) * (selectedToken?.quoteRate || 0), 2)}`;
   }, [isSoEurc, exchangeRate, selectedToken, watchedAmount]);
 
+  // What this withdrawal takes out of Earn, in dollars, for the "Hold in Earn"
+  // warning: the share's USD quote, or for soEURC its euro value at the EURC
+  // price — fetched only for someone the route is staged to.
+  const { relevant: tierBalanceTrack } = useTierBalance();
+  const { data: eurcPriceUsd } = useTokenPriceUsd(isSoEurc && tierBalanceTrack ? 'EURC' : '');
+  // In fixed point: the share amount is parsed to base units, never to a float.
+  const outflowUsd = useMemo(() => {
+    const decimals = selectedToken?.contractDecimals;
+    if (decimals === undefined) return 0;
+    const units = parseTokenUnits(watchedAmount ? String(watchedAmount) : undefined, decimals);
+    if (isSoEurc) {
+      // No warning until the rate loads, rather than shares valued at par.
+      if (exchangeRate === undefined) return undefined;
+      return fixedPointUsd(units, decimals, exchangeRate, Number(eurcPriceUsd) || 0);
+    }
+    return fixedPointUsd(units, decimals, selectedToken?.quoteRate || 0);
+  }, [
+    watchedAmount,
+    isSoEurc,
+    exchangeRate,
+    eurcPriceUsd,
+    selectedToken?.contractDecimals,
+    selectedToken?.quoteRate,
+  ]);
+  const { warning: tierBalanceWarning, proceed: proceedPastWarning } = useTierBalanceOutflowWarning(
+    'withdraw',
+    outflowUsd,
+  );
+
   const handleTokenSelectorPress = () => {
     setModal(UNSTAKE_MODAL.OPEN_TOKEN_SELECTOR);
   };
@@ -388,6 +421,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onBridgeSubmit = async (data: WithdrawFormData) => {
+    proceedPastWarning();
     if (bridgeMinimum !== undefined && parseUnits(String(data.amount), 6) < bridgeMinimum) {
       setError('amount', {
         message: sponsoredMinimumCopy('withdrawal', bridgeMinimum, 'soUSD'),
@@ -411,6 +445,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onSwapSubmit = async (data: WithdrawFormData) => {
+    proceedPastWarning();
     if (isSessionChainUnavailable) return;
     try {
       const transaction = await withdraw(data.amount.toString());
@@ -444,6 +479,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onSoFuseSubmit = async (data: WithdrawFormData) => {
+    proceedPastWarning();
     try {
       const transaction = await withdrawSoFuse(data.amount.toString());
       setTransaction({
@@ -473,6 +509,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onSoEurcSubmit = async (data: WithdrawFormData) => {
+    proceedPastWarning();
     try {
       const transaction = await withdrawSoEurc(data.amount.toString());
       setTransaction({
@@ -502,6 +539,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onBridgeSoEthSubmit = async (data: WithdrawFormData) => {
+    proceedPastWarning();
     try {
       // Base shares pay their own LayerZero fee in Base ETH; Fuse shares go through the paymaster.
       await (isSoEthOnBase ? bridgeSoEthFromBase : bridgeSoEth)(data.amount.toString());
@@ -520,6 +558,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onWithdrawSoEthSubmit = async (data: WithdrawFormData) => {
+    proceedPastWarning();
     try {
       const transaction = await withdrawSoEth(data.amount.toString());
       setTransaction({
@@ -690,6 +729,7 @@ const RegularWithdrawForm = () => {
             </View>
           </View>
         </TokenDetails>
+        <TierBalanceOutflowNotice warning={tierBalanceWarning} />
         <Text className="text-base font-medium opacity-70">Actions</Text>
         <TokenDetails>
           {isSoFuse ? (
