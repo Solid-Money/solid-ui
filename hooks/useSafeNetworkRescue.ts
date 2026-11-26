@@ -8,8 +8,8 @@ import {
   getSafeRecoveryBalances,
   prepareSafeRecovery,
 } from '@/lib/api';
-import { SafeRecovery, SafeRecoveryBalance } from '@/lib/types';
-import { verifiedSafeRecoveryHash } from '@/lib/utils/safeRecovery';
+import { SafeRecovery, SafeRecoveryBalance, SafeRecoveryBalancesResponse } from '@/lib/types';
+import { SafeRecoveryAmountChangedError, verifiedSafeRecoveryHash } from '@/lib/utils/safeRecovery';
 
 import useUser from './useUser';
 
@@ -22,6 +22,17 @@ const POLL_INTERVAL_MS = 3_000;
 const POLL_ATTEMPTS = 20;
 
 const STILL_GOING: readonly SafeRecovery['status'][] = ['submitting', 'submitted'];
+
+/**
+ * While a recovery shown on screen is on its way, the balances are read again this often, so its
+ * card settles (the funds leave, or the button comes back) without the user leaving the screen.
+ */
+const IN_FLIGHT_REFRESH_MS = 10_000;
+
+const hasRecoveryInFlight = (data?: SafeRecoveryBalancesResponse) =>
+  (data?.items ?? []).some(
+    item => item.recovery !== undefined && STILL_GOING.includes(item.recovery.status),
+  );
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -47,6 +58,8 @@ const useSafeNetworkRescue = () => {
     queryFn: getSafeRecoveryBalances,
     enabled: !!user?.userId,
     staleTime: 30 * 1000,
+    refetchInterval: query =>
+      hasRecoveryInFlight(query.state.data) ? IN_FLIGHT_REFRESH_MS : false,
   });
 
   const rescue = useCallback(
@@ -59,7 +72,8 @@ const useSafeNetworkRescue = () => {
           chainId: item.chainId,
           tokenAddress: item.tokenAddress,
         });
-        const hash = verifiedSafeRecoveryHash(prepared, user.safeAddress);
+        // Bound to the card tapped: same network, token and amount, or nothing is signed.
+        const hash = verifiedSafeRecoveryHash(prepared, user.safeAddress, item);
 
         const signer = createSignatureBatch().participant();
         let signature: Hex;
@@ -76,7 +90,13 @@ const useSafeNetworkRescue = () => {
           attempt++
         ) {
           await sleep(POLL_INTERVAL_MS);
-          result = await getSafeRecovery(result.id);
+          try {
+            result = await getSafeRecovery(result.id);
+          } catch {
+            // The transfer was sent; a failed status read does not make it fail. The card
+            // keeps watching it through the balances refresh.
+            break;
+          }
         }
 
         if (result.status === 'failed' || result.status === 'expired') {
@@ -84,6 +104,8 @@ const useSafeNetworkRescue = () => {
         }
         return result;
       } catch (err) {
+        // Not an error: the screen shows the new amount for the user to approve.
+        if (err instanceof SafeRecoveryAmountChangedError) throw err;
         Sentry.captureException(err, {
           tags: { type: 'safe_network_rescue_error' },
           extra: {

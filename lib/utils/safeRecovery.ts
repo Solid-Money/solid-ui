@@ -7,8 +7,28 @@ import {
   zeroAddress,
 } from 'viem';
 
-import type { SafeRecoveryPrepared } from '@/lib/types';
+import type {
+  SafeRecovery,
+  SafeRecoveryBalance,
+  SafeRecoveryBalancesResponse,
+  SafeRecoveryPrepared,
+  SafeRecoveryStatus,
+} from '@/lib/types';
 import type { Address, Hex } from 'viem';
+
+/** What the user approved: the card they tapped. */
+export type ApprovedSafeRecovery = Pick<SafeRecoveryBalance, 'chainId' | 'tokenAddress' | 'amount'>;
+
+/**
+ * The amount to move is no longer the one on the card (more arrived, or some left). Nothing is
+ * signed: the screen refreshes, and the user approves the new amount by tapping again.
+ */
+export class SafeRecoveryAmountChangedError extends Error {
+  constructor(readonly amount: string) {
+    super('The balance changed. Check the new amount and try again.');
+    this.name = 'SafeRecoveryAmountChangedError';
+  }
+}
 
 /** EIP-712 type of a Safe transaction (Safe 1.3.0 and later). */
 const SAFE_TX_TYPES = {
@@ -38,10 +58,15 @@ const asAddress = (value: string, field: string): Address => {
  * user's own Safe, a plain transfer of the whole `amount` of that token to the destination the
  * server named, with nothing refunded to anyone. A passkey signature over anything else could
  * move the user's funds elsewhere, so this is checked before the passkey prompt opens.
+ *
+ * It is also bound to the card the user tapped (`approved`): same network, same token, same
+ * amount. A different amount throws {@link SafeRecoveryAmountChangedError} so the user sees and
+ * approves the new one rather than signing it unseen.
  */
 export const verifiedSafeRecoveryHash = (
   prepared: SafeRecoveryPrepared,
   userSafeAddress: string,
+  approved: ApprovedSafeRecovery,
 ): Hex => {
   const safe = asAddress(prepared.safeAddress, 'Safe address');
   const token = asAddress(prepared.tokenAddress, 'token address');
@@ -50,6 +75,15 @@ export const verifiedSafeRecoveryHash = (
 
   if (!isAddressEqual(safe, asAddress(userSafeAddress, 'wallet address'))) {
     throw new Error('This transfer is not from your Solid wallet');
+  }
+  if (
+    prepared.chainId !== approved.chainId ||
+    !isAddressEqual(token, asAddress(approved.tokenAddress, 'approved token'))
+  ) {
+    throw new Error('This transfer is not for the token shown');
+  }
+  if (BigInt(prepared.amount) !== BigInt(approved.amount)) {
+    throw new SafeRecoveryAmountChangedError(prepared.amount);
   }
   if (!isAddressEqual(asAddress(safeTx.to, 'transaction target'), token)) {
     throw new Error('This transfer does not move the token shown');
@@ -96,4 +130,78 @@ export const verifiedSafeRecoveryHash = (
     throw new Error('This transfer could not be verified');
   }
   return hash;
+};
+
+const RECOVERY_STATUSES: readonly SafeRecoveryStatus[] = [
+  'awaiting_signature',
+  'submitting',
+  'submitted',
+  'succeeded',
+  'failed',
+  'expired',
+];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+const isText = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+const isBaseUnits = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d+$/.test(value);
+const isChainId = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value > 0;
+const isAddressText = (value: unknown): value is string =>
+  typeof value === 'string' && isAddress(value, { strict: false });
+
+const invalid = (what: string): never => {
+  throw new Error(`Unexpected ${what} from the server`);
+};
+
+/** A recovery from the server, checked field by field: the screen and the poll read these. */
+export const parseSafeRecovery = (value: unknown): SafeRecovery => {
+  if (
+    !isRecord(value) ||
+    !isText(value.id) ||
+    !isChainId(value.chainId) ||
+    !isText(value.network) ||
+    !isAddressText(value.tokenAddress) ||
+    !isText(value.symbol) ||
+    !isBaseUnits(value.amount) ||
+    !isText(value.amountFormatted) ||
+    !RECOVERY_STATUSES.includes(value.status as SafeRecoveryStatus) ||
+    (value.transactionHash !== undefined && !isText(value.transactionHash)) ||
+    (value.explorerUrl !== undefined && !isText(value.explorerUrl)) ||
+    (value.error !== undefined && typeof value.error !== 'string')
+  ) {
+    return invalid('recovery');
+  }
+  return value as unknown as SafeRecovery;
+};
+
+/**
+ * `GET /safe-recovery/balances`, checked before any of it reaches the screen: a malformed entry
+ * becomes a query error rather than a crash while rendering.
+ */
+export const parseSafeRecoveryBalances = (value: unknown): SafeRecoveryBalancesResponse => {
+  if (!isRecord(value) || typeof value.enabled !== 'boolean' || !Array.isArray(value.items)) {
+    return invalid('balances');
+  }
+  const items = value.items.map(item => {
+    if (
+      !isRecord(item) ||
+      !isChainId(item.chainId) ||
+      !isText(item.network) ||
+      !isAddressText(item.safeAddress) ||
+      !isAddressText(item.tokenAddress) ||
+      !isText(item.symbol) ||
+      !isBaseUnits(item.amount) ||
+      !isText(item.amountFormatted) ||
+      Number.isNaN(Number(item.amountFormatted))
+    ) {
+      return invalid('balance');
+    }
+    return {
+      ...(item as unknown as SafeRecoveryBalance),
+      ...(item.recovery !== undefined ? { recovery: parseSafeRecovery(item.recovery) } : {}),
+    };
+  });
+  return { enabled: value.enabled, items };
 };

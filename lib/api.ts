@@ -38,6 +38,7 @@ import {
   WirexBankTransferExecuteRequest,
   WirexWalletLinkChallengeDto,
 } from '@/lib/types/wirex-bank';
+import { parseSafeRecovery, parseSafeRecoveryBalances } from '@/lib/utils/safeRecovery';
 import {
   isWalletTopUpAvailability,
   isWalletTopUpQuoteResponse,
@@ -5414,6 +5415,9 @@ export const deleteDirectDepositSession = async (
 /** How long `execute` may take: deploying the Safe, sending, and the receipt. */
 const SAFE_RECOVERY_EXECUTE_TIMEOUT_MS = 150_000;
 
+/** Reads: the balances read the chain, so they get more than a plain lookup. */
+const SAFE_RECOVERY_READ_TIMEOUT_MS = 20_000;
+
 const safeRecoveryHeaders = (): Record<string, string> => {
   const jwt = getJWTToken();
   return {
@@ -5425,14 +5429,15 @@ const safeRecoveryHeaders = (): Record<string, string> => {
 
 /** Tokens in the user's Safe on networks the app does not run on (Plasma). */
 export const getSafeRecoveryBalances = async (): Promise<SafeRecoveryBalancesResponse> => {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/balances`,
     { headers: safeRecoveryHeaders(), credentials: 'include' },
+    SAFE_RECOVERY_READ_TIMEOUT_MS,
   );
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return parseSafeRecoveryBalances(await response.json());
 };
 
 /**
@@ -5475,19 +5480,20 @@ export const executeSafeRecovery = async (id: string, signature: string): Promis
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return parseSafeRecovery(await response.json());
 };
 
 /** One recovery, its status read fresh from the chain when still on its way. */
 export const getSafeRecovery = async (id: string): Promise<SafeRecovery> => {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/${encodeURIComponent(id)}`,
     { headers: safeRecoveryHeaders(), credentials: 'include' },
+    SAFE_RECOVERY_READ_TIMEOUT_MS,
   );
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return parseSafeRecovery(await response.json());
 };
 
 // rhino.fi Smart Deposit Address API

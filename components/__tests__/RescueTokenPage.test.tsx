@@ -1,6 +1,7 @@
 import React from 'react';
 
 import RescueToken from '@/app/(protected)/rescue-token';
+import { SafeRecoveryAmountChangedError } from '@/lib/utils/safeRecovery';
 
 import type { SafeRecoveryBalance } from '@/lib/types';
 
@@ -181,6 +182,22 @@ describe('Rescue tokens screen', () => {
         details: { amount: '10', token: 'USDT0', network: 'Plasma' },
       }),
     );
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('asks the user to look again, without the failure sheet, when the amount changed', async () => {
+    mockNetwork.current.items = [PLASMA_USDT0];
+    mockNetworkRescue.mockRejectedValue(new SafeRecoveryAmountChangedError('20000000'));
+
+    const { buttons } = render();
+    await act(async () => {
+      await buttons[0].props.onPress();
+    });
+
+    expect(mockToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'info', text1: 'Balance updated' }),
+    );
+    expect(mockFailureSheet).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 

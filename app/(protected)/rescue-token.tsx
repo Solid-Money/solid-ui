@@ -27,6 +27,7 @@ import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { SafeRecoveryBalance, Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { SafeRecoveryAmountChangedError } from '@/lib/utils/safeRecovery';
 import { publicClient } from '@/lib/wagmi';
 
 const USDC_DECIMALS = 6;
@@ -164,6 +165,11 @@ export default function RescueToken() {
       });
       router.replace(path.HOME);
     } catch (err) {
+      if (err instanceof SafeRecoveryAmountChangedError) {
+        // Nothing was signed; the card now shows the new amount for the user to approve.
+        Toast.show({ type: 'info', text1: 'Balance updated', text2: err.message });
+        return;
+      }
       void showFailureSheet(err, {
         action: 'rescue_token',
         details: { amount, token: item.symbol, network: item.network },
