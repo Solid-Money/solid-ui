@@ -8,6 +8,7 @@ import SpendModeSheetContent, {
 import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import { useSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import { useBaseSpendMode } from '@/hooks/useCardCreditPositions';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
@@ -36,6 +37,9 @@ const SpendModeSheet = ({
   const figures = useSpendModeFigures();
   // The combined loan figures for Fuse and Base, read while the sheet is open.
   const credit = useCreditModeFigures({ enabled: isOpen && !isSuspended });
+  // Base's own mode, so a switch that reached Fuse alone can be finished from here.
+  const baseMode = useBaseSpendMode({ enabled: isOpen && !isSuspended });
+  const retryBase = useCallback(() => void baseMode.refetch(), [baseMode]);
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
   // The assets the balance is made of — EURC among them once it is on for the card.
   const assets = useSpendableAssetRows();
@@ -74,6 +78,10 @@ const SpendModeSheet = ({
       {({ session, topPadding, presentation }) => (
         <SpendModeSheetContent
           activeMode={activeMode}
+          baseMode={baseMode.mode}
+          isBaseChecking={baseMode.isLoading}
+          isBaseUnreadable={baseMode.isError}
+          onRetryBase={retryBase}
           initialMode={initialMode}
           figures={figures}
           credit={credit}

@@ -38,7 +38,7 @@ export const useCardSpendModeAccess = (): {
 } => {
   const { user } = useUser();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isPending, fetchStatus, isError, refetch } = useQuery({
     queryKey: [CARD_SPEND_MODE_ACCESS_QUERY_KEY, user?.userId],
     queryFn: getCardSpendModeAccess,
     // Nothing to ask about without a signed-in user, and the request would 401.
@@ -51,7 +51,9 @@ export const useCardSpendModeAccess = (): {
 
   return {
     isEnabled: data?.enabled === true,
-    isLoading: !!user?.userId && isLoading,
+    // Pending and not idle rather than `isLoading`, which is false while the request is paused
+    // offline: an unanswered gate must not read as a "no".
+    isLoading: !!user?.userId && isPending && fetchStatus !== 'idle',
     isError: !!user?.userId && isError,
     refetch,
   };

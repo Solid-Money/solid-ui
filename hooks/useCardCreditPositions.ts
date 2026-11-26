@@ -21,6 +21,7 @@ import {
   CARD_SPEND_REGISTRATION_QUERY_KEY,
   creditHeadroom,
   lensCredit,
+  readBaseModeState,
 } from '@/hooks/useCardSpendRegistration';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
 import useUser from '@/hooks/useUser';
@@ -28,6 +29,8 @@ import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { SolidSpendLens_ABI } from '@/lib/abis/SolidSpendLens';
 import { ADDRESSES } from '@/lib/config';
 import { publicClient } from '@/lib/wagmi';
+
+import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 
 /** The lens's `v2()`, which the app's lens ABI leaves out. */
 const LENS_MODULE_ABI = [
@@ -516,10 +519,14 @@ export const useBaseCreditInstance = () => {
   } = useCardSpendModeAccess();
   const {
     data: spendDeployments,
-    isLoading: isDeploymentsLoading,
+    isPending: isDeploymentsPending,
+    fetchStatus: deploymentsFetchStatus,
     isError: isDeploymentsError,
     refetch: refetchDeployments,
   } = useCardSpendDeployments();
+  // Pending and not idle, so a request paused offline still counts as unanswered: `isLoading` is
+  // false then, and the gate would read as "no Base" (as `useCardSpendModeAccess` does for its own).
+  const isDeploymentsLoading = isDeploymentsPending && deploymentsFetchStatus !== 'idle';
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === baseChain.id,
   );
@@ -561,6 +568,67 @@ export const useBaseCreditInstance = () => {
       ]),
     moduleAddress,
     lensAddress,
+  };
+};
+
+/**
+ * The mode the Base instance holds for this Safe, or null when Base is not part of this card
+ * (not enabled there, not registered, or not answered yet).
+ *
+ * The picker takes the card's mode from Fuse, so a switch that reached Fuse and not Base looks
+ * finished: choosing the same mode again only closed the sheet. That is where every Credit switch
+ * made outside the spend-mode cohort ended up while Base was held back for it (45 Safes on
+ * Nov 26 2026, at a €0 credit line against Base balances), and where a Base step that failed
+ * leaves a Safe. This is what lets the sheet see Base is behind and offer to finish the change.
+ *
+ * Keyed under the registration query, so a switch refreshes it with everything else.
+ *
+ * `mode` is null both when Base is confirmed not to be part of the card and while that is not
+ * known yet, so `isLoading` and `isError` say which: the sheet must not read an unanswered Base as
+ * one that matches, or the cardholder this exists for is offered "Cancel" again. Either one covers
+ * the Base gate as well as the mode read, since a gate that has not answered reads as "no Base".
+ * A mode already read wins over a refetch that is loading or failed.
+ */
+export const useBaseSpendMode = ({
+  enabled,
+}: {
+  enabled: boolean;
+}): {
+  mode: SpendMode | null;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => Promise<unknown>;
+} => {
+  const { user } = useUser();
+  const safeAddress = user?.safeAddress as Address | undefined;
+  const {
+    isLive,
+    moduleAddress,
+    isLoading: isGateLoading,
+    isError: isGateError,
+    refetchGate,
+  } = useBaseCreditInstance();
+  const canRead = isLive && !!safeAddress && !!moduleAddress;
+
+  const query = useQuery({
+    queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, 'base-mode', safeAddress, moduleAddress],
+    queryFn: () => readBaseModeState(safeAddress as Address, moduleAddress as Address),
+    enabled: enabled && canRead,
+  });
+  const hasAnswer = canRead && query.data !== undefined;
+
+  return {
+    mode: hasAnswer && query.data?.live ? query.data.mode : null,
+    // Pending and not idle, as `useSpendModeFigures` tests the Base credit read: `isLoading`
+    // alone is false while a read is paused offline, which would read as no Base.
+    isLoading:
+      enabled &&
+      !hasAnswer &&
+      (isGateLoading || (canRead && query.isPending && query.fetchStatus !== 'idle')),
+    isError: enabled && !hasAnswer && (isGateError || (canRead && query.isError)),
+    // Only what failed: a manual refetch ignores `enabled` and would read without an address.
+    refetch: () =>
+      isGateError ? refetchGate() : canRead ? query.refetch() : Promise.resolve(undefined),
   };
 };
 

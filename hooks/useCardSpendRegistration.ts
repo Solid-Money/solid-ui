@@ -583,7 +583,7 @@ export const creditHeadroom = (
  * because its v1 sentinel has no code (see `useEuroSpendEnablement`). Base's `modeDelay` is zero,
  * so `getMode` is the whole answer: nothing is ever armed there.
  */
-const readBaseModeState = async (
+export const readBaseModeState = async (
   safeAddress: Address,
   moduleAddress: Address,
 ): Promise<{ live: boolean; mode: SpendMode }> => {
