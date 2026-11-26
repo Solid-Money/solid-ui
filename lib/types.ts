@@ -199,6 +199,93 @@ export interface RhinoDepositAssetsResponse {
   chains: RhinoDepositChain[];
 }
 
+/**
+ * Funds in the user's Safe on a network the app does not run on (Plasma), and
+ * the recovery that moves them back into Solid. See `safe-recovery` in the
+ * backend.
+ */
+export type SafeRecoveryStatus =
+  | 'awaiting_signature'
+  | 'submitting'
+  | 'submitted'
+  | 'succeeded'
+  | 'failed'
+  | 'expired';
+
+export interface SafeRecovery {
+  id: string;
+  chainId: number;
+  network: string;
+  tokenAddress: string;
+  symbol: string;
+  decimals: number;
+  /** Base units. */
+  amount: string;
+  amountFormatted: string;
+  destinationAddress: string;
+  status: SafeRecoveryStatus;
+  transactionHash?: string;
+  explorerUrl?: string;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SafeRecoveryBalance {
+  chainId: number;
+  network: string;
+  safeAddress: string;
+  tokenAddress: string;
+  symbol: string;
+  decimals: number;
+  /** Base units. */
+  amount: string;
+  amountFormatted: string;
+  /** A recovery of this token still on its way, if any. */
+  recovery?: SafeRecovery;
+}
+
+/** `GET /safe-recovery/balances` */
+export interface SafeRecoveryBalancesResponse {
+  /** False when recoveries are switched off server-side. */
+  enabled: boolean;
+  items: SafeRecoveryBalance[];
+}
+
+/** A Safe transaction as the Safe hashes it; numbers are decimal strings. */
+export interface SafeRecoverySafeTx {
+  to: string;
+  value: string;
+  data: string;
+  operation: number;
+  safeTxGas: string;
+  baseGas: string;
+  gasPrice: string;
+  gasToken: string;
+  refundReceiver: string;
+  nonce: string;
+}
+
+/** `POST /safe-recovery/prepare` — what the user signs. */
+export interface SafeRecoveryPrepared {
+  id: string;
+  chainId: number;
+  network: string;
+  safeAddress: string;
+  tokenAddress: string;
+  symbol: string;
+  decimals: number;
+  amount: string;
+  amountFormatted: string;
+  /** The user's rhino.fi address on that network, paying their Solid wallet. */
+  destinationAddress: string;
+  receiveSymbol: string;
+  receiveNetwork: string;
+  safeTx: SafeRecoverySafeTx;
+  safeTxHash: string;
+  expiresAt: string;
+}
+
 export interface RhinoDepositAddressRequest {
   chain: string;
   tokenSymbol: string;

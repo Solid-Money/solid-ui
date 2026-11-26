@@ -165,6 +165,9 @@ import {
   RhinoDepositAddressResponse,
   RhinoDepositAssetsResponse,
   RhinoDepositsResponse,
+  SafeRecovery,
+  SafeRecoveryBalancesResponse,
+  SafeRecoveryPrepared,
   SavingsSummaryResponse,
   SignedTurnkeyRequest,
   SourceDepositInstructions,
@@ -5399,6 +5402,87 @@ export const deleteDirectDepositSession = async (
       },
       credentials: 'include',
     },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// Safe recovery: funds in the user's Safe on networks the app does not run on
+
+/** How long `execute` may take: deploying the Safe, sending, and the receipt. */
+const SAFE_RECOVERY_EXECUTE_TIMEOUT_MS = 150_000;
+
+const safeRecoveryHeaders = (): Record<string, string> => {
+  const jwt = getJWTToken();
+  return {
+    'Content-Type': 'application/json',
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/** Tokens in the user's Safe on networks the app does not run on (Plasma). */
+export const getSafeRecoveryBalances = async (): Promise<SafeRecoveryBalancesResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/balances`,
+    { headers: safeRecoveryHeaders(), credentials: 'include' },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The Safe transaction that moves the whole balance of one token back into
+ * Solid. The backend picks the destination and amount; the caller checks them
+ * before asking the user to sign.
+ */
+export const prepareSafeRecovery = async (request: {
+  chainId: number;
+  tokenAddress: string;
+}): Promise<SafeRecoveryPrepared> => {
+  const response = await fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/prepare`,
+    {
+      method: 'POST',
+      headers: safeRecoveryHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(request),
+    },
+    DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Hand over the user's signature; the backend relays the Safe transaction. */
+export const executeSafeRecovery = async (id: string, signature: string): Promise<SafeRecovery> => {
+  const response = await fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/${encodeURIComponent(id)}/execute`,
+    {
+      method: 'POST',
+      headers: safeRecoveryHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ signature }),
+    },
+    SAFE_RECOVERY_EXECUTE_TIMEOUT_MS,
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** One recovery, its status read fresh from the chain when still on its way. */
+export const getSafeRecovery = async (id: string): Promise<SafeRecovery> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/${encodeURIComponent(id)}`,
+    { headers: safeRecoveryHeaders(), credentials: 'include' },
   );
 
   if (!response.ok) throw response;
