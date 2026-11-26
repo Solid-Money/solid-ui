@@ -16,7 +16,12 @@ const WhatsNewSingleDrawerWeb: typeof import('@/components/WhatsNew/WhatsNewSing
 
 const mockPlatform = { OS: 'ios' };
 const mockBackHandlers: (() => boolean)[] = [];
-const mockSheet = { present: jest.fn(), dismiss: jest.fn() };
+const mockSheet = {
+  present: jest.fn(),
+  dismiss: jest.fn(),
+  /** Ends the slide-out a `dismiss` started: Gorhom reports it only then. */
+  finishDismiss: () => {},
+};
 
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 jest.mock('react-native', () => ({
@@ -77,13 +82,14 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = jest.requireActual('react');
   return {
-    // `dismiss` slides the sheet away, then reports it, as Gorhom does.
+    // `dismiss` starts the slide-out; `onDismiss` comes once the test ends it
+    // (`mockSheet.finishDismiss`), so a test can look at the sheet mid-exit.
     BottomSheetModal: React.forwardRef(function MockSheet(props: any, ref: any) {
       React.useImperativeHandle(ref, () => ({
         present: mockSheet.present,
         dismiss: () => {
           mockSheet.dismiss();
-          props.onDismiss?.();
+          mockSheet.finishDismiss = () => props.onDismiss?.();
         },
       }));
       return React.createElement('BottomSheetModal', props);
@@ -137,6 +143,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPlatform.OS = 'ios';
   mockBackHandlers.length = 0;
+  mockSheet.finishDismiss = () => {};
 });
 
 afterEach(() => {
@@ -180,10 +187,19 @@ describe('WhatsNewSingleDrawer (iOS and Android)', () => {
 
     act(() => drawer.media().onClose());
 
+    // Mid-exit: the video has already stopped, and nothing is reported yet.
     expect(mockSheet.dismiss).toHaveBeenCalledTimes(1);
-    expect(drawer.onRequestClose.mock.calls).toEqual([['close_button']]);
-    // The video stops the moment the close starts.
     expect(drawer.media().isActive).toBe(false);
+    expect(drawer.onRequestClose).not.toHaveBeenCalled();
+
+    // Another close while it slides away starts nothing and changes no reason.
+    act(() => {
+      mockBackHandlers[mockBackHandlers.length - 1]();
+    });
+    expect(mockSheet.dismiss).toHaveBeenCalledTimes(1);
+
+    act(() => mockSheet.finishDismiss());
+    expect(drawer.onRequestClose.mock.calls).toEqual([['close_button']]);
     act(() => drawer.renderer.unmount());
   });
 
@@ -196,14 +212,19 @@ describe('WhatsNewSingleDrawer (iOS and Android)', () => {
       handled = mockBackHandlers[mockBackHandlers.length - 1]();
     });
     expect(handled).toBe(true);
-    expect(drawer.onRequestClose.mock.calls).toEqual([['back']]);
+    expect(drawer.media().isActive).toBe(false);
+    expect(drawer.onRequestClose).not.toHaveBeenCalled();
 
     // A second press while it slides away is still the drawer's, and closes nothing twice.
     act(() => {
       handled = mockBackHandlers[mockBackHandlers.length - 1]();
     });
     expect(handled).toBe(true);
-    expect(drawer.onRequestClose).toHaveBeenCalledTimes(1);
+    expect(mockSheet.dismiss).toHaveBeenCalledTimes(1);
+    expect(drawer.onRequestClose).not.toHaveBeenCalled();
+
+    act(() => mockSheet.finishDismiss());
+    expect(drawer.onRequestClose.mock.calls).toEqual([['back']]);
 
     act(() => drawer.renderer.unmount());
     expect(mockBackHandlers).toHaveLength(0);
