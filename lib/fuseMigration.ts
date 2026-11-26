@@ -238,6 +238,8 @@ function callsForItem(
   ];
 }
 
+type VaultActivity = { id: string; teller?: Address };
+
 type LayerZeroMessage = {
   status?: { name?: string };
   /** The sending OApp: the Fuse teller, for a vault bridge. */
@@ -254,7 +256,7 @@ type LayerZeroMessage = {
  */
 export const deliveredVaultActivities = (
   messages: readonly LayerZeroMessage[] | undefined,
-  activities: readonly { id: string; teller?: Address }[],
+  activities: readonly VaultActivity[],
 ): string[] => {
   if (!messages?.length) return [];
   const isDelivered = (message: LayerZeroMessage) => message.status?.name === 'DELIVERED';
@@ -275,6 +277,64 @@ export const deliveredVaultActivities = (
   return messages.length >= activities.length && messages.every(isDelivered)
     ? activities.map(({ id }) => id)
     : [];
+};
+
+/** LayerZero statuses after which a message will not reach DELIVERED without someone acting. */
+const UNDELIVERABLE_STATUSES = new Set(['FAILED', 'BLOCKED', 'PAYLOAD_STORED']);
+
+/**
+ * Follows a migration transaction's LayerZero messages until every vault row has its own
+ * delivered message, calling `onDelivered` for each row as its message lands.
+ *
+ * The scan API indexes a transaction's messages asynchronously, so one response can name soUSD's
+ * message before soETH's exists; stopping at the first delivery would leave the other row
+ * processing forever. A row stops being followed when its message is delivered or reaches a
+ * status it cannot leave on its own; the rest are polled until `rounds` runs out. A failed fetch
+ * only costs that round. Resolves with the ids still undelivered.
+ */
+export const followVaultDeliveries = async ({
+  activities,
+  fetchMessages,
+  onDelivered,
+  wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  rounds = 30,
+  intervalMs = 20_000,
+}: {
+  activities: readonly VaultActivity[];
+  fetchMessages: () => Promise<readonly LayerZeroMessage[] | undefined>;
+  onDelivered: (id: string) => void;
+  wait?: (ms: number) => Promise<void>;
+  rounds?: number;
+  intervalMs?: number;
+}): Promise<string[]> => {
+  let pending = [...activities];
+  for (let round = 0; round < rounds && pending.length > 0; round++) {
+    if (round > 0) await wait(intervalMs);
+
+    let messages: readonly LayerZeroMessage[] | undefined;
+    try {
+      messages = await fetchMessages();
+    } catch {
+      continue;
+    }
+
+    const delivered = new Set(deliveredVaultActivities(messages, pending));
+    pending.filter(({ id }) => delivered.has(id)).forEach(({ id }) => onDelivered(id));
+
+    const stuck = new Set(
+      pending.flatMap(({ id, teller }) => {
+        const message = teller
+          ? messages?.find(
+              candidate =>
+                candidate.pathway?.sender?.address?.toLowerCase() === teller.toLowerCase(),
+            )
+          : undefined;
+        return message && UNDELIVERABLE_STATUSES.has(message.status?.name ?? '') ? [id] : [];
+      }),
+    );
+    pending = pending.filter(({ id }) => !delivered.has(id) && !stuck.has(id));
+  }
+  return pending.map(({ id }) => id);
 };
 
 /** "12.34", trimmed to at most `maxDecimals` without rounding up. */

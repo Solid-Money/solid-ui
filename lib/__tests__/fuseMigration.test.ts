@@ -9,6 +9,7 @@ import {
   buildFuseMigrationBatches,
   buildFuseMigrationItems,
   deliveredVaultActivities,
+  followVaultDeliveries,
   formatMigrationAmount,
   FuseMigrationAsset,
   movableFuseMigrationUsd,
@@ -210,5 +211,72 @@ describe('deliveredVaultActivities', () => {
   it('marks nothing before LayerZero has indexed the transaction', () => {
     expect(deliveredVaultActivities([], rows)).toEqual([]);
     expect(deliveredVaultActivities(undefined, rows)).toEqual([]);
+  });
+});
+
+describe('followVaultDeliveries', () => {
+  const SOETH_TELLER = '0xEaac000000000000000000000000000000000001' as Address;
+  const rows = [
+    { id: 'sousd-row', teller: SOUSD_TELLER },
+    { id: 'soeth-row', teller: SOETH_TELLER },
+  ];
+  const message = (status: string, sender: Address) => ({
+    status: { name: status },
+    pathway: { sender: { address: sender.toLowerCase() } },
+  });
+  const follow = (responses: unknown[], rounds = 5) => {
+    const fetchMessages = jest.fn();
+    responses.forEach(response =>
+      response instanceof Error
+        ? fetchMessages.mockRejectedValueOnce(response)
+        : fetchMessages.mockResolvedValueOnce(response),
+    );
+    fetchMessages.mockResolvedValue(responses[responses.length - 1]);
+    const onDelivered = jest.fn();
+    const wait = jest.fn(() => Promise.resolve());
+    return {
+      fetchMessages,
+      onDelivered,
+      result: followVaultDeliveries({
+        activities: rows,
+        fetchMessages,
+        onDelivered,
+        wait,
+        rounds,
+      }),
+    };
+  };
+
+  // The scan API can list soUSD's message before it has indexed soETH's.
+  it('keeps polling for a vault whose message was not indexed yet', async () => {
+    const { onDelivered, fetchMessages, result } = follow([
+      [message('DELIVERED', SOUSD_TELLER)],
+      [message('DELIVERED', SOUSD_TELLER), message('INFLIGHT', SOETH_TELLER)],
+      [message('DELIVERED', SOUSD_TELLER), message('DELIVERED', SOETH_TELLER)],
+    ]);
+
+    await expect(result).resolves.toEqual([]);
+    expect(onDelivered.mock.calls.map(([id]) => id)).toEqual(['sousd-row', 'soeth-row']);
+    expect(fetchMessages).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops following a vault whose message failed, without marking it', async () => {
+    const { onDelivered, fetchMessages, result } = follow([
+      [message('DELIVERED', SOUSD_TELLER), message('FAILED', SOETH_TELLER)],
+    ]);
+
+    await expect(result).resolves.toEqual([]);
+    expect(onDelivered.mock.calls.map(([id]) => id)).toEqual(['sousd-row']);
+    expect(fetchMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('survives a failed fetch and reports what never arrived', async () => {
+    const { onDelivered, result } = follow(
+      [new Error('scan down'), [message('DELIVERED', SOUSD_TELLER)]],
+      3,
+    );
+
+    await expect(result).resolves.toEqual(['soeth-row']);
+    expect(onDelivered.mock.calls.map(([id]) => id)).toEqual(['sousd-row']);
   });
 });

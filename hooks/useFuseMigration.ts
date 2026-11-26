@@ -17,7 +17,7 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import {
   buildFuseMigrationBatches,
   buildFuseMigrationItems,
-  deliveredVaultActivities,
+  followVaultDeliveries,
   formatMigrationAmount,
   FuseMigrationAsset,
   FuseMigrationBatch,
@@ -31,7 +31,7 @@ import { readSponsoredMinimum } from '@/lib/sponsoredMinimum';
 import { CardProvider, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
-import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
+import { getLayerZeroTransaction } from '@/lib/utils/layerzero';
 import { publicClient } from '@/lib/wagmi';
 
 export const FUSE_MIGRATION_QUERY_KEY = 'fuseMigration';
@@ -257,20 +257,19 @@ export const useFuseMigration = () => {
           });
         }
 
-        // The Fuse receipt only says the shares left. Mark the rows done once LayerZero delivers;
-        // if the poll gives up, the rows stay processing rather than claim a delivery not seen.
+        // The Fuse receipt only says the shares left. Each row is marked done once its own
+        // LayerZero message is delivered; a row whose message never is stays processing rather
+        // than claim a delivery not seen.
         if (vaultActivities.length && txHash) {
-          void waitForLayerzeroTransaction(txHash)
-            .then(lz => {
-              const delivered = deliveredVaultActivities(lz.data, vaultActivities);
-              delivered.forEach(id =>
-                updateActivity(id, {
-                  status: TransactionStatus.SUCCESS,
-                  metadata: { layerzeroDeliveredAt: new Date().toISOString() },
-                }),
-              );
-            })
-            .catch(() => undefined);
+          void followVaultDeliveries({
+            activities: vaultActivities,
+            fetchMessages: async () => (await getLayerZeroTransaction(txHash)).data,
+            onDelivered: id =>
+              updateActivity(id, {
+                status: TransactionStatus.SUCCESS,
+                metadata: { layerzeroDeliveredAt: new Date().toISOString() },
+              }),
+          }).catch(() => undefined);
         }
         return txHash;
       };
