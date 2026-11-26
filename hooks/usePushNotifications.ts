@@ -148,8 +148,12 @@ const PUSH_LINK_DENIED_PREFIXES: readonly string[] = [
   '/card/3ds',
 ];
 
-/** A plain in-app path: segments of letters, digits and `-._~`, no `//`. */
-const PUSH_LINK_PATH = /^\/(?:[A-Za-z0-9\-._~]+\/?)*$/;
+/**
+ * A plain in-app path: segments of letters, digits and `-._~`, no `//`.
+ * Exactly one slash between segments (not an optional one inside the repeat),
+ * so a long segment followed by a refused character fails in linear time.
+ */
+const PUSH_LINK_PATH = /^\/(?:[A-Za-z0-9\-._~]+(?:\/[A-Za-z0-9\-._~]+)*\/?)?$/;
 
 /** A query param an in-app route may read; campaign params stay with attribution. */
 const PUSH_LINK_PARAM = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;

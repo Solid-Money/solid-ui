@@ -292,6 +292,11 @@ export const getAttributionChannel = (data: Partial<AttributionData>): Attributi
   // Referral code takes precedence
   if (data.referral_code) return 'referral';
 
+  // Our own pushes stamp utm_medium=push (backend push-attribution.constants).
+  // Checked before click IDs: a push open merges into a record that may still
+  // carry the gclid/fbclid of an earlier ad click, and the open is the push's.
+  if (data.utm_medium?.toLowerCase() === 'push') return 'push';
+
   // Click IDs indicate paid advertising
   if (data.gclid || data.msclkid) return 'paid_search';
   if (data.fbclid || data.ttclid) return 'paid_social';
@@ -319,8 +324,6 @@ export const getAttributionChannel = (data: Partial<AttributionData>): Attributi
 
     if (medium.includes('social') || medium.includes('organic_social')) return 'social';
     if (medium.includes('email')) return 'email';
-    // Our own pushes stamp utm_medium=push (backend push-attribution.constants).
-    if (medium === 'push') return 'push';
     if (medium.includes('organic')) return 'organic';
   }
 

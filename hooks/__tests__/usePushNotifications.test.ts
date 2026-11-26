@@ -169,6 +169,13 @@ describe('routeForLink', () => {
     expect(routeForLink(undefined)).toBeUndefined();
   });
 
+  it('refuses a long path with a bad character at once, without backtracking', () => {
+    const started = Date.now();
+    expect(routeForLink(link(`/${'a'.repeat(5000)} b`))).toBeUndefined();
+    expect(routeForLink(link(`/x/${'a'.repeat(5000)}/`))).toEqual(`/x/${'a'.repeat(5000)}`);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
   describe('host allowlist', () => {
     it('accepts the hosts that serve our Universal Links', () => {
       expect(routeForLink('https://app.solid.xyz/card')).toEqual(path.CARD_INFO);
