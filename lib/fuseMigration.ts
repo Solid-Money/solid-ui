@@ -257,6 +257,12 @@ type LayerZeroMessage = {
 export const deliveredVaultActivities = (
   messages: readonly LayerZeroMessage[] | undefined,
   activities: readonly VaultActivity[],
+  /**
+   * How many vault rows the transaction carries in all. A caller following the rows over several
+   * polls passes the original count, so a sender-less response is never matched against only the
+   * rows still pending: one delivered message must not mark a row it may not belong to.
+   */
+  totalRows: number = activities.length,
 ): string[] => {
   if (!messages?.length) return [];
   const isDelivered = (message: LayerZeroMessage) => message.status?.name === 'DELIVERED';
@@ -274,7 +280,7 @@ export const deliveredVaultActivities = (
     });
   }
 
-  return messages.length >= activities.length && messages.every(isDelivered)
+  return messages.length >= totalRows && messages.every(isDelivered)
     ? activities.map(({ id }) => id)
     : [];
 };
@@ -318,7 +324,7 @@ export const followVaultDeliveries = async ({
       continue;
     }
 
-    const delivered = new Set(deliveredVaultActivities(messages, pending));
+    const delivered = new Set(deliveredVaultActivities(messages, pending, activities.length));
     pending.filter(({ id }) => delivered.has(id)).forEach(({ id }) => onDelivered(id));
 
     const stuck = new Set(

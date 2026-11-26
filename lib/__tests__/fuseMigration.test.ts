@@ -260,6 +260,19 @@ describe('followVaultDeliveries', () => {
     expect(fetchMessages).toHaveBeenCalledTimes(3);
   });
 
+  // soUSD was matched by sender earlier; a later sender-less response holding only that one
+  // delivered message must not be taken as soETH's.
+  it('never marks a pending vault from a sender-less response short of one message per row', async () => {
+    const senderless = { status: { name: 'DELIVERED' } };
+    const { onDelivered, result } = follow(
+      [[message('DELIVERED', SOUSD_TELLER), message('INFLIGHT', SOETH_TELLER)], [senderless]],
+      4,
+    );
+
+    await expect(result).resolves.toEqual(['soeth-row']);
+    expect(onDelivered.mock.calls.map(([id]) => id)).toEqual(['sousd-row']);
+  });
+
   it('stops following a vault whose message failed, without marking it', async () => {
     const { onDelivered, fetchMessages, result } = follow([
       [message('DELIVERED', SOUSD_TELLER), message('FAILED', SOETH_TELLER)],
