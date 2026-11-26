@@ -615,7 +615,12 @@ export const useBaseSpendMode = ({
 
   return {
     mode: hasAnswer && query.data?.live ? query.data.mode : null,
-    isLoading: enabled && !hasAnswer && (isGateLoading || (canRead && query.isLoading)),
+    // Pending and not idle, as `useSpendModeFigures` tests the Base credit read: `isLoading`
+    // alone is false while a read is paused offline, which would read as no Base.
+    isLoading:
+      enabled &&
+      !hasAnswer &&
+      (isGateLoading || (canRead && query.isPending && query.fetchStatus !== 'idle')),
     isError: enabled && !hasAnswer && (isGateError || (canRead && query.isError)),
     // Only what failed: a manual refetch ignores `enabled` and would read without an address.
     refetch: () =>
