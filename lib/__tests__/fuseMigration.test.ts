@@ -8,6 +8,7 @@ import {
   BASE_LZ_EID,
   buildFuseMigrationBatches,
   buildFuseMigrationItems,
+  deliveredVaultActivities,
   formatMigrationAmount,
   FuseMigrationAsset,
   movableFuseMigrationUsd,
@@ -17,6 +18,7 @@ const USDC = '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9' as Address;
 const USDT = '0x3695Dd1D1D43B794C0B13eb8be8419Eb3ac22bf7' as Address;
 const SOUSD = '0x75333830E7014e909535389a6E5b0C02aA62ca27' as Address;
 const SOUSD_TELLER = '0x220d4667AA06E0Aa39f62c601690848f2e48BC15' as Address;
+const NO_MINIMUM = { [SOUSD_TELLER.toLowerCase()]: 0n };
 const SAFE = '0x1111111111111111111111111111111111111111' as Address;
 const DEPOSIT = '0x2222222222222222222222222222222222222222' as Address;
 
@@ -45,8 +47,23 @@ describe('buildFuseMigrationItems', () => {
       { [SOUSD_TELLER.toLowerCase()]: 100_000n },
       { soUSD: 1.05 },
     );
-    expect(items[0]).toMatchObject({ symbol: 'soUSD', movable: false, minimum: 100_000n });
+    expect(items[0]).toMatchObject({
+      symbol: 'soUSD',
+      movable: false,
+      minimum: 100_000n,
+      stays: 'below_minimum',
+    });
     expect(movableFuseMigrationUsd(items)).toBe(0);
+  });
+
+  // Taking an unknown minimum as zero would let a sub-minimum vault into the operation with the
+  // stablecoins, and the paymaster's revert would then sink the whole operation.
+  it('holds back a vault whose minimum could not be read, and still moves the stablecoins', () => {
+    const items = buildFuseMigrationItems(ASSETS, [10_000_000n, 2_500_000n], {}, {});
+    expect(items.map(item => [item.symbol, item.movable, item.stays])).toEqual([
+      ['USDC', true, undefined],
+      ['soUSD', false, 'minimum_unknown'],
+    ]);
   });
 
   it('never applies a minimum to stablecoins, which the backend moves at any size', () => {
@@ -61,7 +78,9 @@ describe('buildFuseMigrationItems', () => {
 });
 
 describe('buildFuseMigrationBatches', () => {
-  const items = buildFuseMigrationItems(ASSETS, [10_000_000n, 2_500_000n], {}, { soUSD: 1.05 });
+  const items = buildFuseMigrationItems(ASSETS, [10_000_000n, 2_500_000n], NO_MINIMUM, {
+    soUSD: 1.05,
+  });
 
   it('bridges shares to the Base Safe and transfers a stablecoin to the deposit address', () => {
     const batches = buildFuseMigrationBatches({
@@ -97,7 +116,7 @@ describe('buildFuseMigrationBatches', () => {
     const withUsdt = buildFuseMigrationItems(
       [...ASSETS, { symbol: 'USDT', token: USDT, decimals: 6, route: 'deposit_address' }],
       [10_000_000n, 2_500_000n, 4_000_000n],
-      {},
+      NO_MINIMUM,
       {},
     );
     const batches = buildFuseMigrationBatches({
@@ -150,5 +169,46 @@ describe('formatMigrationAmount', () => {
       '1.234567',
     );
     expect(formatMigrationAmount({ amount: 1n, decimals: 6 })).toBe('<0.01');
+  });
+});
+
+describe('deliveredVaultActivities', () => {
+  const SOETH_TELLER = '0xEaac000000000000000000000000000000000001' as Address;
+  const rows = [
+    { id: 'sousd-row', teller: SOUSD_TELLER },
+    { id: 'soeth-row', teller: SOETH_TELLER },
+  ];
+  const message = (status: string, sender?: Address) => ({
+    status: { name: status },
+    ...(sender ? { pathway: { sender: { address: sender.toLowerCase() } } } : {}),
+  });
+
+  it('marks only the vault whose own message was delivered', () => {
+    expect(
+      deliveredVaultActivities(
+        [message('DELIVERED', SOUSD_TELLER), message('BLOCKED', SOETH_TELLER)],
+        rows,
+      ),
+    ).toEqual(['sousd-row']);
+  });
+
+  it('marks a single vault once its message is delivered', () => {
+    expect(deliveredVaultActivities([message('DELIVERED', SOUSD_TELLER)], [rows[0]])).toEqual([
+      'sousd-row',
+    ]);
+  });
+
+  it('without senders, marks rows only when every message, one per row, was delivered', () => {
+    expect(deliveredVaultActivities([message('DELIVERED'), message('FAILED')], rows)).toEqual([]);
+    expect(deliveredVaultActivities([message('DELIVERED')], rows)).toEqual([]);
+    expect(deliveredVaultActivities([message('DELIVERED'), message('DELIVERED')], rows)).toEqual([
+      'sousd-row',
+      'soeth-row',
+    ]);
+  });
+
+  it('marks nothing before LayerZero has indexed the transaction', () => {
+    expect(deliveredVaultActivities([], rows)).toEqual([]);
+    expect(deliveredVaultActivities(undefined, rows)).toEqual([]);
   });
 });

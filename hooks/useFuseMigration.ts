@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, erc20Abi, formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
@@ -17,6 +17,7 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import {
   buildFuseMigrationBatches,
   buildFuseMigrationItems,
+  deliveredVaultActivities,
   formatMigrationAmount,
   FuseMigrationAsset,
   FuseMigrationBatch,
@@ -37,8 +38,13 @@ export const FUSE_MIGRATION_QUERY_KEY = 'fuseMigration';
 
 type FuseMigrationReads = {
   balances: bigint[];
+  /** By lowercased teller. A teller whose minimum could not be read is absent. */
   minimums: Record<string, bigint>;
 };
+
+/** One retry: a failed read keeps that vault out of the operation, so it is worth a second try. */
+const readMinimum = (teller: Address) =>
+  readSponsoredMinimum(teller).catch(() => readSponsoredMinimum(teller));
 
 /**
  * The Safe's own balance of each asset on Fuse, read from the chain, with the paymaster's minimum
@@ -46,8 +52,11 @@ type FuseMigrationReads = {
  *
  * `balanceOf(safe)` is deliberately the source: collateral the Credit module has locked sits in
  * the module (`collateralOf`), not in the Safe, so what this returns is exactly the balance that
- * is free to move. A minimum that cannot be read counts as zero — the paymaster still enforces it,
- * and a revert then fails the whole operation with a message, rather than hiding a token.
+ * is free to move.
+ *
+ * A minimum that cannot be read is left out rather than taken as zero: a vault below its real
+ * minimum would make the paymaster revert, and the bundler would then reject the whole operation,
+ * stablecoin transfer included. That vault waits for a read that succeeds.
  */
 const readFuseMigration = async (
   safe: Address,
@@ -65,13 +74,12 @@ const readFuseMigration = async (
   });
 
   const tellers = assets.flatMap(asset => (asset.teller ? [asset.teller] : []));
+  const reads = await Promise.allSettled(tellers.map(readMinimum));
   const minimums = Object.fromEntries(
-    await Promise.all(
-      tellers.map(
-        async teller =>
-          [teller.toLowerCase(), await readSponsoredMinimum(teller).catch(() => 0n)] as const,
-      ),
-    ),
+    tellers.flatMap((teller, index) => {
+      const read = reads[index];
+      return read.status === 'fulfilled' ? [[teller.toLowerCase(), read.value] as const] : [];
+    }),
   );
 
   return { balances: balances as bigint[], minimums };
@@ -103,6 +111,13 @@ export const useFuseMigration = () => {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const [partialNotice, setPartialNotice] = useState<string>();
+  // Whether any Fuse operation of the current attempt has landed, for the error path's refresh.
+  const confirmedRef = useRef(false);
+  const refreshBalances = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: [FUSE_MIGRATION_QUERY_KEY] });
+    void queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+    void queryClient.invalidateQueries({ queryKey: [CARD_SPENDABLE_QUERY_KEY] });
+  }, [queryClient]);
 
   const assets = useMemo(() => getFuseMigrationAssets(), []);
   const safe = user?.safeAddress as Address | undefined;
@@ -225,25 +240,30 @@ export const useFuseMigration = () => {
         if (result === USER_CANCELLED_TRANSACTION) return undefined;
 
         const txHash = result.transactionHash;
-        const vaultActivityIds = firstActivity ? [firstActivity.clientTxId] : [];
+        // Each vault's row, with the teller its LayerZero message is sent from.
+        const vaultActivities: { id: string; teller?: Address }[] =
+          firstActivity && firstVault
+            ? [{ id: firstActivity.clientTxId, teller: firstVault.teller }]
+            : [];
         for (const item of otherVaults) {
           const activity = activityFor(item);
-          vaultActivityIds.push(
-            await createActivity({
+          vaultActivities.push({
+            id: await createActivity({
               ...activity,
               status: TransactionStatus.PROCESSING,
               metadata: { ...activity.metadata, txHash },
             }),
-          );
+            teller: item.teller,
+          });
         }
 
         // The Fuse receipt only says the shares left. Mark the rows done once LayerZero delivers;
         // if the poll gives up, the rows stay processing rather than claim a delivery not seen.
-        if (vaultActivityIds.length && txHash) {
+        if (vaultActivities.length && txHash) {
           void waitForLayerzeroTransaction(txHash)
             .then(lz => {
-              if (!lz.data?.some(message => message.status?.name === 'DELIVERED')) return;
-              vaultActivityIds.forEach(id =>
+              const delivered = deliveredVaultActivities(lz.data, vaultActivities);
+              delivered.forEach(id =>
                 updateActivity(id, {
                   status: TransactionStatus.SUCCESS,
                   metadata: { layerzeroDeliveredAt: new Date().toISOString() },
@@ -255,6 +275,7 @@ export const useFuseMigration = () => {
         return txHash;
       };
 
+      confirmedRef.current = false;
       // One after another, each waiting for the last to land, so every operation reads the
       // nonce the previous one left. See buildFuseMigrationBatches for why there can be two.
       const txHashes: string[] = [];
@@ -275,6 +296,7 @@ export const useFuseMigration = () => {
           return 'partial';
         }
         txHashes.push(txHash);
+        confirmedRef.current = true;
       }
 
       track(TRACKING_EVENTS.FUSE_MIGRATION_COMPLETED, {
@@ -285,12 +307,11 @@ export const useFuseMigration = () => {
       return 'migrated';
     },
     onSuccess: outcome => {
-      if (outcome === 'cancelled') return;
-      void queryClient.invalidateQueries({ queryKey: [FUSE_MIGRATION_QUERY_KEY] });
-      void queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
-      void queryClient.invalidateQueries({ queryKey: [CARD_SPENDABLE_QUERY_KEY] });
+      if (outcome !== 'cancelled') refreshBalances();
     },
     onError: (mutationError: Error) => {
+      // A later operation failed after an earlier one landed: what moved must not stay on offer.
+      if (confirmedRef.current) refreshBalances();
       setError(getUserErrorMessage(mutationError, { action: 'bridge' }) || undefined);
       track(TRACKING_EVENTS.FUSE_MIGRATION_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'unknown',

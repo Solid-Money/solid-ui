@@ -44,9 +44,14 @@ export interface FuseMigrationItem extends FuseMigrationAsset {
   amount: bigint;
   /** Dollar value, from the app's balance prices (stablecoins at $1). Zero when unpriced. */
   valueUsd: number;
-  /** The paymaster's per-teller minimum, for a vault route. Zero otherwise. */
+  /** The paymaster's per-teller minimum, for a vault route. Zero otherwise, and when unknown. */
   minimum: bigint;
-  /** False for vault shares below the paymaster minimum: they stay on Fuse. */
+  /**
+   * Why a vault item stays on Fuse this time: under the paymaster minimum, or the minimum could
+   * not be read. Undefined for an item that moves.
+   */
+  stays?: 'below_minimum' | 'minimum_unknown';
+  /** False for vault shares that stay on Fuse; see {@link stays}. */
   movable: boolean;
 }
 
@@ -99,6 +104,9 @@ export const getFuseMigrationAssets = (): FuseMigrationAsset[] => {
  *
  * `prices` are USD per whole token. A stablecoin with no price counts at $1; a vault share with
  * none counts as $0 toward the threshold but is still moved.
+ *
+ * `minimums` are by lowercased teller. A vault whose teller is missing from it stays on Fuse
+ * (`minimum_unknown`) rather than being treated as having no minimum.
  */
 export const buildFuseMigrationItems = (
   assets: FuseMigrationAsset[],
@@ -112,10 +120,12 @@ export const buildFuseMigrationItems = (
 
     const fallbackPrice = asset.route === 'deposit_address' ? 1 : 0;
     const price = prices[asset.symbol] ?? fallbackPrice;
-    const minimum =
-      asset.route === 'vault_bridge' && asset.teller
-        ? (minimums[asset.teller.toLowerCase()] ?? 0n)
-        : 0n;
+    const isVault = asset.route === 'vault_bridge';
+    // A vault whose minimum is unknown is held back: see readFuseMigration.
+    const known = isVault && asset.teller ? minimums[asset.teller.toLowerCase()] : 0n;
+    const minimum = known ?? 0n;
+    const stays =
+      known === undefined ? 'minimum_unknown' : amount < minimum ? 'below_minimum' : undefined;
 
     return [
       {
@@ -123,7 +133,8 @@ export const buildFuseMigrationItems = (
         amount,
         valueUsd: Number(formatUnits(amount, asset.decimals)) * price,
         minimum,
-        movable: amount >= minimum,
+        ...(stays ? { stays } : {}),
+        movable: !stays,
       },
     ];
   });
@@ -226,6 +237,45 @@ function callsForItem(
     },
   ];
 }
+
+type LayerZeroMessage = {
+  status?: { name?: string };
+  /** The sending OApp: the Fuse teller, for a vault bridge. */
+  pathway?: { sender?: { address?: string } };
+};
+
+/**
+ * The vault rows whose own LayerZero message was delivered.
+ *
+ * One Fuse transaction can carry two bridges (soUSD and soETH), each its own message, so a row is
+ * matched to the message its teller sent. Where the response does not name the sender, a row is
+ * only marked when every message in the transaction was delivered and there is one per row —
+ * never on the strength of another vault's delivery.
+ */
+export const deliveredVaultActivities = (
+  messages: readonly LayerZeroMessage[] | undefined,
+  activities: readonly { id: string; teller?: Address }[],
+): string[] => {
+  if (!messages?.length) return [];
+  const isDelivered = (message: LayerZeroMessage) => message.status?.name === 'DELIVERED';
+
+  const bySender = new Map<string, LayerZeroMessage>();
+  messages.forEach(message => {
+    const sender = message.pathway?.sender?.address?.toLowerCase();
+    if (sender) bySender.set(sender, message);
+  });
+
+  if (bySender.size > 0) {
+    return activities.flatMap(({ id, teller }) => {
+      const message = teller ? bySender.get(teller.toLowerCase()) : undefined;
+      return message && isDelivered(message) ? [id] : [];
+    });
+  }
+
+  return messages.length >= activities.length && messages.every(isDelivered)
+    ? activities.map(({ id }) => id)
+    : [];
+};
 
 /** "12.34", trimmed to at most `maxDecimals` without rounding up. */
 export const formatMigrationAmount = (item: Pick<FuseMigrationItem, 'amount' | 'decimals'>) => {

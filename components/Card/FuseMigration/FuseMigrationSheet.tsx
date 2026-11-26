@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { CheckCircle2 } from 'lucide-react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -67,8 +67,12 @@ const FuseMigrationSheet = ({
     });
   }, [isOpen, source, movableUsd, needsBaseEnable]);
 
+  const { height: windowHeight } = useWindowDimensions();
   const movable = items.filter(item => item.movable);
-  const staying = items.filter(item => !item.movable);
+  const belowMinimum = items.filter(item => item.stays === 'below_minimum');
+  const minimumUnknown = items.filter(item => item.stays === 'minimum_unknown');
+  const listOf = (list: FuseMigrationItem[]) =>
+    list.map(item => `${formatMigrationAmount(item)} ${item.symbol}`).join(', ');
   // One Fuse operation per stablecoin (the backend opens one deposit session per transaction),
   // with the vault bridges riding on the first; plus Base, when it has to be turned on first.
   const fuseOperations = Math.max(
@@ -89,7 +93,9 @@ const FuseMigrationSheet = ({
       <DialogContent
         showCloseButton={false}
         className="w-[90vw] max-w-[400px] gap-0 overflow-hidden p-0"
-        style={styles.sheet}
+        // Capped to the screen: with four tokens and the notes, the sheet can outgrow a short
+        // viewport, and the Migrate footer must stay reachable. Only the middle scrolls.
+        style={[styles.sheet, { maxHeight: windowHeight - SHEET_VERTICAL_MARGIN }]}
       >
         <View className="flex-row items-start justify-between gap-4 px-6 pt-6">
           <View className="flex-1 gap-1.5">
@@ -110,7 +116,11 @@ const FuseMigrationSheet = ({
             <CheckCircle2 color="#94F27F" size={56} />
           </View>
         ) : (
-          <View className="gap-2 px-6 pt-5">
+          <ScrollView
+            style={styles.body}
+            contentContainerClassName="gap-2 px-6 pt-5"
+            showsVerticalScrollIndicator={false}
+          >
             {movable.map(item => (
               <View
                 key={item.symbol}
@@ -138,11 +148,17 @@ const FuseMigrationSheet = ({
                 </View>
               </View>
             ))}
-            {staying.length > 0 ? (
+            {belowMinimum.length > 0 ? (
               <Text className="pt-1 text-[13px] leading-[18px] text-muted-foreground">
-                {staying.map(item => `${formatMigrationAmount(item)} ${item.symbol}`).join(', ')}{' '}
-                {staying.length === 1 ? 'is' : 'are'} below the bridge minimum and will stay on
-                Fuse.
+                {listOf(belowMinimum)} {belowMinimum.length === 1 ? 'is' : 'are'} below the bridge
+                minimum and will stay on Fuse.
+              </Text>
+            ) : null}
+            {minimumUnknown.length > 0 ? (
+              <Text className="pt-1 text-[13px] leading-[18px] text-muted-foreground">
+                We couldn’t check the bridge minimum for {listOf(minimumUnknown)}, so{' '}
+                {minimumUnknown.length === 1 ? 'it stays' : 'they stay'} on Fuse for now. Try again
+                in a moment to move {minimumUnknown.length === 1 ? 'it' : 'them'}.
               </Text>
             ) : null}
             {approvals > 1 ? (
@@ -156,7 +172,7 @@ const FuseMigrationSheet = ({
             {error ? (
               <Text className="pt-1 text-[13px] leading-[18px] text-red-400">{error}</Text>
             ) : null}
-          </View>
+          </ScrollView>
         )}
 
         <View className="w-full p-6">
@@ -188,7 +204,12 @@ const FuseMigrationSheet = ({
   );
 };
 
+/** Space kept above and below the sheet on a short screen. */
+const SHEET_VERTICAL_MARGIN = 48;
+
 const styles = StyleSheet.create({
+  // Shrinks to make room for the header and footer, never grows past its content.
+  body: { flexGrow: 0, flexShrink: 1 },
   sheet: {
     backgroundColor: '#161616',
     borderColor: 'rgba(255,255,255,0.08)',
