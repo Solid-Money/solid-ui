@@ -6,7 +6,7 @@ import {
   SHEET_HANDLE_PADDING,
 } from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useDimension } from '@/hooks/useDimension';
 
 import type { CardBottomSheetProps } from './CardBottomSheet.types';
@@ -27,6 +27,7 @@ const CardBottomSheet = ({
   contentKey,
   designTop,
   designBottom,
+  fullBleed,
   children,
 }: CardBottomSheetProps) => {
   const { isScreenMedium } = useDimension();
@@ -38,7 +39,7 @@ const CardBottomSheet = ({
 
   if (isSuspended) return null;
 
-  if (isScreenMedium) {
+  if (isScreenMedium && !fullBleed) {
     return (
       <ResponsiveModal
         currentModal={{ name: contentKey, number: 1 }}
@@ -70,21 +71,38 @@ const CardBottomSheet = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
-        webPresentation="bottom-sheet"
+        webPresentation={isScreenMedium ? 'modal' : 'bottom-sheet'}
         showCloseButton={false}
-        className="max-h-[92vh] w-full max-w-none gap-0 overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
+        className="max-h-[92vh] w-full max-w-none gap-0 overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0 md:max-w-[419px]"
+        style={
+          fullBleed
+            ? {
+                backgroundColor: fullBleed.backgroundColor,
+                borderTopLeftRadius: fullBleed.radius,
+                borderTopRightRadius: fullBleed.radius,
+                borderBottomLeftRadius: isScreenMedium ? fullBleed.radius : 0,
+                borderBottomRightRadius: isScreenMedium ? fullBleed.radius : 0,
+              }
+            : undefined
+        }
       >
-        {/* Drawn over the body rather than above it, so `designTop` is the real
-            distance from the sheet's edge. */}
-        <View
-          className="absolute left-1/2 z-10 w-[73px] -translate-x-1/2 rounded-full bg-white/20"
-          style={{ height: SHEET_HANDLE_HEIGHT, top: SHEET_HANDLE_PADDING }}
-        />
+        {fullBleed ? (
+          <DialogTitle className="sr-only">{fullBleed.title}</DialogTitle>
+        ) : (
+          <View
+            className="absolute left-1/2 z-10 w-[73px] -translate-x-1/2 rounded-full bg-white/20"
+            style={{ height: SHEET_HANDLE_HEIGHT, top: SHEET_HANDLE_PADDING }}
+          />
+        )}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: designBottom }}
         >
-          {children({ session, topPadding: designTop })}
+          {children({
+            session,
+            topPadding: designTop,
+            presentation: isScreenMedium ? 'modal' : 'sheet',
+          })}
         </ScrollView>
       </DialogContent>
     </Dialog>

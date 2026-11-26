@@ -53,6 +53,8 @@ export interface CardBottomSheetProps {
    * "How collateral works" over the spend-mode picker. Gorhom's default, `switch`, hides it.
    */
   stackBehavior?: 'push' | 'switch' | 'replace';
+  /** Full-bleed content that draws its own drag indicator. */
+  fullBleed?: { backgroundColor: string; radius: number; title: string };
   children: (body: CardSheetBody) => ReactNode;
 }
 

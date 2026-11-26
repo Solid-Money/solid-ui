@@ -25,16 +25,26 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBlackFridayCampaign } from '@/hooks/useBlackFridayCampaign';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useReferralCountdown } from '@/hooks/useReferralCountdown';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useAddToEarn } from '@/hooks/useTierBalance';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
+import { type BlackFridayOffer, blackFridayOffer } from '@/lib/blackFriday';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { activeTierBalance, tierBalanceTrack } from '@/lib/tierBalance';
-import { availableRoutes, findOffer, offerFirstYearFeeUsd } from '@/lib/tierUpgrade';
+import {
+  availableRoutes,
+  canPayCashFor,
+  findOffer,
+  formatPriceUsd,
+  isOfferOnSale,
+  offerFirstYearFeeUsd,
+} from '@/lib/tierUpgrade';
 import { RewardsTier, type TierBalanceTrackDto } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -78,21 +88,47 @@ const PremiumUpgradeFooter = ({
   selectedTier,
   onUpgradePress,
   cta,
+  sale,
+  quoteSaleEndsAt,
+  quoteRefreshFailed,
+  onSaleExpired,
 }: {
   selectedTier: RewardsTier;
   /** The button, its subtitle and whether it does anything — see `tierUpgradeCta`. */
   cta: TierUpgradeCta;
+  sale?: BlackFridayOffer;
+  quoteSaleEndsAt?: string | null;
+  quoteRefreshFailed: boolean;
+  onSaleExpired: () => Promise<unknown>;
   onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const { label: actionLabel, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
-  const label =
+  const { label: actionLabel, subtitle: ctaSubtitle, enabled, held } = cta;
+  const purchaseAction = actionLabel === 'Upgrade' || actionLabel === 'Keep';
+  const saleTime = useReferralCountdown(sale?.endsAt ?? quoteSaleEndsAt);
+  const saleExpired = saleTime?.isElapsed === true;
+  const saleAction = purchaseAction && !saleExpired ? sale : undefined;
+  // The last membership response can still contain the sale quote after the deadline.
+  const awaitingCurrentPrice = purchaseAction && saleExpired && !!quoteSaleEndsAt;
+  const canRetryPrice = awaitingCurrentPrice && quoteRefreshFailed;
+  const canPress =
+    canRetryPrice || (enabled && !(purchaseAction && sale?.preview) && !awaitingCurrentPrice);
+
+  useEffect(() => {
+    if (awaitingCurrentPrice) void onSaleExpired();
+  }, [awaitingCurrentPrice, onSaleExpired, quoteSaleEndsAt]);
+  const standardLabel =
     actionLabel === 'Upgrade'
       ? `Upgrade to ${TIER_LABELS[selectedTier]}`
       : actionLabel === 'Keep'
         ? `Keep ${TIER_LABELS[selectedTier]}`
         : actionLabel;
+  const label = canRetryPrice
+    ? 'Try again'
+    : saleAction
+      ? `${standardLabel} for ${formatPriceUsd(saleAction.saleUsd)}`
+      : standardLabel;
   // Gone, not greyed out, for any tier the user already has.
   //
   // Was `selectedTier !== currentTier`, which only ever hid the footer on the
@@ -176,21 +212,40 @@ const PremiumUpgradeFooter = ({
             lineHeight: 23,
           }}
         >
-          {ctaSubtitle}
+          {saleAction ? (
+            <>
+              <Text className="text-[#DDD2A5]">
+                Save {formatPriceUsd(saleAction.beforeUsd - saleAction.saleUsd)}
+              </Text>
+              {` · ${formatPriceUsd(saleAction.saleUsd)} first year, then ${formatPriceUsd(saleAction.beforeUsd)}/year`}
+            </>
+          ) : awaitingCurrentPrice ? (
+            canRetryPrice ? (
+              'Unable to load the current membership price'
+            ) : (
+              'Updating the membership price…'
+            )
+          ) : (
+            ctaSubtitle
+          )}
         </Text>
         <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={label}
-            accessibilityState={{ disabled: !canUpgrade }}
-            disabled={!canUpgrade}
+            accessibilityState={{ disabled: !canPress }}
+            disabled={!canPress}
             onPress={() => {
-              if (canUpgrade) onUpgradePress(tier);
+              if (canRetryPrice) {
+                void onSaleExpired();
+              } else if (canPress) {
+                onUpgradePress(tier);
+              }
             }}
-            className={`mt-[14px] h-[50px] items-center justify-center rounded-full ${canUpgrade ? 'bg-[#94F27F] active:opacity-80' : 'bg-white/10'}`}
+            className={`mt-[14px] h-[50px] items-center justify-center rounded-full ${canPress ? 'bg-[#94F27F] active:opacity-80' : 'bg-white/10'}`}
           >
             <Text
-              className={`font-semibold ${canUpgrade ? 'text-black' : 'text-white/70'}`}
+              className={`font-semibold ${canPress ? 'text-black' : 'text-white/70'}`}
               style={{
                 fontFamily: 'MonaSans_600SemiBold',
                 fontSize: 16,
@@ -219,6 +274,7 @@ export default function RewardsBenefitsScreenNew() {
 }
 
 function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier | null }) {
+  const campaign = useBlackFridayCampaign();
   const {
     data: rewardsData,
     isError,
@@ -239,7 +295,14 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
           target => target.tier === tier && target.requiredFuse > 0,
         )
       : undefined;
-  const { data: membership } = useTierMembership();
+  const {
+    data: membership,
+    isError: membershipError,
+    isFetching: isMembershipFetching,
+    refetch: refetchMembership,
+  } = useTierMembership({
+    refreshInterval: campaign.banner ? 15_000 : undefined,
+  });
   const openTierUpgrade = useTierUpgradeStore(state => state.open);
   // The "Hold in Earn" route, for a user it is staged to; null for everyone else.
   const balance = activeTierBalance(membership);
@@ -306,6 +369,20 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
     if (!membership?.enabled || !offer || offer.held) return [];
     return availableRoutes(offer, membership.contracts);
   };
+  const cashOfferFor = (tier: RewardsTier) => {
+    const offer = findOffer(membership, tier);
+    return membership?.enabled && offer && canPayCashFor(offer, membership.contracts)
+      ? offer
+      : undefined;
+  };
+  const saleFor = (tier: RewardsTier) =>
+    blackFridayOffer(
+      tier,
+      membershipError ? undefined : cashOfferFor(tier),
+      tierBenefits?.find(benefit => benefit.tier === tier),
+      campaign,
+    );
+  const selectedCashOffer = cashOfferFor(selectedTier);
 
   /**
    * This tier's "Hold in Earn" track, when the page should offer it: Prime and
@@ -476,6 +553,10 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
         <PremiumUpgradeFooter
           selectedTier={selectedTier}
           cta={ctaFor(selectedTier)}
+          sale={saleFor(selectedTier)}
+          quoteSaleEndsAt={isOfferOnSale(selectedCashOffer) ? selectedCashOffer?.saleEndsAt : null}
+          quoteRefreshFailed={membershipError && !isMembershipFetching}
+          onSaleExpired={refetchMembership}
           onUpgradePress={handleUpgradePress}
         />
       )}
@@ -596,6 +677,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
                   balance={balance}
                   balanceTrack={balanceTrackFor(tier)}
                   onAddToEarn={addToEarn}
+                  blackFriday={saleFor(tier)}
                   showUpgradeSpace={
                     !ctaFor(tier).held &&
                     (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))

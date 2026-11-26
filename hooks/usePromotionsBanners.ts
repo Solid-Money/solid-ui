@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { Linking, Platform } from 'react-native';
+import Toast from 'react-native-toast-message';
 import * as Application from 'expo-application';
 import { router, usePathname } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -27,13 +28,18 @@ export const PROMOTIONS_BANNER_PLATFORM: PromotionsBannerPlatformKey =
  * into the installed build, which is what the dashboard's version gate is
  * written against.
  */
-export const usePromotionsBanners = ({ enabled = true }: { enabled?: boolean } = {}) => {
+export const usePromotionsBanners = ({
+  enabled = true,
+  page,
+  refreshInterval,
+}: { enabled?: boolean; page?: string; refreshInterval?: number } = {}) => {
   const pathname = usePathname();
 
-  const { data, isLoading } = useQuery({
+  const { data, isError, isLoading } = useQuery({
     queryKey: [PROMOTIONS_BANNER_QUERY_KEY],
     queryFn: fetchPromotionsBanner,
-    staleTime: 5 * 60 * 1000,
+    staleTime: refreshInterval ?? 5 * 60 * 1000,
+    refetchInterval: refreshInterval,
     enabled,
   });
 
@@ -42,12 +48,12 @@ export const usePromotionsBanners = ({ enabled = true }: { enabled?: boolean } =
       filterPromotionsBanners(data, {
         platform: PROMOTIONS_BANNER_PLATFORM,
         appVersion: Application.nativeApplicationVersion,
-        pathname,
+        pathname: page ?? pathname,
       }),
-    [data, pathname],
+    [data, page, pathname],
   );
 
-  return { banners, isLoading };
+  return { banners, isError, isLoading };
 };
 
 type PressablePromotionsBanner = Pick<PromotionsBannerItem, 'link' | 'slug'>;
@@ -65,7 +71,11 @@ export const usePromotionsBannerPress = () => {
       if (item.link?.trim()) {
         const link = item.link.trim();
         if (link.startsWith('http://') || link.startsWith('https://')) {
-          return () => Linking.openURL(link);
+          return () => {
+            void Linking.openURL(link).catch(() => {
+              Toast.show({ type: 'error', text1: 'Unable to open the link' });
+            });
+          };
         }
         return () => router.push(link as any);
       }

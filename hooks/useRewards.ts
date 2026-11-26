@@ -121,7 +121,7 @@ export const useRewardsUserData = (options?: {
   });
 };
 
-export const useTierBenefits = () => {
+export const useTierBenefits = ({ enabled = true }: { enabled?: boolean } = {}) => {
   // A euro cardholder's caps are in euros, so the comparison is asked for in their main currency.
   // Read off the card details already cached for the card screens; dollars until they answer.
   const userId = useSelectedUserId();
@@ -131,6 +131,7 @@ export const useTierBenefits = () => {
   return useQuery({
     queryKey: [REWARDS, 'tierBenefits', currency],
     queryFn: () => fetchTierBenefits(currency),
+    enabled,
     staleTime: secondsToMilliseconds(60),
   });
 };
