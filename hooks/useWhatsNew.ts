@@ -71,8 +71,8 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     })),
   );
 
-  // Track which data ID has been processed to detect new WhatsNew content
-  const processedDataIdRef = useRef<string | null>(null);
+  // The server's answer last written to the store, so each answer is written once.
+  const appliedDataRef = useRef<WhatsNew | null | undefined>(undefined);
 
   const {
     data,
@@ -101,14 +101,23 @@ export const useWhatsNew = (autoShowOnHome = false) => {
     [setIsVisible, setWhatsNew],
   );
 
-  // React to data from React Query - process when new content arrives
-  // Tracking by ID ensures new WhatsNew content is properly detected
+  // Keeps the stored copy the server's latest answer, so the auto-open below
+  // decides on what an admin set now. Applied whenever the answer changes, not
+  // only when its id does: switching "Show on App Load" off, or editing, the
+  // announcement this session already holds keeps its id, and the stale copy
+  // would still open on load. "Nothing active" (or a format this build can't
+  // draw) clears it, so an announcement switched off is not auto-opened from
+  // the session's old copy either. React Query keeps an unchanged answer's
+  // reference, so a refetch that changed nothing writes nothing.
+  //
+  // A popup on screen is left as it is: replacing it would restart it and count
+  // another view, and clearing it would close it under the user. The answer is
+  // applied once it closes.
   useEffect(() => {
-    if (data && data._id !== processedDataIdRef.current) {
-      processedDataIdRef.current = data._id;
-      handleWhatsNewData(data, false);
-    }
-  }, [data, handleWhatsNewData]);
+    if (data === undefined || isVisible || appliedDataRef.current === data) return;
+    appliedDataRef.current = data;
+    setWhatsNew(data?.isActive && canShowWhatsNew(data) ? data : null);
+  }, [data, isVisible, setWhatsNew]);
 
   // Start the auto-open delay only when Home has finished its initial loading.
   // The settings button still opens the modal immediately via forceShow.

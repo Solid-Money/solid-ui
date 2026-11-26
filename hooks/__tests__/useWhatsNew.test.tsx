@@ -32,6 +32,12 @@ const announcement: WhatsNew = {
   createdAt: '2026-09-27T00:00:00.000Z',
 };
 
+/** One the carousel can draw: the auto-open's own tests don't need a page. */
+const drawable: WhatsNew = {
+  ...announcement,
+  steps: [{ title: 'Card', text: '', imageUrl: 'https://cdn.test/card.png' }],
+};
+
 const Probe = ({ ready }: { ready: boolean }) => {
   useWhatsNew(ready);
   return null;
@@ -103,6 +109,68 @@ describe('useWhatsNew auto-open', () => {
     act(() => renderer!.unmount());
   });
 
+  it('never opens on load when "Show on App Load" is off', async () => {
+    useWhatsNewStore.setState({ whatsNew: { ...announcement, showOnLoad: false } });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+
+    act(() => jest.advanceTimersByTime(60000));
+    expect(useWhatsNewStore.getState().isVisible).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
+  it('follows "Show on App Load" switched off on the announcement it already holds', async () => {
+    // The session fetched the announcement while it still opened on load.
+    useWhatsNewStore.setState({ whatsNew: null });
+    (useQuery as jest.Mock).mockReturnValue({ data: drawable, refetch: jest.fn() });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready={false} />);
+    });
+    expect(useWhatsNewStore.getState().whatsNew).toBe(drawable);
+
+    // An admin switched it off; the refetch brings the same announcement back.
+    const switchedOff = { ...drawable, showOnLoad: false };
+    (useQuery as jest.Mock).mockReturnValue({ data: switchedOff, refetch: jest.fn() });
+    await act(async () => renderer!.update(<Probe ready />));
+
+    act(() => jest.advanceTimersByTime(10000));
+    expect(useWhatsNewStore.getState()).toMatchObject({
+      whatsNew: switchedOff,
+      isVisible: false,
+    });
+    act(() => renderer!.unmount());
+  });
+
+  it("doesn't open the session's copy once the server has nothing active", async () => {
+    (useQuery as jest.Mock).mockReturnValue({ data: null, refetch: jest.fn() });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+
+    act(() => jest.advanceTimersByTime(10000));
+    expect(useWhatsNewStore.getState()).toMatchObject({ whatsNew: null, isVisible: false });
+    act(() => renderer!.unmount());
+  });
+
+  it('leaves a popup on screen as it is, and takes the new answer once it closes', async () => {
+    useWhatsNewStore.setState({ whatsNew: drawable, isVisible: true });
+    const edited = { ...drawable, showOnLoad: false };
+    (useQuery as jest.Mock).mockReturnValue({ data: edited, refetch: jest.fn() });
+    let renderer: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<Probe ready />);
+    });
+    expect(useWhatsNewStore.getState().whatsNew).toBe(drawable);
+
+    act(() => useWhatsNewStore.setState({ isVisible: false }));
+    expect(useWhatsNewStore.getState().whatsNew).toBe(edited);
+    act(() => renderer!.unmount());
+  });
+
   it('cancels the pending open when Home is left', async () => {
     let renderer: ReturnType<typeof create>;
     await act(async () => {
@@ -170,6 +238,15 @@ describe('useWhatsNew opening a linked page', () => {
       initialStep: 2,
       request: null,
     });
+    act(() => renderer.unmount());
+  });
+
+  it('opens from a push even when it was seen before and does not open on load', async () => {
+    mockStorage.set('seen_popup_ids', JSON.stringify([ID]));
+    const renderer = await render();
+    await request(ID, 1);
+
+    expect(useWhatsNewStore.getState()).toMatchObject({ isVisible: true, initialStep: 1 });
     act(() => renderer.unmount());
   });
 

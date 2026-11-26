@@ -1,7 +1,9 @@
 import React from 'react';
 
 import WhatsNewModal from '@/components/WhatsNewModal';
-import { carouselLayout } from '@/lib/whatsNew';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
+import { carouselLayout, openWhatsNewLink } from '@/lib/whatsNew';
 
 import type { WhatsNew } from '@/lib/types';
 
@@ -11,6 +13,8 @@ const { act, create } = require('react-test-renderer');
 const mockScrollTo = jest.fn();
 const mockWindow = { width: 419, height: 900 };
 const mockPlatform = { OS: 'ios' };
+/** From `md` up the carousel is the wide layout, with ‹ › arrows. */
+const mockDimension = { isWide: false };
 
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 jest.mock('react-native', () => {
@@ -49,11 +53,17 @@ jest.mock('lucide-react-native', () => ({
   ChevronRight: 'ChevronRight',
   X: 'X',
 }));
-jest.mock('@/hooks/useDimension', () => ({ useDimension: () => ({ isScreenMedium: false }) }));
+jest.mock('@/hooks/useDimension', () => ({
+  useDimension: () => ({ isScreenMedium: mockDimension.isWide }),
+}));
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/WhatsNew/WhatsNewMedia', () => ({ VideoLayer: 'VideoLayer' }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/lib/whatsNew', () => ({
+  ...jest.requireActual('@/lib/whatsNew'),
+  openWhatsNewLink: jest.fn(),
+}));
 // The real `cn` lives beside the wallet setup, which Jest can't load.
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
@@ -108,6 +118,7 @@ describe('WhatsNewModal pager', () => {
     mockWindow.width = 419;
     mockWindow.height = 900;
     mockPlatform.OS = 'ios';
+    mockDimension.isWide = false;
   });
 
   afterEach(() => {
@@ -219,6 +230,134 @@ describe('WhatsNewModal pager', () => {
     expect(mockScrollTo).toHaveBeenLastCalledWith({ x: pageWidth(), animated: false });
     modal.scrollTo(oldOffset);
     expect(modal.primaryLabel()).toBe('Next');
+    act(() => modal.renderer.unmount());
+  });
+});
+
+describe('WhatsNewModal closing', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockWindow.width = 419;
+    mockWindow.height = 900;
+    mockPlatform.OS = 'ios';
+    mockDimension.isWide = false;
+  });
+
+  const open = (whatsNew: WhatsNew = CAROUSEL, initialStep = 0) => {
+    const onClose = jest.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <WhatsNewModal whatsNew={whatsNew} isOpen onClose={onClose} initialStep={initialStep} />,
+      );
+    });
+    const pressable = (label: string) =>
+      renderer!.root.find(
+        (node: any) => node.type === 'Pressable' && node.props.accessibilityLabel === label,
+      );
+    return {
+      renderer: renderer!,
+      onClose,
+      closeButton: () => pressable('Close'),
+      previous: () => pressable('Previous'),
+      backdrop: () =>
+        renderer!.root.find(
+          (node: any) => node.type === 'Pressable' && node.props.importantForAccessibility === 'no',
+        ),
+      modal: () => renderer!.root.findByType('Modal'),
+      primary: () => renderer!.root.findByType('Button'),
+    };
+  };
+
+  const dismissedWith = () =>
+    jest
+      .mocked(track)
+      .mock.calls.filter(([event]) => event === TRACKING_EVENTS.WHATS_NEW_DISMISSED)
+      .map(([, props]) => (props as { method: string }).method);
+
+  it.each([false, true])('closes on its X (wide: %s), once', isWide => {
+    mockDimension.isWide = isWide;
+    const modal = open();
+
+    act(() => modal.closeButton().props.onPress());
+    // Anything else pressed while it fades out closes nothing twice.
+    act(() => modal.backdrop().props.onPress());
+    act(() => modal.modal().props.onRequestClose());
+
+    expect(modal.onClose).toHaveBeenCalledTimes(1);
+    expect(dismissedWith()).toEqual(['close_button']);
+    act(() => modal.renderer.unmount());
+  });
+
+  it.each([
+    ['ios', 'back'],
+    ['android', 'back'],
+    ['web', 'esc'],
+  ])('closes on %s back / Esc as %s', (os, method) => {
+    mockPlatform.OS = os;
+    const modal = open();
+
+    act(() => modal.modal().props.onRequestClose());
+
+    expect(modal.onClose).toHaveBeenCalledTimes(1);
+    expect(dismissedWith()).toEqual([method]);
+    act(() => modal.renderer.unmount());
+  });
+
+  it('closes on a tap outside the card', () => {
+    const modal = open();
+
+    act(() => modal.backdrop().props.onPress());
+
+    expect(modal.onClose).toHaveBeenCalledTimes(1);
+    expect(dismissedWith()).toEqual(['backdrop']);
+    act(() => modal.renderer.unmount());
+  });
+
+  it('closes on "Done" on the last slide', () => {
+    const modal = open(CAROUSEL, 2);
+
+    act(() => modal.primary().props.onPress());
+
+    expect(modal.onClose).toHaveBeenCalledTimes(1);
+    expect(dismissedWith()).toEqual(['close_button']);
+    act(() => modal.renderer.unmount());
+  });
+
+  it("closes before opening a slide's own link", () => {
+    const withLink: WhatsNew = {
+      ...CAROUSEL,
+      steps: [{ ...step('Card'), buttonLabel: 'See tiers', buttonLink: '/rewards/benefits' }],
+    };
+    const modal = open(withLink);
+
+    act(() => modal.primary().props.onPress());
+
+    expect(modal.onClose).toHaveBeenCalledTimes(1);
+    expect(openWhatsNewLink).toHaveBeenCalledWith('/rewards/benefits');
+    expect(jest.mocked(modal.onClose).mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(openWhatsNewLink).mock.invocationCallOrder[0],
+    );
+    act(() => modal.renderer.unmount());
+  });
+
+  it('goes back a slide on ‹, and not past the first', () => {
+    mockDimension.isWide = true;
+    const modal = open(CAROUSEL, 2);
+    act(() =>
+      modal.renderer.root.find((node: any) => node.props.horizontal).props.onContentSizeChange(),
+    );
+    expect(modal.primary().props.accessibilityLabel).toBe('Done');
+
+    act(() => modal.previous().props.onPress());
+    expect(modal.primary().props.accessibilityLabel).toBe('Next');
+    const wide = carouselLayout(mockWindow, true).pageWidth;
+    expect(mockScrollTo).toHaveBeenLastCalledWith({ x: wide, animated: true });
+
+    act(() => modal.previous().props.onPress());
+    expect(modal.previous().props.disabled).toBe(true);
+    expect(mockScrollTo).toHaveBeenLastCalledWith({ x: 0, animated: true });
+    expect(modal.onClose).not.toHaveBeenCalled();
     act(() => modal.renderer.unmount());
   });
 });
