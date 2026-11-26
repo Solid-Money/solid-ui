@@ -45,6 +45,24 @@ describe('Black Friday tier presentation', () => {
     ).toBeUndefined();
   });
 
+  it('hides a sale if cash checkout is unavailable', () => {
+    expect(
+      blackFridayOffer(RewardsTier.PRIME, { ...prime, cashAvailable: false }, undefined, live, now),
+    ).toBeUndefined();
+  });
+
+  it('shows the cashback cap in the currency quoted by benefits', () => {
+    expect(
+      blackFridayOffer(
+        RewardsTier.ULTRA,
+        { ...prime, tier: RewardsTier.ULTRA, annualFeeUsd: 999, firstYearFeeUsd: 699 },
+        { cardCashback: { title: '10%' }, cardCashbackCap: { title: 'Up to €200\nmonthly' } },
+        live,
+        now,
+      ),
+    ).toMatchObject({ cashback: 10, cashbackCap: '€200' });
+  });
+
   it('lets development preview the design with no billable quote', () => {
     expect(
       blackFridayOffer(

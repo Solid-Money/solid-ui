@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { Linking, Platform } from 'react-native';
+import Toast from 'react-native-toast-message';
 import * as Application from 'expo-application';
 import { router, usePathname } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -70,7 +71,11 @@ export const usePromotionsBannerPress = () => {
       if (item.link?.trim()) {
         const link = item.link.trim();
         if (link.startsWith('http://') || link.startsWith('https://')) {
-          return () => Linking.openURL(link);
+          return () => {
+            void Linking.openURL(link).catch(() => {
+              Toast.show({ type: 'error', text1: 'Unable to open the link' });
+            });
+          };
         }
         return () => router.push(link as any);
       }

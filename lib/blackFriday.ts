@@ -39,7 +39,7 @@ export interface BlackFridayOffer {
 export function blackFridayOffer(
   tier: RewardsTier,
   offer: TierOffer | undefined,
-  benefits: TierBenefits | undefined,
+  benefits: Pick<TierBenefits, 'cardCashback' | 'cardCashbackCap'> | undefined,
   campaign: { enabled: boolean; preview: boolean },
   now = Date.now(),
 ): BlackFridayOffer | undefined {
@@ -59,9 +59,11 @@ export function blackFridayOffer(
     };
   }
 
+  if (!offer?.cashAvailable) return undefined;
+
   const firstYear = offerFirstYearFeeUsd(offer);
-  const annual = offer?.annualFeeUsd;
-  const endsAt = offer?.saleEndsAt;
+  const annual = offer.annualFeeUsd;
+  const endsAt = offer.saleEndsAt;
   if (
     !endsAt ||
     !(Date.parse(endsAt) > now) ||
@@ -72,10 +74,10 @@ export function blackFridayOffer(
     return undefined;
   }
 
-  const lockFuse = offer?.lockAvailable && offer.lockFuse > 0 ? offer.lockFuse : undefined;
+  const lockFuse = offer.lockAvailable && offer.lockFuse > 0 ? offer.lockFuse : undefined;
   const cashbackTitle = benefits?.cardCashback.title;
   const rate = Number(cashbackTitle?.match(/^([0-9.]+)%$/)?.[1]);
-  const cashbackCap = benefits?.cardCashbackCap.title.match(/\$[\d,.]+/)?.[0];
+  const cashbackCap = benefits?.cardCashbackCap.title.match(/[$€][\d,.]+/)?.[0];
 
   return {
     beforeUsd: annual,

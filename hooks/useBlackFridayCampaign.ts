@@ -4,7 +4,7 @@ import { usePromotionsBanners } from '@/hooks/usePromotionsBanners';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { blackFridayOffer } from '@/lib/blackFriday';
-import { findOffer } from '@/lib/tierUpgrade';
+import { canPayCashFor, findOffer } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 
 import type { BlackFridayOffer } from '@/lib/blackFriday';
@@ -39,13 +39,15 @@ export function useBlackFridayPromotion() {
     refreshInterval: banner && focused ? 15_000 : undefined,
   });
   const { data: benefits, isError: benefitsError } = useTierBenefits({ enabled: !!banner });
-  const campaignOffer = (tier: RewardsTier) =>
-    blackFridayOffer(
+  const campaignOffer = (tier: RewardsTier) => {
+    const offer = !membershipError && membership?.enabled ? findOffer(membership, tier) : undefined;
+    return blackFridayOffer(
       tier,
-      !membershipError && membership?.enabled ? findOffer(membership, tier) : undefined,
+      offer && canPayCashFor(offer, membership?.contracts) ? offer : undefined,
       benefitsError ? undefined : benefits?.find(benefit => benefit.tier === tier),
       campaign,
     );
+  };
   const prime = campaignOffer(RewardsTier.PRIME);
   const ultra = campaignOffer(RewardsTier.ULTRA);
   const matchesAdvertisedDiscount = (offer: BlackFridayOffer) =>
