@@ -272,6 +272,9 @@ const CardDetailsPane = () => {
     // rather than merely hiding it also stops the sheet reappearing on the next visit.
     setSpendSheetSource(null);
     setIsAddToWalletOpen(false);
+    // Same for the Fuse-to-Base sheet: closing the pane (Android Back included) must not leave
+    // it set to reopen by itself on the next visit.
+    setFuseSheetSource(null);
   }, [isOpen]);
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;

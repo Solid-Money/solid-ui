@@ -33,8 +33,16 @@ import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getLayerZeroTransaction } from '@/lib/utils/layerzero';
 import { publicClient } from '@/lib/wagmi';
+import { whileAccountSelected } from '@/lib/whileAccountSelected';
+import { selectSelectedUser, useUserStore } from '@/store/useUserStore';
 
 export const FUSE_MIGRATION_QUERY_KEY = 'fuseMigration';
+
+/** The selected account, as the API client resolves it for each request. */
+const SELECTED_ACCOUNT = {
+  selectedId: () => selectSelectedUser(useUserStore.getState())?.userId,
+  subscribe: (listener: () => void) => useUserStore.subscribe(listener),
+};
 
 type FuseMigrationReads = {
   balances: bigint[];
@@ -180,9 +188,15 @@ export const useFuseMigration = () => {
       }
 
       const needsDepositAddress = toMove.some(item => item.route === 'deposit_address');
+      // The session request authenticates as whichever account is selected when it is sent, and
+      // the address it returns receives this Safe's USDC/USDT. Bind it to the migrating account:
+      // a switch at any point while it runs fails the attempt before anything is signed.
       const depositAddress = needsDepositAddress
-        ? ((await withRefreshToken(() => createDirectDepositSession(fuse.id, 'USDC', 'WALLET')))
-            ?.walletAddress as Address | undefined)
+        ? ((
+            await whileAccountSelected(user.userId, SELECTED_ACCOUNT, () =>
+              withRefreshToken(() => createDirectDepositSession(fuse.id, 'USDC', 'WALLET')),
+            )
+          )?.walletAddress as Address | undefined)
         : undefined;
       if (needsDepositAddress && !depositAddress) {
         throw new Error('Could not get your deposit address. Please try again.');
