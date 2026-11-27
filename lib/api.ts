@@ -38,6 +38,7 @@ import {
   WirexBankTransferExecuteRequest,
   WirexWalletLinkChallengeDto,
 } from '@/lib/types/wirex-bank';
+import { parseSafeRecovery, parseSafeRecoveryBalances } from '@/lib/utils/safeRecovery';
 import {
   isWalletTopUpAvailability,
   isWalletTopUpQuoteResponse,
@@ -165,6 +166,9 @@ import {
   RhinoDepositAddressResponse,
   RhinoDepositAssetsResponse,
   RhinoDepositsResponse,
+  SafeRecovery,
+  SafeRecoveryBalancesResponse,
+  SafeRecoveryPrepared,
   SavingsSummaryResponse,
   SignedTurnkeyRequest,
   SourceDepositInstructions,
@@ -5405,6 +5409,88 @@ export const deleteDirectDepositSession = async (
 
   return response.json();
 };
+
+// Safe recovery: funds in the user's Safe on networks the app does not run on
+
+/** How long `execute` may take: deploying the Safe, sending, and the receipt. */
+const SAFE_RECOVERY_EXECUTE_TIMEOUT_MS = 150_000;
+
+/** Reads: the balances read the chain, so they get more than a plain lookup. */
+const SAFE_RECOVERY_READ_TIMEOUT_MS = 20_000;
+
+/**
+ * Reads a recovery response inside the request's deadline: the status check and the body both,
+ * so a body that stalls after the headers still times out. A non-OK response is thrown as is.
+ */
+const readSafeRecovery =
+  <T>(parse: (body: unknown) => T) =>
+  async (response: Response): Promise<T> => {
+    if (!response.ok) throw response;
+    return parse(await response.json());
+  };
+
+const safeRecoveryHeaders = (): Record<string, string> => {
+  const jwt = getJWTToken();
+  return {
+    'Content-Type': 'application/json',
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/** Tokens in the user's Safe on networks the app does not run on (Plasma). */
+export const getSafeRecoveryBalances = (): Promise<SafeRecoveryBalancesResponse> =>
+  fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/balances`,
+    { headers: safeRecoveryHeaders(), credentials: 'include' },
+    SAFE_RECOVERY_READ_TIMEOUT_MS,
+    readSafeRecovery(parseSafeRecoveryBalances),
+  );
+
+/**
+ * The Safe transaction that moves the whole balance of one token back into
+ * Solid. The backend picks the destination and amount; the caller checks them
+ * before asking the user to sign.
+ */
+export const prepareSafeRecovery = async (request: {
+  chainId: number;
+  tokenAddress: string;
+}): Promise<SafeRecoveryPrepared> =>
+  fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/prepare`,
+    {
+      method: 'POST',
+      headers: safeRecoveryHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(request),
+    },
+    DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
+    // Checked field by field before signing, by `verifiedSafeRecoveryHash`.
+    readSafeRecovery(body => body as SafeRecoveryPrepared),
+  );
+
+/** Hand over the user's signature; the backend relays the Safe transaction. */
+export const executeSafeRecovery = (id: string, signature: string): Promise<SafeRecovery> =>
+  fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/${encodeURIComponent(id)}/execute`,
+    {
+      method: 'POST',
+      headers: safeRecoveryHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ signature }),
+    },
+    SAFE_RECOVERY_EXECUTE_TIMEOUT_MS,
+    readSafeRecovery(parseSafeRecovery),
+  );
+
+/** One recovery, its status read fresh from the chain when still on its way. */
+export const getSafeRecovery = (id: string): Promise<SafeRecovery> =>
+  fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/safe-recovery/${encodeURIComponent(id)}`,
+    { headers: safeRecoveryHeaders(), credentials: 'include' },
+    SAFE_RECOVERY_READ_TIMEOUT_MS,
+    readSafeRecovery(parseSafeRecovery),
+  );
 
 // rhino.fi Smart Deposit Address API
 

@@ -9,7 +9,9 @@ import { mainnet } from 'viem/chains';
 import { useBalance, useReadContract } from 'wagmi';
 
 import Wallet from '@/assets/images/wallet';
+import RhinoChainIcon from '@/components/DepositOption/RhinoDeposit/RhinoChainIcon';
 import PageLayout from '@/components/PageLayout';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TooltipPopover from '@/components/Tooltip';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
@@ -17,12 +19,15 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useRescueToken from '@/hooks/useRescueToken';
+import useSafeNetworkRescue, { safeRecoveryKey } from '@/hooks/useSafeNetworkRescue';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
-import { Status } from '@/lib/types';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { SafeRecoveryBalance, Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { SafeRecoveryAmountChangedError } from '@/lib/utils/safeRecovery';
 import { publicClient } from '@/lib/wagmi';
 
 const USDC_DECIMALS = 6;
@@ -35,10 +40,15 @@ const GAS_INFO_TEXT =
   "If you don't have enough ETH, reach out to the Solid team and we can top up " +
   'your wallet with the gas needed to recover your tokens.';
 
+const NETWORK_FEE_INFO_TEXT =
+  "The app can't send on this network, so Solid sends this transfer for you and pays " +
+  'its network fee. You only approve it with your passkey.';
+
 export default function RescueToken() {
   const router = useRouter();
   const { user } = useUser();
   const { rescue, status } = useRescueToken();
+  const networkRescue = useSafeNetworkRescue();
 
   const eoaAddress = user?.walletAddress as Address | undefined;
   const safeAddress = user?.safeAddress as Address | undefined;
@@ -140,6 +150,37 @@ export default function RescueToken() {
     }
   };
 
+  const handleNetworkRescue = async (item: SafeRecoveryBalance) => {
+    const amount = formatNumber(Number(item.amountFormatted));
+    try {
+      const result = await networkRescue.rescue(item);
+      Toast.show({
+        type: 'success',
+        text1: 'Tokens on their way',
+        text2: `${amount} ${item.symbol} is moving to your Solid wallet`,
+        props:
+          result.explorerUrl && result.transactionHash
+            ? { link: result.explorerUrl, linkText: eclipseAddress(result.transactionHash) }
+            : undefined,
+      });
+      router.replace(path.HOME);
+    } catch (err) {
+      if (err instanceof SafeRecoveryAmountChangedError) {
+        // Nothing was signed; the card now shows the new amount for the user to approve.
+        Toast.show({ type: 'info', text1: 'Balance updated', text2: err.message });
+        return;
+      }
+      void showFailureSheet(err, {
+        action: 'rescue_token',
+        details: { amount, token: item.symbol, network: item.network },
+      });
+    }
+  };
+
+  // The signer-wallet card is for USDC sent to the signer on Ethereum. With funds to move on
+  // another network and none there, it would only say "No USDC to rescue".
+  const showSignerRescue = hasUsdc || isUsdcLoading || networkRescue.items.length === 0;
+
   return (
     <PageLayout desktopOnly contentClassName="pb-10">
       <View className="mx-auto w-full max-w-lg px-4 pt-8">
@@ -151,81 +192,193 @@ export default function RescueToken() {
           <View style={{ width: 50 }} />
         </View>
 
-        <View className="mb-10 mt-8">
-          <View className="rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
-            <Text className="text-center text-2xl font-bold text-white">Recover stuck USDC</Text>
-            <Text className="mb-6 mt-3 text-center text-base leading-tight text-[#ACACAC]">
-              USDC was sent to your signer wallet on Ethereum by mistake. Sign with your passkey to
-              move it into your Solid wallet.
-            </Text>
+        {networkRescue.items.map(item => (
+          <NetworkRescueCard
+            key={safeRecoveryKey(item)}
+            item={item}
+            safeAddress={safeAddress}
+            isRescuing={networkRescue.pendingKey === safeRecoveryKey(item)}
+            isDisabled={networkRescue.pendingKey !== null}
+            onRescue={() => handleNetworkRescue(item)}
+          />
+        ))}
 
-            <View className="gap-4">
-              <BalanceRow
-                label="Stuck balance"
-                isLoading={isUsdcLoading}
-                value={
-                  <View className="flex-row items-center gap-2">
-                    <Image
-                      source={getAsset('images/usdc-4x.png')}
-                      alt="USDC"
-                      style={{ width: 28, height: 28 }}
-                    />
-                    <Text className="text-lg font-semibold text-white">
-                      {formatNumber(usdcAmount)} USDC
-                    </Text>
-                  </View>
-                }
-              />
+        {showSignerRescue && (
+          <View className="mb-10 mt-8">
+            <View className="rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
+              <Text className="text-center text-2xl font-bold text-white">Recover stuck USDC</Text>
+              <Text className="mb-6 mt-3 text-center text-base leading-tight text-[#ACACAC]">
+                USDC was sent to your signer wallet on Ethereum by mistake. Sign with your passkey
+                to move it into your Solid wallet.
+              </Text>
 
-              <DestinationRow safeAddress={safeAddress} />
-
-              <BalanceRow
-                label={
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className="text-base font-medium text-white opacity-70">
-                      Required ETH gas
-                    </Text>
-                    <TooltipPopover
-                      text={GAS_INFO_TEXT}
-                      side="top"
-                      analyticsContext="rescue_token_gas_tooltip"
-                    />
-                  </View>
-                }
-                isLoading={isGasLoading}
-                value={
-                  <View className="items-end">
+              <View className="gap-4">
+                <BalanceRow
+                  label="Stuck balance"
+                  isLoading={isUsdcLoading}
+                  value={
                     <View className="flex-row items-center gap-2">
                       <Image
-                        source={getAsset('images/eth.png')}
-                        alt="ETH"
-                        style={{ width: 20, height: 20 }}
+                        source={getAsset('images/usdc-4x.png')}
+                        alt="USDC"
+                        style={{ width: 28, height: 28 }}
                       />
-                      <Text className="text-base font-semibold text-white">
-                        {formatNumber(gasEthAmount, 6, 6)} ETH
+                      <Text className="text-lg font-semibold text-white">
+                        {formatNumber(usdcAmount)} USDC
                       </Text>
                     </View>
-                    <Text className={cn('text-sm', hasEnoughEth ? 'opacity-50' : 'text-red-400')}>
-                      {isEthLoading ? '—' : `Balance: ${formatNumber(ethAmount, 6, 6)} ETH`}
-                    </Text>
-                  </View>
-                }
-              />
-            </View>
+                  }
+                />
 
-            <Button
-              variant="brand"
-              onPress={handleRescue}
-              disabled={isDisabled}
-              className="mt-8 h-14 w-full rounded-2xl"
-            >
-              {isRescuing && <ActivityIndicator color="black" />}
-              <Text className="text-base font-bold text-primary-foreground">{getButtonText()}</Text>
-            </Button>
+                <DestinationRow safeAddress={safeAddress} />
+
+                <BalanceRow
+                  label={
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="text-base font-medium text-white opacity-70">
+                        Required ETH gas
+                      </Text>
+                      <TooltipPopover
+                        text={GAS_INFO_TEXT}
+                        side="top"
+                        analyticsContext="rescue_token_gas_tooltip"
+                      />
+                    </View>
+                  }
+                  isLoading={isGasLoading}
+                  value={
+                    <View className="items-end">
+                      <View className="flex-row items-center gap-2">
+                        <Image
+                          source={getAsset('images/eth.png')}
+                          alt="ETH"
+                          style={{ width: 20, height: 20 }}
+                        />
+                        <Text className="text-base font-semibold text-white">
+                          {formatNumber(gasEthAmount, 6, 6)} ETH
+                        </Text>
+                      </View>
+                      <Text className={cn('text-sm', hasEnoughEth ? 'opacity-50' : 'text-red-400')}>
+                        {isEthLoading ? '—' : `Balance: ${formatNumber(ethAmount, 6, 6)} ETH`}
+                      </Text>
+                    </View>
+                  }
+                />
+              </View>
+
+              <Button
+                variant="brand"
+                onPress={handleRescue}
+                disabled={isDisabled}
+                className="mt-8 h-14 w-full rounded-2xl"
+              >
+                {isRescuing && <ActivityIndicator color="black" />}
+                <Text className="text-base font-bold text-primary-foreground">
+                  {getButtonText()}
+                </Text>
+              </Button>
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </PageLayout>
+  );
+}
+
+/**
+ * Funds in the user's Solid wallet on a network the app does not run on (Plasma, say). The
+ * user approves one transfer with their passkey and Solid sends it, paying the network fee.
+ */
+function NetworkRescueCard({
+  item,
+  safeAddress,
+  isRescuing,
+  isDisabled,
+  onRescue,
+}: {
+  item: SafeRecoveryBalance;
+  safeAddress?: Address;
+  isRescuing: boolean;
+  isDisabled: boolean;
+  onRescue: () => void;
+}) {
+  const amount = formatNumber(Number(item.amountFormatted));
+  const onItsWay = item.recovery !== undefined;
+
+  const getButtonText = () => {
+    if (isRescuing) return 'Moving...';
+    if (onItsWay) return 'On its way';
+    return 'Move to Solid wallet';
+  };
+
+  return (
+    <View className="mt-8">
+      <View className="rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
+        <Text className="text-center text-2xl font-bold text-white">
+          Recover {item.symbol} on {item.network}
+        </Text>
+        <Text className="mb-6 mt-3 text-center text-base leading-tight text-[#ACACAC]">
+          {item.symbol} was sent to your Solid wallet address on {item.network}, a network the app
+          doesn&apos;t support. Sign with your passkey to move it into your Solid wallet, where it
+          arrives as USDC.
+        </Text>
+
+        <View className="gap-4">
+          <BalanceRow
+            label="Stuck balance"
+            value={
+              <View className="items-end">
+                <View className="flex-row items-center gap-2">
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({ tokenSymbol: item.symbol, size: 28 })}
+                    size={28}
+                    tokenName={item.symbol}
+                  />
+                  <Text className="text-lg font-semibold text-white">
+                    {amount} {item.symbol}
+                  </Text>
+                </View>
+                <View className="mt-1 flex-row items-center gap-1.5">
+                  <RhinoChainIcon
+                    chain={item.network.toUpperCase()}
+                    chainId={item.chainId}
+                    name={item.network}
+                    size={14}
+                  />
+                  <Text className="text-sm opacity-50">on {item.network}</Text>
+                </View>
+              </View>
+            }
+          />
+
+          <DestinationRow safeAddress={safeAddress} />
+
+          <BalanceRow
+            label={
+              <View className="flex-row items-center gap-1.5">
+                <Text className="text-base font-medium text-white opacity-70">Network fee</Text>
+                <TooltipPopover
+                  text={NETWORK_FEE_INFO_TEXT}
+                  side="top"
+                  analyticsContext="rescue_token_network_fee_tooltip"
+                />
+              </View>
+            }
+            value={<Text className="text-base font-semibold text-white">Paid by Solid</Text>}
+          />
+        </View>
+
+        <Button
+          variant="brand"
+          onPress={onRescue}
+          disabled={isDisabled || onItsWay}
+          className="mt-8 h-14 w-full rounded-2xl"
+        >
+          {isRescuing && <ActivityIndicator color="black" />}
+          <Text className="text-base font-bold text-primary-foreground">{getButtonText()}</Text>
+        </Button>
+      </View>
+    </View>
   );
 }
 

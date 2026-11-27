@@ -61,6 +61,7 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         source: getAsset('images/usdc-4x.png'),
       };
     case 'USDT':
+    case 'USDT0':
       return {
         type: 'image',
         source: getAsset('images/usdt.png'),
