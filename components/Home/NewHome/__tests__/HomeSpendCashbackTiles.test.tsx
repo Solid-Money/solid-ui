@@ -33,6 +33,10 @@ jest.mock('@/hooks/useCardDetails', () => ({
     },
   }),
 }));
+let mockUnfinishedSwitch: { mode: string; baseMode: string } | null = null;
+jest.mock('@/hooks/useUnfinishedSpendModeSwitch', () => ({
+  useUnfinishedSpendModeSwitch: () => mockUnfinishedSwitch,
+}));
 jest.mock('@/hooks/useToken', () => ({
   useTokenPriceUsd: (token: string) => ({ data: mockTokenPriceUsd(token) }),
 }));
@@ -86,6 +90,33 @@ test('shows spendable cash and earned plus pending cashback', () => {
   expect(texts(tree)).toEqual(
     expect.arrayContaining(['Cash mode', '$1,120.00', '4% Cashback', '+$7.60']),
   );
+  act(() => tree.unmount());
+});
+
+test('warns when a mode change left part of the balance on the old mode', () => {
+  mockUnfinishedSwitch = { mode: 'credit', baseMode: 'cash' };
+  const tree = render({ mode: 'credit' });
+  expect(texts(tree)).toContain('Partly on Cash');
+  expect(texts(tree)).not.toContain('Credit mode');
+  const tile = tree.root.findAll(
+    (node: any) =>
+      typeof node.props.accessibilityLabel === 'string' &&
+      node.props.accessibilityLabel.includes('Available to spend'),
+  )[0];
+  expect(tile.props.accessibilityLabel).toContain(
+    'The change did not finish: part of your balance is still on Cash.',
+  );
+  // The tile opens the spend-mode sheet, which offers to finish the change.
+  act(() => tile.props.onPress());
+  expect(useCardPaneStore.getState().isSpendModeOpen).toBe(true);
+  act(() => tree.unmount());
+  mockUnfinishedSwitch = null;
+});
+
+test('shows the mode alone when the change finished', () => {
+  const tree = render({ mode: 'credit' });
+  expect(texts(tree)).toContain('Credit mode');
+  expect(texts(tree).some((text: string) => text.startsWith('Partly on'))).toBe(false);
   act(() => tree.unmount());
 });
 
