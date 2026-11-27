@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -48,8 +47,7 @@ const silverCard = {
   delay: 200,
 };
 
-const WALLET_LOOP_MS = 2600;
-const REWARDS_LOOP_MS = 3200;
+const BANNER_ANIMATION_MS = 2200;
 const BANNER_WIDTH = 385;
 const BANNER_RADIUS = 15.888;
 const ARTWORK_WIDTH = 146;
@@ -166,18 +164,20 @@ export default function BlackFridayBanner({
   const reduceMotion = useReducedMotion();
   const isFocused = useIsFocused();
   const shouldAnimate = isFocused && !reduceMotion;
-  const loopMs = onDismiss ? WALLET_LOOP_MS : REWARDS_LOOP_MS;
-  const time = useSharedValue(shouldAnimate ? 0 : loopMs);
+  const time = useSharedValue(shouldAnimate ? 0 : BANNER_ANIMATION_MS);
   const [width, setWidth] = useState(BANNER_WIDTH);
   const artworkScale = Math.min(1, Math.max(0.45, (width - 239) / ARTWORK_WIDTH));
 
   useEffect(() => {
-    time.value = shouldAnimate ? 0 : loopMs;
+    time.value = shouldAnimate ? 0 : BANNER_ANIMATION_MS;
     if (shouldAnimate) {
-      time.value = withRepeat(withTiming(loopMs, { duration: loopMs, easing: Easing.linear }), -1);
+      time.value = withTiming(BANNER_ANIMATION_MS, {
+        duration: BANNER_ANIMATION_MS,
+        easing: Easing.linear,
+      });
     }
     return () => cancelAnimation(time);
-  }, [loopMs, shouldAnimate, time]);
+  }, [shouldAnimate, time]);
 
   const fade = useAnimatedStyle(() => ({ opacity: easeOut(segment(time.value, 200, 500)) }));
 
@@ -202,7 +202,11 @@ export default function BlackFridayBanner({
       <Pressable
         accessibilityLabel="Black Friday. 30% off tiers!"
         accessibilityRole="button"
-        onPress={onPress}
+        onPress={() => {
+          // Settle the banner before the drawer starts moving over it.
+          time.value = BANNER_ANIMATION_MS;
+          onPress();
+        }}
         style={StyleSheet.absoluteFill}
       >
         <BannerTitle time={time} animate={!!onDismiss}>
