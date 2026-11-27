@@ -1,3 +1,5 @@
+import { formatUnits } from 'viem';
+
 import { formatThresholdUsd } from '@/lib/tierBalance';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import {
@@ -312,6 +314,13 @@ export function tierOfferRows(
   return rows;
 }
 
+/**
+ * A whole-FUSE lock amount as the panel writes it, "24.5K FUSE": thousands,
+ * in exact integer arithmetic rather than a float division.
+ */
+const formatLockFuseK = (fuse: number): string =>
+  `${formatUnits(BigInt(Math.round(fuse)), 3)}K FUSE`;
+
 /** The two ways to buy a tier: an annual fee and a FUSE lock. */
 function purchaseRows(offer: TierOffer, contracts?: OfferContracts): TierOfferRow[] {
   const rows: TierOfferRow[] = [];
@@ -331,10 +340,10 @@ function purchaseRows(offer: TierOffer, contracts?: OfferContracts): TierOfferRo
     const lockDiscount = offerLockInviteDiscount(offer);
     rows.push({
       label: rows.length ? 'Or lock FUSE' : 'Lock FUSE',
-      value: `${offer.lockFuse / 1000}K FUSE`,
+      value: formatLockFuseK(offer.lockFuse),
       ...(lockDiscount
         ? {
-            listValue: `${lockDiscount.fullLockFuse / 1000}K FUSE`,
+            listValue: formatLockFuseK(lockDiscount.fullLockFuse),
             note: formatLockInviteDiscount(offer),
           }
         : {}),
