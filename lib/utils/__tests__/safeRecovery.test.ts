@@ -186,12 +186,30 @@ describe('parseSafeRecoveryBalances', () => {
     ['a null token address', { ...BALANCE, tokenAddress: null }],
     ['an amount that is not base units', { ...BALANCE, amount: '10.5' }],
     ['a chain id that is not a number', { ...BALANCE, chainId: '9745' }],
-    ['an unreadable formatted amount', { ...BALANCE, amountFormatted: 'ten' }],
+    ['missing decimals', { ...BALANCE, decimals: undefined }],
+    ['negative decimals', { ...BALANCE, decimals: -1 }],
+    ['fractional decimals', { ...BALANCE, decimals: 1.5 }],
     ['a recovery with an unknown status', { ...BALANCE, recovery: { ...RECOVERY, status: 'odd' } }],
   ])('refuses %s', (_label, item) => {
     expect(() => parseSafeRecoveryBalances({ enabled: true, items: [item] })).toThrow(
       'from the server',
     );
+  });
+
+  it('shows the amount worked out from the base units, never the server display string', () => {
+    const [item] = parseSafeRecoveryBalances({
+      enabled: true,
+      items: [
+        {
+          ...BALANCE,
+          amountFormatted: 'Infinity',
+          recovery: { ...RECOVERY, amountFormatted: '1' },
+        },
+      ],
+    }).items;
+
+    expect(item.amountFormatted).toBe('10');
+    expect(item.recovery?.amountFormatted).toBe('10');
   });
 
   it('refuses a malformed envelope', () => {
@@ -203,6 +221,12 @@ describe('parseSafeRecoveryBalances', () => {
 describe('parseSafeRecovery', () => {
   it('passes a well-formed recovery through', () => {
     expect(parseSafeRecovery(RECOVERY)).toEqual(RECOVERY);
+  });
+
+  it('refuses one without decimals', () => {
+    expect(() => parseSafeRecovery({ ...RECOVERY, decimals: undefined })).toThrow(
+      'from the server',
+    );
   });
 
   it('refuses one without an id or status', () => {

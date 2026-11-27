@@ -1,6 +1,7 @@
 import {
   decodeFunctionData,
   erc20Abi,
+  formatUnits,
   hashTypedData,
   isAddress,
   isAddressEqual,
@@ -148,6 +149,14 @@ const isBaseUnits = (value: unknown): value is string =>
   typeof value === 'string' && /^\d+$/.test(value);
 const isChainId = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value > 0;
+const isDecimals = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 36;
+
+/**
+ * The amount as shown, always worked out here from the base units the user approves, never
+ * taken from the server's display string: what the card shows is what gets signed.
+ */
+const displayAmount = (amount: string, decimals: number) => formatUnits(BigInt(amount), decimals);
 const isAddressText = (value: unknown): value is string =>
   typeof value === 'string' && isAddress(value, { strict: false });
 
@@ -165,7 +174,7 @@ export const parseSafeRecovery = (value: unknown): SafeRecovery => {
     !isAddressText(value.tokenAddress) ||
     !isText(value.symbol) ||
     !isBaseUnits(value.amount) ||
-    !isText(value.amountFormatted) ||
+    !isDecimals(value.decimals) ||
     !RECOVERY_STATUSES.includes(value.status as SafeRecoveryStatus) ||
     (value.transactionHash !== undefined && !isText(value.transactionHash)) ||
     (value.explorerUrl !== undefined && !isText(value.explorerUrl)) ||
@@ -173,7 +182,10 @@ export const parseSafeRecovery = (value: unknown): SafeRecovery => {
   ) {
     return invalid('recovery');
   }
-  return value as unknown as SafeRecovery;
+  return {
+    ...(value as unknown as SafeRecovery),
+    amountFormatted: displayAmount(value.amount, value.decimals),
+  };
 };
 
 /**
@@ -193,13 +205,13 @@ export const parseSafeRecoveryBalances = (value: unknown): SafeRecoveryBalancesR
       !isAddressText(item.tokenAddress) ||
       !isText(item.symbol) ||
       !isBaseUnits(item.amount) ||
-      !isText(item.amountFormatted) ||
-      Number.isNaN(Number(item.amountFormatted))
+      !isDecimals(item.decimals)
     ) {
       return invalid('balance');
     }
     return {
       ...(item as unknown as SafeRecoveryBalance),
+      amountFormatted: displayAmount(item.amount, item.decimals),
       ...(item.recovery !== undefined ? { recovery: parseSafeRecovery(item.recovery) } : {}),
     };
   });
