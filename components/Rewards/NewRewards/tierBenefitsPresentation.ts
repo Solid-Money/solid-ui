@@ -2,6 +2,8 @@ import { formatThresholdUsd } from '@/lib/tierBalance';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import {
   canPayCashFor,
+  formatInviteDiscount,
+  formatLockInviteDiscount,
   formatPriceUsd,
   isOfferOnSale,
   offerFirstYearFeeUsd,
@@ -267,6 +269,11 @@ export interface TierOfferRow {
    */
   listValue?: string;
   /**
+   * Why the price is lower, when an invite discount made it so: "50% off your
+   * first year with dana's invite". Drawn under the row.
+   */
+  note?: string;
+  /**
    * Set on the "Hold in Earn" row only: the tier's track on that route, whose
    * progress and status the panel draws under the row.
    */
@@ -317,6 +324,7 @@ function purchaseRows(offer: TierOffer, contracts?: OfferContracts): TierOfferRo
       ...(isOfferOnSale(offer) && offer.annualFeeUsd !== null
         ? { listValue: formatPriceUsd(offer.annualFeeUsd) }
         : {}),
+      ...(formatInviteDiscount(offer) ? { note: formatInviteDiscount(offer) } : {}),
     });
   }
   if (offer.lockAvailable && offer.lockFuse > 0) {
@@ -324,7 +332,12 @@ function purchaseRows(offer: TierOffer, contracts?: OfferContracts): TierOfferRo
     rows.push({
       label: rows.length ? 'Or lock FUSE' : 'Lock FUSE',
       value: `${offer.lockFuse / 1000}K FUSE`,
-      ...(lockDiscount ? { listValue: `${lockDiscount.fullLockFuse / 1000}K FUSE` } : {}),
+      ...(lockDiscount
+        ? {
+            listValue: `${lockDiscount.fullLockFuse / 1000}K FUSE`,
+            note: formatLockInviteDiscount(offer),
+          }
+        : {}),
     });
   }
   return rows;

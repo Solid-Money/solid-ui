@@ -1261,6 +1261,23 @@ export function TierBenefitsPage({
                       s={s}
                     />
                   </View>
+                  {row.note ? (
+                    <Text
+                      style={[
+                        regular(s),
+                        {
+                          fontSize: 13 * s,
+                          lineHeight: 16 * s,
+                          color: 'rgba(255,255,255,0.5)',
+                          textAlign: 'right',
+                          marginTop: -6 * s,
+                          marginBottom: 10 * s,
+                        },
+                      ]}
+                    >
+                      {row.note}
+                    </Text>
+                  ) : null}
                   {row.balanceTrack && balance ? (
                     <BalanceRouteStatus
                       track={row.balanceTrack}

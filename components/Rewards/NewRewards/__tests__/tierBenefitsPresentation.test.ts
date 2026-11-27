@@ -224,6 +224,20 @@ describe('membership offer presentation', () => {
       label: 'Or lock FUSE',
       value: '24.5K FUSE',
       listValue: '49K FUSE',
+      note: "50% off with artem.betev's invite",
+    });
+  });
+
+  it('says why the first year is cheaper when an invite discount prices it', () => {
+    const discounted = offer({
+      annualFeeUsd: 199,
+      firstYearFeeUsd: 99.5,
+      inviteDiscount: { pct: 50, inviterUsername: 'artem.betev' },
+    });
+    expect(tierOfferRows(discounted)[0]).toMatchObject({
+      label: 'Annual membership',
+      listValue: '$199',
+      note: "50% off your first year with artem.betev's invite",
     });
   });
 
