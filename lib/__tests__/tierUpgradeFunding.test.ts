@@ -9,6 +9,7 @@ import {
   defaultCashToken,
   estimateFundingCoverUsd,
   FUNDING_PRICE_BUFFER,
+  fundingNativeShortfall,
   fundingNeedUsd,
   fundingSendAmount,
   fundingSendUsd,
@@ -568,5 +569,66 @@ describe('fundingSendUsd', () => {
 
   it('sends nothing for nothing missing', () => {
     expect(fundingSendUsd(0, 0)).toBe(0);
+  });
+});
+
+describe('fundingNativeShortfall', () => {
+  /** 0.000732 ETH, the Stargate fee on a Base USDC payment for Ultra. */
+  const FEE = 732_000_000_000_000n;
+  const quote = (value: string, sponsored = false) => ({
+    transactionRequest: {
+      to: zeroAddress,
+      data: '0x' as const,
+      value,
+      chainId: base.id,
+    },
+    ...(sponsored
+      ? {
+          sponsorship: {
+            paymaster: zeroAddress,
+            wrapNative: false,
+            voucher: {
+              from: zeroAddress,
+              target: zeroAddress,
+              token: BASE_USDC,
+              amount: '699000000',
+              dataHash: '0x',
+              nativeFee: FEE.toString(),
+              nonce: '1',
+              deadline: '1',
+            },
+            signature: '0x' as const,
+          },
+        }
+      : {}),
+  });
+
+  /**
+   * Base USDC into Fuse USDC goes over Stargate, whose fee the Base paymaster
+   * pays: a Safe holding no ETH can still pay. Nov 27 2026, three Prime/Ultra
+   * buyers were told to hold ETH on Base for a fee they would never be charged.
+   */
+  it('asks for nothing when the paymaster pays the bridge fee', () => {
+    expect(fundingNativeShortfall({ quote: quote(FEE.toString(), true), nativeBalance: 0n })).toBe(
+      undefined,
+    );
+  });
+
+  it('asks for the fee an unsponsored route charges on top, when the Safe lacks it', () => {
+    expect(fundingNativeShortfall({ quote: quote(FEE.toString()), nativeBalance: FEE - 1n })).toBe(
+      FEE,
+    );
+  });
+
+  it('asks for nothing when the Safe holds the fee', () => {
+    expect(fundingNativeShortfall({ quote: quote(FEE.toString()), nativeBalance: FEE })).toBe(
+      undefined,
+    );
+  });
+
+  it('asks for nothing on a route with no native value, or before a quote', () => {
+    expect(fundingNativeShortfall({ quote: quote('0'), nativeBalance: 0n })).toBe(undefined);
+    expect(fundingNativeShortfall({ quote: quote(''), nativeBalance: 0n })).toBe(undefined);
+    expect(fundingNativeShortfall({ quote: undefined, nativeBalance: 0n })).toBe(undefined);
   });
 });

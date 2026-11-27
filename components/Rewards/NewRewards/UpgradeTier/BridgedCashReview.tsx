@@ -24,7 +24,7 @@ import {
   formatUsdHeld,
   isOfferOnSale,
 } from '@/lib/tierUpgrade';
-import { estimateFundingCoverUsd } from '@/lib/tierUpgradeFunding';
+import { estimateFundingCoverUsd, fundingNativeShortfall } from '@/lib/tierUpgradeFunding';
 import { type TierOffer, TokenType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { formatEta, lifiPriceImpact } from '@/lib/utils/swap/lifi';
@@ -110,16 +110,18 @@ const BridgedCashReview = ({ offer, feeUsd, payment }: BridgedCashReviewProps) =
   const coversFee = !!quote && covers(fuseUsdc + minReceivedUsd + worstCover, feeUsd);
   const lossUsd = Number.isFinite(sentUsd) ? Math.max(0, sentUsd - receivedUsd) : 0;
 
-  // A bridge fee paid on top in the chain's gas token is not sponsored; the
-  // Safe has to hold it on that chain.
-  const requiredNative = quote ? BigInt(quote.transactionRequest.value || '0') : 0n;
+  // A bridge fee in the chain's gas token that the paymaster doesn't sponsor
+  // has to be in the Safe on that chain. A sponsored quote's is the paymaster's.
   const native = walletTokens.find(
     held => held.chainId === token.chainId && held.type === TokenType.NATIVE,
   );
-  const nativeShort =
-    requiredNative > 0n && BigInt(native?.balance || '0') < requiredNative
-      ? { symbol: native?.contractTickerSymbol ?? 'gas', required: requiredNative }
-      : undefined;
+  const requiredNative = fundingNativeShortfall({
+    quote,
+    nativeBalance: BigInt(native?.balance || '0'),
+  });
+  const nativeShort = requiredNative
+    ? { symbol: native?.contractTickerSymbol ?? 'gas', required: requiredNative }
+    : undefined;
 
   const priceImpact = lifiPriceImpact(quote);
   const severity = priceImpact ? warningSeverity(priceImpact) : 0;

@@ -3,6 +3,7 @@ import { fuse } from 'viem/chains';
 
 import { covers } from '@/lib/tierUpgrade';
 import { TierPaymentMode, TokenBalance, TokenType } from '@/lib/types';
+import { LifiSwapQuote } from '@/lib/types/lifi-swap';
 import { isSolidVaultShare, meetsSwapThreshold } from '@/lib/utils/cardFundMove';
 
 import type { TrackedLifiSwap } from '@/store/lifiSwapStore';
@@ -182,6 +183,36 @@ export const estimateFundingCoverUsd = ({
   const lostCents = Math.max(0, Math.ceil((sentUsd - receivedUsd) * 100 - 1e-6));
   const missingCents = Math.max(0, priceCents - balanceCents);
   return Math.min(allowanceCents, lostCents, missingCents) / 100;
+};
+
+/**
+ * The native coin a funding quote needs from the Safe beyond what it holds,
+ * or undefined when it needs nothing more.
+ *
+ * LI.FI's transaction carries a native value: the amount itself when paying
+ * with the native coin, and a bridge fee on top on some routes. Gas is
+ * sponsored; that value is not, so the Safe has to hold it on the sending
+ * chain — unless the quote is sponsored. Between Fuse and Ethereum, Base or
+ * BNB Chain, which is every route into Fuse USDC, the sending chain's
+ * BridgePaymaster pays Stargate's fee under the quote's voucher, and the Safe
+ * sends only the token. Judging such a quote on `transactionRequest.value`
+ * asks the user for ETH the swap never takes from them.
+ */
+export const fundingNativeShortfall = ({
+  quote,
+  nativeBalance,
+}: {
+  quote: Pick<LifiSwapQuote, 'transactionRequest' | 'sponsorship'> | undefined;
+  nativeBalance: bigint;
+}): bigint | undefined => {
+  if (!quote || quote.sponsorship) return undefined;
+  let required: bigint;
+  try {
+    required = BigInt(quote.transactionRequest.value || '0');
+  } catch {
+    return undefined;
+  }
+  return required > 0n && nativeBalance < required ? required : undefined;
 };
 
 /** The latest swap made to pay for an upgrade, and where it has got to. */
