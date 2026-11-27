@@ -75,6 +75,11 @@ export type DirectDepositDestinationType = 'PROTOCOL' | 'RAIN_CARD' | 'WALLET';
 export interface DirectDepositSessionResponse {
   sessionId: string;
   walletAddress: string;
+  /**
+   * The Safe this deposit address delivers to: the account the server authenticated the request
+   * as. Absent from backends before the Fuse-to-Base migration.
+   */
+  safeAddress?: string;
   chainId: number;
   status: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
   expiresAt: number;
