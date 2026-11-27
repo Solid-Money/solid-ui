@@ -209,16 +209,26 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       isBaseCreditLoading ||
       isBaseModeLoading;
     const smartMicro = cashMicro > spendableHeadroom ? cashMicro : spendableHeadroom;
-    // Base's own mode. Without one it is not borrowing there, so any Base balance is cash; a
-    // read that failed is taken to match the card's mode, which is what a finished switch leaves.
-    const baseMode = baseOwnMode ?? (isBaseModeUnreadable ? mode : 'cash');
+    // Base's own mode. Without one it is not borrowing there, so any Base balance is cash. A
+    // read that failed says nothing, and is not taken to match the card: every mode Base could
+    // be in is tried, and the figure only stands when they all give the same one.
+    const baseModes: SpendMode[] = baseOwnMode
+      ? [baseOwnMode]
+      : isBaseModeUnreadable
+        ? ['cash', 'credit', 'smart']
+        : ['cash'];
     // The tile's figure: what one payment can use, since one instance pays all of it.
-    const availableMicro = singlePaymentSpendable([
-      { mode, cashMicroUsd: fuseCashMicro, creditMicroUsd: creditHeadroom },
-      { mode: baseMode, cashMicroUsd: baseCashMicro, creditMicroUsd: baseHeadroom },
-    ]);
-    // Base's credit only has to be known where Base would lend it.
-    const isAvailableKnown = !isLoading && (baseMode === 'cash' || !unknownWithoutBase);
+    const [availableMicro, ...otherFigures] = baseModes.map(baseMode =>
+      singlePaymentSpendable([
+        { mode, cashMicroUsd: fuseCashMicro, creditMicroUsd: creditHeadroom },
+        { mode: baseMode, cashMicroUsd: baseCashMicro, creditMicroUsd: baseHeadroom },
+      ]),
+    );
+    const isBaseModeSettled = otherFigures.every(figure => figure === availableMicro);
+    // Base's credit only has to be known where Base could lend it.
+    const needsBaseCredit = baseModes.some(baseMode => baseMode !== 'cash');
+    const isAvailableKnown =
+      !isLoading && isBaseModeSettled && (!needsBaseCredit || !unknownWithoutBase);
 
     return {
       mode,

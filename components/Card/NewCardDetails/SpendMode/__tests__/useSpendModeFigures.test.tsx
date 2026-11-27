@@ -130,12 +130,24 @@ describe('useSpendModeFigures: what one payment can use', () => {
     expect(availableUsd).toBeNull();
   });
 
-  test('takes an unreadable Base mode to match the card', () => {
+  test('reads "—" when Base\'s mode cannot be read and the figure depends on it', () => {
     mockRegistration = { ...mockRegistration, mode: 'credit', position: fuseCredit(15) };
+    mockCash = { data: 208, baseUsd: 8, isLoading: false };
     mockBaseCredit = baseCredit(60);
     mockBaseMode = { mode: null, isLoading: false, isError: true };
 
-    expect(read().availableToSpend).toBe('$60.00');
+    const { availableUsd, availableToSpend } = read();
+    expect(availableUsd).toBeNull();
+    expect(availableToSpend).toBe('—');
+  });
+
+  test('still shows the figure when it is the same whatever mode Base is in', () => {
+    mockRegistration = { ...mockRegistration, mode: 'credit', position: fuseCredit(75) };
+    mockCash = { data: 208, baseUsd: 8, isLoading: false };
+    mockBaseCredit = baseCredit(60);
+    mockBaseMode = { mode: null, isLoading: false, isError: true };
+
+    expect(read().availableToSpend).toBe('$75.00');
   });
 
   test('reads "—" in Credit when the Base credit line cannot be read', () => {
