@@ -31,10 +31,7 @@ const tileRipple =
   Platform.OS === 'android' ? { color: 'rgba(255, 255, 255, 0.08)', foreground: true } : undefined;
 
 type HomeSpendCashbackTilesProps = {
-  figures: Pick<
-    SpendModeFigures,
-    'mode' | 'canChangeMode' | 'cashBalance' | 'segmentValue' | 'isLoading'
-  >;
+  figures: Pick<SpendModeFigures, 'mode' | 'canChangeMode' | 'availableToSpend' | 'isLoading'>;
 };
 
 /** Figma 27864:7806 / 27864:7789, beneath the Wirex card on home. */
@@ -58,10 +55,9 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
   const cashbackDetails = useCashbackDetails(rewardsData, cardDetails);
   const { monthlyCashbackLabel } = cashbackDetails;
-  // The Cash segment's empty-state text is "Add funds"; the home tile always
-  // shows a balance. Credit and Smart use the same availability as the picker.
-  const available =
-    figures.mode === 'cash' ? figures.cashBalance : figures.segmentValue[figures.mode];
+  // What one payment can use, not the picker's totals: one side (Fuse or Base) pays a whole
+  // payment, so the total could read "enough" for a payment that still declines.
+  const available = figures.availableToSpend;
   const modeLabel = `${SPEND_MODE_COPY[figures.mode].label} mode`;
 
   return (
