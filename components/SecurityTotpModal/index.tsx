@@ -233,8 +233,10 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
     [onSuccess],
   );
 
+  // Sized by its content, not `flex-1`; see TotpVerificationModal for why a
+  // zero-basis wrapper collapses this form under the Android keyboard.
   return (
-    <View className="flex-1 gap-4">
+    <View className="gap-4">
       <View className="items-center gap-2">
         <Text className="max-w-xs text-center text-base font-medium text-[#ACACAC] opacity-70">
           Scan the below QR code or manually enter the code in an authenticator app like Authy or

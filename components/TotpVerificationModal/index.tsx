@@ -185,8 +185,13 @@ const TotpVerificationModalContent: React.FC<{
     [onVerify],
   );
 
+  // Sized by its content, never `flex-1`. NativeWind's `flex-1` is
+  // `flex: 1 1 0%`: a zero basis that takes its height from the sheet's scroll
+  // area. On Android, with the keyboard this form opens, that came out short.
+  // The title, subtitle, code row and support link then measured to nothing,
+  // and the Verify button was drawn over the code boxes.
   return (
-    <View className="flex-1 gap-6">
+    <View className="gap-6">
       <View className="items-center gap-2">
         <Text className="text-center text-2xl font-semibold text-white">
           Verify Two-Factor Authentication
