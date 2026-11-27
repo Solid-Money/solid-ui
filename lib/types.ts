@@ -4808,6 +4808,11 @@ export interface TierOffer {
    * cheaper. Read it through `offerInviteDiscount`.
    */
   inviteDiscount?: { pct: number; inviterUsername: string } | null;
+  /**
+   * The KOL invite discount already taken off `lockFuse`, and the lock it
+   * would be without it. Read it through `offerLockInviteDiscount`.
+   */
+  lockInviteDiscount?: { pct: number; inviterUsername: string; fullLockFuse: number } | null;
 }
 
 /** The user's locked FUSE position. */

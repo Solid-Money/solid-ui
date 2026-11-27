@@ -463,6 +463,43 @@ export const formatInviteDiscount = (offer: TierOffer | undefined): string =>
   inviteDiscountLine(offerInviteDiscount(offer));
 
 /**
+ * The KOL invite discount pricing this offer's FUSE lock, or null: absent,
+ * malformed, or not actually making the lock smaller.
+ */
+export const offerLockInviteDiscount = (
+  offer: TierOffer | undefined,
+): { pct: number; inviterUsername: string; fullLockFuse: number } | null => {
+  const discount = offer?.lockInviteDiscount;
+  if (!offer || !discount || typeof discount !== 'object' || !offer.lockAvailable) return null;
+  const { pct, inviterUsername, fullLockFuse } = discount;
+  if (typeof pct !== 'number' || !Number.isFinite(pct) || pct <= 0) return null;
+  if (
+    typeof fullLockFuse !== 'number' ||
+    !Number.isFinite(fullLockFuse) ||
+    !(fullLockFuse > offer.lockFuse)
+  ) {
+    return null;
+  }
+  return {
+    pct: Math.round(pct),
+    inviterUsername: typeof inviterUsername === 'string' ? inviterUsername : '',
+    fullLockFuse,
+  };
+};
+
+/**
+ * "50% off with artem.betev's invite" while one prices the lock; otherwise
+ * nothing. Not "first year": the lock is the whole term's price.
+ */
+export const formatLockInviteDiscount = (offer: TierOffer | undefined): string => {
+  const discount = offerLockInviteDiscount(offer);
+  if (!discount) return '';
+  return discount.inviterUsername
+    ? `${discount.pct}% off with ${discount.inviterUsername}'s invite`
+    : `${discount.pct}% invite discount`;
+};
+
+/**
  * What buying this tier does to the membership the user already pays for, or
  * nothing when it replaces none: the old one ends now, the new one runs a full
  * year from today, and the months left on the old one are not refunded.

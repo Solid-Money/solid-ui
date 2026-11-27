@@ -8,6 +8,7 @@ import {
   formatFuseShortfall,
   formatInviteDiscount,
   formatLockDuration,
+  formatLockInviteDiscount,
   formatMembershipDate,
   formatMembershipDay,
   formatPriceUsd,
@@ -26,6 +27,7 @@ import {
   nextPurchasableTier,
   offerFirstYearFeeUsd,
   offerInviteDiscount,
+  offerLockInviteDiscount,
   offerMandateUsd,
   offerPaymentMode,
   remainingFuseForTier,
@@ -640,5 +642,39 @@ describe('offerInviteDiscount', () => {
     ).toBeNull();
     expect(offerInviteDiscount(offer({ firstYearFeeUsd: 99.5, inviteDiscount: null }))).toBeNull();
     expect(formatInviteDiscount(undefined)).toBe('');
+  });
+});
+
+describe('offerLockInviteDiscount', () => {
+  it('reads the KOL invite discount taken off the lock, with the full lock it replaces', () => {
+    const discounted = offer({
+      lockFuse: 24_500,
+      lockInviteDiscount: { pct: 50, inviterUsername: 'artem.betev', fullLockFuse: 49_000 },
+    });
+    expect(offerLockInviteDiscount(discounted)).toEqual({
+      pct: 50,
+      inviterUsername: 'artem.betev',
+      fullLockFuse: 49_000,
+    });
+    expect(formatLockInviteDiscount(discounted)).toBe("50% off with artem.betev's invite");
+  });
+
+  it('ignores a discount that does not shrink the lock, is malformed, or prices a closed route', () => {
+    const discount = { pct: 50, inviterUsername: 'x', fullLockFuse: 49_000 };
+    expect(
+      offerLockInviteDiscount(offer({ lockFuse: 49_000, lockInviteDiscount: discount })),
+    ).toBeNull();
+    expect(
+      offerLockInviteDiscount(
+        offer({ lockFuse: 24_500, lockInviteDiscount: { ...discount, pct: Number.NaN } }),
+      ),
+    ).toBeNull();
+    expect(
+      offerLockInviteDiscount(
+        offer({ lockFuse: 24_500, lockAvailable: false, lockInviteDiscount: discount }),
+      ),
+    ).toBeNull();
+    expect(offerLockInviteDiscount(offer({ lockInviteDiscount: null }))).toBeNull();
+    expect(formatLockInviteDiscount(undefined)).toBe('');
   });
 });

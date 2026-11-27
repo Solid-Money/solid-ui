@@ -5,6 +5,7 @@ import {
   formatPriceUsd,
   isOfferOnSale,
   offerFirstYearFeeUsd,
+  offerLockInviteDiscount,
 } from '@/lib/tierUpgrade';
 import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
 import {
@@ -319,9 +320,11 @@ function purchaseRows(offer: TierOffer, contracts?: OfferContracts): TierOfferRo
     });
   }
   if (offer.lockAvailable && offer.lockFuse > 0) {
+    const lockDiscount = offerLockInviteDiscount(offer);
     rows.push({
       label: rows.length ? 'Or lock FUSE' : 'Lock FUSE',
       value: `${offer.lockFuse / 1000}K FUSE`,
+      ...(lockDiscount ? { listValue: `${lockDiscount.fullLockFuse / 1000}K FUSE` } : {}),
     });
   }
   return rows;

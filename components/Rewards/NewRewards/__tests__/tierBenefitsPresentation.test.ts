@@ -215,6 +215,18 @@ describe('membership offer presentation', () => {
     expect(tierOfferSubtitle(offer())).toBe('$149.5/year or 37.5K FUSE locked');
   });
 
+  it('strikes the full lock through when an invite discount shrinks it', () => {
+    const discounted = offer({
+      lockFuse: 24_500,
+      lockInviteDiscount: { pct: 50, inviterUsername: 'artem.betev', fullLockFuse: 49_000 },
+    });
+    expect(tierOfferRows(discounted)).toContainEqual({
+      label: 'Or lock FUSE',
+      value: '24.5K FUSE',
+      listValue: '49K FUSE',
+    });
+  });
+
   it('does not invent an offer when membership data or available routes are missing', () => {
     expect(tierOfferRows(undefined)).toEqual([]);
     expect(tierOfferSubtitle(undefined)).toBeNull();
