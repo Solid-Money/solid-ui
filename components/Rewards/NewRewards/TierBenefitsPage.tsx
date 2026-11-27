@@ -24,7 +24,7 @@ import { type AssetPath, getAsset } from '@/lib/assets';
 import { type BlackFridayOffer, formatBlackFridayFuse } from '@/lib/blackFriday';
 import { trackNeedsTopUp, trackProgress, trackStatusLine } from '@/lib/tierBalance';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
-import { formatPriceUsd } from '@/lib/tierUpgrade';
+import { formatPriceUsd, offerLockInviteDiscount } from '@/lib/tierUpgrade';
 import {
   RewardsTier,
   type TierBalanceRouteDto,
@@ -1040,15 +1040,22 @@ export function TierBenefitsPage({
           value: `${formatPriceUsd(sale.saleUsd)}/year`,
           listValue: formatPriceUsd(sale.beforeUsd),
         },
-        ...(sale.lockFuse
-          ? [
-              {
-                label: 'Or lock FUSE',
-                value: `${formatBlackFridayFuse(sale.lockFuse)} FUSE`,
-                listValue: sale.beforeFuse ? formatBlackFridayFuse(sale.beforeFuse) : undefined,
-              },
-            ]
-          : []),
+        // An invite discount on the lock keeps its own row, which strikes
+        // the full lock through and says whose invite it is; the campaign
+        // row knows only the sale's figures.
+        ...(sale.lockFuse && offerLockInviteDiscount(offer)
+          ? standardOffers
+              .filter(row => !row.balanceTrack && /lock FUSE$/i.test(row.label))
+              .map(row => ({ ...row, label: 'Or lock FUSE' }))
+          : sale.lockFuse
+            ? [
+                {
+                  label: 'Or lock FUSE',
+                  value: `${formatBlackFridayFuse(sale.lockFuse)} FUSE`,
+                  listValue: sale.beforeFuse ? formatBlackFridayFuse(sale.beforeFuse) : undefined,
+                },
+              ]
+            : []),
         ...(sale.earnHoldUsd
           ? [
               {
@@ -1261,6 +1268,23 @@ export function TierBenefitsPage({
                       s={s}
                     />
                   </View>
+                  {row.note ? (
+                    <Text
+                      style={[
+                        regular(s),
+                        {
+                          fontSize: 13 * s,
+                          lineHeight: 16 * s,
+                          color: 'rgba(255,255,255,0.5)',
+                          textAlign: 'right',
+                          marginTop: -6 * s,
+                          marginBottom: 10 * s,
+                        },
+                      ]}
+                    >
+                      {row.note}
+                    </Text>
+                  ) : null}
                   {row.balanceTrack && balance ? (
                     <BalanceRouteStatus
                       track={row.balanceTrack}

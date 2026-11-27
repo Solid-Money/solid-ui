@@ -30,12 +30,14 @@ import {
   formatFuse,
   formatInviteDiscount,
   formatLockDuration,
+  formatLockInviteDiscount,
   formatRenewalTerms,
   formatSaleEnds,
   formatUsd,
   isOfferOnSale,
   isTierOnTrial,
   offerFirstYearFeeUsd,
+  offerLockInviteDiscount,
   offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
@@ -117,6 +119,7 @@ const UpgradeReviewContent = () => {
   }
 
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
+  const lockInviteDiscount = offerLockInviteDiscount(offer);
   const isPending = isLocking || isSubscribing;
   const message = failure ?? lockError ?? subscribeError;
 
@@ -311,11 +314,18 @@ const UpgradeReviewContent = () => {
             />
             {/* Priced in FUSE whichever token pays: the tier's threshold is a
                 FUSE figure, and soFUSE is quoted at the FUSE it is worth. */}
-            <TierDetailRow
-              label="Amount to lock"
-              value={`${formatFuse(remainingFuse)} FUSE`}
-              withDivider
-            />
+            <TierDetailRow label="Amount to lock" withDivider>
+              <TierPrice
+                priceUsd={remainingFuse}
+                listPriceUsd={
+                  lockInviteDiscount && remainingFuse === offer.lockFuse
+                    ? lockInviteDiscount.fullLockFuse
+                    : undefined
+                }
+                format={amount => `${formatFuse(amount)} FUSE`}
+                secondaryValue={formatLockInviteDiscount(offer) || undefined}
+              />
+            </TierDetailRow>
             <TierDetailRow
               label="Lock duration"
               value={formatLockDuration(membership.lock.durationDays)}

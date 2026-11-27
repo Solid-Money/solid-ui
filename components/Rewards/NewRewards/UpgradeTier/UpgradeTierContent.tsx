@@ -32,6 +32,7 @@ import {
   formatFuseHeld,
   formatFuseShortfall,
   formatLockDuration,
+  formatLockInviteDiscount,
   formatMembershipDate,
   formatPriceUsd,
   formatUsd,
@@ -42,6 +43,7 @@ import {
   nextPurchasableTier,
   offerFirstYearFeeUsd,
   offerInviteDiscount,
+  offerLockInviteDiscount,
   offerPaymentMode,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
@@ -193,6 +195,7 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
   const benefits = resolveTierUpgradeBenefits(findTierBenefits(tierBenefits, tier));
   const dateLabel = membershipDateLabel(membership);
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
+  const lockInviteDiscount = offerLockInviteDiscount(offer);
   const availableUsdc = chain?.usdcAmount ?? 0;
 
   /**
@@ -368,14 +371,27 @@ const UpgradeTierContent = ({ onRouteSelected, onTopUp }: UpgradeTierContentProp
                 tickerFontSize={16}
               />
             </TierDetailRow>
-            <TierDetailRow
-              label="Amount"
-              value={`${formatFuse(remainingFuse)} FUSE`}
-              secondaryValue={
-                fusePriceUsd > 0 ? formatUsd(remainingFuse * fusePriceUsd) : undefined
-              }
-              withDivider
-            />
+            {/* With an invite discount the full lock is struck through
+                beside it, as the annual fee is on the cash route. */}
+            <TierDetailRow label="Amount" withDivider>
+              <TierPrice
+                priceUsd={remainingFuse}
+                listPriceUsd={
+                  lockInviteDiscount && remainingFuse === offer.lockFuse
+                    ? lockInviteDiscount.fullLockFuse
+                    : undefined
+                }
+                format={amount => `${formatFuse(amount)} FUSE`}
+                secondaryValue={
+                  [
+                    formatLockInviteDiscount(offer),
+                    fusePriceUsd > 0 ? formatUsd(remainingFuse * fusePriceUsd) : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || undefined
+                }
+              />
+            </TierDetailRow>
             <TierDetailRow
               label="FUSE APY"
               value={fuseSavingsApy > 0 ? `${fuseSavingsApy.toFixed(1)}%` : '—'}
