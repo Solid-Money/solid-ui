@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
+import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { useBalances } from '@/hooks/useBalances';
 import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
 import { useMainCurrency } from '@/hooks/useMainCurrency';
@@ -68,9 +69,13 @@ export const useCardSpendableAssets = (): CardSpendableAsset[] => {
  * above that panel matches it. It waits on that price the same way, rather than landing without
  * the soEUR and then jumping: the soEUR rate, and the card's euro rate when no Base EURC quote
  * stands in for it. `isSoEurPricePending` is that wait alone, for a screen that ignores the rest.
+ *
+ * `baseUsd` is the part of `data` held on Base. One card payment is paid by one instance, so a
+ * figure for what a single payment can use needs the two sides apart.
  */
 export const useCardSpendableBalanceUSD = (): {
   data: number;
+  baseUsd: number;
   isLoading: boolean;
   isSoEurPricePending: boolean;
 } => {
@@ -81,9 +86,22 @@ export const useCardSpendableBalanceUSD = (): {
   const soEurRate = useVaultExchangeRate('EUR', soEurSpendable);
   const { usdPerEur, isLoading: isCardDetailsLoading } = useMainCurrency();
 
+  const soEurUsd = useMemo(
+    () => soEurUsdPerShare(tokens, soEurRate.data, usdPerEur),
+    [tokens, soEurRate.data, usdPerEur],
+  );
   const data = useMemo(
-    () => sumCardSpendableUSD(tokens, assets, soEurUsdPerShare(tokens, soEurRate.data, usdPerEur)),
-    [tokens, assets, soEurRate.data, usdPerEur],
+    () => sumCardSpendableUSD(tokens, assets, soEurUsd),
+    [tokens, assets, soEurUsd],
+  );
+  const baseUsd = useMemo(
+    () =>
+      sumCardSpendableUSD(
+        tokens.filter(token => token.chainId === BASE_SPEND_DEPLOYMENT.chainId),
+        assets,
+        soEurUsd,
+      ),
+    [tokens, assets, soEurUsd],
   );
   const isDeploymentsUnanswered = isPending && fetchStatus !== 'idle';
   const isSoEurPricePending =
@@ -93,6 +111,7 @@ export const useCardSpendableBalanceUSD = (): {
 
   return {
     data,
+    baseUsd,
     isLoading: isLoading || isDeploymentsUnanswered || isSoEurPricePending,
     isSoEurPricePending,
   };

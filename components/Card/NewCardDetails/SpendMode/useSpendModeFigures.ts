@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { singlePaymentSpendable } from '@/components/Card/NewCardDetails/SpendMode/singlePaymentSpendable';
 import { ONE_USD } from '@/constants/cardSpendModule';
 import {
   borrowApyPercent,
@@ -9,7 +10,11 @@ import {
   formatApy,
   healthFactorToNumber,
 } from '@/constants/cardSpendV2';
-import { useBaseCreditInstance, useCardCreditPositions } from '@/hooks/useCardCreditPositions';
+import {
+  useBaseCreditInstance,
+  useBaseSpendMode,
+  useCardCreditPositions,
+} from '@/hooks/useCardCreditPositions';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
@@ -53,13 +58,17 @@ export interface SpendModeFigures {
   /** The figure under each segment name in the control. */
   segmentValue: Record<SpendMode, string>;
   /**
-   * What the home Available to spend tile shows for the mode in force, in dollars, before it is
-   * formatted: the cash balance in Cash, the credit left in Credit, the larger of the two in Smart.
+   * What the home Available to spend tile shows, in dollars, before it is formatted: the most a
+   * single card payment can use. One instance pays a whole payment, so it is the larger of the
+   * Fuse and Base figures and not their total, each counted by the mode that instance is really
+   * in: its cash in Cash, its credit left in Credit, the larger of the two in Smart.
    *
    * For anything that has to quote the tile's number rather than work out one of its own (the
    * declined-payment banner and receipt). Null while the tile is loading or reads "—".
    */
   availableUsd: number | null;
+  /** {@link availableUsd} as the tile shows it: "$36.54", or "—" when it cannot be known. */
+  availableToSpend: string;
 
   /** Whether there is a loan at all. What gates the Repay button. */
   hasPosition: boolean;
@@ -129,7 +138,11 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     isLoading: isRegistrationLoading,
   } = useCardSpendRegistration();
 
-  const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
+  const {
+    data: cashBalanceUsd,
+    baseUsd: baseCashUsd,
+    isLoading: isBalanceLoading,
+  } = useCardSpendableBalanceUSD();
   // Base's line, for a cardholder live there — soEUR and the crypto Base takes back it, and
   // the registration above reads Fuse alone. The same query the card pane and the picker read.
   const { isLive: borrowsOnBase, isLoading: isBaseAccessLoading } = useBaseCreditInstance();
@@ -139,11 +152,20 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   const isBaseCreditLoading = baseCredit.isPending && baseCredit.fetchStatus !== 'idle';
   // Failed with nothing cached: Base's half is unknown, not zero.
   const isBaseCreditUnavailable = baseCredit.isError && baseCredit.data === undefined;
+  // The mode Base itself holds. A switch that reached Fuse and not Base leaves the two apart, and
+  // Base then spends by its own mode whatever the card's mode reads.
+  const {
+    mode: baseOwnMode,
+    isLoading: isBaseModeLoading,
+    isError: isBaseModeUnreadable,
+  } = useBaseSpendMode({ enabled: true });
   // Every figure here is counted in dollars; a euro main currency shows them in euros.
   const { formatMicroUsd } = useCardDisplayCurrency();
 
   return useMemo(() => {
     const cashMicro = usdToMicro(cashBalanceUsd);
+    const baseCashMicro = usdToMicro(baseCashUsd);
+    const fuseCashMicro = cashMicro > baseCashMicro ? cashMicro - baseCashMicro : 0n;
     const debt = position?.debtUsd ?? 0n;
 
     // The whole line, and the reason the card no longer reads "$0 / $0" for a cardholder
@@ -181,12 +203,22 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     // also holds the Assets screen's Fuse-only credit line, which has nothing to wait for.
     const unknownWithoutBase = isBaseCreditUnavailable ? '—' : undefined;
     const isLoading =
-      isRegistrationLoading || isBalanceLoading || isBaseAccessLoading || isBaseCreditLoading;
-    // The tile's figure for the mode in force, by the same rules as the labels below.
+      isRegistrationLoading ||
+      isBalanceLoading ||
+      isBaseAccessLoading ||
+      isBaseCreditLoading ||
+      isBaseModeLoading;
     const smartMicro = cashMicro > spendableHeadroom ? cashMicro : spendableHeadroom;
-    const availableMicro =
-      mode === 'cash' ? cashMicro : mode === 'credit' ? spendableHeadroom : smartMicro;
-    const isAvailableKnown = !isLoading && (mode === 'cash' || !unknownWithoutBase);
+    // Base's own mode. Without one it is not borrowing there, so any Base balance is cash; a
+    // read that failed is taken to match the card's mode, which is what a finished switch leaves.
+    const baseMode = baseOwnMode ?? (isBaseModeUnreadable ? mode : 'cash');
+    // The tile's figure: what one payment can use, since one instance pays all of it.
+    const availableMicro = singlePaymentSpendable([
+      { mode, cashMicroUsd: fuseCashMicro, creditMicroUsd: creditHeadroom },
+      { mode: baseMode, cashMicroUsd: baseCashMicro, creditMicroUsd: baseHeadroom },
+    ]);
+    // Base's credit only has to be known where Base would lend it.
+    const isAvailableKnown = !isLoading && (baseMode === 'cash' || !unknownWithoutBase);
 
     return {
       mode,
@@ -219,6 +251,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
         smart: unknownWithoutBase ?? formatMicroUsd(smartMicro),
       },
       availableUsd: isAvailableKnown ? Number(availableMicro) / Number(ONE_USD) : null,
+      availableToSpend: isAvailableKnown ? formatMicroUsd(availableMicro) : '—',
 
       hasPosition: debt > 0n,
       canBorrow,
@@ -238,7 +271,11 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     position,
     borrowApyPerSecond,
     cashBalanceUsd,
+    baseCashUsd,
     baseHeadroom,
+    baseOwnMode,
+    isBaseModeLoading,
+    isBaseModeUnreadable,
     isRegistrationLoading,
     isBalanceLoading,
     isBaseAccessLoading,

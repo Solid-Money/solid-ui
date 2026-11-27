@@ -58,8 +58,7 @@ const render = (override: Partial<SpendModeFigures> = {}) => {
         figures={{
           mode: 'cash',
           canChangeMode: true,
-          cashBalance: '$1,120.00',
-          segmentValue: { cash: '$1,120.00', credit: '$1,650.00', smart: '$1,650.00' },
+          availableToSpend: '$1,120.00',
           isLoading: false,
           ...override,
         }}
@@ -216,12 +215,15 @@ test('omits only figures that need an unavailable exchange rate', () => {
   act(() => tree.unmount());
 });
 
-test.each(['credit', 'smart'] as const)('uses the picker availability for %s mode', mode => {
-  const tree = render({ mode });
-  expect(texts(tree)).toContain('$1,650.00');
-  expect(texts(tree)).not.toContain('$1,120.00');
-  act(() => tree.unmount());
-});
+test.each(['cash', 'credit', 'smart'] as const)(
+  'shows what one payment can use in %s mode',
+  mode => {
+    const tree = render({ mode, availableToSpend: '$1,650.00' });
+    expect(texts(tree)).toContain('$1,650.00');
+    expect(texts(tree)).not.toContain('$1,120.00');
+    act(() => tree.unmount());
+  },
+);
 
 test('opens the mode picker over Home without opening card details', () => {
   const tree = render();
@@ -258,7 +260,7 @@ test('keeps the balance visible when mode switching is unavailable', () => {
 });
 
 test('shows a skeleton while the spendable balance loads', () => {
-  const tree = render({ isLoading: true, cashBalance: '$0.00' });
+  const tree = render({ isLoading: true, availableToSpend: '$0.00' });
   expect(tree.root.findAllByType('Skeleton')).toHaveLength(1);
   expect(texts(tree)).toContain('Available to spend');
   expect(texts(tree)).not.toContain('$0.00');
