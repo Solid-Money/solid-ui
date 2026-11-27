@@ -12,6 +12,7 @@ import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCashbackDetails } from '@/hooks/useCashbackDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { useUnfinishedSpendModeSwitch } from '@/hooks/useUnfinishedSpendModeSwitch';
 import { CASHBACK_EARNED_COLOR } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
@@ -53,6 +54,10 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
     Platform.OS === 'web' && { transform: [{ scale: tileWidth / TILE_ARTWORK_WIDTH }] },
   ];
   const openSpendMode = useCardPaneStore(state => state.openSpendMode);
+  // A mode switch that reached one part of the balance and not the other. The chip then says
+  // where the rest still is instead of the new mode alone; the tile opens the sheet that finishes it.
+  const unfinishedSwitch = useUnfinishedSpendModeSwitch();
+  const behindLabel = unfinishedSwitch ? SPEND_MODE_COPY[unfinishedSwitch.baseMode].label : null;
   const { data: rewardsData } = useRewardsUserData();
   const { data: cardDetails } = useCardDetails();
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
@@ -69,7 +74,7 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
       <View style={styles.slot} onLayout={event => setTileWidth(event.nativeEvent.layout.width)}>
         <Pressable
           accessibilityRole={figures.canChangeMode ? 'button' : undefined}
-          accessibilityLabel={`${modeLabel}. Available to spend: ${figures.isLoading ? 'Loading' : available}`}
+          accessibilityLabel={`${modeLabel}. ${behindLabel ? `The change did not finish: part of your balance is still on ${behindLabel}. Open to finish it. ` : ''}Available to spend: ${figures.isLoading ? 'Loading' : available}`}
           disabled={!figures.canChangeMode}
           onPress={() => openSpendMode()}
           android_ripple={tileRipple}
@@ -95,9 +100,13 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
           <View style={styles.modeChip}>
             <Text
               numberOfLines={1}
-              style={[styles.chipText, tileWidth < 160 && styles.compactChipText]}
+              style={[
+                styles.chipText,
+                tileWidth < 160 && styles.compactChipText,
+                !!behindLabel && styles.unfinishedChipText,
+              ]}
             >
-              {modeLabel}
+              {behindLabel ? `Partly on ${behindLabel}` : modeLabel}
             </Text>
             {figures.canChangeMode && (
               <Image accessible={false} source={down} contentFit="fill" style={styles.down} />
@@ -231,6 +240,7 @@ const styles = StyleSheet.create({
   },
   chipText: { color: '#FFFFFF', fontFamily: 'MonaSans_500Medium', fontSize: 14, lineHeight: 20 },
   compactChipText: { fontSize: 12 },
+  unfinishedChipText: { color: '#E8A33D' },
   down: { width: 14, height: 14 },
   amount: {
     color: '#FFFFFF',
