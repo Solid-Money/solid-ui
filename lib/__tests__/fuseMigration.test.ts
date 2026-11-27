@@ -8,6 +8,7 @@ import {
   BASE_LZ_EID,
   buildFuseMigrationBatches,
   buildFuseMigrationItems,
+  confirmedDepositAddress,
   deliveredVaultActivities,
   followVaultDeliveries,
   formatMigrationAmount,
@@ -291,5 +292,32 @@ describe('followVaultDeliveries', () => {
 
     await expect(result).resolves.toEqual(['soeth-row']);
     expect(onDelivered.mock.calls.map(([id]) => id)).toEqual(['sousd-row']);
+  });
+});
+
+describe('confirmedDepositAddress', () => {
+  it('returns the address when the server says it delivers to the migrating Safe', () => {
+    expect(
+      confirmedDepositAddress(
+        { walletAddress: DEPOSIT, safeAddress: SAFE.toUpperCase().replace('0X', '0x') },
+        SAFE,
+      ),
+    ).toBe(DEPOSIT);
+  });
+
+  // A web session cookie switched to another account by a second tab.
+  it("refuses an address that delivers to another account's Safe", () => {
+    expect(() =>
+      confirmedDepositAddress(
+        { walletAddress: DEPOSIT, safeAddress: '0x3333333333333333333333333333333333333333' },
+        SAFE,
+      ),
+    ).toThrow('Nothing was moved');
+  });
+
+  it('refuses a response that does not name the Safe, or has no address', () => {
+    expect(() => confirmedDepositAddress({ walletAddress: DEPOSIT }, SAFE)).toThrow();
+    expect(() => confirmedDepositAddress({ safeAddress: SAFE }, SAFE)).toThrow();
+    expect(() => confirmedDepositAddress(undefined, SAFE)).toThrow();
   });
 });

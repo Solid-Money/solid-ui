@@ -17,6 +17,7 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import {
   buildFuseMigrationBatches,
   buildFuseMigrationItems,
+  confirmedDepositAddress,
   followVaultDeliveries,
   formatMigrationAmount,
   FuseMigrationAsset,
@@ -188,19 +189,21 @@ export const useFuseMigration = () => {
       }
 
       const needsDepositAddress = toMove.some(item => item.route === 'deposit_address');
-      // The session request authenticates as whichever account is selected when it is sent, and
-      // the address it returns receives this Safe's USDC/USDT. Bind it to the migrating account:
-      // a switch at any point while it runs fails the attempt before anything is signed.
+      // The address the session returns receives this Safe's USDC/USDT, so it must be this
+      // account's. Two checks, both before anything is signed:
+      // - the migrating account stays selected for the whole request (the native token follows
+      //   the selection, and a switch, even one switched back, fails the attempt);
+      // - the server names the Safe the address delivers to, and it must be this one: on web the
+      //   request carries the session cookie, which another tab can switch without this one
+      //   noticing.
       const depositAddress = needsDepositAddress
-        ? ((
+        ? confirmedDepositAddress(
             await whileAccountSelected(user.userId, SELECTED_ACCOUNT, () =>
               withRefreshToken(() => createDirectDepositSession(fuse.id, 'USDC', 'WALLET')),
-            )
-          )?.walletAddress as Address | undefined)
+            ),
+            user.safeAddress as Address,
+          )
         : undefined;
-      if (needsDepositAddress && !depositAddress) {
-        throw new Error('Could not get your deposit address. Please try again.');
-      }
 
       const baseSafeAddress = (euroSpend.deployment?.safeAddress ?? user.safeAddress) as Address;
       const batches = buildFuseMigrationBatches({ items: toMove, baseSafeAddress, depositAddress });

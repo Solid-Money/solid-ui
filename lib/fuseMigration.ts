@@ -343,6 +343,29 @@ export const followVaultDeliveries = async ({
   return pending.map(({ id }) => id);
 };
 
+/**
+ * The deposit address to send this Safe's USDC/USDT to, once the server has confirmed it is the
+ * Safe's own.
+ *
+ * The session request authenticates as whichever account the server sees: on web that is the
+ * session cookie, which another tab can switch to a different account without this one noticing.
+ * The response names the Safe the address delivers to, so the address is used only when that
+ * Safe is the one being migrated. A response without it (an older backend) is refused, not
+ * trusted.
+ */
+export const confirmedDepositAddress = (
+  session: { walletAddress?: string; safeAddress?: string } | undefined,
+  migratingSafe: Address,
+): Address => {
+  const deliversTo = session?.safeAddress?.toLowerCase();
+  if (!session?.walletAddress || !deliversTo || deliversTo !== migratingSafe.toLowerCase()) {
+    throw new Error(
+      'Couldn’t confirm your deposit address belongs to this account. Nothing was moved. Please try again.',
+    );
+  }
+  return session.walletAddress as Address;
+};
+
 /** "12.34", trimmed to at most `maxDecimals` without rounding up. */
 export const formatMigrationAmount = (item: Pick<FuseMigrationItem, 'amount' | 'decimals'>) => {
   const maxDecimals = item.decimals > 6 ? 6 : 2;
