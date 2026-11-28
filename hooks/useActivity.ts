@@ -63,8 +63,15 @@ export type TrackTransaction = <TransactionResult>(
 
 // Module-level dedup: when multiple components call useActivity() simultaneously,
 // only one fetchPage(1) actually hits the network. Others wait for the same promise.
-let _initialFetchPromise: Promise<void> | null = null;
+let _initialFetchPromise: Promise<boolean> | null = null;
 let _initialFetchUserId: string | null = null;
+
+/**
+ * Whether this mount's first page of history has come back. Starts 'pending',
+ * not idle: before the fetch effect runs, an empty store would otherwise read
+ * as "no history". `isLoading` can't tell a failed fetch from a finished one.
+ */
+export type ActivityFetchStatus = 'pending' | 'success' | 'error';
 
 export function useActivity() {
   const { user } = useUser();
@@ -83,8 +90,13 @@ export function useActivity() {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialFetchStatus, setInitialFetchStatus] = useState<ActivityFetchStatus>('pending');
   const hasFetchedInitial = useRef(false);
   const fetchedForUserId = useRef<string | null>(null);
+  // Bumped by each initial fetch or retry. A run that completes after a newer
+  // one started (a user switch, a retry) must not set the status: an earlier
+  // user's page arriving would end the wait for the current user's.
+  const initialFetchRun = useRef(0);
 
   const { refetchAll, isRefreshing, isSyncing, isSyncStale, canSync } = useActivityRefresh({
     syncOnAppActive: true,
@@ -123,13 +135,14 @@ export function useActivity() {
   const fuseWithdraws = fuseTransactions?.withdraws;
   const baseWithdrawRequests = useBaseWithdrawRequests(userEventsFromStore);
 
-  // Fetch a page of activities directly from the API and push to Zustand
+  // Fetch a page of activities directly from the API and push to Zustand.
+  // Resolves to whether the page arrived.
   const fetchPage = useCallback(
-    async (page: number) => {
-      if (!user?.userId) return;
+    async (page: number): Promise<boolean> => {
+      if (!user?.userId) return false;
       try {
         const result = await withRefreshToken(() => fetchActivityEvents(page));
-        if (!result?.docs) return;
+        if (!result?.docs) return false;
 
         const events = result.docs
           .filter((tx): tx is ActivityEvent => tx != null)
@@ -141,8 +154,10 @@ export function useActivity() {
 
         setHasNextPage(!!result.hasNextPage);
         setCurrentPage(page);
+        return true;
       } catch (error) {
         console.error('Failed to fetch activity page:', error);
+        return false;
       }
     },
     [user?.userId, user?.safeAddress, bulkUpsertEvent],
@@ -159,30 +174,47 @@ export function useActivity() {
       hasFetchedInitial.current = false;
       setCurrentPage(1);
       setHasNextPage(false);
+      setInitialFetchStatus('pending');
     }
 
     if (hasFetchedInitial.current) return;
     hasFetchedInitial.current = true;
     fetchedForUserId.current = user.userId;
     setIsLoading(true);
+    const run = ++initialFetchRun.current;
+    const settle = (ok: boolean) => {
+      if (run !== initialFetchRun.current) return;
+      setIsLoading(false);
+      setInitialFetchStatus(ok ? 'success' : 'error');
+    };
 
     // If another instance is already fetching for this user, reuse its promise
     if (_initialFetchUserId === user.userId && _initialFetchPromise) {
-      _initialFetchPromise.finally(() => setIsLoading(false));
+      _initialFetchPromise.then(settle);
       return;
     }
 
     _initialFetchUserId = user.userId;
     const thisPromise = fetchPage(1);
     _initialFetchPromise = thisPromise;
-    thisPromise.finally(() => {
-      setIsLoading(false);
+    thisPromise.then(ok => {
+      settle(ok);
       // Only clear if this is still the active promise (not replaced by a user switch)
       if (_initialFetchPromise === thisPromise) {
         _initialFetchPromise = null;
       }
     });
   }, [user?.userId, fetchPage]);
+
+  // Fetch page 1 again after a failed initial fetch.
+  const retryInitialFetch = useCallback(async () => {
+    const run = ++initialFetchRun.current;
+    setInitialFetchStatus('pending');
+    const ok = await fetchPage(1);
+    if (run !== initialFetchRun.current) return;
+    setIsLoading(false);
+    setInitialFetchStatus(ok ? 'success' : 'error');
+  }, [fetchPage]);
 
   // Load next page
   const fetchNextPage = useCallback(async () => {
@@ -395,6 +427,8 @@ export function useActivity() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    initialFetchStatus,
+    retryInitialFetch,
     getKey,
     createActivity,
     updateActivity,

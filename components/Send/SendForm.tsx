@@ -12,6 +12,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TierBalanceOutflowNotice from '@/components/TierBalance/TierBalanceOutflowNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { CHAIN_NAMES } from '@/constants/chains';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useEarnOutflowUsd, useTierBalanceOutflowWarning } from '@/hooks/useTierBalance';
@@ -250,9 +251,18 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
                     })}
                     size={28}
                   />
-                  <Text className="text-lg font-semibold">
-                    {selectedToken.contractTickerSymbol}
-                  </Text>
+                  <View>
+                    <Text className="text-lg font-semibold leading-tight">
+                      {selectedToken.contractTickerSymbol}
+                    </Text>
+                    {/* The send executes on this chain; USDC on Base and USDC on
+                        Fuse otherwise look identical here. */}
+                    {CHAIN_NAMES[selectedToken.chainId] ? (
+                      <Text className="text-xs leading-tight opacity-50">
+                        on {CHAIN_NAMES[selectedToken.chainId]}
+                      </Text>
+                    ) : null}
+                  </View>
                   <ChevronDown size={20} color="white" />
                 </>
               ) : (

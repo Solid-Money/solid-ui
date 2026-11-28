@@ -9,10 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
-import {
-  BRIDGE_PAYMASTER_RECIPIENT_ERROR,
-  isBridgePaymasterAddress,
-} from '@/lib/protocolAddresses';
+import { isProtocolAddress, PROTOCOL_ADDRESS_RECIPIENT_ERROR } from '@/lib/protocolAddresses';
 import { AddressBookRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
@@ -30,8 +27,8 @@ const walletAddressField = z
   .string()
   .refine(val => val.trim().length > 0, { error: 'Address is required' })
   .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
-  .refine(val => !isBridgePaymasterAddress(val.trim()), {
-    error: BRIDGE_PAYMASTER_RECIPIENT_ERROR,
+  .refine(val => !isProtocolAddress(val.trim()), {
+    error: PROTOCOL_ADDRESS_RECIPIENT_ERROR,
   })
   .transform(val => val.trim());
 
@@ -71,12 +68,13 @@ export const useAddressBook = (options?: {
   const setModal = useSendStore(state => state.setModal);
   const queryClient = useQueryClient();
 
-  const { data: addressBook = [] } = useQuery({
+  const addressBookQuery = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
     staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
+  const addressBook = useMemo(() => addressBookQuery.data ?? [], [addressBookQuery.data]);
 
   const addressBookEntry = useMemo(() => {
     if (!options?.defaultAddress) return null;
@@ -159,5 +157,8 @@ export const useAddressBook = (options?: {
     handleAddContact,
     addToAddressBookMutation,
     hasSkipped2fa,
+    // The raw query, for callers that must tell "not loaded" or "failed" from
+    // an empty address book (`data` stays undefined until it loads).
+    addressBookQuery,
   };
 };
