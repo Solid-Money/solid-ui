@@ -1,4 +1,8 @@
-import { parseAttributionFromDeepLink, parseAttributionFromURL } from '@/lib/attribution';
+import {
+  getAttributionChannel,
+  parseAttributionFromDeepLink,
+  parseAttributionFromURL,
+} from '@/lib/attribution';
 
 jest.mock('@sentry/react-native', () => ({ captureException: jest.fn() }));
 
@@ -33,5 +37,18 @@ describe('parseAttributionFromURL referral codes', () => {
     expect(parseAttributionFromDeepLink('solid://rewards?referral=open').referral_code).toBe(
       undefined,
     );
+  });
+});
+
+describe('getAttributionChannel', () => {
+  it('credits a push open to push, even over an earlier ad click', () => {
+    expect(getAttributionChannel({ utm_medium: 'push' })).toBe('push');
+    expect(getAttributionChannel({ utm_medium: 'push', gclid: 'g-1' })).toBe('push');
+    expect(getAttributionChannel({ utm_medium: 'Push', fbclid: 'f-1' })).toBe('push');
+  });
+
+  it('still classifies ad clicks without a push medium as paid', () => {
+    expect(getAttributionChannel({ gclid: 'g-1' })).toBe('paid_search');
+    expect(getAttributionChannel({ fbclid: 'f-1', utm_medium: 'cpc' })).toBe('paid_social');
   });
 });

@@ -11,7 +11,10 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { registerPushToken } from '@/lib/api';
 import { pushNotificationData } from '@/lib/pushNotificationData';
-import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
+import {
+  pushDeviceInfo,
+  registerForPushNotificationsAsync,
+} from '@/lib/registerForPushNotifications';
 import { SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
 import { VaultType } from '@/lib/types';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -78,6 +81,13 @@ type NotificationData = {
    * pushes, whose destination is one transaction and cannot be a static URL.
    */
   link?: string;
+  /**
+   * The automated nudge the push belongs to (Growth → Automated nudges) and
+   * the version of it that was sent, so an open can be credited to the exact
+   * copy an admin saved.
+   */
+  nudge_key?: string;
+  nudge_version?: string;
 };
 
 /**
@@ -116,6 +126,56 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
 
 /** Vaults `/savings?vault=` may open: the savings screen's own selector values. */
 const LINKABLE_VAULTS: readonly string[] = Object.values(VaultType);
+
+/**
+ * Screens a push link never opens by path, even though the router knows them:
+ * signup, recovery and onboarding (a signed-in user has no business there),
+ * the permission and scanner screens, and settings, where a mistyped link must
+ * not land someone on account deletion. A path here falls back to `type`.
+ */
+const PUSH_LINK_DENIED_PREFIXES: readonly string[] = [
+  '/signup',
+  '/onboarding',
+  '/welcome',
+  '/recovery',
+  '/passkey-not-supported',
+  '/notifications',
+  '/rescue-token',
+  '/qr-scanner',
+  '/extensions',
+  '/settings',
+  '/agent',
+  '/card/3ds',
+];
+
+/**
+ * A plain in-app path: segments of letters, digits and `-._~`, no `//`.
+ * Exactly one slash between segments (not an optional one inside the repeat),
+ * so a long segment followed by a refused character fails in linear time.
+ */
+const PUSH_LINK_PATH = /^\/(?:[A-Za-z0-9\-._~]+(?:\/[A-Za-z0-9\-._~]+)*\/?)?$/;
+
+/** A query param an in-app route may read; campaign params stay with attribution. */
+const PUSH_LINK_PARAM = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+
+/**
+ * Any other in-app path, the way a Universal Link would open it
+ * (`redirectSystemPath`), so a nudge an admin points at a new screen opens it
+ * without an app release. Only plain paths outside the denied ones, and only
+ * short non-campaign params ride along.
+ */
+function anyInAppRoute(url: URL, pathname: string): Href | undefined {
+  if (!PUSH_LINK_PATH.test(pathname)) return undefined;
+  if (PUSH_LINK_DENIED_PREFIXES.some(p => pathname === p || pathname.startsWith(`${p}/`))) {
+    return undefined;
+  }
+  const params: Record<string, string> = {};
+  url.searchParams.forEach((value, key) => {
+    if (key.startsWith('utm_') || !PUSH_LINK_PARAM.test(key) || value.length > 200) return;
+    params[key] = value;
+  });
+  return (Object.keys(params).length > 0 ? { pathname, params } : pathname) as Href;
+}
 
 /** `/rewards/ai-api?key=`: a key id, which is a 24-hex Mongo id. */
 const LINKABLE_AI_API_KEY = /^[a-f0-9]{24}$/i;
@@ -193,7 +253,7 @@ function routeForLink(link?: string): Href | undefined {
       if (action) return { pathname: '/', params: homeLinkParamsFor(action) } as Href;
     }
 
-    return ROUTE_BY_LINK_PATH[pathname];
+    return ROUTE_BY_LINK_PATH[pathname] ?? anyInAppRoute(url, pathname);
   } catch {
     return undefined;
   }
@@ -315,12 +375,16 @@ function recordOpen(data?: NotificationData) {
     const { utm_source, utm_medium, utm_campaign, type } = data ?? {};
 
     if (utm_source || utm_campaign) {
-      useAttributionStore.getState().updateAttribution({
+      const attribution = useAttributionStore.getState();
+      attribution.updateAttribution({
         utm_source,
         utm_medium,
         utm_campaign,
         attribution_captured_at: Date.now(),
       });
+      // The push is the newest touch: `last_touch_utm_*` on later events
+      // should name it, not whatever link the user came through before.
+      attribution.saveLastTouchAttribution({ utm_source, utm_medium, utm_campaign });
     }
 
     track(TRACKING_EVENTS.PUSH_NOTIFICATION_OPENED, {
@@ -332,6 +396,9 @@ function recordOpen(data?: NotificationData) {
       // means either a spend push (which never has one) or a notification sent
       // before links existed, and both route on `type` instead.
       push_link: data?.link,
+      // The automated nudge and the saved version of it that was sent.
+      ...(data?.nudge_key && { nudge_key: data.nudge_key }),
+      ...(data?.nudge_version && { nudge_version: data.nudge_version }),
       // Card spend only: which outcome, and for a decline why and the fix the push
       // led with — what turns "opened a decline push" into "opened, then fixed it".
       ...(data?.status && { status: data.status }),
@@ -475,7 +542,7 @@ export function usePushNotifications() {
     // Re-register token whenever FCM refreshes it (e.g., app reinstall, token expiry)
     const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (newToken: string) => {
       try {
-        await registerPushToken(newToken, Platform.OS as 'ios' | 'android');
+        await registerPushToken(newToken, Platform.OS as 'ios' | 'android', pushDeviceInfo());
       } catch (error) {
         console.warn('Failed to register refreshed push token:', error);
       }

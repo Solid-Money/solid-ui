@@ -283,6 +283,7 @@ export type AttributionChannel =
   | 'paid_social'
   | 'social'
   | 'email'
+  | 'push'
   | 'referral'
   | 'direct'
   | 'other';
@@ -290,6 +291,11 @@ export type AttributionChannel =
 export const getAttributionChannel = (data: Partial<AttributionData>): AttributionChannel => {
   // Referral code takes precedence
   if (data.referral_code) return 'referral';
+
+  // Our own pushes stamp utm_medium=push (backend push-attribution.constants).
+  // Checked before click IDs: a push open merges into a record that may still
+  // carry the gclid/fbclid of an earlier ad click, and the open is the push's.
+  if (data.utm_medium?.toLowerCase() === 'push') return 'push';
 
   // Click IDs indicate paid advertising
   if (data.gclid || data.msclkid) return 'paid_search';

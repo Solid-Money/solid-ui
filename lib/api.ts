@@ -5933,7 +5933,16 @@ export const ensureWebhookSubscription = async (): Promise<EnsureWebhookResponse
 
 // Push Notification Token Management
 
-export const registerPushToken = async (token: string, platform: string) => {
+/**
+ * Register this device's push token. `timezone` (the device's IANA zone) lets
+ * marketing nudges wait out the user's quiet hours; `appVersion` lets the
+ * backend tell which builds a token belongs to. Older backends ignore both.
+ */
+export const registerPushToken = async (
+  token: string,
+  platform: string,
+  device: { timezone?: string; appVersion?: string } = {},
+) => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/push-token`, {
     method: 'POST',
@@ -5943,7 +5952,7 @@ export const registerPushToken = async (token: string, platform: string) => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     credentials: 'include',
-    body: JSON.stringify({ token, platform }),
+    body: JSON.stringify({ token, platform, ...device }),
   });
   if (!response.ok) throw response;
   return response.json();

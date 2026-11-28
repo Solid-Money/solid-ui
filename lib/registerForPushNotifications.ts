@@ -1,9 +1,31 @@
 import { Platform } from 'react-native';
+import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import messaging from '@react-native-firebase/messaging';
 
 import { registerPushToken } from '@/lib/api';
+
+/** The device's IANA time zone, e.g. "Europe/Lisbon", when the runtime knows it. */
+function deviceTimezone(): string | undefined {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return zone && /^[A-Za-z_]+(?:\/[A-Za-z0-9_+-]+)*$/.test(zone) ? zone : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * What the backend stores with a push token: the device's time zone (marketing
+ * nudges wait out quiet hours in it) and the app build.
+ */
+export function pushDeviceInfo(): { timezone?: string; appVersion?: string } {
+  return {
+    timezone: deviceTimezone(),
+    appVersion: Application.nativeApplicationVersion ?? undefined,
+  };
+}
 
 interface RegisterForPushNotificationsOptions {
   /** Whether an undetermined/denied permission should trigger the system prompt. */
@@ -45,7 +67,7 @@ export async function registerForPushNotificationsAsync({
 
     // Persist token to backend (best-effort — don't block on failure)
     const platform = Platform.OS as 'ios' | 'android';
-    await registerPushToken(fcmToken, platform);
+    await registerPushToken(fcmToken, platform, pushDeviceInfo());
 
     return fcmToken;
   } catch (e: unknown) {
