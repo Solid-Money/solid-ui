@@ -21,6 +21,7 @@ import {
   login,
   logout as apiLogout,
   removePushToken,
+  updateSafeAddress,
   updateUserCredentialId,
 } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
@@ -286,8 +287,14 @@ const useUser = (): UseUserReturn => {
         const depositCount = await fetchIsDeposited(queryClient, user.safeAddress);
         const isDeposited = depositCount > 0;
         if (isDeposited) {
+          // Onto the stored row, not `user`: a session refresh since the caller
+          // took its copy rotates the tokens in the store, and writing the copy
+          // back would restore the retired refresh token, which the next
+          // refresh then presents and the server answers by revoking the
+          // session.
+          const stored = useUserStore.getState().users.find(u => u.userId === user.userId);
           updateUser({
-            ...user,
+            ...(stored ?? user),
             isDeposited: true,
           });
         }
@@ -356,30 +363,6 @@ const useUser = (): UseUserReturn => {
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
-      if (!user.safeAddress || user.safeAddress === '') {
-        console.warn('[useUser] updating safe address on login (missing on user)', {
-          userId: user._id,
-          safeAddress: smartAccountClient.account.address,
-        });
-
-        try {
-          // No retries here so login isn't held up; usePostSignupInit retries
-          // an unsynced Safe on a later launch.
-          await linkSafeAddress(smartAccountClient.account.address, { retryDelaysMs: [] });
-          markSafeAddressSynced(user._id);
-        } catch (error) {
-          Sentry.captureException(error, {
-            tags: {
-              type: 'safe_address_update_error',
-            },
-            user: {
-              id: user._id,
-              address: smartAccountClient.account.address,
-            },
-          });
-        }
-      }
-
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         walletAddress: user.walletAddress,
@@ -404,6 +387,37 @@ const useUser = (): UseUserReturn => {
         hasPasskey: user.hasPasskey ?? true,
       };
       storeUser(selectedUser);
+
+      // An account whose signup failed after the server created it (the Safe
+      // address is worked out on the device, over our RPC) reaches login without
+      // one. Linked after `storeUser`: on native the request's JWT is read from
+      // the selected user in the store. Before it, there was none, so the link
+      // was refused with a 401. Or there was another account's, whose "already
+      // set" then marked this account synced with nothing saved for it.
+      //
+      // No retries here so login isn't held up; usePostSignupInit retries an
+      // unsynced Safe on a later launch. So a refresh that fails here must not
+      // end the session this login has just opened.
+      if (!user.safeAddress) {
+        try {
+          await linkSafeAddress(selectedUser.safeAddress, {
+            retryDelaysMs: [],
+            link: address =>
+              withRefreshToken(() => updateSafeAddress(address), { onError: () => {} }),
+          });
+          markSafeAddressSynced(user._id);
+        } catch (error) {
+          Sentry.captureException(error, {
+            tags: {
+              type: 'safe_address_update_error',
+            },
+            user: {
+              id: user._id,
+              address: selectedUser.safeAddress,
+            },
+          });
+        }
+      }
 
       // Persist the recovered credential server-side. Fired after `storeUser`
       // because on native the request's JWT is read from the selected user in
